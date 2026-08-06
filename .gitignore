@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+.astro/
+.turbo/
+
+# env — never commit secrets
+.env
+.env.*
+!.env.example
+
+# logs & caches
+*.log
+.cache/
+
+# playwright
+.playwright/output/
+test-results/
+playwright-report/
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# os
+.DS_Store

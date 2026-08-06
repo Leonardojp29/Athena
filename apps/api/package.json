@@ -1,0 +1,34 @@
+{
+  "name": "@athena/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "node --watch --experimental-strip-types src/main.api.ts",
+    "start:api": "node dist/main.api.js",
+    "start:worker": "node dist/main.worker.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@athena/database": "workspace:*",
+    "@athena/domain": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/swagger": "^11.0.0",
+    "bullmq": "^5.40.0",
+    "ioredis": "^5.5.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@athena/config": "workspace:*",
+    "@types/node": "^22.13.0",
+    "eslint": "^9.20.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

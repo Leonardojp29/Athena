@@ -1,0 +1,33 @@
+# Athena local development infrastructure.
+# Postgres/Auth live in Supabase (managed); Redis is the only local service.
+# Optional local Postgres is provided for offline work — enable with:
+#   docker compose --profile local-db up
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    profiles: ['local-db']
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: athena
+      POSTGRES_PASSWORD: athena
+      POSTGRES_DB: athena
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  redis-data:
+  postgres-data:

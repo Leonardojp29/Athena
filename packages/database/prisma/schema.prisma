@@ -1,0 +1,245 @@
+// Athena — first cut of the domain schema (Fase 0).
+// Designed from football concepts, never from provider payloads (ADR-001).
+// Supabase: DATABASE_URL points at the pooled connection (6543),
+// DIRECT_URL at the direct one (5432) for migrations.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- provider independence ----------
+
+/// Maps Athena UUIDs to provider ids. The ONLY place provider ids exist.
+model ExternalReference {
+  id          String   @id @default(uuid()) @db.Uuid
+  entityType  String   @map("entity_type") // player | team | competition | season | match | venue | coach
+  entityId    String   @map("entity_id") @db.Uuid
+  provider    String // 'api-football'
+  providerRef String   @map("provider_ref")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([provider, entityType, providerRef])
+  @@unique([provider, entityType, entityId])
+  @@index([entityType, entityId])
+  @@map("external_references")
+}
+
+// ---------- core entities ----------
+
+model Competition {
+  id       String   @id @default(uuid()) @db.Uuid
+  name     String
+  slug     String   @unique
+  country  String?
+  format   String // league | cup
+  logoUrl  String?  @map("logo_url")
+  seasons  Season[]
+  isActive Boolean  @default(false) @map("is_active") // toggles sync scope by data, not code
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("competitions")
+}
+
+model Season {
+  id            String      @id @default(uuid()) @db.Uuid
+  competition   Competition @relation(fields: [competitionId], references: [id])
+  competitionId String      @map("competition_id") @db.Uuid
+  year          Int // start year: 2025 = 2025-26
+  startDate     DateTime?   @map("start_date") @db.Date
+  endDate       DateTime?   @map("end_date") @db.Date
+  isCurrent     Boolean     @default(false) @map("is_current")
+  matches       Match[]
+
+  @@unique([competitionId, year])
+  @@map("seasons")
+}
+
+model Venue {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  city     String?
+  country  String?
+  capacity Int?
+  teams    Team[]
+  matches  Match[]
+
+  @@map("venues")
+}
+
+model Team {
+  id             String  @id @default(uuid()) @db.Uuid
+  name           String
+  shortName      String? @map("short_name")
+  slug           String  @unique
+  country        String?
+  founded        Int?
+  isNationalTeam Boolean @default(false) @map("is_national_team")
+  logoUrl        String? @map("logo_url")
+  venue          Venue?  @relation(fields: [venueId], references: [id])
+  venueId        String? @map("venue_id") @db.Uuid
+
+  homeMatches Match[]      @relation("home_team")
+  awayMatches Match[]      @relation("away_team")
+  events      MatchEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("teams")
+}
+
+model Player {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  fullName    String?   @map("full_name")
+  slug        String    @unique
+  birthDate   DateTime? @map("birth_date") @db.Date
+  nationality String?
+  heightCm    Int?      @map("height_cm")
+  position    String? // goalkeeper | defender | midfielder | attacker
+  photoUrl    String?   @map("photo_url")
+
+  events        MatchEvent[] @relation("event_player")
+  relatedEvents MatchEvent[] @relation("event_related_player")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("players")
+}
+
+model Match {
+  id             String   @id @default(uuid()) @db.Uuid
+  season         Season   @relation(fields: [seasonId], references: [id])
+  seasonId       String   @map("season_id") @db.Uuid
+  round          String?
+  homeTeam       Team     @relation("home_team", fields: [homeTeamId], references: [id])
+  homeTeamId     String   @map("home_team_id") @db.Uuid
+  awayTeam       Team     @relation("away_team", fields: [awayTeamId], references: [id])
+  awayTeamId     String   @map("away_team_id") @db.Uuid
+  kickoffUtc     DateTime @map("kickoff_utc")
+  status         String // scheduled | in_play | paused | finished | postponed | suspended | cancelled | abandoned | awarded
+  statusDetail   String?  @map("status_detail") // provider-granular: 1H, HT, ET, PEN...
+  elapsedMinutes Int?     @map("elapsed_minutes")
+  homeScore      Int?     @map("home_score")
+  awayScore      Int?     @map("away_score")
+  venue          Venue?   @relation(fields: [venueId], references: [id])
+  venueId        String?  @map("venue_id") @db.Uuid
+
+  events MatchEvent[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([seasonId, kickoffUtc])
+  @@index([status, kickoffUtc])
+  @@map("matches")
+}
+
+model MatchEvent {
+  id              String  @id @default(uuid()) @db.Uuid
+  match           Match   @relation(fields: [matchId], references: [id])
+  matchId         String  @map("match_id") @db.Uuid
+  kind            String // goal | own_goal | penalty_goal | missed_penalty | yellow_card | red_card | substitution | var
+  minute          Int
+  extraMinute     Int?    @map("extra_minute")
+  team            Team    @relation(fields: [teamId], references: [id])
+  teamId          String  @map("team_id") @db.Uuid
+  player          Player? @relation("event_player", fields: [playerId], references: [id])
+  playerId        String? @map("player_id") @db.Uuid
+  relatedPlayer   Player? @relation("event_related_player", fields: [relatedPlayerId], references: [id])
+  relatedPlayerId String? @map("related_player_id") @db.Uuid
+  detail          Json?
+
+  @@index([matchId, minute])
+  @@map("match_events")
+}
+
+// ---------- knowledge plane ----------
+
+/// Append-only log of meaningful happenings. Feeds timelines, derivation
+/// pipelines (MATCH_FINISHED -> stats -> insights) and AI reasoning.
+model DomainEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  kind        String // MATCH_FINISHED | PLAYER_TRANSFER | MANAGER_CHANGE | ...
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id") @db.Uuid
+  occurredAt  DateTime @map("occurred_at")
+  payload     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([subjectType, subjectId, occurredAt])
+  @@index([kind, occurredAt])
+  @@map("domain_events")
+}
+
+/// AI-generated narratives. Never shown without their evidence (provenance).
+model Insight {
+  id            String    @id @default(uuid()) @db.Uuid
+  subjectType   String    @map("subject_type")
+  subjectId     String    @map("subject_id") @db.Uuid
+  kind          String // match_preview | post_match_analysis | player_trend | ...
+  narrative     String
+  evidence      Json
+  model         String
+  promptVersion String    @map("prompt_version")
+  lang          String    @default("es")
+  generatedAt   DateTime  @default(now()) @map("generated_at")
+  expiresAt     DateTime? @map("expires_at")
+
+  @@index([subjectType, subjectId, kind])
+  @@map("insights")
+}
+
+/// Lightweight graph: played_for, coached_by, similar_to, rival_of...
+model EntityRelationship {
+  id        String    @id @default(uuid()) @db.Uuid
+  fromType  String    @map("from_type")
+  fromId    String    @map("from_id") @db.Uuid
+  relation  String
+  toType    String    @map("to_type")
+  toId      String    @map("to_id") @db.Uuid
+  validFrom DateTime? @map("valid_from") @db.Date
+  validTo   DateTime? @map("valid_to") @db.Date
+  metadata  Json?
+
+  @@index([fromType, fromId, relation])
+  @@index([toType, toId, relation])
+  @@map("entity_relationships")
+}
+
+// ---------- platform ----------
+
+/// Toggle features without deploying (ARCHITECT_REVIEW point 5).
+model FeatureFlag {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String   @unique
+  enabled        Boolean  @default(false)
+  rolloutPercent Int      @default(100) @map("rollout_percent")
+  audience       Json?
+  description    String?
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+/// Recurring sync cadence lives in data, not code (ARCHITECT_REVIEW point 10).
+model SyncSchedule {
+  id        String    @id @default(uuid()) @db.Uuid
+  jobKind   String    @unique @map("job_kind") // sync:reference | sync:fixtures | ...
+  cron      String
+  enabled   Boolean   @default(true)
+  lastRunAt DateTime? @map("last_run_at")
+  metadata  Json?
+
+  @@map("sync_schedules")
+}

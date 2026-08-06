@@ -1,0 +1,23 @@
+{
+  "name": "@athena/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "lint": "echo 'astro check covers web for now; eslint-plugin-astro arrives with Fase 2'",
+    "test": "echo 'e2e tests (Playwright) arrive with Fase 6'"
+  },
+  "dependencies": {
+    "@athena/tokens": "workspace:*",
+    "@athena/ui": "workspace:*",
+    "astro": "^5.2.0"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "typescript": "^5.7.0"
+  }
+}
