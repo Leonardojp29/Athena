@@ -2,31 +2,109 @@
 import Base from '../layouts/Base.astro';
 import Card from '../components/Card.astro';
 import MatchRow from '../components/MatchRow.astro';
-import { api, type HomeView } from '../lib/api';
+import { api, type HomeView, type PersonalFeed } from '../lib/api';
+import { getSession } from '../lib/supabase';
+
+const session = await getSession(Astro);
+
+// El feed personal solo se pide con sesión; si falla, la home general sigue funcionando.
+let feed: PersonalFeed | null = null;
+if (session?.accessToken) {
+  try {
+    feed = await api<PersonalFeed>('/me/feed', session.accessToken);
+  } catch {
+    feed = null;
+  }
+}
 
 const home = await api<HomeView>('/views/home');
+const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.length > 0 || feed.recent.length > 0);
 ---
 
 <Base
   title="Athena — Partidos de hoy y marcadores en vivo"
   description="Sigue los partidos de hoy en las principales ligas de Europa y Sudamérica: marcadores en vivo, tablas y resultados."
 >
-  <h1 class="text-2xl font-bold tracking-tight mb-1">Partidos de hoy</h1>
+  {showFeed && feed && (
+    <section class="mb-8">
+      <h1 class="text-2xl font-bold tracking-tight mb-1">Lo que sigues</h1>
+      <p class="text-sm text-ink-muted mb-4">
+        {feed.live.length > 0 ? `${feed.live.length} en juego ahora` : 'Tus equipos y competencias'}
+      </p>
+
+      <div class="grid gap-4">
+        {feed.live.length > 0 && (
+          <Card title="En vivo">
+            <div class="divide-y divide-border/40">
+              {feed.live.map((match) => <MatchRow match={match} />)}
+            </div>
+          </Card>
+        )}
+        {feed.upcoming.length > 0 && (
+          <Card title="Próximos">
+            <div class="divide-y divide-border/40">
+              {feed.upcoming.map((match) => <MatchRow match={match} showDate />)}
+            </div>
+          </Card>
+        )}
+        {feed.recent.length > 0 && (
+          <Card title="Últimos resultados">
+            <div class="divide-y divide-border/40">
+              {feed.recent.map((match) => <MatchRow match={match} showDate />)}
+            </div>
+          </Card>
+        )}
+        {feed.insights.length > 0 && (
+          <Card title="Análisis de tus partidos">
+            <ul class="grid gap-2">
+              {feed.insights.map((insight) => (
+                <li>
+                  <a href={`/partidos/${insight.matchId}`} class="flex gap-2 text-sm hover:text-primary transition-colors">
+                    <span class="text-primary shrink-0">▸</span>
+                    <span>{insight.titular}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </div>
+    </section>
+  )}
+
+  <h2 class:list={[showFeed ? 'text-xl font-semibold tracking-tight mb-1' : 'text-2xl font-bold tracking-tight mb-1']}>
+    {showFeed ? 'Todos los partidos de hoy' : 'Partidos de hoy'}
+  </h2>
   <p class="text-sm text-ink-muted mb-6">
-    {home.live > 0 ? `${home.live} en juego ahora` : 'Las principales ligas de Europa y Sudamérica'}
+    {!showFeed && home.live > 0
+      ? `${home.live} en juego ahora`
+      : 'Las principales ligas de Europa y Sudamérica'}
   </p>
+
+  {session && !feed?.hasFavorites && (
+    <Card>
+      <p class="text-sm text-ink-muted">
+        Sigue equipos y competencias desde sus páginas para armar tu propio inicio.
+      </p>
+    </Card>
+  )}
 
   {home.sections.length === 0 ? (
     <Card>
-      <p class="text-ink-muted text-sm">No hay partidos programados en las próximas horas. Vuelve mañana o explora las competencias.</p>
+      <p class="text-sm text-ink-muted">
+        No hay partidos programados en las próximas horas. Vuelve mañana o explora las competencias.
+      </p>
     </Card>
   ) : (
-    <div class="grid gap-4">
+    <div class="grid gap-4 mt-4">
       {home.sections.map(({ competition, matches }) => (
         <Card>
-          <a href={`/competencias/${competition.slug}`} class="flex items-center gap-2 mb-2 hover:text-primary transition-colors">
+          <a
+            href={`/competencias/${competition.slug}`}
+            class="flex items-center gap-2 mb-2 hover:text-primary transition-colors"
+          >
             {competition.logoUrl && <img src={competition.logoUrl} alt="" width="20" height="20" loading="lazy" />}
-            <h2 class="text-base font-semibold">{competition.name}</h2>
+            <h3 class="text-base font-semibold">{competition.name}</h3>
           </a>
           <div class="divide-y divide-border/40">
             {matches.map((match) => <MatchRow match={match} showDate />)}

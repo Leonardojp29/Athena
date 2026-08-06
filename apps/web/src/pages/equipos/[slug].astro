@@ -1,8 +1,10 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
+import FavoriteButton from '../../components/FavoriteButton';
 import MatchRow from '../../components/MatchRow.astro';
-import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
+import { api, type FavoriteEntity, ApiError, type SearchHit, type TeamView } from '../../lib/api';
+import { getSession } from '../../lib/supabase';
 
 const { slug } = Astro.params;
 let view: TeamView;
@@ -21,6 +23,17 @@ try {
   similar = (await api<{ results: SearchHit[] }>(`/search/similar/team/${slug}`)).results;
 } catch {
   similar = [];
+}
+
+const session = await getSession(Astro);
+let following = false;
+if (session?.accessToken) {
+  try {
+    const favorites = await api<FavoriteEntity[]>('/me/favorites', session.accessToken);
+    following = favorites.some((f) => f.entityType === 'team' && f.entityId === team.id);
+  } catch {
+    following = false;
+  }
 }
 
 const jsonLd = {
@@ -46,6 +59,17 @@ const jsonLd = {
       <p class="text-sm text-ink-muted">
         {[team.country, team.founded ? `Fundado en ${team.founded}` : null].filter(Boolean).join(' · ')}
       </p>
+    </div>
+
+    <div class="ml-auto shrink-0">
+      <FavoriteButton
+        client:load
+        entityType="team"
+        entityId={team.id}
+        initiallyFollowing={following}
+        signedIn={Boolean(session)}
+        label="equipo"
+      />
     </div>
   </div>
 

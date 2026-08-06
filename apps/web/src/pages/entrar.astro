@@ -1,0 +1,100 @@
+---
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import { createSupabaseServerClient, getSession, isAuthConfigured } from '../lib/supabase';
+
+const session = await getSession(Astro);
+if (session) return Astro.redirect('/');
+
+let notice: { kind: 'ok' | 'error'; text: string } | null = null;
+
+if (Astro.request.method === 'POST' && isAuthConfigured) {
+  const form = await Astro.request.formData();
+  const email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+  const intent = String(form.get('intent') ?? 'login');
+  const supabase = createSupabaseServerClient(Astro);
+
+  if (!email || password.length < 8) {
+    notice = { kind: 'error', text: 'Ingresa un correo válido y una contraseña de al menos 8 caracteres.' };
+  } else if (intent === 'signup') {
+    const { error } = await supabase.auth.signUp({ email, password });
+    notice = error
+      ? { kind: 'error', text: traducir(error.message) }
+      : { kind: 'ok', text: 'Cuenta creada. Revisa tu correo para confirmarla y luego inicia sesión.' };
+  } else {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) notice = { kind: 'error', text: traducir(error.message) };
+    else return Astro.redirect('/');
+  }
+}
+
+function traducir(message: string): string {
+  if (/invalid login credentials/i.test(message)) return 'Correo o contraseña incorrectos.';
+  if (/already registered/i.test(message)) return 'Ese correo ya tiene una cuenta.';
+  if (/email not confirmed/i.test(message)) return 'Confirma tu correo antes de iniciar sesión.';
+  return message;
+}
+---
+
+<Base title="Entrar | Athena" description="Inicia sesión en Athena para seguir tus equipos." noindex>
+  <div class="max-w-sm mx-auto py-8">
+    <h1 class="text-2xl font-bold tracking-tight mb-1">Entrar a Athena</h1>
+    <p class="text-sm text-ink-muted mb-6">Sigue tus equipos y recibe el análisis de sus partidos.</p>
+
+    {!isAuthConfigured ? (
+      <Card>
+        <p class="text-sm text-danger">
+          Falta configurar <code>PUBLIC_SUPABASE_URL</code> y <code>PUBLIC_SUPABASE_ANON_KEY</code>.
+        </p>
+      </Card>
+    ) : (
+      <Card>
+        {notice && (
+          <p class:list={['text-sm mb-4', notice.kind === 'ok' ? 'text-success' : 'text-danger']}>
+            {notice.text}
+          </p>
+        )}
+        <form method="post" class="grid gap-3">
+          <label class="grid gap-1">
+            <span class="text-xs text-ink-muted">Correo</span>
+            <input
+              type="email"
+              name="email"
+              required
+              autocomplete="email"
+              class="bg-canvas-subtle border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+            />
+          </label>
+          <label class="grid gap-1">
+            <span class="text-xs text-ink-muted">Contraseña</span>
+            <input
+              type="password"
+              name="password"
+              required
+              minlength="8"
+              autocomplete="current-password"
+              class="bg-canvas-subtle border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+            />
+          </label>
+          <button
+            type="submit"
+            name="intent"
+            value="login"
+            class="bg-primary text-primary-contrast rounded-md px-3 py-2 text-sm font-medium hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            Iniciar sesión
+          </button>
+          <button
+            type="submit"
+            name="intent"
+            value="signup"
+            class="text-sm text-ink-muted hover:text-ink transition-colors cursor-pointer"
+          >
+            No tengo cuenta, crear una
+          </button>
+        </form>
+      </Card>
+    )}
+  </div>
+</Base>

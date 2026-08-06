@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { getSession } from '../lib/supabase';
 
 interface Props {
   title: string;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 const { title, description, ogImage = null, jsonLd = null, noindex = false } = Astro.props;
+const session = await getSession(Astro);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 
 const NAV = [
@@ -70,6 +72,20 @@ const NAV = [
             aria-label="Cambiar tema"
           >◐</button>
         </form>
+
+        {session ? (
+          <form method="post" action="/salir" class="shrink-0">
+            <button
+              type="submit"
+              class="text-sm text-ink-muted hover:text-ink transition-colors cursor-pointer"
+              title={session.user.email ?? 'Salir'}
+            >Salir</button>
+          </form>
+        ) : (
+          <a href="/entrar" class="text-sm text-ink-muted hover:text-ink transition-colors shrink-0">
+            Entrar
+          </a>
+        )}
       </div>
     </header>
 

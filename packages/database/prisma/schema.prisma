@@ -316,6 +316,34 @@ model EntityRelationship {
 
 // ---------- platform ----------
 
+/// Perfil de Athena para un usuario de Supabase Auth. `id` es el uid de auth.users:
+/// las credenciales las administra Supabase, el dominio solo guarda lo suyo.
+model UserProfile {
+  id          String     @id @db.Uuid
+  displayName String?    @map("display_name")
+  lang        String     @default("es")
+  onboardedAt DateTime?  @map("onboarded_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  favorites   Favorite[]
+
+  @@map("user_profiles")
+}
+
+/// Seguimiento de equipos, competencias y jugadores. Alimenta el home personalizado.
+model Favorite {
+  id         String      @id @default(uuid()) @db.Uuid
+  user       UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String      @map("user_id") @db.Uuid
+  entityType String      @map("entity_type") // team | competition | player
+  entityId   String      @map("entity_id") @db.Uuid
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@unique([userId, entityType, entityId])
+  @@index([entityType, entityId])
+  @@map("favorites")
+}
+
 /// Toggle features without deploying (ARCHITECT_REVIEW point 5).
 model FeatureFlag {
   id             String   @id @default(uuid()) @db.Uuid

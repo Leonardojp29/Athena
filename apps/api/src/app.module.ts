@@ -1,11 +1,21 @@
 import { Module } from '@nestjs/common';
 import { SharedModule } from './shared/shared.module.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { SearchModule } from './modules/search/search.module.js';
+import { UsersModule } from './modules/users/users.module.js';
 import { ViewsModule } from './modules/views/views.module.js';
 
 @Module({
-  imports: [SharedModule, FeatureFlagsModule, HealthModule, ViewsModule, SearchModule],
+  imports: [
+    SharedModule,
+    AuthModule,
+    FeatureFlagsModule,
+    HealthModule,
+    ViewsModule,
+    SearchModule,
+    UsersModule,
+  ],
 })
 export class AppModule {}

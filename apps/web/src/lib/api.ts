@@ -9,10 +9,28 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}/v1${path}`);
+export async function api<T>(path: string, accessToken?: string | null): Promise<T> {
+  const res = await fetch(`${API_URL}/v1${path}`, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  });
   if (!res.ok) throw new ApiError(res.status, `${path} → ${res.status}`);
   return res.json() as Promise<T>;
+}
+
+export interface FavoriteEntity {
+  entityType: 'team' | 'competition' | 'player';
+  entityId: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+}
+
+export interface PersonalFeed {
+  hasFavorites: boolean;
+  live: MatchCard[];
+  upcoming: MatchCard[];
+  recent: MatchCard[];
+  insights: Array<{ matchId: string; titular: string }>;
 }
 
 export interface TeamSummary {

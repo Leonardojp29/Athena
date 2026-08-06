@@ -1,7 +1,9 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
-import { api, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
+import FavoriteButton from '../../components/FavoriteButton';
+import { api, type FavoriteEntity, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
+import { getSession } from '../../lib/supabase';
 import { formatDate } from '../../lib/format';
 
 const { slug } = Astro.params;
@@ -29,6 +31,17 @@ const EVENT_LABEL: Record<string, string> = {
   var: 'VAR',
 };
 
+const session = await getSession(Astro);
+let following = false;
+if (session?.accessToken) {
+  try {
+    const favorites = await api<FavoriteEntity[]>('/me/favorites', session.accessToken);
+    following = favorites.some((f) => f.entityType === 'player' && f.entityId === player.id);
+  } catch {
+    following = false;
+  }
+}
+
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Person',
@@ -55,6 +68,17 @@ const jsonLd = {
           .filter(Boolean)
           .join(' · ')}
       </p>
+    </div>
+
+    <div class="ml-auto shrink-0">
+      <FavoriteButton
+        client:load
+        entityType="player"
+        entityId={player.id}
+        initiallyFollowing={following}
+        signedIn={Boolean(session)}
+        label="jugador"
+      />
     </div>
   </div>
 
