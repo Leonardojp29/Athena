@@ -37,10 +37,18 @@ aunque GitHub Actions falle por su cuenta.
 pnpm --filter @athena/web e2e
 ```
 
-La primera vez, el navegador necesita librerías del sistema (una sola vez, pide sudo):
+La primera vez, el navegador necesita librerías del sistema. Se instalan una sola
+vez y piden la contraseña de tu usuario de WSL:
 
 ```bash
-cd apps/web && sudo -E env "PATH=$PATH" pnpm exec playwright install-deps chromium
+sudo apt-get update
+sudo apt-get install -y at-spi2-common at-spi2-core fonts-freefont-ttf fonts-ipafont-gothic fonts-liberation fonts-noto-color-emoji fonts-tlwg-loma-otf fonts-unifont fonts-wqy-zenhei libasound2-data libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64 libatspi2.0-0t64 libfontenc1 libice6 libnspr4 libnss3 libsm6 libunwind8 libxaw7 libxfont2 libxkbfile1 libxmu6 libxpm4 libxt6t64 x11-xkb-utils xfonts-cyrillic xfonts-encodings xfonts-scalable xfonts-utils xserver-common xvfb
+```
+
+Para reconfirmar qué falta en cualquier momento (no instala nada):
+
+```bash
+pnpm --filter @athena/web exec playwright install-deps --dry-run chromium
 ```
 
 ## Datos
@@ -108,6 +116,7 @@ Claves: `ai_insights`, `semantic_search`, `live_match_center`, `recommendations`
 | Previa ausente en un partido | Esperado si no hay tabla, historial ni forma previa: se omite a propósito |
 | Login devuelve 403 | `security.allowedDomains` en `astro.config.mjs` debe incluir el dominio real |
 | La web dice que falta configurar Supabase | Las variables `PUBLIC_*` se compilan: hay que reconstruir tras cambiarlas |
+| Todo se siente lento en local | Cada consulta viaja a Supabase (~800 ms por round-trip desde fuera de us-west-2). No es el código: en producción, con el API en la región de la base, son milisegundos. Mídelo con un `SELECT 1` antes de optimizar |
 
 Con `SENTRY_DSN` configurado, los errores 5xx y los jobs fallidos se reportan
 automáticamente; sin él, todo queda en los logs estructurados.

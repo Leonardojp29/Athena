@@ -38,8 +38,10 @@ test.describe('recorrido de lectura', () => {
     await page.getByRole('searchbox').last().fill('alianca');
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/q=alianca/);
-    await expect(page.locator('main')).toContainText(/Alianza/i);
+    // Timeout amplio a propósito: en desarrollo cada consulta viaja a Supabase
+    // (~800 ms por round-trip desde fuera de su región).
+    await expect(page).toHaveURL(/q=alianca/, { timeout: 15_000 });
+    await expect(page.locator('main')).toContainText(/Alianza/i, { timeout: 15_000 });
   });
 
   test('una entidad inexistente cae en el 404 propio', async ({ page }) => {

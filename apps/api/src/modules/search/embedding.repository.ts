@@ -7,6 +7,13 @@ export interface VectorHit {
   score: number;
 }
 
+export interface EntityHit extends VectorHit {
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  subtitle: string | null;
+}
+
 /**
  * Único lugar con SQL crudo de pgvector: Prisma no soporta el tipo `vector`,
  * así que la aritmética de vectores queda encapsulada acá (ADR-003).
@@ -74,6 +81,30 @@ export class EmbeddingRepository {
       ) AS source
       WHERE e.model = ${model} AND e.entity_type = ${entityType} AND e.entity_id <> ${entityId}::uuid
       ORDER BY e.vector <=> source.vector
+      LIMIT ${limit}
+    `;
+  }
+
+  /**
+   * Vecinos semánticos con los datos de la entidad ya resueltos: un round-trip en
+   * lugar de dos, lo que importa cuando la base está lejos del API.
+   */
+  async searchWithEntities(vector: number[], model: string, limit: number): Promise<EntityHit[]> {
+    const literal = toVectorLiteral(vector);
+    return this.prisma.$queryRaw<EntityHit[]>`
+      SELECT e.entity_type AS "entityType",
+             e.entity_id::text AS "entityId",
+             1 - (e.vector <=> ${literal}::vector) AS score,
+             COALESCE(t.name, p.name) AS name,
+             COALESCE(t.slug, p.slug) AS slug,
+             COALESCE(t.logo_url, p.photo_url) AS "imageUrl",
+             COALESCE(t.country, p.nationality) AS subtitle
+      FROM embeddings e
+      LEFT JOIN teams t ON e.entity_type = 'team' AND t.id = e.entity_id
+      LEFT JOIN players p ON e.entity_type = 'player' AND p.id = e.entity_id
+      WHERE e.model = ${model}
+        AND (t.id IS NOT NULL OR p.id IS NOT NULL)
+      ORDER BY e.vector <=> ${literal}::vector
       LIMIT ${limit}
     `;
   }

@@ -1,9 +1,17 @@
+import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { EmbeddingGenerator } from '@athena/domain';
+import type { Redis } from 'ioredis';
 import { PrismaService } from '../../shared/prisma.service.js';
+import { REDIS } from '../../shared/redis.provider.js';
 import { FeatureFlagService, FLAGS } from '../feature-flags/feature-flag.service.js';
 import { EMBEDDING_GENERATOR } from '../providers/provider.tokens.js';
 import { EmbeddingRepository } from './embedding.repository.js';
+
+/** Embeber la consulta cuesta ~3 s contra OpenAI: sin estos límites la búsqueda es inusable. */
+const SEMANTIC_TIMEOUT_MS = 2_000;
+const NAME_HITS_ENOUGH = 3;
+const QUERY_EMBEDDING_TTL_SECONDS = 604_800;
 
 export interface SearchHit {
   type: 'team' | 'player' | 'competition';
@@ -33,6 +41,7 @@ export class SearchService {
     private readonly prisma: PrismaService,
     private readonly embeddings: EmbeddingRepository,
     private readonly flags: FeatureFlagService,
+    @Inject(REDIS) private readonly redis: Redis,
     @Inject(EMBEDDING_GENERATOR) private readonly embedder: EmbeddingGenerator,
   ) {}
 
@@ -49,14 +58,17 @@ export class SearchService {
     const hits = new Map<string, SearchHit>();
     for (const hit of byName) hits.set(`${hit.type}:${hit.id}`, hit);
 
-    if (await this.flags.isEnabled(FLAGS.semanticSearch)) {
+    // Si el nombre ya resolvió la intención, no vale gastar segundos en un embedding.
+    const needsSemantic = byName.length < NAME_HITS_ENOUGH;
+
+    if (needsSemantic && (await this.flags.isEnabled(FLAGS.semanticSearch))) {
       try {
         for (const hit of await this.searchSemantic(trimmed, limit)) {
           const key = `${hit.type}:${hit.id}`;
           if (!hits.has(key)) hits.set(key, hit);
         }
       } catch (error) {
-        this.logger.warn(`Búsqueda semántica falló, se devuelve solo por nombre: ${String(error)}`);
+        this.logger.warn(`Búsqueda semántica omitida: ${String(error)}`);
       }
     }
 
@@ -92,6 +104,31 @@ export class SearchService {
         },
       ];
     });
+  }
+
+  /**
+   * Cachea el vector de la consulta y aborta si el proveedor tarda: una búsqueda
+   * lenta es peor que una búsqueda sin resultados semánticos.
+   */
+  private async embedQuery(query: string): Promise<number[] | null> {
+    const key = `athena:embcache:${this.embedder.model}:${createHash('sha1').update(query.toLowerCase()).digest('hex')}`;
+    const cached = await this.redis.get(key);
+    if (cached) return JSON.parse(cached) as number[];
+
+    const timeout = new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), SEMANTIC_TIMEOUT_MS),
+    );
+    const vector = await Promise.race([
+      this.embedder.embed([query]).then((v) => v[0] ?? null),
+      timeout,
+    ]);
+    if (!vector) {
+      this.logger.warn(`Embedding de la consulta excedió ${SEMANTIC_TIMEOUT_MS} ms: "${query}"`);
+      return null;
+    }
+
+    await this.redis.set(key, JSON.stringify(vector), 'EX', QUERY_EMBEDDING_TTL_SECONDS);
+    return vector;
   }
 
   private async searchByName(query: string, limit: number): Promise<SearchHit[]> {
@@ -144,62 +181,19 @@ export class SearchService {
   }
 
   private async searchSemantic(query: string, limit: number): Promise<SearchHit[]> {
-    const [vector] = await this.embedder.embed([query]);
+    const vector = await this.embedQuery(query);
     if (!vector) return [];
 
-    const hits = await this.embeddings.search(vector, this.embedder.model, limit);
-    const teamIds = hits.filter((h) => h.entityType === 'team').map((h) => h.entityId);
-    const playerIds = hits.filter((h) => h.entityType === 'player').map((h) => h.entityId);
-
-    const [teams, players] = await Promise.all([
-      teamIds.length
-        ? this.prisma.team.findMany({
-            where: { id: { in: teamIds } },
-            select: { id: true, name: true, slug: true, logoUrl: true, country: true },
-          })
-        : [],
-      playerIds.length
-        ? this.prisma.player.findMany({
-            where: { id: { in: playerIds } },
-            select: { id: true, name: true, slug: true, photoUrl: true, nationality: true },
-          })
-        : [],
-    ]);
-
-    const teamById = new Map(teams.map((t) => [t.id, t]));
-    const playerById = new Map(players.map((p) => [p.id, p]));
-
-    return hits.flatMap((hit): SearchHit[] => {
-      if (hit.entityType === 'team') {
-        const team = teamById.get(hit.entityId);
-        if (!team) return [];
-        return [
-          {
-            type: 'team',
-            id: team.id,
-            name: team.name,
-            slug: team.slug,
-            imageUrl: team.logoUrl,
-            subtitle: team.country,
-            score: hit.score,
-            matchedBy: 'semántica',
-          },
-        ];
-      }
-      const player = playerById.get(hit.entityId);
-      if (!player) return [];
-      return [
-        {
-          type: 'player',
-          id: player.id,
-          name: player.name,
-          slug: player.slug,
-          imageUrl: player.photoUrl,
-          subtitle: player.nationality,
-          score: hit.score,
-          matchedBy: 'semántica',
-        },
-      ];
-    });
+    const hits = await this.embeddings.searchWithEntities(vector, this.embedder.model, limit);
+    return hits.map((hit) => ({
+      type: hit.entityType === 'team' ? 'team' : 'player',
+      id: hit.entityId,
+      name: hit.name,
+      slug: hit.slug,
+      imageUrl: hit.imageUrl,
+      subtitle: hit.subtitle,
+      score: Number(hit.score),
+      matchedBy: 'semántica' as const,
+    }));
   }
 }
