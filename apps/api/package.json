@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "node --watch --experimental-strip-types src/main.api.ts",
-    "start:api": "node dist/main.api.js",
-    "start:worker": "node dist/main.worker.js",
+    "start:api": "node --env-file-if-exists=../../.env dist/main.api.js",
+    "start:worker": "node --env-file-if-exists=../../.env dist/main.worker.js",
+    "sync:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/sync-bootstrap.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "vitest run"

@@ -17,9 +17,9 @@ export default tseslint.config(
   },
   {
     // Provider isolation: API-Football types must never leave the adapter.
-    // Enforced properly with dependency-cruiser in Fase 1; this is the first line of defense.
+    // *.module.ts files are DI composition roots and may wire the adapter module.
     files: ['**/*.ts', '**/*.tsx'],
-    ignores: ['**/providers/api-football/**'],
+    ignores: ['**/providers/api-football/**', '**/*.module.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

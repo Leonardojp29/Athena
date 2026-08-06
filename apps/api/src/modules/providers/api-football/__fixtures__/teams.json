@@ -1,0 +1,75 @@
+{
+  "get": "teams",
+  "parameters": {
+    "league": "281",
+    "season": "2026"
+  },
+  "errors": [],
+  "results": 18,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "team": {
+        "id": 2539,
+        "name": "UTC Cajamarca",
+        "code": "CAJ",
+        "country": "Peru",
+        "founded": 1942,
+        "national": false,
+        "logo": "https://media.api-sports.io/football/teams/2539.png"
+      },
+      "venue": {
+        "id": 1243,
+        "name": "Estadio Héroes de San Ramón",
+        "address": null,
+        "city": "Cajamarca",
+        "capacity": 18000,
+        "surface": "artificial turf",
+        "image": "https://media.api-sports.io/football/venues/1243.png"
+      }
+    },
+    {
+      "team": {
+        "id": 2540,
+        "name": "Universitario",
+        "code": "UNI",
+        "country": "Peru",
+        "founded": 1924,
+        "national": false,
+        "logo": "https://media.api-sports.io/football/teams/2540.png"
+      },
+      "venue": {
+        "id": 1242,
+        "name": "Estadio Monumental",
+        "address": "Avenida Javier Prado Este 7596, Ate",
+        "city": "Lima",
+        "capacity": 80093,
+        "surface": "grass",
+        "image": "https://media.api-sports.io/football/venues/1242.png"
+      }
+    },
+    {
+      "team": {
+        "id": 2544,
+        "name": "Sport Boys",
+        "code": "SPO",
+        "country": "Peru",
+        "founded": 1927,
+        "national": false,
+        "logo": "https://media.api-sports.io/football/teams/2544.png"
+      },
+      "venue": {
+        "id": 1238,
+        "name": "Estadio Miguel Grau del Callao",
+        "address": "Avenida Oscar R. Benavides y Calle Topacios, Bellavista",
+        "city": "Callao",
+        "capacity": 17000,
+        "surface": "grass",
+        "image": "https://media.api-sports.io/football/venues/1238.png"
+      }
+    }
+  ]
+}

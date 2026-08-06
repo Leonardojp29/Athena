@@ -1,0 +1,190 @@
+{
+  "get": "fixtures/events",
+  "parameters": {
+    "fixture": "1505729"
+  },
+  "errors": [],
+  "results": 17,
+  "paging": {
+    "current": 1,
+    "total": 1
+  },
+  "response": [
+    {
+      "time": {
+        "elapsed": 34,
+        "extra": null
+      },
+      "team": {
+        "id": 2555,
+        "name": "Sport Huancayo",
+        "logo": "https://media.api-sports.io/football/teams/2555.png"
+      },
+      "player": {
+        "id": 39894,
+        "name": "Hugo Ángeles"
+      },
+      "assist": {
+        "id": null,
+        "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+    },
+    {
+      "time": {
+        "elapsed": 35,
+        "extra": null
+      },
+      "team": {
+        "id": 2553,
+        "name": "Alianza Lima",
+        "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "player": {
+        "id": 10401,
+        "name": "Paolo Guerrero"
+      },
+      "assist": {
+        "id": null,
+        "name": null
+      },
+      "type": "Goal",
+      "detail": "Penalty",
+      "comments": null
+    },
+    {
+      "time": {
+        "elapsed": 42,
+        "extra": null
+      },
+      "team": {
+        "id": 2553,
+        "name": "Alianza Lima",
+        "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "player": {
+        "id": 39779,
+        "name": "Cristian Carbajal"
+      },
+      "assist": {
+        "id": null,
+        "name": null
+      },
+      "type": "Card",
+      "detail": "Yellow Card",
+      "comments": "Foul"
+    },
+    {
+      "time": {
+        "elapsed": 45,
+        "extra": null
+      },
+      "team": {
+        "id": 2555,
+        "name": "Sport Huancayo",
+        "logo": "https://media.api-sports.io/football/teams/2555.png"
+      },
+      "player": {
+        "id": 5337,
+        "name": "N. Lujan"
+      },
+      "assist": {
+        "id": 39791,
+        "name": "J. J. Canela Torres"
+      },
+      "type": "Goal",
+      "detail": "Normal Goal",
+      "comments": null
+    },
+    {
+      "time": {
+        "elapsed": 60,
+        "extra": null
+      },
+      "team": {
+        "id": 2553,
+        "name": "Alianza Lima",
+        "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "player": {
+        "id": 6087,
+        "name": "F. Gaibor"
+      },
+      "assist": {
+        "id": 313058,
+        "name": "A. Burlamaqui"
+      },
+      "type": "subst",
+      "detail": "Substitution 1",
+      "comments": null
+    },
+    {
+      "time": {
+        "elapsed": 60,
+        "extra": null
+      },
+      "team": {
+        "id": 2553,
+        "name": "Alianza Lima",
+        "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "player": {
+        "id": 35688,
+        "name": "E. Castillo"
+      },
+      "assist": {
+        "id": 39527,
+        "name": "L. Ramos"
+      },
+      "type": "subst",
+      "detail": "Substitution 2",
+      "comments": null
+    },
+    {
+      "time": {
+        "elapsed": 61,
+        "extra": null
+      },
+      "team": {
+        "id": 2553,
+        "name": "Alianza Lima",
+        "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "player": {
+        "id": 58779,
+        "name": "G. Gentile"
+      },
+      "assist": {
+        "id": 170119,
+        "name": "A. Cantero"
+      },
+      "type": "subst",
+      "detail": "Substitution 3",
+      "comments": null
+    },
+    {
+      "time": {
+        "elapsed": 62,
+        "extra": null
+      },
+      "team": {
+        "id": 2555,
+        "name": "Sport Huancayo",
+        "logo": "https://media.api-sports.io/football/teams/2555.png"
+      },
+      "player": {
+        "id": 12363,
+        "name": "F. Caballero"
+      },
+      "assist": {
+        "id": 13527,
+        "name": "Y. Mena"
+      },
+      "type": "subst",
+      "detail": "Substitution 1",
+      "comments": null
+    }
+  ]
+}
