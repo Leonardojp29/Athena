@@ -4,6 +4,7 @@ import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { SyncCompetitionUseCase } from './sync-competition.usecase.js';
 import { SyncFixturesUseCase } from './sync-fixtures.usecase.js';
+import { SyncStandingsUseCase } from './sync-standings.usecase.js';
 import { SyncTeamsUseCase } from './sync-teams.usecase.js';
 
 @Module({
@@ -14,7 +15,8 @@ import { SyncTeamsUseCase } from './sync-teams.usecase.js';
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
     SyncFixturesUseCase,
+    SyncStandingsUseCase,
   ],
-  exports: [SyncCompetitionUseCase, SyncTeamsUseCase, SyncFixturesUseCase],
+  exports: [SyncCompetitionUseCase, SyncTeamsUseCase, SyncFixturesUseCase, SyncStandingsUseCase],
 })
 export class SyncModule {}

@@ -57,9 +57,33 @@ model Season {
   endDate       DateTime?   @map("end_date") @db.Date
   isCurrent     Boolean     @default(false) @map("is_current")
   matches       Match[]
+  standings     Standing[]
 
   @@unique([competitionId, year])
   @@map("seasons")
+}
+
+model Standing {
+  id           String   @id @default(uuid()) @db.Uuid
+  season       Season   @relation(fields: [seasonId], references: [id])
+  seasonId     String   @map("season_id") @db.Uuid
+  team         Team     @relation(fields: [teamId], references: [id])
+  teamId       String   @map("team_id") @db.Uuid
+  groupLabel   String   @default("") @map("group_label")
+  position     Int
+  points       Int
+  played       Int
+  won          Int
+  drawn        Int
+  lost         Int
+  goalsFor     Int      @map("goals_for")
+  goalsAgainst Int      @map("goals_against")
+  form         String?
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([seasonId, groupLabel, teamId])
+  @@index([seasonId, groupLabel, position])
+  @@map("standings")
 }
 
 model Venue {
@@ -89,6 +113,7 @@ model Team {
   homeMatches Match[]      @relation("home_team")
   awayMatches Match[]      @relation("away_team")
   events      MatchEvent[]
+  standings   Standing[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

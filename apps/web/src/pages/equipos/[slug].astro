@@ -1,0 +1,86 @@
+---
+import Base from '../../layouts/Base.astro';
+import Card from '../../components/Card.astro';
+import MatchRow from '../../components/MatchRow.astro';
+import { api, ApiError, type TeamView } from '../../lib/api';
+
+const { slug } = Astro.params;
+let view: TeamView;
+try {
+  view = await api<TeamView>(`/views/team/${slug}`);
+} catch (error) {
+  if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
+  throw error;
+}
+
+const { team, standings, recent, upcoming } = view;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SportsTeam',
+  name: team.name,
+  sport: 'Soccer',
+  ...(team.logoUrl ? { logo: team.logoUrl } : {}),
+  ...(team.founded ? { foundingDate: String(team.founded) } : {}),
+};
+---
+
+<Base
+  title={`${team.name} — Partidos, resultados y posición | Athena`}
+  description={`Resultados recientes, próximos partidos y posición en la tabla de ${team.name}.`}
+  ogImage={team.logoUrl}
+  jsonLd={jsonLd}
+>
+  <div class="flex items-center gap-3 mb-6">
+    {team.logoUrl && <img src={team.logoUrl} alt="" width="48" height="48" />}
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">{team.name}</h1>
+      <p class="text-sm text-ink-muted">
+        {[team.country, team.founded ? `Fundado en ${team.founded}` : null].filter(Boolean).join(' · ')}
+      </p>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-2 gap-4 items-start">
+    <div class="grid gap-4">
+      {standings.length > 0 && (
+        <Card title="Temporada actual">
+          <div class="grid gap-3">
+            {standings.map((row) => (
+              <a href={`/competencias/${row.season.competition.slug}`} class="flex items-center justify-between gap-2 hover:bg-canvas-subtle rounded-md px-2 py-1.5 transition-colors">
+                <span class="flex items-center gap-2 text-sm">
+                  {row.season.competition.logoUrl && <img src={row.season.competition.logoUrl} alt="" width="18" height="18" loading="lazy" />}
+                  {row.season.competition.name}{row.groupLabel ? ` · ${row.groupLabel}` : ''}
+                </span>
+                <span class="text-sm tabular">
+                  <span class="font-semibold">{row.position}°</span>
+                  <span class="text-ink-muted"> · {row.points} pts · {row.played} PJ</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <Card title="Próximos partidos">
+        {upcoming.length > 0 ? (
+          <div class="divide-y divide-border/40">
+            {upcoming.map((match) => <MatchRow match={match} showDate />)}
+          </div>
+        ) : (
+          <p class="text-sm text-ink-muted">Sin partidos programados.</p>
+        )}
+      </Card>
+    </div>
+
+    <Card title="Últimos resultados">
+      {recent.length > 0 ? (
+        <div class="divide-y divide-border/40">
+          {recent.map((match) => <MatchRow match={match} showDate />)}
+        </div>
+      ) : (
+        <p class="text-sm text-ink-muted">Aún no hay resultados registrados.</p>
+      )}
+    </Card>
+  </div>
+</Base>

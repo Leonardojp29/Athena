@@ -6,6 +6,7 @@ import type {
   ProviderMatchEvent,
   ProviderPlayer,
   ProviderRef,
+  ProviderStanding,
   ProviderTeam,
 } from '@athena/domain';
 import type {
@@ -13,6 +14,7 @@ import type {
   ApiFootballFixture,
   ApiFootballLeague,
   ApiFootballSquad,
+  ApiFootballStandings,
   ApiFootballTeam,
 } from './api-football.types.js';
 import { mapMatchStatus } from './status-map.js';
@@ -88,6 +90,22 @@ export function mapFixture(raw: ApiFootballFixture): ProviderRef<ProviderMatch> 
       awayScore: raw.goals.away,
     },
   };
+}
+
+export function mapStandings(raw: ApiFootballStandings): ProviderStanding[] {
+  return raw.league.standings.flat().map((row) => ({
+    teamRef: String(row.team.id),
+    groupLabel: raw.league.standings.length > 1 ? (row.group ?? '') : '',
+    position: row.rank,
+    points: row.points,
+    played: row.all.played,
+    won: row.all.win,
+    drawn: row.all.draw,
+    lost: row.all.lose,
+    goalsFor: row.all.goals.for,
+    goalsAgainst: row.all.goals.against,
+    form: row.form,
+  }));
 }
 
 function mapEventKind(raw: ApiFootballEvent): MatchEventKind | null {

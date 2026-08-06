@@ -68,6 +68,20 @@ export interface ProviderMatchEvent {
   detail: Record<string, unknown> | null;
 }
 
+export interface ProviderStanding {
+  teamRef: string;
+  groupLabel: string;
+  position: number;
+  points: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  form: string | null;
+}
+
 export interface FootballDataProvider {
   readonly name: string;
 
@@ -75,6 +89,7 @@ export interface FootballDataProvider {
   getTeams(competitionRef: string, seasonYear: number): Promise<ProviderRef<ProviderTeam>[]>;
   getSquad(teamRef: string): Promise<ProviderRef<ProviderPlayer>[]>;
   getMatches(competitionRef: string, seasonYear: number): Promise<ProviderRef<ProviderMatch>[]>;
+  getStandings(competitionRef: string, seasonYear: number): Promise<ProviderStanding[]>;
   getLiveMatches(): Promise<ProviderRef<ProviderMatch>[]>;
   getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]>;
 }

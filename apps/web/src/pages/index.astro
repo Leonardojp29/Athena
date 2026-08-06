@@ -1,45 +1,38 @@
 ---
-import '@athena/tokens/css';
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import MatchRow from '../components/MatchRow.astro';
+import { api, type HomeView } from '../lib/api';
+
+const home = await api<HomeView>('/views/home');
 ---
 
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Athena — la plataforma que transforma datos de fútbol en conocimiento." />
-    <title>Athena — Football Intelligence</title>
-  </head>
-  <body>
-    <main>
-      <h1>Athena</h1>
-      <p>Football Intelligence Platform</p>
-      <p class="muted">Fase 0 — fundaciones. El producto llega en la Fase 2.</p>
-    </main>
-  </body>
-</html>
+<Base
+  title="Athena — Partidos de hoy y marcadores en vivo"
+  description="Sigue los partidos de hoy en las principales ligas de Europa y Sudamérica: marcadores en vivo, tablas y resultados."
+>
+  <h1 class="text-2xl font-bold tracking-tight mb-1">Partidos de hoy</h1>
+  <p class="text-sm text-ink-muted mb-6">
+    {home.live > 0 ? `${home.live} en juego ahora` : 'Las principales ligas de Europa y Sudamérica'}
+  </p>
 
-<style>
-  body {
-    margin: 0;
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-family: var(--font-sans);
-  }
-  main {
-    text-align: center;
-  }
-  h1 {
-    font-size: var(--text-4xl);
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-2);
-    color: var(--color-primary);
-  }
-  .muted {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-  }
-</style>
+  {home.sections.length === 0 ? (
+    <Card>
+      <p class="text-ink-muted text-sm">No hay partidos programados en las próximas horas. Vuelve mañana o explora las competencias.</p>
+    </Card>
+  ) : (
+    <div class="grid gap-4">
+      {home.sections.map(({ competition, matches }) => (
+        <Card>
+          <a href={`/competencias/${competition.slug}`} class="flex items-center gap-2 mb-2 hover:text-primary transition-colors">
+            {competition.logoUrl && <img src={competition.logoUrl} alt="" width="20" height="20" loading="lazy" />}
+            <h2 class="text-base font-semibold">{competition.name}</h2>
+          </a>
+          <div class="divide-y divide-border/40">
+            {matches.map((match) => <MatchRow match={match} showDate />)}
+          </div>
+        </Card>
+      ))}
+    </div>
+  )}
+</Base>

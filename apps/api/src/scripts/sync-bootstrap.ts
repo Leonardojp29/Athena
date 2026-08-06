@@ -7,6 +7,7 @@ import { SharedModule } from '../shared/shared.module.js';
 import { CONFIGURED_COMPETITIONS } from '../modules/sync/competitions.config.js';
 import { SyncCompetitionUseCase } from '../modules/sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../modules/sync/sync-fixtures.usecase.js';
+import { SyncStandingsUseCase } from '../modules/sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../modules/sync/sync-teams.usecase.js';
 import { SyncModule } from '../modules/sync/sync.module.js';
 
@@ -21,6 +22,7 @@ async function main(): Promise<void> {
   const syncCompetition = app.get(SyncCompetitionUseCase);
   const syncTeams = app.get(SyncTeamsUseCase);
   const syncFixtures = app.get(SyncFixturesUseCase);
+  const syncStandings = app.get(SyncStandingsUseCase);
   const budget = app.get(ApiBudgetService);
 
   for (const { providerRef, label } of CONFIGURED_COMPETITIONS) {
@@ -33,6 +35,7 @@ async function main(): Promise<void> {
     for (const { year } of currentSeasons) {
       await syncTeams.execute(providerRef, year);
       await syncFixtures.execute(providerRef, year);
+      await syncStandings.execute(providerRef, year);
     }
   }
 

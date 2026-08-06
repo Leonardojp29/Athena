@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
+import { SharedModule } from './shared/shared.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { ViewsModule } from './modules/views/views.module.js';
 
-/**
- * Root module of the Athena modular monolith.
- * Domain modules (players, teams, matches, insights...) register here as
- * they are built; api and worker entrypoints share them.
- */
 @Module({
-  imports: [HealthModule],
+  imports: [SharedModule, HealthModule, ViewsModule],
 })
 export class AppModule {}

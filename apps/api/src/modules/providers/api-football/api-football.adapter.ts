@@ -6,17 +6,19 @@ import type {
   ProviderMatchEvent,
   ProviderPlayer,
   ProviderRef,
+  ProviderStanding,
   ProviderTeam,
 } from '@athena/domain';
 import { ApiFootballClient } from './api-football.client.js';
 import type {
   ApiFootballEvent,
+  ApiFootballStandings,
   ApiFootballFixture,
   ApiFootballLeague,
   ApiFootballSquad,
   ApiFootballTeam,
 } from './api-football.types.js';
-import { mapEvents, mapFixture, mapLeague, mapSquad, mapTeam } from './mappers.js';
+import { mapEvents, mapFixture, mapLeague, mapSquad, mapStandings, mapTeam } from './mappers.js';
 
 @Injectable()
 export class ApiFootballAdapter implements FootballDataProvider {
@@ -51,6 +53,14 @@ export class ApiFootballAdapter implements FootballDataProvider {
       season: seasonYear,
     });
     return rows.map(mapFixture);
+  }
+
+  async getStandings(competitionRef: string, seasonYear: number): Promise<ProviderStanding[]> {
+    const rows = await this.client.get<ApiFootballStandings>('/standings', {
+      league: competitionRef,
+      season: seasonYear,
+    });
+    return rows[0] ? mapStandings(rows[0]) : [];
   }
 
   async getLiveMatches(): Promise<ProviderRef<ProviderMatch>[]> {

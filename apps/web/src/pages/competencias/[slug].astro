@@ -1,0 +1,79 @@
+---
+import Base from '../../layouts/Base.astro';
+import Card from '../../components/Card.astro';
+import MatchRow from '../../components/MatchRow.astro';
+import StandingsTable from '../../components/StandingsTable.astro';
+import { api, ApiError, type CompetitionView } from '../../lib/api';
+
+const { slug } = Astro.params;
+let view: CompetitionView;
+try {
+  view = await api<CompetitionView>(`/views/competition/${slug}`);
+} catch (error) {
+  if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
+  throw error;
+}
+
+const { competition, season, standingGroups, recent, upcoming } = view;
+const seasonLabel = competition.format === 'league' && competition.country !== null && !['Peru', 'Brazil', 'Argentina'].includes(competition.country)
+  ? `${season.year}-${String(season.year + 1).slice(2)}`
+  : String(season.year);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SportsOrganization',
+  name: competition.name,
+  sport: 'Soccer',
+  ...(competition.logoUrl ? { logo: competition.logoUrl } : {}),
+};
+---
+
+<Base
+  title={`${competition.name} ${seasonLabel} — Tabla de posiciones y partidos | Athena`}
+  description={`Tabla de posiciones, resultados y próximos partidos de ${competition.name} temporada ${seasonLabel}.`}
+  ogImage={competition.logoUrl}
+  jsonLd={jsonLd}
+>
+  <div class="flex items-center gap-3 mb-6">
+    {competition.logoUrl && <img src={competition.logoUrl} alt="" width="40" height="40" />}
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">{competition.name}</h1>
+      <p class="text-sm text-ink-muted">{competition.country ?? 'Internacional'} · Temporada {seasonLabel}</p>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-[1fr_380px] gap-4 items-start">
+    <div class="grid gap-4">
+      {standingGroups.length > 0 ? (
+        <Card title="Tabla de posiciones">
+          <div class="grid gap-6">
+            {standingGroups.map((group) => <StandingsTable rows={group.rows} label={group.label} />)}
+          </div>
+        </Card>
+      ) : (
+        <Card><p class="text-sm text-ink-muted">La tabla estará disponible cuando arranque la competencia.</p></Card>
+      )}
+    </div>
+
+    <div class="grid gap-4">
+      <Card title="Próximos partidos">
+        {upcoming.length > 0 ? (
+          <div class="divide-y divide-border/40">
+            {upcoming.map((match) => <MatchRow match={match} showDate />)}
+          </div>
+        ) : (
+          <p class="text-sm text-ink-muted">Sin partidos programados por ahora.</p>
+        )}
+      </Card>
+      <Card title="Últimos resultados">
+        {recent.length > 0 ? (
+          <div class="divide-y divide-border/40">
+            {recent.map((match) => <MatchRow match={match} showDate />)}
+          </div>
+        ) : (
+          <p class="text-sm text-ink-muted">Aún no hay resultados esta temporada.</p>
+        )}
+      </Card>
+    </div>
+  </div>
+</Base>

@@ -1,0 +1,48 @@
+---
+import type { StandingRow } from '../lib/api';
+
+interface Props {
+  rows: StandingRow[];
+  label?: string;
+  highlightTeamId?: string;
+}
+
+const { rows, label = '', highlightTeamId } = Astro.props;
+---
+
+<div class="overflow-x-auto">
+  {label && <h3 class="text-sm font-semibold text-ink-muted mb-2">{label}</h3>}
+  <table class="w-full text-sm">
+    <thead>
+      <tr class="text-ink-muted text-xs border-b border-border">
+        <th class="text-left font-medium py-2 pr-2 w-8">#</th>
+        <th class="text-left font-medium py-2">Equipo</th>
+        <th class="text-center font-medium py-2 px-2">PJ</th>
+        <th class="text-center font-medium py-2 px-2 hidden sm:table-cell">G</th>
+        <th class="text-center font-medium py-2 px-2 hidden sm:table-cell">E</th>
+        <th class="text-center font-medium py-2 px-2 hidden sm:table-cell">P</th>
+        <th class="text-center font-medium py-2 px-2 hidden md:table-cell">DG</th>
+        <th class="text-center font-semibold py-2 pl-2">Pts</th>
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((row) => (
+        <tr class:list={['border-b border-border/50 hover:bg-canvas-subtle transition-colors', row.team.id === highlightTeamId ? 'bg-primary/5' : '']}>
+          <td class="tabular py-2 pr-2 text-ink-muted">{row.position}</td>
+          <td class="py-2">
+            <a href={`/equipos/${row.team.slug}`} class="flex items-center gap-2 hover:text-primary transition-colors">
+              {row.team.logoUrl && <img src={row.team.logoUrl} alt="" width="18" height="18" loading="lazy" />}
+              <span class="truncate max-w-44 sm:max-w-none">{row.team.name}</span>
+            </a>
+          </td>
+          <td class="tabular text-center py-2 px-2">{row.played}</td>
+          <td class="tabular text-center py-2 px-2 hidden sm:table-cell">{row.won}</td>
+          <td class="tabular text-center py-2 px-2 hidden sm:table-cell">{row.drawn}</td>
+          <td class="tabular text-center py-2 px-2 hidden sm:table-cell">{row.lost}</td>
+          <td class="tabular text-center py-2 px-2 hidden md:table-cell">{row.goalsFor - row.goalsAgainst}</td>
+          <td class="tabular text-center font-semibold py-2 pl-2">{row.points}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>

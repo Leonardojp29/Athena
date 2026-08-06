@@ -1,0 +1,42 @@
+---
+import type { MatchCard } from '../lib/api';
+import { formatDate, formatKickoff, isLive, statusLabel } from '../lib/format';
+
+interface Props {
+  match: MatchCard;
+  showDate?: boolean;
+}
+
+const { match, showDate = false } = Astro.props;
+const live = isLive(match.status);
+const finished = match.status === 'finished';
+const hasScore = match.homeScore !== null && match.awayScore !== null;
+---
+
+<a
+  href={`/partidos/${match.id}`}
+  class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 py-2.5 rounded-md hover:bg-canvas-subtle transition-colors"
+>
+  <span class="flex items-center gap-2 justify-end text-right min-w-0">
+    <span class="truncate text-sm">{match.homeTeam.name}</span>
+    {match.homeTeam.logoUrl && <img src={match.homeTeam.logoUrl} alt="" width="20" height="20" loading="lazy" />}
+  </span>
+
+  <span class="flex flex-col items-center min-w-16">
+    {hasScore ? (
+      <span class:list={['tabular font-semibold text-sm px-2 py-0.5 rounded', live ? 'bg-success/15 text-success' : '']}>
+        {match.homeScore} – {match.awayScore}
+      </span>
+    ) : (
+      <span class="tabular text-sm text-ink-muted">{formatKickoff(match.kickoffUtc)}</span>
+    )}
+    <span class:list={['text-[11px]', live ? 'text-success font-medium' : 'text-ink-muted']}>
+      {live && match.elapsedMinutes !== null ? `${match.elapsedMinutes}'` : finished ? 'Final' : showDate ? formatDate(match.kickoffUtc) : statusLabel(match.status)}
+    </span>
+  </span>
+
+  <span class="flex items-center gap-2 min-w-0">
+    {match.awayTeam.logoUrl && <img src={match.awayTeam.logoUrl} alt="" width="20" height="20" loading="lazy" />}
+    <span class="truncate text-sm">{match.awayTeam.name}</span>
+  </span>
+</a>

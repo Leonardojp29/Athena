@@ -12,6 +12,7 @@ import { REDIS } from '../../shared/redis.provider.js';
 import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
+import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
 
 const QUEUE = 'sync';
@@ -20,6 +21,7 @@ type SyncJob =
   | { name: 'competition'; data: { competitionRef: string } }
   | { name: 'teams'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'fixtures'; data: { competitionRef: string; seasonYear: number } }
+  | { name: 'standings'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'live-tick'; data: Record<string, never> }
   | { name: 'daily-refresh'; data: Record<string, never> };
 
@@ -35,6 +37,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly syncCompetition: SyncCompetitionUseCase,
     private readonly syncTeams: SyncTeamsUseCase,
     private readonly syncFixtures: SyncFixturesUseCase,
+    private readonly syncStandings: SyncStandingsUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -83,6 +86,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return this.syncTeams.execute(job.data.competitionRef, job.data.seasonYear);
       case 'fixtures':
         return this.syncFixtures.execute(job.data.competitionRef, job.data.seasonYear);
+      case 'standings':
+        return this.syncStandings.execute(job.data.competitionRef, job.data.seasonYear);
       case 'live-tick':
         return this.liveTick();
       case 'daily-refresh':
@@ -132,6 +137,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       if (!ref) continue;
       await this.enqueue('teams', { competitionRef: ref.providerRef, seasonYear: season.year });
       await this.enqueue('fixtures', { competitionRef: ref.providerRef, seasonYear: season.year });
+      await this.enqueue('standings', { competitionRef: ref.providerRef, seasonYear: season.year });
     }
   }
 }

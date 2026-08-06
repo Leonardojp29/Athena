@@ -1,0 +1,87 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string | null;
+  jsonLd?: Record<string, unknown> | null;
+  noindex?: boolean;
+}
+
+const { title, description, ogImage = null, jsonLd = null, noindex = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+
+const NAV = [
+  { label: 'Premier League', href: '/competencias/premier-league' },
+  { label: 'LaLiga', href: '/competencias/la-liga' },
+  { label: 'Champions', href: '/competencias/uefa-champions-league' },
+  { label: 'Libertadores', href: '/competencias/conmebol-libertadores' },
+  { label: 'Liga 1', href: '/competencias/primera-division' },
+];
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Athena" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <script is:inline>
+      const stored = localStorage.getItem('theme');
+      const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      if (dark) document.documentElement.dataset.theme = 'dark';
+    </script>
+  </head>
+  <body class="min-h-screen">
+    <header class="border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-10">
+      <div class="mx-auto max-w-6xl px-4 h-14 flex items-center gap-6">
+        <a href="/" class="text-lg font-bold tracking-tight text-primary">Athena</a>
+        <nav class="hidden md:flex gap-4 text-sm text-ink-muted overflow-x-auto">
+          {NAV.map((item) => (
+            <a href={item.href} class="hover:text-ink whitespace-nowrap transition-colors">{item.label}</a>
+          ))}
+        </nav>
+        <button
+          id="theme-toggle"
+          class="ml-auto text-ink-muted hover:text-ink text-sm cursor-pointer"
+          aria-label="Cambiar tema"
+        >◐</button>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-6">
+      <slot />
+    </main>
+
+    <footer class="border-t border-border mt-12">
+      <div class="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted flex flex-wrap gap-2 justify-between">
+        <span>Athena — inteligencia futbolística</span>
+        <span>Datos: API-Football</span>
+      </div>
+    </footer>
+
+    <script is:inline>
+      document.getElementById('theme-toggle')?.addEventListener('click', () => {
+        const root = document.documentElement;
+        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        root.dataset.theme = next === 'dark' ? 'dark' : '';
+        if (next === 'light') delete root.dataset.theme;
+        localStorage.setItem('theme', next);
+      });
+    </script>
+  </body>
+</html>

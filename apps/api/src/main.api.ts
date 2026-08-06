@@ -6,6 +6,7 @@ import { AppModule } from './app.module.js';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('v1');
+  app.enableCors({ origin: process.env.WEB_ORIGIN ?? 'http://localhost:4321' });
 
   const openApiConfig = new DocumentBuilder()
     .setTitle('Athena API')

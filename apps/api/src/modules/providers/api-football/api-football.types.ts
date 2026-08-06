@@ -58,6 +58,29 @@ export interface ApiFootballFixture {
   goals: { home: number | null; away: number | null };
 }
 
+export interface ApiFootballStandings {
+  league: {
+    id: number;
+    season: number;
+    standings: Array<
+      Array<{
+        rank: number;
+        team: { id: number; name: string };
+        points: number;
+        group: string | null;
+        form: string | null;
+        all: {
+          played: number;
+          win: number;
+          draw: number;
+          lose: number;
+          goals: { for: number; against: number };
+        };
+      }>
+    >;
+  };
+}
+
 export interface ApiFootballEvent {
   time: { elapsed: number; extra: number | null };
   team: { id: number };
