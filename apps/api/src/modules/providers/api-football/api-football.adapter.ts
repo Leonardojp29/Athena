@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type {
   FootballDataProvider,
   ProviderCompetition,
+  ProviderLiveMatch,
   ProviderMatch,
   ProviderMatchEvent,
   ProviderPlayer,
@@ -63,9 +64,12 @@ export class ApiFootballAdapter implements FootballDataProvider {
     return rows[0] ? mapStandings(rows[0]) : [];
   }
 
-  async getLiveMatches(): Promise<ProviderRef<ProviderMatch>[]> {
+  async getLiveMatches(): Promise<ProviderLiveMatch[]> {
     const rows = await this.client.get<ApiFootballFixture>('/fixtures', { live: 'all' });
-    return rows.map(mapFixture);
+    return rows.map((row) => ({
+      match: mapFixture(row),
+      events: mapEvents(String(row.fixture.id), row.events ?? []),
+    }));
   }
 
   async getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]> {

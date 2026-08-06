@@ -140,7 +140,13 @@ export function mapEvents(matchRef: string, raws: ApiFootballEvent[]): ProviderM
         teamRef: String(raw.team.id),
         playerRef: raw.player.id === null ? null : String(raw.player.id),
         relatedPlayerRef: raw.assist.id === null ? null : String(raw.assist.id),
-        detail: { label: raw.detail, comments: raw.comments },
+        // los nombres viajan en detail porque los jugadores aún no se sincronizan como entidades
+        detail: {
+          label: raw.detail,
+          comments: raw.comments,
+          playerName: raw.player.name,
+          relatedPlayerName: raw.assist.name,
+        },
       },
     ];
   });

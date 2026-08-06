@@ -98,7 +98,12 @@ export interface MatchEventView {
   kind: string;
   minute: number;
   extraMinute: number | null;
-  detail: { label?: string; comments?: string | null } | null;
+  detail: {
+    label?: string;
+    comments?: string | null;
+    playerName?: string | null;
+    relatedPlayerName?: string | null;
+  } | null;
   team: { id: string };
   player: { name: string } | null;
   relatedPlayer: { name: string } | null;

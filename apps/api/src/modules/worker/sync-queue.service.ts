@@ -12,6 +12,7 @@ import { REDIS } from '../../shared/redis.provider.js';
 import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
+import { SyncMatchEventsUseCase } from '../sync/sync-match-events.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
 
@@ -22,6 +23,7 @@ type SyncJob =
   | { name: 'teams'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'fixtures'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'standings'; data: { competitionRef: string; seasonYear: number } }
+  | { name: 'match-events'; data: { matchRef: string } }
   | { name: 'live-tick'; data: Record<string, never> }
   | { name: 'daily-refresh'; data: Record<string, never> };
 
@@ -38,13 +40,14 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly syncTeams: SyncTeamsUseCase,
     private readonly syncFixtures: SyncFixturesUseCase,
     private readonly syncStandings: SyncStandingsUseCase,
+    private readonly syncMatchEvents: SyncMatchEventsUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    const connection = this.redis;
-    this.queue = new Queue(QUEUE, { connection });
+    // BullMQ necesita conexiones dedicadas: el Worker bloquea la suya al esperar jobs
+    this.queue = new Queue(QUEUE, { connection: this.redis.duplicate() });
     this.worker = new Worker(QUEUE, (job) => this.process(job as Job & SyncJob), {
-      connection,
+      connection: this.redis.duplicate(),
       concurrency: 4,
     });
     this.worker.on('failed', (job, err) => {
@@ -88,6 +91,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return this.syncFixtures.execute(job.data.competitionRef, job.data.seasonYear);
       case 'standings':
         return this.syncStandings.execute(job.data.competitionRef, job.data.seasonYear);
+      case 'match-events':
+        return this.syncMatchEvents.execute(job.data.matchRef);
       case 'live-tick':
         return this.liveTick();
       case 'daily-refresh':
@@ -116,6 +121,28 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async dailyRefresh(): Promise<void> {
+    const recentlyFinished = await this.prisma.externalReference.findMany({
+      where: {
+        provider: 'api-football',
+        entityType: 'match',
+        entityId: {
+          in: (
+            await this.prisma.match.findMany({
+              where: {
+                status: 'finished',
+                kickoffUtc: { gte: new Date(Date.now() - 48 * 3600_000) },
+              },
+              select: { id: true },
+            })
+          ).map((m) => m.id),
+        },
+      },
+      select: { providerRef: true },
+    });
+    for (const { providerRef } of recentlyFinished) {
+      await this.enqueue('match-events', { matchRef: providerRef });
+    }
+
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
       await this.enqueue('competition', { competitionRef: providerRef });
     }

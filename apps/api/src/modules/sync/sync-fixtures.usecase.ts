@@ -4,6 +4,7 @@ import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
+import { MatchEventWriter } from './match-event.writer.js';
 
 @Injectable()
 export class SyncFixturesUseCase {
@@ -13,6 +14,7 @@ export class SyncFixturesUseCase {
     private readonly prisma: PrismaService,
     private readonly refs: ExternalReferenceService,
     private readonly events: DomainEventPublisher,
+    private readonly eventWriter: MatchEventWriter,
     @Inject(FOOTBALL_DATA_PROVIDER) private readonly provider: FootballDataProvider,
   ) {}
 
@@ -22,11 +24,32 @@ export class SyncFixturesUseCase {
   }
 
   async syncLive(): Promise<number> {
-    const fixtures = await this.provider.getLiveMatches();
-    return this.upsertMany(fixtures);
+    const live = await this.provider.getLiveMatches();
+    // live=all trae todas las ligas del mundo: las no cubiertas se descartan sin warning
+    const count = await this.upsertMany(
+      live.map((l) => l.match),
+      { quiet: true },
+    );
+
+    const withEvents = live.filter((l) => l.events.length > 0);
+    if (withEvents.length > 0) {
+      const ids = await this.refs.resolveMany(
+        this.provider.name,
+        'match',
+        withEvents.map((l) => l.match.providerRef),
+      );
+      for (const item of withEvents) {
+        const id = ids.get(item.match.providerRef);
+        if (id) await this.eventWriter.replace(this.provider.name, id, item.events);
+      }
+    }
+    return count;
   }
 
-  private async upsertMany(fixtures: ProviderRef<ProviderMatch>[]): Promise<number> {
+  private async upsertMany(
+    fixtures: ProviderRef<ProviderMatch>[],
+    opts: { quiet?: boolean } = {},
+  ): Promise<number> {
     if (fixtures.length === 0) return 0;
 
     const teamRefs = [
@@ -45,7 +68,8 @@ export class SyncFixturesUseCase {
         seasons.has(`${f.data.competitionRef}:${f.data.seasonYear}`) &&
         teams.has(f.data.homeTeamRef) &&
         teams.has(f.data.awayTeamRef);
-      if (!ok) this.logger.warn(`Skipping fixture ${f.providerRef}: unresolved season/team refs`);
+      if (!ok && !opts.quiet)
+        this.logger.warn(`Skipping fixture ${f.providerRef}: unresolved season/team refs`);
       return ok;
     });
 

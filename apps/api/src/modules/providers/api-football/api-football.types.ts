@@ -56,6 +56,8 @@ export interface ApiFootballFixture {
     away: { id: number; name: string };
   };
   goals: { home: number | null; away: number | null };
+  // presente solo en fixtures?live=*
+  events?: ApiFootballEvent[];
 }
 
 export interface ApiFootballStandings {

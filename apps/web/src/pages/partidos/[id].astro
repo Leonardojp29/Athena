@@ -1,8 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
-import Card from '../../components/Card.astro';
+import MatchCenter from '../../components/MatchCenter';
 import { api, ApiError, type MatchView } from '../../lib/api';
-import { formatDateLong, formatKickoff, isLive, statusLabel } from '../../lib/format';
+import { isLive } from '../../lib/format';
 
 const { id } = Astro.params;
 let match: MatchView;
@@ -13,20 +13,15 @@ try {
   throw error;
 }
 
-const live = isLive(match.status);
 const hasScore = match.homeScore !== null && match.awayScore !== null;
 const title = `${match.homeTeam.name} vs ${match.awayTeam.name}${hasScore ? ` (${match.homeScore}-${match.awayScore})` : ''}`;
 
-const EVENT_ICON: Record<string, string> = {
-  goal: '⚽',
-  own_goal: '⚽',
-  penalty_goal: '⚽',
-  missed_penalty: '❌',
-  yellow_card: '🟨',
-  red_card: '🟥',
-  substitution: '🔁',
-  var: '📺',
-};
+// isla viva solo si el partido está en juego o arranca dentro de 3 horas
+const startsSoon =
+  match.status === 'scheduled' &&
+  new Date(match.kickoffUtc).getTime() - Date.now() < 3 * 3600_000 &&
+  new Date(match.kickoffUtc).getTime() - Date.now() > -4 * 3600_000;
+const live = isLive(match.status) || startsSoon;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -36,71 +31,20 @@ const jsonLd = {
   startDate: match.kickoffUtc,
   homeTeam: { '@type': 'SportsTeam', name: match.homeTeam.name },
   awayTeam: { '@type': 'SportsTeam', name: match.awayTeam.name },
-  eventStatus: match.status === 'finished' ? 'https://schema.org/EventScheduled' : undefined,
 };
 ---
 
 <Base
   title={`${title} — ${match.season.competition.name} | Athena`}
-  description={`${title}: marcador, eventos y detalles del partido de ${match.season.competition.name}.`}
+  description={`${title}: marcador${live ? ' en vivo' : ''}, eventos y detalles del partido de ${match.season.competition.name}.`}
   jsonLd={jsonLd}
 >
-  <a href={`/competencias/${match.season.competition.slug}`} class="text-sm text-ink-muted hover:text-primary transition-colors">
+  <a
+    href={`/competencias/${match.season.competition.slug}`}
+    class="inline-block mb-3 text-sm text-ink-muted hover:text-primary transition-colors"
+  >
     ← {match.season.competition.name}{match.round ? ` · ${match.round}` : ''}
   </a>
 
-  <Card>
-    <p class="text-center text-xs text-ink-muted mb-4">{formatDateLong(match.kickoffUtc)}</p>
-    <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-      <a href={`/equipos/${match.homeTeam.slug}`} class="flex flex-col items-center gap-2 hover:text-primary transition-colors">
-        {match.homeTeam.logoUrl && <img src={match.homeTeam.logoUrl} alt="" width="56" height="56" />}
-        <span class="font-semibold text-center">{match.homeTeam.name}</span>
-      </a>
-
-      <div class="flex flex-col items-center">
-        {hasScore ? (
-          <span class="text-4xl font-bold tabular tracking-tight">{match.homeScore} – {match.awayScore}</span>
-        ) : (
-          <span class="text-2xl font-semibold tabular">{formatKickoff(match.kickoffUtc)}</span>
-        )}
-        <span class:list={['text-sm mt-1', live ? 'text-success font-medium' : 'text-ink-muted']}>
-          {live && match.elapsedMinutes !== null ? `${match.elapsedMinutes}'` : statusLabel(match.status)}
-        </span>
-      </div>
-
-      <a href={`/equipos/${match.awayTeam.slug}`} class="flex flex-col items-center gap-2 hover:text-primary transition-colors">
-        {match.awayTeam.logoUrl && <img src={match.awayTeam.logoUrl} alt="" width="56" height="56" />}
-        <span class="font-semibold text-center">{match.awayTeam.name}</span>
-      </a>
-    </div>
-  </Card>
-
-  {match.events.length > 0 && (
-    <div class="mt-4">
-      <Card title="Eventos del partido">
-        <ol class="grid gap-1">
-          {match.events.map((event) => {
-            const home = event.team.id === match.homeTeam.id;
-            return (
-              <li class:list={['flex items-center gap-2 text-sm py-1', home ? '' : 'flex-row-reverse text-right']}>
-                <span class="tabular text-ink-muted w-10 shrink-0" style={home ? '' : 'text-align:left'}>
-                  {event.minute}{event.extraMinute ? `+${event.extraMinute}` : ''}'
-                </span>
-                <span>{EVENT_ICON[event.kind] ?? '·'}</span>
-                <span class="min-w-0">
-                  <span class="font-medium">{event.player?.name ?? ''}</span>
-                  {event.kind === 'substitution' && event.relatedPlayer && (
-                    <span class="text-ink-muted"> ⇄ {event.relatedPlayer.name}</span>
-                  )}
-                  {event.kind !== 'substitution' && event.relatedPlayer && (
-                    <span class="text-ink-muted"> (asiste {event.relatedPlayer.name})</span>
-                  )}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      </Card>
-    </div>
-  )}
+  {live ? <MatchCenter client:load initial={match} live /> : <MatchCenter initial={match} live={false} />}
 </Base>

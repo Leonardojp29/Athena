@@ -3,7 +3,9 @@ import { ApiFootballModule } from '../providers/api-football/api-football.module
 import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { SyncCompetitionUseCase } from './sync-competition.usecase.js';
+import { MatchEventWriter } from './match-event.writer.js';
 import { SyncFixturesUseCase } from './sync-fixtures.usecase.js';
+import { SyncMatchEventsUseCase } from './sync-match-events.usecase.js';
 import { SyncStandingsUseCase } from './sync-standings.usecase.js';
 import { SyncTeamsUseCase } from './sync-teams.usecase.js';
 
@@ -16,7 +18,15 @@ import { SyncTeamsUseCase } from './sync-teams.usecase.js';
     SyncTeamsUseCase,
     SyncFixturesUseCase,
     SyncStandingsUseCase,
+    SyncMatchEventsUseCase,
+    MatchEventWriter,
   ],
-  exports: [SyncCompetitionUseCase, SyncTeamsUseCase, SyncFixturesUseCase, SyncStandingsUseCase],
+  exports: [
+    SyncCompetitionUseCase,
+    SyncTeamsUseCase,
+    SyncFixturesUseCase,
+    SyncStandingsUseCase,
+    SyncMatchEventsUseCase,
+  ],
 })
 export class SyncModule {}
