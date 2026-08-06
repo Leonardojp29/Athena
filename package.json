@@ -13,6 +13,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "verify": "turbo run lint typecheck test build",
     "format": "prettier --write ."
   },
   "devDependencies": {

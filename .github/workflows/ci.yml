@@ -8,6 +8,8 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # sin esto, un runner que no se asigna deja el job colgado ~15 min antes de fallar
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -21,14 +23,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Typecheck
-        run: pnpm typecheck
-
-      - name: Test
-        run: pnpm test
-
-      - name: Build
-        run: pnpm build
+      # mismo comando que se corre en local: pnpm verify
+      - name: Verify (lint, typecheck, test, build)
+        run: pnpm verify
