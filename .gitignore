@@ -31,3 +31,4 @@ skills-lock.json
 
 # os
 .DS_Store
+.logs/
