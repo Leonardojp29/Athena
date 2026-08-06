@@ -15,13 +15,14 @@ colors:
   primary-contrast: "oklch(0.15 0.005 285)"
   data: "oklch(0.792 0.121 208)"
   data-ink: "oklch(0.512 0.118 232)"
-  board: "oklch(0.556 0.092 156)"
-  board-edge: "oklch(0.452 0.082 156)"
+  board: "oklch(0.362 0.062 158)"
+  board-edge: "oklch(0.298 0.055 158)"
   chalk: "oklch(0.992 0.002 95)"
   pitch: "oklch(0.556 0.092 156)"
   pitch-dark: "oklch(0.522 0.088 156)"
   magnet: "oklch(1 0 0)"
   live: "oklch(0.598 0.17 150)"
+  live-on-board: "oklch(0.723 0.196 150)"
   card-yellow: "oklch(0.762 0.145 78)"
   card-red: "oklch(0.582 0.202 24)"
 typography:
@@ -148,9 +149,12 @@ borde. El `surface` claro es blanco puro a propósito: es papel, no gris.
   de foco, usa la tinta. Sin excepciones: el bug que originó la regla fue verificar el
   contraste solo en el tema oscuro.
 - **La regla del tablero.** Sobre `board` la paleta de superficie no aplica. `chalk`,
-  `chalk-dim` y `primary` son los únicos colores legales encima, en los dos temas. Los
-  componentes que aparecen en un encabezado y también dentro de la página llevan una variante
-  explícita (`onBoard`), no una clase adivinada.
+  `chalk-dim`, `primary` y `live-on-board` son los únicos colores legales encima, en los dos
+  temas. Los componentes que aparecen en un encabezado y también dentro de la página llevan una
+  variante explícita (`onBoard`), no una clase adivinada.
+  **La pizarra es oscura en los dos temas y eso es una consecuencia, no un gusto:** medido, la
+  tiza sobre un verde de L 0,556 daba 4,43:1 y el verde de "en vivo" 1,23:1, o sea invisible.
+  A L 0,362 la tiza llega a 10,3:1, el lima a 8,2:1 y `live-on-board` a 4,6:1.
 - **El color nunca es el único canal.** Amarilla y roja llevan forma de tarjeta además de
   color; el estado en vivo lleva un anillo que late además del verde; la forma de un equipo
   lleva la letra V/E/D dentro del chip.

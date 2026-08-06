@@ -100,8 +100,12 @@
   animation-timing-function: var(--a-ease-out-expo);
 }
 
-/* Los imanes entran escalonados cuando la cancha aparece; seis pasos alcanzan para once. */
-[data-cancha] [style*='--largo'] {
+/*
+ * Los imanes entran escalonados, línea por línea. El selector va por atributo propio y no por
+ * el contenido del `style`: la posición es un detalle de implementación y la animación no
+ * debería romperse si cambia.
+ */
+[data-cancha] [data-iman] {
   animation: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;
   animation-delay: calc(var(--fila, 0) * 45ms);
 }

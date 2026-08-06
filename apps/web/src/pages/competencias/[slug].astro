@@ -60,13 +60,12 @@ const jsonLd = {
           </span>
         )}
         <div class="min-w-0">
-          <p class="text-2xs font-medium tracking-label text-primary uppercase">
-            {paisEnEspanol(competition.country) ?? 'Internacional'}
-          </p>
-          <h1 class="font-display text-3xl font-semibold uppercase text-chalk">
+          <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
             {competition.name}
           </h1>
-          <p class="text-sm text-chalk-dim">Temporada {seasonLabel}</p>
+          <p class="text-sm text-chalk-dim">
+            {paisEnEspanol(competition.country) ?? 'Internacional'} · Temporada {seasonLabel}
+          </p>
         </div>
 
         <div class="ml-auto shrink-0">

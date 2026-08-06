@@ -27,8 +27,6 @@ const estado = live && match.elapsedMinutes !== null
 ---
 
 <div class="group relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle">
-  {live && <span class="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-live"></span>}
-
   <a
     href={`/partidos/${match.id}`}
     class="absolute inset-0 rounded-md"

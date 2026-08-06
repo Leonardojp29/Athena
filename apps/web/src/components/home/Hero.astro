@@ -22,17 +22,13 @@ const enJuego = live.filter((m) => isLive(m.status)).slice(0, 4);
   <Container width="wide">
     <div class="grid gap-8 py-8 lg:grid-cols-2 lg:items-center lg:py-10">
       <div class="max-w-[46ch]">
-        <p class="mb-2 flex items-center gap-2 text-2xs font-medium tracking-label text-primary uppercase">
-          <Icon name="cancha" size={14} />
-          {total > 0 ? `${total} partidos hoy` : 'Sin partidos hoy'}
-        </p>
         <h1 class="font-display text-4xl font-semibold uppercase leading-[0.95] text-chalk sm:text-5xl">
           Los partidos de hoy,
           <span class="text-primary">explicados</span>
         </h1>
         <p class="mt-3 text-sm text-chalk-dim">
-          Marcadores, alineaciones sobre la cancha y análisis con la evidencia a la vista. Todo
-          dato lleva su origen.
+          {total > 0 ? `${total} partidos hoy. ` : ''}Marcadores, alineaciones sobre la cancha y
+          análisis con la evidencia a la vista. Todo dato lleva su origen.
         </p>
 
         {
@@ -54,8 +50,8 @@ const enJuego = live.filter((m) => isLive(m.status)).slice(0, 4);
       {
         enJuego.length > 0 && (
           <div>
-            <p class="mb-2 flex items-center gap-1.5 text-2xs font-medium tracking-label text-live uppercase">
-              <span class="size-1.5 rounded-full bg-live animate-live-pulse" />
+            <p class="mb-2 flex items-center gap-1.5 text-2xs font-medium tracking-label text-live-board uppercase">
+              <span class="size-1.5 rounded-full bg-live-board animate-live-pulse" />
               En juego ahora
             </p>
             <div class="grid gap-2 sm:grid-cols-2">
@@ -77,7 +73,7 @@ const enJuego = live.filter((m) => isLive(m.status)).slice(0, 4);
                       </span>
                     </span>
                   ))}
-                  <span class="mt-1 flex items-center gap-1.5 border-t border-chalk/10 pt-1 text-2xs text-live">
+                  <span class="mt-1 flex items-center gap-1.5 border-t border-chalk/10 pt-1 text-2xs text-live-board">
                     {match.elapsedMinutes !== null
                       ? `${match.elapsedMinutes}'`
                       : formatKickoff(match.kickoffUtc)}

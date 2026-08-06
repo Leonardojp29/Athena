@@ -72,11 +72,11 @@ function Scoreboard({ match }: { match: MatchView }) {
         <span
           className={
             live
-              ? 'flex items-center gap-1.5 rounded-full bg-live/16 px-2.5 py-1 text-2xs font-medium text-live'
+              ? 'flex items-center gap-1.5 rounded-full bg-live-board/16 px-2.5 py-1 text-2xs font-medium text-live-board'
               : 'rounded-full bg-chalk/10 px-2.5 py-1 text-2xs font-medium text-chalk-dim'
           }
         >
-          {live && <span className="size-1.5 rounded-full bg-live animate-live-pulse" />}
+          {live && <span className="size-1.5 rounded-full bg-live-board animate-live-pulse" />}
           <span data-minuto>
             {live && match.elapsedMinutes !== null
               ? `${match.elapsedMinutes}'`
