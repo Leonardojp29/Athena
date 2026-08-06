@@ -8,6 +8,12 @@ import { FeatureFlagService, FLAGS } from '../modules/feature-flags/feature-flag
 import { FeatureFlagsModule } from '../modules/feature-flags/feature-flags.module.js';
 import { GenerateMatchInsightUseCase } from '../modules/insights/generate-match-insight.usecase.js';
 import { InsightsModule } from '../modules/insights/insights.module.js';
+import {
+  MATCH_PREVIEW_KIND,
+  MATCH_PREVIEW_PROMPT_VERSION,
+  MATCH_RECAP_KIND,
+  MATCH_RECAP_PROMPT_VERSION,
+} from '../modules/insights/prompts.js';
 import { SearchModule } from '../modules/search/search.module.js';
 import { SyncEmbeddingsUseCase } from '../modules/search/sync-embeddings.usecase.js';
 import { SyncMatchDetailUseCase } from '../modules/sync/sync-match-detail.usecase.js';
@@ -160,8 +166,59 @@ async function main(): Promise<void> {
   }
 
   if (run('insights')) {
-    console.log('\n▶ Insights de partidos finalizados recientes');
     const insights = app.get(GenerateMatchInsightUseCase);
+
+    /*
+     * Primero los que quedaron escritos con un prompt viejo. Subir la versión es la forma de
+     * decir "esto hay que volver a escribir", y sin este paso la corrección se quedaba en el
+     * código mientras el lector seguía viendo el texto anterior.
+     */
+    const vencidos = await prisma.insight.findMany({
+      where: {
+        subjectType: 'match',
+        kind: MATCH_RECAP_KIND,
+        promptVersion: { not: MATCH_RECAP_PROMPT_VERSION },
+      },
+      select: { subjectId: true },
+    });
+    if (vencidos.length > 0) {
+      console.log(`\n▶ Análisis con prompt vencido (${vencidos.length})`);
+      for (const row of vencidos) {
+        try {
+          const id = await insights.execute(row.subjectId, { force: true });
+          console.log(`  ${id ? '✓' : '✗'} ${row.subjectId}`);
+        } catch (error) {
+          console.error(`  ✗ ${row.subjectId}: ${String(error).slice(0, 140)}`);
+        }
+      }
+    }
+
+    /* Lo mismo con las previas, que solo se pueden rescribir si el partido no arrancó. */
+    const previasVencidas = await prisma.insight.findMany({
+      where: {
+        subjectType: 'match',
+        kind: MATCH_PREVIEW_KIND,
+        promptVersion: { not: MATCH_PREVIEW_PROMPT_VERSION },
+      },
+      select: { subjectId: true },
+    });
+    const regenerables = await prisma.match.findMany({
+      where: { id: { in: previasVencidas.map((r) => r.subjectId) }, status: 'scheduled' },
+      select: { id: true },
+    });
+    if (regenerables.length > 0) {
+      console.log(`\n▶ Previas con prompt vencido (${regenerables.length})`);
+      for (const match of regenerables) {
+        try {
+          const id = await insights.executePreview(match.id, { force: true });
+          console.log(`  ${id ? '✓' : '✗'} ${match.id}`);
+        } catch (error) {
+          console.error(`  ✗ ${match.id}: ${String(error).slice(0, 140)}`);
+        }
+      }
+    }
+
+    console.log('\n▶ Insights de partidos finalizados recientes');
     const limit = Number(process.env.AI_BOOTSTRAP_INSIGHT_LIMIT ?? 5);
     const matches = await prisma.match.findMany({
       where: { status: 'finished', events: { some: {} } },
