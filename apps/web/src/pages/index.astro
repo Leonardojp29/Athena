@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
 import Card from '../components/Card.astro';
 import MatchRow from '../components/MatchRow.astro';
 import { api, type HomeView, type PersonalFeed } from '../lib/api';
@@ -27,7 +28,7 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
 >
   {showFeed && feed && (
     <section class="mb-8">
-      <h1 class="text-2xl font-bold tracking-tight mb-1">Lo que sigues</h1>
+      <h1 class="font-display text-3xl font-semibold uppercase mb-1">Lo que sigues</h1>
       <p class="text-sm text-ink-muted mb-4">
         {feed.live.length > 0 ? `${feed.live.length} en juego ahora` : 'Tus equipos y competencias'}
       </p>
@@ -59,8 +60,8 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
             <ul class="grid gap-2">
               {feed.insights.map((insight) => (
                 <li>
-                  <a href={`/partidos/${insight.matchId}`} class="flex gap-2 text-sm hover:text-primary transition-colors">
-                    <span class="text-primary shrink-0">▸</span>
+                  <a href={`/partidos/${insight.matchId}`} class="flex gap-2 text-sm hover:text-primary-ink transition-colors">
+                    <Icon name="vineta" size={14} class="text-primary-ink mt-0.5" />
                     <span>{insight.titular}</span>
                   </a>
                 </li>
@@ -75,7 +76,7 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
   {showFeed ? (
     <h2 class="text-xl font-semibold tracking-tight mb-1">Todos los partidos de hoy</h2>
   ) : (
-    <h1 class="text-2xl font-bold tracking-tight mb-1">Partidos de hoy</h1>
+    <h1 class="font-display text-3xl font-semibold uppercase mb-1">Partidos de hoy</h1>
   )}
   <p class="text-sm text-ink-muted mb-6">
     {!showFeed && home.live > 0
@@ -103,7 +104,7 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
         <Card>
           <a
             href={`/competencias/${competition.slug}`}
-            class="flex items-center gap-2 mb-2 hover:text-primary transition-colors"
+            class="flex items-center gap-2 mb-2 hover:text-primary-ink transition-colors"
           >
             {competition.logoUrl && <img src={competition.logoUrl} alt="" width="20" height="20" loading="lazy" />}
             <h3 class="text-base font-semibold">{competition.name}</h3>

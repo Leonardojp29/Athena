@@ -1,17 +1,7 @@
+import EventIcon from './EventIcon';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import type { MatchEventView, MatchView } from '../lib/api';
 import { formatDateLong, formatKickoff, isLive, statusLabel } from '../lib/format';
-
-const EVENT_ICON: Record<string, string> = {
-  goal: '⚽',
-  own_goal: '⚽',
-  penalty_goal: '⚽',
-  missed_penalty: '❌',
-  yellow_card: '🟨',
-  red_card: '🟥',
-  substitution: '🔁',
-  var: '📺',
-};
 
 function playerName(event: MatchEventView): string {
   return event.player?.name ?? event.detail?.playerName ?? '';
@@ -31,7 +21,7 @@ function Scoreboard({ match }: { match: MatchView }) {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
         <a
           href={`/equipos/${match.homeTeam.slug}`}
-          className="flex flex-col items-center gap-2 hover:text-primary transition-colors"
+          className="flex flex-col items-center gap-2 hover:text-primary-ink transition-colors"
         >
           {match.homeTeam.logoUrl && (
             <img src={match.homeTeam.logoUrl} alt="" width={56} height={56} />
@@ -41,7 +31,7 @@ function Scoreboard({ match }: { match: MatchView }) {
 
         <div className="flex flex-col items-center">
           {hasScore ? (
-            <span className="text-4xl font-bold tabular tracking-tight">
+            <span className="font-display text-score font-semibold tabular">
               {match.homeScore} – {match.awayScore}
             </span>
           ) : (
@@ -49,19 +39,19 @@ function Scoreboard({ match }: { match: MatchView }) {
               {formatKickoff(match.kickoffUtc)}
             </span>
           )}
-          <span className={`text-sm mt-1 ${live ? 'text-success font-medium' : 'text-ink-muted'}`}>
+          <span className={`text-sm mt-1 ${live ? 'text-live font-medium' : 'text-ink-muted'}`}>
             {live && match.elapsedMinutes !== null
               ? `${match.elapsedMinutes}'`
               : statusLabel(match.status)}
             {live && (
-              <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse align-middle" />
+              <span className="ml-1 inline-block w-1.5 h-1.5 rounded-full bg-live animate-pulse align-middle" />
             )}
           </span>
         </div>
 
         <a
           href={`/equipos/${match.awayTeam.slug}`}
-          className="flex flex-col items-center gap-2 hover:text-primary transition-colors"
+          className="flex flex-col items-center gap-2 hover:text-primary-ink transition-colors"
         >
           {match.awayTeam.logoUrl && (
             <img src={match.awayTeam.logoUrl} alt="" width={56} height={56} />
@@ -91,11 +81,14 @@ function Timeline({ match }: { match: MatchView }) {
                 {event.minute}
                 {event.extraMinute ? `+${event.extraMinute}` : ''}'
               </span>
-              <span>{EVENT_ICON[event.kind] ?? '·'}</span>
+              <EventIcon
+                kind={event.kind}
+                detail={`${event.player?.name ?? ''} ${event.minute}'`}
+              />
               <span className="min-w-0">
                 <span className="font-medium">{playerName(event)}</span>
                 {event.kind === 'substitution' && related && (
-                  <span className="text-ink-muted"> ⇄ {related}</span>
+                  <span className="text-ink-muted"> {related}</span>
                 )}
                 {event.kind !== 'substitution' && related && (
                   <span className="text-ink-muted"> (asiste {related})</span>

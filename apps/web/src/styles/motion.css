@@ -1,0 +1,73 @@
+/*
+ * Movimiento de Athena. El momento propio del mundo es el entrenador dibujando:
+ * la tiza se traza y los imanes caen en su lugar. Todo lo demás es utilitario.
+ */
+
+/* El punto de "en vivo" late como un pulso, no se desvanece como algo cargando. */
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--a-color-live);
+  }
+  70% {
+    box-shadow: 0 0 0 7px oklch(0.723 0.196 150 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.723 0.196 150 / 0);
+  }
+}
+
+/* El imán del jugador cae sobre el tablero y asienta. */
+@keyframes magnet-place {
+  from {
+    opacity: 0;
+    transform: scale(0.82) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* La tiza se dibuja sola: requiere pathLength="1" en el trazo. */
+@keyframes chalk-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -160% 0;
+  }
+  to {
+    background-position: 260% 0;
+  }
+}
+
+/*
+ * Los tokens colapsan las duraciones, pero una animación con duración escrita a mano
+ * o iteración infinita sigue corriendo. Esta guarda cierra ese hueco.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* El punto de en vivo conserva su anillo, estático: el color no es el único canal. */
+  [data-live-dot] {
+    animation: none !important;
+    box-shadow: 0 0 0 4px oklch(0.723 0.196 150 / 0.28);
+  }
+
+  ::view-transition-group(*) {
+    animation: none !important;
+  }
+}

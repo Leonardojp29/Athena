@@ -62,7 +62,7 @@ const jsonLd = {
   <div class="flex items-center gap-4 mb-6">
     {player.photoUrl && <img src={player.photoUrl} alt="" width="64" height="64" class="rounded-full" />}
     <div>
-      <h1 class="text-2xl font-bold tracking-tight">{player.name}</h1>
+      <h1 class="font-display text-3xl font-semibold uppercase">{player.name}</h1>
       <p class="text-sm text-ink-muted">
         {[position, player.nationality, player.heightCm ? `${player.heightCm} cm` : null]
           .filter(Boolean)
@@ -88,7 +88,7 @@ const jsonLd = {
           <ul class="grid gap-2">
             {teams.map((team) => (
               <li>
-                <a href={`/equipos/${team.slug}`} class="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                <a href={`/equipos/${team.slug}`} class="flex items-center gap-2 text-sm hover:text-primary-ink transition-colors">
                   {team.logoUrl && <img src={team.logoUrl} alt="" width="20" height="20" loading="lazy" />}
                   {team.name}
                 </a>
@@ -118,7 +118,7 @@ const jsonLd = {
         <ul class="divide-y divide-border/40">
           {events.map((event) => (
             <li class="py-2">
-              <a href={`/partidos/${event.match.id}`} class="block hover:text-primary transition-colors">
+              <a href={`/partidos/${event.match.id}`} class="block hover:text-primary-ink transition-colors">
                 <span class="text-sm">
                   {EVENT_LABEL[event.kind] ?? event.kind} · <span class="tabular">{event.minute}'</span>
                 </span>

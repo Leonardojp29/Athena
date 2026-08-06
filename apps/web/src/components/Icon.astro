@@ -1,0 +1,37 @@
+---
+import { ICONS, type IconName } from '../icons/paths';
+
+/*
+ * Un icono decorativo va oculto para lectores de pantalla; uno que carga significado
+ * lleva `label` y se anuncia como imagen. En un botón de solo icono la etiqueta va en el
+ * botón, no acá.
+ */
+interface Props {
+  name: IconName;
+  size?: number;
+  label?: string;
+  class?: string;
+}
+
+const { name, size = 20, label, class: className } = Astro.props;
+const icon = ICONS[name];
+// El trazo engrosa al bajar de tamaño para que no se desvanezca.
+const strokeWidth = size >= 24 ? 1.5 : size >= 20 ? 1.75 : 2;
+---
+
+<svg
+  viewBox={icon.viewBox ?? '0 0 24 24'}
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role={label ? 'img' : undefined}
+  aria-label={label}
+  aria-hidden={label ? undefined : 'true'}
+  focusable="false"
+  class:list={['shrink-0', className]}
+  set:html={icon.body}
+/>

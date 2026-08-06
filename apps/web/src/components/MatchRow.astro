@@ -24,13 +24,13 @@ const hasScore = match.homeScore !== null && match.awayScore !== null;
 
   <span class="flex flex-col items-center min-w-16">
     {hasScore ? (
-      <span class:list={['tabular font-semibold text-sm px-2 py-0.5 rounded', live ? 'bg-success/15 text-success' : '']}>
+      <span class:list={['font-display tabular font-semibold text-base px-2 py-0.5 rounded', live ? 'bg-live/15 text-live' : '']}>
         {match.homeScore} – {match.awayScore}
       </span>
     ) : (
       <span class="tabular text-sm text-ink-muted">{formatKickoff(match.kickoffUtc)}</span>
     )}
-    <span class:list={['text-[11px]', live ? 'text-success font-medium' : 'text-ink-muted']}>
+    <span class:list={['text-[11px]', live ? 'text-live font-medium' : 'text-ink-muted']}>
       {live && match.elapsedMinutes !== null ? `${match.elapsedMinutes}'` : finished ? 'Final' : showDate ? formatDate(match.kickoffUtc) : statusLabel(match.status)}
     </span>
   </span>

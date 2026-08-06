@@ -16,7 +16,7 @@ const { entityType, entityId, following, signedIn, label } = Astro.props;
   !signedIn ? (
     <a
       href="/entrar"
-      class="text-sm border border-border rounded-md px-3 py-1.5 text-ink-muted hover:text-ink hover:border-primary transition-colors whitespace-nowrap"
+      class="text-sm border border-border rounded-md px-3 py-1.5 text-ink-muted hover:text-ink hover:border-primary-ink transition-colors whitespace-nowrap"
     >
       Entrar para seguir
     </a>
@@ -31,8 +31,8 @@ const { entityType, entityId, following, signedIn, label } = Astro.props;
       class:list={[
         'text-sm rounded-md px-3 py-1.5 border transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60',
         following
-          ? 'border-primary bg-primary/10 text-primary'
-          : 'border-border text-ink-muted hover:text-ink hover:border-primary',
+          ? 'border-primary-ink bg-primary/12 text-primary-ink'
+          : 'border-border text-ink-muted hover:text-ink hover:border-primary-ink',
       ]}
     >
       {following ? 'Siguiendo' : `Seguir ${label}`}
@@ -43,8 +43,8 @@ const { entityType, entityId, following, signedIn, label } = Astro.props;
 <script>
   // Vanilla en lugar de una isla React: la única interacción es un toggle y no
   // justifica cargar el runtime de React en cada perfil.
-  const FOLLOWING = 'border-primary bg-primary/10 text-primary';
-  const NOT_FOLLOWING = 'border-border text-ink-muted hover:text-ink hover:border-primary';
+  const FOLLOWING = 'border-primary-ink bg-primary/12 text-primary-ink';
+  const NOT_FOLLOWING = 'border-border text-ink-muted hover:text-ink hover:border-primary-ink';
 
   document.querySelectorAll<HTMLButtonElement>('button[data-favorite]').forEach((button) => {
     button.addEventListener('click', async () => {

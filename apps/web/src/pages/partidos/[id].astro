@@ -45,9 +45,9 @@ const jsonLd = {
 >
   <a
     href={`/competencias/${match.season.competition.slug}`}
-    class="inline-block mb-3 text-sm text-ink-muted hover:text-primary transition-colors"
+    class="inline-block mb-3 text-sm text-ink-muted hover:text-primary-ink transition-colors"
   >
-    ← {match.season.competition.name}{match.round ? ` · ${match.round}` : ''}
+     {match.season.competition.name}{match.round ? ` · ${match.round}` : ''}
   </a>
 
   {live ? <MatchCenter client:load initial={match} live /> : <MatchCenter initial={match} live={false} />}

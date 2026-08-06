@@ -10,9 +10,9 @@ const { partido, eventos = [], tabla = [], historial = [], forma = [] } = eviden
 const hasAnything = partido || eventos.length || tabla.length || historial.length || forma.length;
 
 const RESULT_STYLE: Record<string, string> = {
-  G: 'bg-success/15 text-success',
+  G: 'bg-live/15 text-live',
   E: 'bg-canvas-subtle text-ink-muted',
-  P: 'bg-danger/15 text-danger',
+  P: 'bg-card-red/15 text-card-red-ink',
 };
 
 const formatDay = (iso: string): string =>
@@ -31,7 +31,7 @@ const formatDay = (iso: string): string =>
     <div class="grid gap-5">
       {partido && (
         <div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Partido</h3>
+          <h3 class="text-sm font-semibold text-ink mb-2">Partido</h3>
           <dl class="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-sm">
             <div>
               <dt class="text-xs text-ink-muted">Competencia</dt>
@@ -57,7 +57,7 @@ const formatDay = (iso: string): string =>
 
       {eventos.length > 0 && (
         <div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+          <h3 class="text-sm font-semibold text-ink mb-2">
             Eventos registrados ({eventos.length})
           </h3>
           <ul class="grid gap-1 text-sm">
@@ -80,7 +80,7 @@ const formatDay = (iso: string): string =>
 
       {tabla.length > 0 && (
         <div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+          <h3 class="text-sm font-semibold text-ink mb-2">
             Posición en la tabla
           </h3>
           <table class="w-full text-sm">
@@ -112,7 +112,7 @@ const formatDay = (iso: string): string =>
 
       {forma.length > 0 && (
         <div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+          <h3 class="text-sm font-semibold text-ink mb-2">
             Forma reciente
             <span class="font-normal normal-case tracking-normal"> · del más reciente al más antiguo</span>
           </h3>
@@ -146,7 +146,7 @@ const formatDay = (iso: string): string =>
 
       {historial.length > 0 && (
         <div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+          <h3 class="text-sm font-semibold text-ink mb-2">
             Historial entre ambos
           </h3>
           <ul class="grid gap-1 text-sm">

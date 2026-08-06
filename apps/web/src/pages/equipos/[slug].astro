@@ -55,7 +55,7 @@ const jsonLd = {
   <div class="flex items-center gap-3 mb-6">
     {team.logoUrl && <img src={team.logoUrl} alt="" width="48" height="48" />}
     <div>
-      <h1 class="text-2xl font-bold tracking-tight">{team.name}</h1>
+      <h1 class="font-display text-3xl font-semibold uppercase">{team.name}</h1>
       <p class="text-sm text-ink-muted">
         {[team.country, team.founded ? `Fundado en ${team.founded}` : null].filter(Boolean).join(' · ')}
       </p>
@@ -108,7 +108,7 @@ const jsonLd = {
           <ul class="grid gap-2">
             {similar.map((hit) => (
               <li>
-                <a href={`/equipos/${hit.slug}`} class="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                <a href={`/equipos/${hit.slug}`} class="flex items-center gap-2 text-sm hover:text-primary-ink transition-colors">
                   {hit.imageUrl && <img src={hit.imageUrl} alt="" width="20" height="20" loading="lazy" />}
                   <span class="truncate">{hit.name}</span>
                   {hit.subtitle && <span class="text-xs text-ink-muted ml-auto shrink-0">{hit.subtitle}</span>}

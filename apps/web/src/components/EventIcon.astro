@@ -1,0 +1,42 @@
+---
+import { EVENT_ICONS, type EventIconName } from '../icons/paths.events';
+
+/*
+ * Icono de un evento del partido. Siempre viaja con texto para lectores de pantalla:
+ * una tarjeta amarilla que solo se distingue por su color no comunica nada a quien no
+ * la ve.
+ */
+interface Props {
+  kind: string;
+  size?: number;
+  /** Contexto que se suma a la etiqueta, por ejemplo "Paolo Guerrero, 63'". */
+  detail?: string;
+  class?: string;
+}
+
+const { kind, size = 18, detail, class: className } = Astro.props;
+const icon = EVENT_ICONS[kind as EventIconName];
+const strokeWidth = size >= 24 ? 1.5 : size >= 20 ? 1.75 : 2;
+---
+
+{
+  icon ? (
+    <span class:list={['inline-flex items-center', className]}>
+      <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="none"
+        stroke="currentColor"
+        stroke-width={strokeWidth}
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        focusable="false"
+        style={icon.color ? `color: ${icon.color}` : undefined}
+        set:html={icon.body}
+      />
+      <span class="sr-only">{detail ? `${icon.label}: ${detail}` : icon.label}</span>
+    </span>
+  ) : null
+}

@@ -1,33 +1,175 @@
 @import 'tailwindcss';
+@import './fonts.css';
 @import '@athena/tokens/css';
+@import './motion.css';
 
+/*
+ * Puente a Tailwind. Antes solo cruzaban los colores y tres radios: las escalas de
+ * tipografía, espaciado, sombras y movimiento existían en los tokens y la interfaz
+ * usaba silenciosamente los valores por defecto de Tailwind.
+ *
+ * Dos trampas resueltas acá: la escala de espaciado se deriva de un único --spacing
+ * (mapear --space-1..16 no genera p-4), y cada paso tipográfico necesita su compañero
+ * --text-*--line-height o el interlineado vuelve al de Tailwind.
+ */
 @theme inline {
-  --color-canvas: var(--color-bg);
-  --color-canvas-subtle: var(--color-bg-subtle);
-  --color-surface: var(--color-surface);
-  --color-border: var(--color-border);
-  --color-ink: var(--color-text);
-  --color-ink-muted: var(--color-text-muted);
-  --color-primary: var(--color-primary);
-  --color-primary-contrast: var(--color-primary-contrast);
-  --color-accent: var(--color-accent);
-  --color-success: var(--color-success);
-  --color-danger: var(--color-danger);
-  --color-warning: var(--color-warning);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+  --color-canvas: var(--a-color-bg);
+  --color-canvas-subtle: var(--a-color-bg-subtle);
+  --color-surface: var(--a-color-surface);
+  --color-surface-raised: var(--a-color-surface-raised);
+  --color-border: var(--a-color-border);
+  --color-border-strong: var(--a-color-border-strong);
+  --color-ink: var(--a-color-text);
+  --color-ink-muted: var(--a-color-text-muted);
+
+  --color-primary: var(--a-color-primary);
+  --color-primary-ink: var(--a-color-primary-ink);
+  --color-primary-contrast: var(--a-color-primary-contrast);
+  --color-data: var(--a-color-data);
+  --color-data-ink: var(--a-color-data-ink);
+
+  --color-board: var(--a-color-board);
+  --color-board-edge: var(--a-color-board-edge);
+  --color-chalk: var(--a-color-chalk);
+  --color-chalk-dim: var(--a-color-chalk-dim);
+  --color-pitch: var(--a-color-pitch);
+  --color-pitch-dark: var(--a-color-pitch-dark);
+  --color-magnet: var(--a-color-magnet);
+
+  --color-live: var(--a-color-live);
+  --color-card-yellow: var(--a-color-card-yellow);
+  --color-card-red: var(--a-color-card-red);
+  --color-card-red-ink: var(--a-color-card-red-ink);
+
+  --font-display: var(--a-font-display);
+  --font-sans: var(--a-font-sans);
+  --font-mono: var(--a-font-mono);
+
+  --text-2xs: var(--a-text-2xs);
+  --text-2xs--line-height: var(--a-text-2xs-lh);
+  --text-xs: var(--a-text-xs);
+  --text-xs--line-height: var(--a-text-xs-lh);
+  --text-sm: var(--a-text-sm);
+  --text-sm--line-height: var(--a-text-sm-lh);
+  --text-base: var(--a-text-base);
+  --text-base--line-height: var(--a-text-base-lh);
+  --text-lg: var(--a-text-lg);
+  --text-lg--line-height: var(--a-text-lg-lh);
+  --text-xl: var(--a-text-xl);
+  --text-xl--line-height: var(--a-text-xl-lh);
+  --text-2xl: var(--a-text-2xl);
+  --text-2xl--line-height: var(--a-text-2xl-lh);
+  --text-3xl: var(--a-text-3xl);
+  --text-3xl--line-height: var(--a-text-3xl-lh);
+  --text-3xl--letter-spacing: var(--a-tracking-display);
+  --text-4xl: var(--a-text-4xl);
+  --text-4xl--line-height: var(--a-text-4xl-lh);
+  --text-4xl--letter-spacing: var(--a-tracking-display);
+  --text-score: var(--a-text-score);
+  --text-score--line-height: var(--a-text-score-lh);
+  --text-score--letter-spacing: var(--a-tracking-score);
+
+  --tracking-label: var(--a-tracking-label);
+
+  --spacing: 0.25rem;
+
+  --radius-sm: var(--a-radius-sm);
+  --radius-md: var(--a-radius-md);
+  --radius-lg: var(--a-radius-lg);
+  --radius-xl: var(--a-radius-xl);
+
+  --shadow-magnet: var(--a-elev-magnet);
+  --shadow-panel: var(--a-elev-panel);
+  --shadow-modal: var(--a-elev-modal);
+
+  --ease-athena: var(--a-ease);
+  --ease-expo: var(--a-ease-out-expo);
+  --ease-magnet: var(--a-ease-magnet);
+  --default-transition-duration: var(--a-motion-fast);
+  --default-transition-timing-function: var(--a-ease);
+
+  --breakpoint-3xl: 1800px;
+
+  --animate-live-pulse: live-pulse 2s var(--a-ease) infinite;
+  --animate-magnet-place: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;
+  --animate-chalk-draw: chalk-draw var(--a-motion-draw) var(--a-ease-out-expo) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
 }
 
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  body {
+    background: var(--a-color-bg);
+    color: var(--a-color-text);
+    font-family: var(--a-font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+   * Superficies que el navegador pinta y que ningún sistema de diseño reclama.
+   * Tematizarlas es la señal más barata de que una página fue construida y no armada.
+   */
+  ::selection {
+    background: var(--a-color-selection);
+    color: var(--a-color-text);
+  }
+
+  :root {
+    accent-color: var(--a-color-primary-ink);
+    caret-color: var(--a-color-primary-ink);
+    scrollbar-color: var(--a-color-border-strong) transparent;
+    scrollbar-width: thin;
+    color-scheme: light;
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--a-color-focus);
+    outline-offset: 2px;
+    border-radius: var(--a-radius-sm);
+  }
+
+  /* El foco no debe verse en un click de ratón, solo al navegar con teclado. */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  a {
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: from-font;
+  }
+
+  /* Los marcadores no pueden bailar cuando un 0 pasa a 10. */
+  .tabular,
+  [data-marcador],
+  [data-minuto] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--a-color-border-strong);
+    border-radius: var(--a-radius-full);
+    border: 2px solid var(--a-color-bg);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--a-color-text-muted);
+  }
 }
 
-.tabular {
-  font-variant-numeric: tabular-nums;
+@utility chalk-edge {
+  /* El filo de tiza reemplaza al borde genérico en todo lo que es plano. */
+  border: 1px solid var(--a-color-border);
 }

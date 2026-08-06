@@ -1,5 +1,7 @@
 ---
 import '../styles/global.css';
+import Icon from '../components/Icon.astro';
+import Logo from '../components/brand/Logo.astro';
 import { getSession } from '../lib/supabase';
 
 interface Props {
@@ -28,6 +30,11 @@ const NAV = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#0A0A0C" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <link rel="preload" href="/fonts/oswald-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -49,9 +56,24 @@ const NAV = [
     </script>
   </head>
   <body class="min-h-screen">
+    <!--
+      THESIS: Athena explica el fútbol sobre la pizarra donde el fútbol siempre se explicó.
+        Rechaza la lista de tarjetas oscuras con punto verde que envía toda app de resultados.
+      OWN-WORLD: slate de pizarra como superficie, líneas de tiza para la cancha, marcador lima
+        para la acción y cian para lo que dice la IA; los jugadores son imanes con dorsal que se
+        levantan del tablero. Borde de tiza en lo plano, sombra real solo en lo que es objeto.
+      STORY: el hincha llega por un resultado, ve el partido dibujado, toca un imán y entiende
+        qué hizo ese jugador; el análisis está anotado al costado con flechas a lo que menciona.
+      FIRST VIEWPORT: pizarra a sangre; marcador condensado arriba al centro, cancha con los 22
+        imanes bajo él, anotaciones de la IA en el riel derecho apuntando a la jugada.
+      FORM: pizarra del técnico, candidato 4 de 7 por resonancia; seed d9ac50d8.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    -->
     <header class="border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-10">
       <div class="mx-auto max-w-6xl px-4 h-14 flex items-center gap-6">
-        <a href="/" class="text-lg font-bold tracking-tight text-primary">Athena</a>
+        <a href="/" aria-label="Athena — inicio" class="text-ink hover:text-primary-ink transition-colors shrink-0">
+          <Logo size={26} />
+        </a>
         <nav class="hidden md:flex gap-4 text-sm text-ink-muted overflow-x-auto">
           {NAV.map((item) => (
             <a href={item.href} class="hover:text-ink whitespace-nowrap transition-colors">{item.label}</a>
@@ -63,14 +85,14 @@ const NAV = [
             name="q"
             placeholder="Buscar…"
             aria-label="Buscar equipos, jugadores o competencias"
-            class="w-28 sm:w-44 bg-canvas-subtle border border-border rounded-md px-2 py-1 text-sm outline-none focus:border-primary focus:w-44 sm:focus:w-56 transition-all"
+            class="w-28 sm:w-44 bg-canvas-subtle border border-border rounded-md px-2 py-1 text-sm outline-none focus:border-primary-ink focus:w-44 sm:focus:w-56 transition-all"
           />
           <button
             id="theme-toggle"
             type="button"
             class="text-ink-muted hover:text-ink text-sm cursor-pointer"
             aria-label="Cambiar tema"
-          >◐</button>
+          ><Icon name="tema" size={18} /></button>
         </form>
 
         {session ? (

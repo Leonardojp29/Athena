@@ -39,19 +39,19 @@ function traducir(message: string): string {
 
 <Base title="Entrar | Athena" description="Inicia sesión en Athena para seguir tus equipos." noindex>
   <div class="max-w-sm mx-auto py-8">
-    <h1 class="text-2xl font-bold tracking-tight mb-1">Entrar a Athena</h1>
+    <h1 class="font-display text-3xl font-semibold uppercase mb-1">Entrar a Athena</h1>
     <p class="text-sm text-ink-muted mb-6">Sigue tus equipos y recibe el análisis de sus partidos.</p>
 
     {!isAuthConfigured ? (
       <Card>
-        <p class="text-sm text-danger">
+        <p class="text-sm text-card-red-ink">
           Falta configurar <code>PUBLIC_SUPABASE_URL</code> y <code>PUBLIC_SUPABASE_ANON_KEY</code>.
         </p>
       </Card>
     ) : (
       <Card>
         {notice && (
-          <p class:list={['text-sm mb-4', notice.kind === 'ok' ? 'text-success' : 'text-danger']}>
+          <p class:list={['text-sm mb-4', notice.kind === 'ok' ? 'text-live' : 'text-card-red-ink']}>
             {notice.text}
           </p>
         )}
@@ -63,7 +63,7 @@ function traducir(message: string): string {
               name="email"
               required
               autocomplete="email"
-              class="bg-canvas-subtle border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+              class="bg-canvas-subtle border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary-ink transition-colors"
             />
           </label>
           <label class="grid gap-1">
@@ -74,7 +74,7 @@ function traducir(message: string): string {
               required
               minlength="8"
               autocomplete="current-password"
-              class="bg-canvas-subtle border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+              class="bg-canvas-subtle border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary-ink transition-colors"
             />
           </label>
           <button

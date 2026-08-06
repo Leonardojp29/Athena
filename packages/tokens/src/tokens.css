@@ -1,84 +1,163 @@
 /*
- * Athena design tokens — single source of truth for every app and package.
- * Semantic tokens only; components never reference raw values.
- * DESIGN_SYSTEM.md (docs/product) documents the rationale behind each scale.
+ * Athena — tokens de diseño. Fuente única de verdad de los valores crudos.
+ *
+ * Mundo: la pizarra del técnico. En oscuro la superficie es slate y las líneas son tiza;
+ * en claro es el diagrama impreso en papel de un cuaderno de entrenador. Los jugadores son
+ * imanes: lo único que se levanta del tablero y por eso lo único con sombra real.
+ *
+ * Las escalas nuevas llevan prefijo --a- para no chocar con los espacios de nombres
+ * propios de Tailwind cuando global.css las puentea.
  */
 
 :root {
-  /* -- color: neutral scale (light) -- */
-  --color-bg: oklch(0.985 0.002 250);
-  --color-bg-subtle: oklch(0.96 0.004 250);
-  --color-surface: oklch(1 0 0);
-  --color-border: oklch(0.9 0.006 250);
-  --color-text: oklch(0.22 0.015 260);
-  --color-text-muted: oklch(0.5 0.015 260);
+  /* --- papel: el diagrama impreso --- */
+  --a-color-bg: oklch(0.985 0.003 95);
+  --a-color-bg-subtle: oklch(0.958 0.005 95);
+  --a-color-surface: oklch(1 0 0);
+  --a-color-surface-raised: oklch(1 0 0);
+  --a-color-border: oklch(0.898 0.006 95);
+  --a-color-border-strong: oklch(0.822 0.008 95);
+  --a-color-text: oklch(0.185 0.008 286);
+  --a-color-text-muted: oklch(0.468 0.012 286);
 
-  /* -- color: brand & semantics -- */
-  --color-primary: oklch(0.55 0.2 265); /* Athena indigo */
-  --color-primary-contrast: oklch(0.99 0 0);
-  --color-accent: oklch(0.75 0.16 85); /* trophy gold */
-  --color-success: oklch(0.62 0.17 150); /* pitch green: wins, goals */
-  --color-danger: oklch(0.6 0.21 25); /* red cards, losses */
-  --color-warning: oklch(0.78 0.16 80); /* yellow cards */
-  --color-info: oklch(0.62 0.14 235);
+  /* --- marcadores del entrenador --- */
+  /* El relleno es lima en ambos temas; la tinta cambia porque lima sobre blanco da 1,3:1. */
+  --a-color-primary: oklch(0.906 0.191 118);
+  --a-color-primary-ink: oklch(0.462 0.128 128);
+  --a-color-primary-contrast: oklch(0.15 0.005 285);
+  --a-color-data: oklch(0.792 0.121 208);
+  --a-color-data-ink: oklch(0.512 0.118 232);
 
-  /* -- typography -- */
-  --font-sans: 'Inter Variable', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
-  --text-4xl: 2.25rem;
+  /* --- materiales de la pizarra --- */
+  --a-color-board: oklch(0.556 0.092 156);
+  --a-color-board-edge: oklch(0.452 0.082 156);
+  --a-color-chalk: oklch(0.992 0.002 95);
+  --a-color-chalk-dim: oklch(0.992 0.002 95 / 0.62);
+  --a-color-pitch: oklch(0.556 0.092 156);
+  --a-color-pitch-dark: oklch(0.522 0.088 156);
+  --a-color-magnet: oklch(1 0 0);
 
-  /* -- spacing (4px base) -- */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
+  /* --- estados del fútbol --- */
+  --a-color-live: oklch(0.598 0.17 150);
+  --a-color-card-yellow: oklch(0.762 0.145 78);
+  --a-color-card-red: oklch(0.582 0.202 24);
+  --a-color-card-red-ink: oklch(0.532 0.198 24);
+  --a-color-focus: oklch(0.462 0.128 128);
+  --a-color-overlay: oklch(0.185 0.008 286 / 0.42);
+  --a-color-selection: oklch(0.906 0.191 118 / 0.3);
 
-  /* -- radius -- */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-full: 9999px;
+  /* --- tipografía --- */
+  --a-font-display: 'Oswald', 'Oswald Fallback', 'Arial Narrow', system-ui, sans-serif;
+  --a-font-sans: 'Archivo', 'Archivo Fallback', system-ui, -apple-system, sans-serif;
+  --a-font-mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
 
-  /* -- elevation -- */
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.05);
-  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.08);
-  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.12);
+  --a-text-2xs: 0.6875rem;
+  --a-text-2xs-lh: 1.35;
+  --a-text-xs: 0.75rem;
+  --a-text-xs-lh: 1.4;
+  --a-text-sm: 0.875rem;
+  --a-text-sm-lh: 1.5;
+  --a-text-base: 1rem;
+  --a-text-base-lh: 1.6;
+  --a-text-lg: 1.125rem;
+  --a-text-lg-lh: 1.5;
+  --a-text-xl: 1.375rem;
+  --a-text-xl-lh: 1.25;
+  --a-text-2xl: 1.75rem;
+  --a-text-2xl-lh: 1.15;
+  --a-text-3xl: clamp(2rem, 4vw, 2.75rem);
+  --a-text-3xl-lh: 1.05;
+  --a-text-4xl: clamp(2.5rem, 6vw, 3.75rem);
+  --a-text-4xl-lh: 1;
+  /* El techo del piso de calidad son 6rem; el marcador se queda debajo. */
+  --a-text-score: clamp(3rem, 9vw, 5.25rem);
+  --a-text-score-lh: 0.9;
 
-  /* -- motion -- */
-  --motion-fast: 120ms;
-  --motion-base: 200ms;
-  --motion-slow: 320ms;
-  --motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --a-tracking-display: -0.02em;
+  --a-tracking-score: -0.03em;
+  --a-tracking-label: 0.08em;
+
+  /*
+   * Oswald NO trae la función tnum (lo verifiqué sobre el binario: solo declara frac),
+   * así que font-variant-numeric no hace nada sobre ella y su "1" mide 378 contra 517
+   * del "0". Los marcadores se arman con celdas de este ancho —el dígito más ancho más
+   * un pelo— y así no bailan aunque el resultado pase de 9 a 10.
+   */
+  --a-digit-cell: 0.56em;
+
+  /* --- radios: 12–16px en tarjetas, píldora solo en controles chicos --- */
+  --a-radius-sm: 0.375rem;
+  --a-radius-md: 0.5rem;
+  --a-radius-lg: 0.875rem;
+  --a-radius-xl: 1.125rem;
+  --a-radius-full: 9999px;
+
+  /*
+   * Elevación: se declara UNA vez. Lo plano lleva filo de tiza y ninguna sombra;
+   * lo que es objeto (imán, panel flotante, modal) lleva sombra con desplazamiento
+   * y desenfoque, y ningún borde.
+   */
+  --a-elev-magnet:
+    0 1px 2px oklch(0.185 0.008 286 / 0.22), 0 4px 10px -3px oklch(0.185 0.008 286 / 0.2);
+  --a-elev-panel: 0 6px 24px -8px oklch(0.185 0.008 286 / 0.24);
+  --a-elev-modal: 0 20px 56px -12px oklch(0.185 0.008 286 / 0.34);
+
+  /* --- movimiento: el momento propio es el entrenador dibujando --- */
+  --a-motion-fast: 120ms;
+  --a-motion-base: 200ms;
+  --a-motion-slow: 320ms;
+  --a-motion-place: 340ms;
+  --a-motion-draw: 560ms;
+  --a-ease: cubic-bezier(0.2, 0, 0, 1);
+  --a-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --a-ease-magnet: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  /* --- geometría de la cancha, en metros reales ×10 --- */
+  --a-pitch-length: 1050;
+  --a-pitch-width: 680;
 }
 
+/* --- slate: la pizarra del vestuario --- */
 :root[data-theme='dark'] {
-  --color-bg: oklch(0.16 0.012 260);
-  --color-bg-subtle: oklch(0.2 0.012 260);
-  --color-surface: oklch(0.22 0.014 260);
-  --color-border: oklch(0.32 0.014 260);
-  --color-text: oklch(0.93 0.005 250);
-  --color-text-muted: oklch(0.68 0.01 250);
-  --color-primary: oklch(0.68 0.18 265);
-  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4);
-  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.5);
-  --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.6);
+  --a-color-bg: oklch(0.15 0.005 285);
+  --a-color-bg-subtle: oklch(0.181 0.006 286);
+  --a-color-surface: oklch(0.212 0.008 286);
+  --a-color-surface-raised: oklch(0.252 0.01 286);
+  --a-color-border: oklch(0.305 0.011 286);
+  --a-color-border-strong: oklch(0.382 0.013 286);
+  --a-color-text: oklch(0.965 0.003 286);
+  --a-color-text-muted: oklch(0.702 0.01 286);
+
+  --a-color-primary-ink: oklch(0.906 0.191 118);
+  --a-color-data-ink: oklch(0.792 0.121 208);
+
+  --a-color-board: oklch(0.238 0.018 188);
+  --a-color-board-edge: oklch(0.332 0.02 188);
+  --a-color-chalk: oklch(0.938 0.008 95);
+  --a-color-chalk-dim: oklch(0.938 0.008 95 / 0.34);
+  --a-color-pitch: oklch(0.435 0.096 156);
+  --a-color-pitch-dark: oklch(0.396 0.09 156);
+  --a-color-magnet: oklch(0.268 0.01 286);
+
+  --a-color-live: oklch(0.723 0.196 150);
+  --a-color-card-yellow: oklch(0.845 0.148 82);
+  --a-color-card-red: oklch(0.63 0.2 22);
+  --a-color-card-red-ink: oklch(0.7 0.185 22);
+  --a-color-focus: oklch(0.906 0.191 118);
+  --a-color-overlay: oklch(0.098 0.004 285 / 0.72);
+  --a-color-selection: oklch(0.906 0.191 118 / 0.26);
+
+  --a-elev-magnet: 0 1px 2px oklch(0 0 0 / 0.55), 0 5px 12px -3px oklch(0 0 0 / 0.45);
+  --a-elev-panel: 0 8px 28px -8px oklch(0 0 0 / 0.55);
+  --a-elev-modal: 0 24px 64px -12px oklch(0 0 0 / 0.7);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-fast: 0ms;
-    --motion-base: 0ms;
-    --motion-slow: 0ms;
+    --a-motion-fast: 1ms;
+    --a-motion-base: 1ms;
+    --a-motion-slow: 1ms;
+    --a-motion-place: 1ms;
+    --a-motion-draw: 1ms;
   }
 }
