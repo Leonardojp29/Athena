@@ -1,0 +1,61 @@
+---
+import EvidencePanel from './EvidencePanel.astro';
+import type { MatchPreviewInsight } from '../lib/api';
+
+interface Props {
+  preview: MatchPreviewInsight;
+}
+
+const { preview } = Astro.props;
+const generated = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'America/Lima',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+}).format(new Date(preview.generatedAt));
+---
+
+<section class="bg-surface border border-border rounded-lg p-4 mt-4">
+  <div class="flex items-center gap-2 mb-3">
+    <span class="text-[11px] font-medium uppercase tracking-wide text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+      Previa Athena
+    </span>
+    <span class="text-xs text-ink-muted">generada con IA</span>
+  </div>
+
+  <h2 class="text-lg font-semibold tracking-tight mb-3">{preview.titular}</h2>
+
+  <div class="text-sm leading-relaxed grid gap-3">
+    {preview.previa.split('\n').filter(Boolean).map((paragraph) => <p>{paragraph}</p>)}
+  </div>
+
+  {preview.aSeguir.length > 0 && (
+    <div class="mt-4">
+      <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Qué seguir</h3>
+      <ul class="grid gap-1.5">
+        {preview.aSeguir.map((item) => (
+          <li class="flex gap-2 text-sm">
+            <span class="text-accent shrink-0">▸</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  <details class="mt-4 border-t border-border pt-3 group">
+    <summary class="text-xs text-ink-muted cursor-pointer hover:text-ink transition-colors list-none flex items-center gap-1.5">
+      <span class="transition-transform group-open:rotate-90">▸</span>
+      Ver los datos que respaldan esta previa
+    </summary>
+    <div class="mt-3 bg-canvas-subtle rounded-md p-4">
+      <EvidencePanel evidence={preview.evidence} />
+      <p class="text-[11px] text-ink-muted mt-5 pt-3 border-t border-border">
+        Generada por {preview.model} · prompt <code>{preview.promptVersion}</code> · {generated}.
+        Athena no predice resultados: la previa solo explica qué está en juego.
+      </p>
+    </div>
+  </details>
+</section>

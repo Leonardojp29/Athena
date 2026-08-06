@@ -15,6 +15,7 @@ import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
 import { OutboxService } from '../sync/outbox.service.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
+import { SyncMatchDetailUseCase } from '../sync/sync-match-detail.usecase.js';
 import { SyncMatchEventsUseCase } from '../sync/sync-match-events.usecase.js';
 import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
@@ -28,8 +29,10 @@ type SyncJob =
   | { name: 'fixtures'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'standings'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'match-events'; data: { matchRef: string } }
+  | { name: 'match-detail'; data: { matchRef: string } }
   | { name: 'squad'; data: { teamRef: string } }
   | { name: 'match-insight'; data: { matchId: string } }
+  | { name: 'match-preview'; data: { matchId: string } }
   | { name: 'embeddings'; data: { entityType: 'team' | 'player' } }
   | { name: 'live-tick'; data: Record<string, never> }
   | { name: 'process-outbox'; data: Record<string, never> }
@@ -50,6 +53,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly syncFixtures: SyncFixturesUseCase,
     private readonly syncStandings: SyncStandingsUseCase,
     private readonly syncMatchEvents: SyncMatchEventsUseCase,
+    private readonly syncMatchDetail: SyncMatchDetailUseCase,
     private readonly syncSquad: SyncSquadUseCase,
     private readonly matchInsight: GenerateMatchInsightUseCase,
     private readonly embeddings: SyncEmbeddingsUseCase,
@@ -110,10 +114,14 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return this.syncStandings.execute(job.data.competitionRef, job.data.seasonYear);
       case 'match-events':
         return this.syncMatchEvents.execute(job.data.matchRef);
+      case 'match-detail':
+        return this.syncMatchDetail.execute(job.data.matchRef);
       case 'squad':
         return this.syncSquad.execute(job.data.teamRef);
       case 'match-insight':
         return this.matchInsight.execute(job.data.matchId);
+      case 'match-preview':
+        return this.matchInsight.executePreview(job.data.matchId);
       case 'embeddings':
         return job.data.entityType === 'team'
           ? this.embeddings.syncTeams()
@@ -180,6 +188,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     });
     for (const { providerRef } of recentlyFinished) {
       await this.enqueue('match-events', { matchRef: providerRef });
+      await this.enqueue('match-detail', { matchRef: providerRef });
     }
 
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
@@ -205,6 +214,19 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       await this.enqueue('teams', { competitionRef: ref.providerRef, seasonYear: season.year });
       await this.enqueue('fixtures', { competitionRef: ref.providerRef, seasonYear: season.year });
       await this.enqueue('standings', { competitionRef: ref.providerRef, seasonYear: season.year });
+    }
+
+    // previas de los partidos que se juegan en las próximas 24 horas
+    const upcoming = await this.prisma.match.findMany({
+      where: {
+        status: 'scheduled',
+        kickoffUtc: { gte: new Date(), lte: new Date(Date.now() + 24 * 3600_000) },
+        season: { competition: { isActive: true } },
+      },
+      select: { id: true },
+    });
+    for (const match of upcoming) {
+      await this.enqueue('match-preview', { matchId: match.id });
     }
 
     await this.enqueue('embeddings', { entityType: 'team' });

@@ -207,33 +207,71 @@ export class ViewsService {
     });
     if (!match) throw new NotFoundException('Partido no encontrado');
 
-    const insight = await this.prisma.insight.findFirst({
-      where: { subjectType: 'match', subjectId: id, kind: 'post_match_analysis', lang: 'es' },
-      orderBy: { generatedAt: 'desc' },
-      select: {
-        narrative: true,
-        evidence: true,
-        model: true,
-        promptVersion: true,
-        generatedAt: true,
-      },
+    const [insights, statistics, lineups] = await Promise.all([
+      this.prisma.insight.findMany({
+        where: {
+          subjectType: 'match',
+          subjectId: id,
+          kind: { in: ['post_match_analysis', 'match_preview'] },
+          lang: 'es',
+        },
+        orderBy: { generatedAt: 'desc' },
+        select: {
+          kind: true,
+          narrative: true,
+          evidence: true,
+          model: true,
+          promptVersion: true,
+          generatedAt: true,
+        },
+      }),
+      this.prisma.matchStatistics.findMany({
+        where: { matchId: id },
+        select: {
+          teamId: true,
+          possessionPercent: true,
+          shotsTotal: true,
+          shotsOnGoal: true,
+          shotsOffGoal: true,
+          corners: true,
+          offsides: true,
+          fouls: true,
+          yellowCards: true,
+          redCards: true,
+          goalkeeperSaves: true,
+          passesTotal: true,
+          passesAccurate: true,
+          passesPercent: true,
+        },
+      }),
+      this.prisma.matchLineup.findMany({
+        where: { matchId: id },
+        select: {
+          teamId: true,
+          formation: true,
+          coachName: true,
+          startXi: true,
+          substitutes: true,
+        },
+      }),
+    ]);
+
+    const hydrate = (row: (typeof insights)[number]) => ({
+      ...(JSON.parse(row.narrative) as Record<string, unknown>),
+      model: row.model,
+      promptVersion: row.promptVersion,
+      generatedAt: row.generatedAt,
+      evidence: row.evidence,
     });
+    const recap = insights.find((row) => row.kind === 'post_match_analysis');
+    const preview = insights.find((row) => row.kind === 'match_preview');
 
     return {
       ...match,
-      insight: insight
-        ? {
-            ...(JSON.parse(insight.narrative) as {
-              titular: string;
-              analisis: string;
-              claves: string[];
-            }),
-            model: insight.model,
-            promptVersion: insight.promptVersion,
-            generatedAt: insight.generatedAt,
-            evidence: insight.evidence,
-          }
-        : null,
+      insight: recap ? hydrate(recap) : null,
+      preview: preview ? hydrate(preview) : null,
+      statistics,
+      lineups,
     };
   }
 

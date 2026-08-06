@@ -28,8 +28,34 @@ export interface MatchFactSheet {
     jugados: number;
     diferenciaGoles: number;
   }>;
+  estadisticas: Array<{
+    equipo: string;
+    posesionPorcentaje: number | null;
+    remates: number | null;
+    rematesAlArco: number | null;
+    corners: number | null;
+    faltas: number | null;
+    offsides: number | null;
+    atajadas: number | null;
+    pasesPrecisos: number | null;
+    precisionPasesPorcentaje: number | null;
+  }>;
+  alineaciones: Array<{ equipo: string; formacion: string | null; entrenador: string | null }>;
   historial: Array<{ fecha: string; local: string; marcador: string; visitante: string }>;
   forma: Array<{ equipo: string; orden: string; ultimosCinco: string; detalle: string[] }>;
+}
+
+/**
+ * Una previa sin tabla, sin historial y sin forma reciente no tiene nada que explicar:
+ * publicarla sería contenido de relleno. Exigimos al menos una señal sustantiva.
+ */
+export function hasEnoughContextForPreview(facts: MatchFactSheet): boolean {
+  const signals = [
+    facts.tabla.length >= 2,
+    facts.historial.length >= 2,
+    facts.forma.every((equipo) => equipo.detalle.length >= 3),
+  ];
+  return signals.some(Boolean);
 }
 
 const EVENT_LABEL: Record<string, string> = {
@@ -81,7 +107,26 @@ export class MatchFactSheetBuilder {
     const teamName = (id: string): string =>
       id === match.homeTeam.id ? match.homeTeam.name : match.awayTeam.name;
 
-    const [standings, headToHead, homeForm, awayForm] = await Promise.all([
+    const [statistics, lineups, standings, headToHead, homeForm, awayForm] = await Promise.all([
+      this.prisma.matchStatistics.findMany({
+        where: { matchId },
+        select: {
+          teamId: true,
+          possessionPercent: true,
+          shotsTotal: true,
+          shotsOnGoal: true,
+          corners: true,
+          fouls: true,
+          offsides: true,
+          goalkeeperSaves: true,
+          passesAccurate: true,
+          passesPercent: true,
+        },
+      }),
+      this.prisma.matchLineup.findMany({
+        where: { matchId },
+        select: { teamId: true, formation: true, coachName: true },
+      }),
       this.prisma.standing.findMany({
         where: { seasonId: match.season.id, teamId: { in: [match.homeTeamId, match.awayTeamId] } },
         select: {
@@ -149,6 +194,23 @@ export class MatchFactSheetBuilder {
           asistencia: event.relatedPlayer?.name ?? detail?.relatedPlayerName ?? null,
         };
       }),
+      estadisticas: statistics.map((stat) => ({
+        equipo: teamName(stat.teamId),
+        posesionPorcentaje: stat.possessionPercent,
+        remates: stat.shotsTotal,
+        rematesAlArco: stat.shotsOnGoal,
+        corners: stat.corners,
+        faltas: stat.fouls,
+        offsides: stat.offsides,
+        atajadas: stat.goalkeeperSaves,
+        pasesPrecisos: stat.passesAccurate,
+        precisionPasesPorcentaje: stat.passesPercent,
+      })),
+      alineaciones: lineups.map((lineup) => ({
+        equipo: teamName(lineup.teamId),
+        formacion: lineup.formation,
+        entrenador: lineup.coachName,
+      })),
       tabla: standings.map((row) => ({
         equipo: row.team.name,
         posicion: row.position,

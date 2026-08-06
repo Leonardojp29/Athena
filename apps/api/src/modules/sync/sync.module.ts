@@ -6,6 +6,7 @@ import { MatchEventWriter } from './match-event.writer.js';
 import { OutboxService } from './outbox.service.js';
 import { SyncCompetitionUseCase } from './sync-competition.usecase.js';
 import { SyncFixturesUseCase } from './sync-fixtures.usecase.js';
+import { SyncMatchDetailUseCase } from './sync-match-detail.usecase.js';
 import { SyncMatchEventsUseCase } from './sync-match-events.usecase.js';
 import { SyncSquadUseCase } from './sync-squad.usecase.js';
 import { SyncStandingsUseCase } from './sync-standings.usecase.js';
@@ -23,6 +24,7 @@ import { SyncTeamsUseCase } from './sync-teams.usecase.js';
     SyncFixturesUseCase,
     SyncStandingsUseCase,
     SyncMatchEventsUseCase,
+    SyncMatchDetailUseCase,
     SyncSquadUseCase,
   ],
   exports: [
@@ -32,6 +34,7 @@ import { SyncTeamsUseCase } from './sync-teams.usecase.js';
     SyncFixturesUseCase,
     SyncStandingsUseCase,
     SyncMatchEventsUseCase,
+    SyncMatchDetailUseCase,
     SyncSquadUseCase,
   ],
 })

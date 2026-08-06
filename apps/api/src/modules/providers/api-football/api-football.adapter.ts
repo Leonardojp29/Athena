@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import type {
   FootballDataProvider,
   ProviderCompetition,
+  ProviderLineup,
   ProviderLiveMatch,
   ProviderMatch,
   ProviderMatchEvent,
+  ProviderMatchStatistics,
   ProviderPlayer,
   ProviderRef,
   ProviderStanding,
@@ -16,10 +18,21 @@ import type {
   ApiFootballStandings,
   ApiFootballFixture,
   ApiFootballLeague,
+  ApiFootballLineup,
   ApiFootballSquad,
+  ApiFootballStatistics,
   ApiFootballTeam,
 } from './api-football.types.js';
-import { mapEvents, mapFixture, mapLeague, mapSquad, mapStandings, mapTeam } from './mappers.js';
+import {
+  mapEvents,
+  mapFixture,
+  mapLeague,
+  mapLineup,
+  mapSquad,
+  mapStandings,
+  mapStatistics,
+  mapTeam,
+} from './mappers.js';
 
 @Injectable()
 export class ApiFootballAdapter implements FootballDataProvider {
@@ -70,6 +83,20 @@ export class ApiFootballAdapter implements FootballDataProvider {
       match: mapFixture(row),
       events: mapEvents(String(row.fixture.id), row.events ?? []),
     }));
+  }
+
+  async getMatchStatistics(matchRef: string): Promise<ProviderMatchStatistics[]> {
+    const rows = await this.client.get<ApiFootballStatistics>('/fixtures/statistics', {
+      fixture: matchRef,
+    });
+    return rows.map(mapStatistics);
+  }
+
+  async getMatchLineups(matchRef: string): Promise<ProviderLineup[]> {
+    const rows = await this.client.get<ApiFootballLineup>('/fixtures/lineups', {
+      fixture: matchRef,
+    });
+    return rows.map(mapLineup);
   }
 
   async getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]> {

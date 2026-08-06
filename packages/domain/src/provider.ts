@@ -82,6 +82,43 @@ export interface ProviderStanding {
   form: string | null;
 }
 
+export interface ProviderMatchStatistics {
+  teamRef: string;
+  possessionPercent: number | null;
+  shotsTotal: number | null;
+  shotsOnGoal: number | null;
+  shotsOffGoal: number | null;
+  shotsBlocked: number | null;
+  corners: number | null;
+  offsides: number | null;
+  fouls: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  goalkeeperSaves: number | null;
+  passesTotal: number | null;
+  passesAccurate: number | null;
+  passesPercent: number | null;
+  expectedGoals: number | null;
+  raw: Record<string, string | number | null>;
+}
+
+export interface ProviderLineupPlayer {
+  playerRef: string | null;
+  name: string;
+  number: number | null;
+  position: string | null;
+  /** Fila:columna desde el arco propio, tal como lo publica el proveedor. */
+  grid: string | null;
+}
+
+export interface ProviderLineup {
+  teamRef: string;
+  formation: string | null;
+  coachName: string | null;
+  startXi: ProviderLineupPlayer[];
+  substitutes: ProviderLineupPlayer[];
+}
+
 export interface ProviderLiveMatch {
   match: ProviderRef<ProviderMatch>;
   events: ProviderMatchEvent[];
@@ -97,4 +134,6 @@ export interface FootballDataProvider {
   getStandings(competitionRef: string, seasonYear: number): Promise<ProviderStanding[]>;
   getLiveMatches(): Promise<ProviderLiveMatch[]>;
   getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]>;
+  getMatchStatistics(matchRef: string): Promise<ProviderMatchStatistics[]>;
+  getMatchLineups(matchRef: string): Promise<ProviderLineup[]>;
 }

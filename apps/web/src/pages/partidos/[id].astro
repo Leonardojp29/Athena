@@ -2,6 +2,9 @@
 import Base from '../../layouts/Base.astro';
 import InsightCard from '../../components/InsightCard.astro';
 import MatchCenter from '../../components/MatchCenter';
+import MatchLineups from '../../components/MatchLineups.astro';
+import MatchStatistics from '../../components/MatchStatistics.astro';
+import PreviewCard from '../../components/PreviewCard.astro';
 import { api, ApiError, type MatchView } from '../../lib/api';
 import { isLive } from '../../lib/format';
 
@@ -50,4 +53,8 @@ const jsonLd = {
   {live ? <MatchCenter client:load initial={match} live /> : <MatchCenter initial={match} live={false} />}
 
   {match.insight && <InsightCard insight={match.insight} />}
+  {!match.insight && match.preview && <PreviewCard preview={match.preview} />}
+
+  <MatchStatistics statistics={match.statistics} homeTeam={match.homeTeam} awayTeam={match.awayTeam} />
+  <MatchLineups lineups={match.lineups} homeTeam={match.homeTeam} awayTeam={match.awayTeam} />
 </Base>

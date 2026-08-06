@@ -83,6 +83,35 @@ export interface ApiFootballStandings {
   };
 }
 
+export interface ApiFootballStatistics {
+  team: { id: number };
+  statistics: Array<{ type: string; value: string | number | null }>;
+}
+
+export interface ApiFootballLineup {
+  team: { id: number };
+  formation: string | null;
+  coach: { id: number | null; name: string | null };
+  startXI: Array<{
+    player: {
+      id: number | null;
+      name: string;
+      number: number | null;
+      pos: string | null;
+      grid: string | null;
+    };
+  }>;
+  substitutes: Array<{
+    player: {
+      id: number | null;
+      name: string;
+      number: number | null;
+      pos: string | null;
+      grid: string | null;
+    };
+  }>;
+}
+
 export interface ApiFootballEvent {
   time: { elapsed: number; extra: number | null };
   team: { id: number };

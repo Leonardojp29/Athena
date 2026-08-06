@@ -10,6 +10,7 @@ import { GenerateMatchInsightUseCase } from '../modules/insights/generate-match-
 import { InsightsModule } from '../modules/insights/insights.module.js';
 import { SearchModule } from '../modules/search/search.module.js';
 import { SyncEmbeddingsUseCase } from '../modules/search/sync-embeddings.usecase.js';
+import { SyncMatchDetailUseCase } from '../modules/sync/sync-match-detail.usecase.js';
 import { SyncMatchEventsUseCase } from '../modules/sync/sync-match-events.usecase.js';
 import { SyncSquadUseCase } from '../modules/sync/sync-squad.usecase.js';
 import { SyncModule } from '../modules/sync/sync.module.js';
@@ -92,6 +93,63 @@ async function main(): Promise<void> {
       }
     }
     console.log(`${refs.length} partidos procesados`);
+  }
+
+  if (run('detail')) {
+    console.log('\n▶ Estadísticas y alineaciones de partidos finalizados');
+    const syncDetail = app.get(SyncMatchDetailUseCase);
+    const limit = Number(process.env.AI_BOOTSTRAP_DETAIL_LIMIT ?? 12);
+    const matches = await prisma.match.findMany({
+      where: { status: 'finished', statistics: { none: {} } },
+      orderBy: { kickoffUtc: 'desc' },
+      take: limit,
+      select: { id: true },
+    });
+    const refs = await prisma.externalReference.findMany({
+      where: {
+        provider: 'api-football',
+        entityType: 'match',
+        entityId: { in: matches.map((m) => m.id) },
+      },
+      select: { providerRef: true },
+    });
+    for (const ref of refs) {
+      try {
+        await syncDetail.execute(ref.providerRef);
+      } catch (error) {
+        console.error(`  fallo en partido ${ref.providerRef}: ${String(error)}`);
+      }
+    }
+    console.log(`${refs.length} partidos procesados`);
+  }
+
+  if (run('previews')) {
+    console.log('\n▶ Previas de partidos próximos');
+    const insights = app.get(GenerateMatchInsightUseCase);
+    const limit = Number(process.env.AI_BOOTSTRAP_PREVIEW_LIMIT ?? 3);
+    const matches = await prisma.match.findMany({
+      where: {
+        status: 'scheduled',
+        kickoffUtc: { gte: new Date(), lte: new Date(Date.now() + 48 * 3600_000) },
+        season: { competition: { isActive: true } },
+      },
+      orderBy: { kickoffUtc: 'asc' },
+      take: limit,
+      select: {
+        id: true,
+        homeTeam: { select: { name: true } },
+        awayTeam: { select: { name: true } },
+      },
+    });
+    for (const match of matches) {
+      const label = `${match.homeTeam.name} vs ${match.awayTeam.name}`;
+      try {
+        const id = await insights.executePreview(match.id, { force: true });
+        console.log(`  ${id ? '✓' : '✗'} ${label}`);
+      } catch (error) {
+        console.error(`  ✗ ${label}: ${String(error)}`);
+      }
+    }
   }
 
   if (run('embeddings')) {

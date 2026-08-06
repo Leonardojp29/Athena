@@ -151,7 +151,69 @@ export interface MatchInsight {
   evidence: MatchEvidence;
 }
 
-export type MatchView = MatchCard & { events: MatchEventView[]; insight: MatchInsight | null };
+export interface MatchPreviewInsight {
+  titular: string;
+  previa: string;
+  aSeguir: string[];
+  model: string;
+  promptVersion: string;
+  generatedAt: string;
+  evidence: MatchEvidence;
+}
+
+export interface TeamStatistics {
+  teamId: string;
+  possessionPercent: number | null;
+  shotsTotal: number | null;
+  shotsOnGoal: number | null;
+  shotsOffGoal: number | null;
+  corners: number | null;
+  offsides: number | null;
+  fouls: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  goalkeeperSaves: number | null;
+  passesTotal: number | null;
+  passesAccurate: number | null;
+  passesPercent: number | null;
+}
+
+export interface LineupPlayer {
+  playerId: string | null;
+  name: string;
+  number: number | null;
+  position: string | null;
+  grid: string | null;
+}
+
+export interface TeamLineup {
+  teamId: string;
+  formation: string | null;
+  coachName: string | null;
+  startXi: LineupPlayer[];
+  substitutes: LineupPlayer[];
+}
+
+export type MatchView = MatchCard & {
+  events: MatchEventView[];
+  insight: MatchInsight | null;
+  preview: MatchPreviewInsight | null;
+  statistics: TeamStatistics[];
+  lineups: TeamLineup[];
+};
+
+/** Filas de la comparación de estadísticas, en el orden en que se muestran. */
+export const STAT_ROWS: Array<{ key: keyof TeamStatistics; label: string; isPercent?: boolean }> = [
+  { key: 'possessionPercent', label: 'Posesión', isPercent: true },
+  { key: 'shotsTotal', label: 'Remates' },
+  { key: 'shotsOnGoal', label: 'Remates al arco' },
+  { key: 'corners', label: 'Córners' },
+  { key: 'fouls', label: 'Faltas' },
+  { key: 'offsides', label: 'Offsides' },
+  { key: 'goalkeeperSaves', label: 'Atajadas' },
+  { key: 'passesAccurate', label: 'Pases precisos' },
+  { key: 'passesPercent', label: 'Precisión de pases', isPercent: true },
+];
 
 export interface SearchHit {
   type: 'team' | 'player' | 'competition';

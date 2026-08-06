@@ -116,6 +116,8 @@ model Team {
   awayMatches Match[]      @relation("away_team")
   events      MatchEvent[]
   standings   Standing[]
+  statistics  MatchStatistics[]
+  lineups     MatchLineup[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -162,7 +164,9 @@ model Match {
   venue          Venue?   @relation(fields: [venueId], references: [id])
   venueId        String?  @map("venue_id") @db.Uuid
 
-  events MatchEvent[]
+  events     MatchEvent[]
+  statistics MatchStatistics[]
+  lineups    MatchLineup[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -170,6 +174,54 @@ model Match {
   @@index([seasonId, kickoffUtc])
   @@index([status, kickoffUtc])
   @@map("matches")
+}
+
+/// Estadísticas por equipo de un partido. Los campos canónicos son los que el
+/// producto usa; `raw` conserva todo lo que envía el proveedor por si agrega métricas.
+model MatchStatistics {
+  id                String   @id @default(uuid()) @db.Uuid
+  match             Match    @relation(fields: [matchId], references: [id])
+  matchId           String   @map("match_id") @db.Uuid
+  team              Team     @relation(fields: [teamId], references: [id])
+  teamId            String   @map("team_id") @db.Uuid
+  possessionPercent Int?     @map("possession_percent")
+  shotsTotal        Int?     @map("shots_total")
+  shotsOnGoal       Int?     @map("shots_on_goal")
+  shotsOffGoal      Int?     @map("shots_off_goal")
+  shotsBlocked      Int?     @map("shots_blocked")
+  corners           Int?
+  offsides          Int?
+  fouls             Int?
+  yellowCards       Int?     @map("yellow_cards")
+  redCards          Int?     @map("red_cards")
+  goalkeeperSaves   Int?     @map("goalkeeper_saves")
+  passesTotal       Int?     @map("passes_total")
+  passesAccurate    Int?     @map("passes_accurate")
+  passesPercent     Int?     @map("passes_percent")
+  expectedGoals     Decimal? @map("expected_goals") @db.Decimal(5, 2)
+  raw               Json
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, teamId])
+  @@map("match_statistics")
+}
+
+/// Alineación por equipo. Los once y el banco viven como JSONB porque siempre se
+/// leen como unidad; el id del jugador va resuelto cuando existe en Athena.
+model MatchLineup {
+  id          String   @id @default(uuid()) @db.Uuid
+  match       Match    @relation(fields: [matchId], references: [id])
+  matchId     String   @map("match_id") @db.Uuid
+  team        Team     @relation(fields: [teamId], references: [id])
+  teamId      String   @map("team_id") @db.Uuid
+  formation   String?
+  coachName   String?  @map("coach_name")
+  startXi     Json     @map("start_xi")
+  substitutes Json
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, teamId])
+  @@map("match_lineups")
 }
 
 model MatchEvent {

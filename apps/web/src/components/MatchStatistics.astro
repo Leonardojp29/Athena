@@ -1,0 +1,65 @@
+---
+import { STAT_ROWS, type TeamStatistics, type TeamSummary } from '../lib/api';
+
+interface Props {
+  statistics: TeamStatistics[];
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+}
+
+const { statistics, homeTeam, awayTeam } = Astro.props;
+const home = statistics.find((s) => s.teamId === homeTeam.id);
+const away = statistics.find((s) => s.teamId === awayTeam.id);
+
+// Solo filas donde al menos un equipo tiene dato: el proveedor deja métricas en null.
+const rows = home && away
+  ? STAT_ROWS.map((row) => ({
+      ...row,
+      homeValue: home[row.key] as number | null,
+      awayValue: away[row.key] as number | null,
+    })).filter((row) => row.homeValue !== null || row.awayValue !== null)
+  : [];
+
+// Las barras usan primary/neutral: el dominio no es "bueno" ni "malo" (DESIGN_SYSTEM).
+const share = (a: number | null, b: number | null): number => {
+  const total = (a ?? 0) + (b ?? 0);
+  return total === 0 ? 50 : Math.round(((a ?? 0) / total) * 100);
+};
+---
+
+{
+  rows.length > 0 && (
+    <section class="bg-surface border border-border rounded-lg p-4 mt-4">
+      <h2 class="text-base font-semibold mb-4">Estadísticas</h2>
+      <div class="grid gap-3.5">
+        {rows.map((row) => {
+          const homeShare = share(row.homeValue, row.awayValue);
+          const suffix = row.isPercent ? '%' : '';
+          return (
+            <div>
+              <div class="flex items-baseline justify-between text-sm mb-1">
+                <span class="tabular font-medium w-12">
+                  {row.homeValue ?? '–'}
+                  {row.homeValue !== null ? suffix : ''}
+                </span>
+                <span class="text-xs text-ink-muted">{row.label}</span>
+                <span class="tabular font-medium w-12 text-right">
+                  {row.awayValue ?? '–'}
+                  {row.awayValue !== null ? suffix : ''}
+                </span>
+              </div>
+              <div class="flex gap-0.5 h-1.5" role="presentation">
+                <div class="flex-1 flex justify-end bg-canvas-subtle rounded-l-full overflow-hidden">
+                  <div class="bg-primary h-full rounded-l-full" style={`width:${homeShare}%`}></div>
+                </div>
+                <div class="flex-1 bg-canvas-subtle rounded-r-full overflow-hidden">
+                  <div class="bg-primary/40 h-full rounded-r-full" style={`width:${100 - homeShare}%`}></div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  )
+}

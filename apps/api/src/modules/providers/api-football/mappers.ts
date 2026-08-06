@@ -2,8 +2,11 @@ import type {
   MatchEventKind,
   PlayerPosition,
   ProviderCompetition,
+  ProviderLineup,
+  ProviderLineupPlayer,
   ProviderMatch,
   ProviderMatchEvent,
+  ProviderMatchStatistics,
   ProviderPlayer,
   ProviderRef,
   ProviderStanding,
@@ -13,8 +16,10 @@ import type {
   ApiFootballEvent,
   ApiFootballFixture,
   ApiFootballLeague,
+  ApiFootballLineup,
   ApiFootballSquad,
   ApiFootballStandings,
+  ApiFootballStatistics,
   ApiFootballTeam,
 } from './api-football.types.js';
 import { mapMatchStatus } from './status-map.js';
@@ -106,6 +111,63 @@ export function mapStandings(raw: ApiFootballStandings): ProviderStanding[] {
     goalsAgainst: row.all.goals.against,
     form: row.form,
   }));
+}
+
+/** "45%" → 45, 12 → 12, null/"" → null. El proveedor mezcla números y strings con unidad. */
+function statNumber(value: string | number | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = typeof value === 'number' ? value : Number(String(value).replace('%', '').trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function mapStatistics(raw: ApiFootballStatistics): ProviderMatchStatistics {
+  const byType = new Map(raw.statistics.map((item) => [item.type, item.value]));
+  const get = (type: string): number | null => statNumber(byType.get(type));
+
+  return {
+    teamRef: String(raw.team.id),
+    possessionPercent: get('Ball Possession'),
+    shotsTotal: get('Total Shots'),
+    shotsOnGoal: get('Shots on Goal'),
+    shotsOffGoal: get('Shots off Goal'),
+    shotsBlocked: get('Blocked Shots'),
+    corners: get('Corner Kicks'),
+    offsides: get('Offsides'),
+    fouls: get('Fouls'),
+    yellowCards: get('Yellow Cards'),
+    redCards: get('Red Cards'),
+    goalkeeperSaves: get('Goalkeeper Saves'),
+    passesTotal: get('Total passes'),
+    passesAccurate: get('Passes accurate'),
+    passesPercent: get('Passes %'),
+    expectedGoals: get('expected_goals'),
+    raw: Object.fromEntries(byType),
+  };
+}
+
+const LINEUP_POSITION: Record<string, string> = {
+  G: 'arquero',
+  D: 'defensor',
+  M: 'mediocampista',
+  F: 'delantero',
+};
+
+export function mapLineup(raw: ApiFootballLineup): ProviderLineup {
+  const mapPlayer = (entry: ApiFootballLineup['startXI'][number]): ProviderLineupPlayer => ({
+    playerRef: entry.player.id === null ? null : String(entry.player.id),
+    name: entry.player.name,
+    number: entry.player.number,
+    position: entry.player.pos ? (LINEUP_POSITION[entry.player.pos] ?? entry.player.pos) : null,
+    grid: entry.player.grid,
+  });
+
+  return {
+    teamRef: String(raw.team.id),
+    formation: raw.formation,
+    coachName: raw.coach?.name ?? null,
+    startXi: raw.startXI.map(mapPlayer),
+    substitutes: raw.substitutes.map(mapPlayer),
+  };
 }
 
 function mapEventKind(raw: ApiFootballEvent): MatchEventKind | null {
