@@ -9,10 +9,14 @@ import { Queue, Worker, type Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { REDIS } from '../../shared/redis.provider.js';
+import { GenerateMatchInsightUseCase } from '../insights/generate-match-insight.usecase.js';
+import { SyncEmbeddingsUseCase } from '../search/sync-embeddings.usecase.js';
 import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
+import { OutboxService } from '../sync/outbox.service.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
 import { SyncMatchEventsUseCase } from '../sync/sync-match-events.usecase.js';
+import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
 
@@ -24,7 +28,11 @@ type SyncJob =
   | { name: 'fixtures'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'standings'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'match-events'; data: { matchRef: string } }
+  | { name: 'squad'; data: { teamRef: string } }
+  | { name: 'match-insight'; data: { matchId: string } }
+  | { name: 'embeddings'; data: { entityType: 'team' | 'player' } }
   | { name: 'live-tick'; data: Record<string, never> }
+  | { name: 'process-outbox'; data: Record<string, never> }
   | { name: 'daily-refresh'; data: Record<string, never> };
 
 @Injectable()
@@ -36,11 +44,15 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(REDIS) private readonly redis: Redis,
     private readonly prisma: PrismaService,
+    private readonly outbox: OutboxService,
     private readonly syncCompetition: SyncCompetitionUseCase,
     private readonly syncTeams: SyncTeamsUseCase,
     private readonly syncFixtures: SyncFixturesUseCase,
     private readonly syncStandings: SyncStandingsUseCase,
     private readonly syncMatchEvents: SyncMatchEventsUseCase,
+    private readonly syncSquad: SyncSquadUseCase,
+    private readonly matchInsight: GenerateMatchInsightUseCase,
+    private readonly embeddings: SyncEmbeddingsUseCase,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -56,11 +68,16 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
 
     await this.queue.upsertJobScheduler('live-tick', { every: 60_000 }, { name: 'live-tick' });
     await this.queue.upsertJobScheduler(
+      'process-outbox',
+      { every: 30_000 },
+      { name: 'process-outbox' },
+    );
+    await this.queue.upsertJobScheduler(
       'daily-refresh',
       { pattern: '0 5 * * *', tz: 'UTC' },
       { name: 'daily-refresh' },
     );
-    this.logger.log('Sync queue ready (live-tick 60s, daily-refresh 05:00 UTC)');
+    this.logger.log('Sync queue ready (live-tick 60s, outbox 30s, daily-refresh 05:00 UTC)');
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -93,8 +110,18 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return this.syncStandings.execute(job.data.competitionRef, job.data.seasonYear);
       case 'match-events':
         return this.syncMatchEvents.execute(job.data.matchRef);
+      case 'squad':
+        return this.syncSquad.execute(job.data.teamRef);
+      case 'match-insight':
+        return this.matchInsight.execute(job.data.matchId);
+      case 'embeddings':
+        return job.data.entityType === 'team'
+          ? this.embeddings.syncTeams()
+          : this.embeddings.syncPlayers();
       case 'live-tick':
         return this.liveTick();
+      case 'process-outbox':
+        return this.processOutbox();
       case 'daily-refresh':
         return this.dailyRefresh();
       default:
@@ -120,22 +147,34 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     return this.syncFixtures.syncLive();
   }
 
+  private async processOutbox(): Promise<number> {
+    const events = await this.outbox.pending();
+    if (events.length === 0) return 0;
+
+    const handled: string[] = [];
+    for (const event of events) {
+      if (event.kind === 'MATCH_FINISHED') {
+        await this.enqueue('match-insight', { matchId: event.subjectId });
+      }
+      handled.push(event.id);
+    }
+    await this.outbox.markProcessed(handled);
+    return handled.length;
+  }
+
   private async dailyRefresh(): Promise<void> {
+    const recentlyFinishedIds = (
+      await this.prisma.match.findMany({
+        where: { status: 'finished', kickoffUtc: { gte: new Date(Date.now() - 48 * 3600_000) } },
+        select: { id: true },
+      })
+    ).map((m) => m.id);
+
     const recentlyFinished = await this.prisma.externalReference.findMany({
       where: {
         provider: 'api-football',
         entityType: 'match',
-        entityId: {
-          in: (
-            await this.prisma.match.findMany({
-              where: {
-                status: 'finished',
-                kickoffUtc: { gte: new Date(Date.now() - 48 * 3600_000) },
-              },
-              select: { id: true },
-            })
-          ).map((m) => m.id),
-        },
+        entityId: { in: recentlyFinishedIds },
       },
       select: { providerRef: true },
     });
@@ -146,6 +185,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
       await this.enqueue('competition', { competitionRef: providerRef });
     }
+
     const seasons = await this.prisma.season.findMany({
       where: { isCurrent: true, competition: { isActive: true } },
       select: { year: true, competition: { select: { id: true } } },
@@ -166,5 +206,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       await this.enqueue('fixtures', { competitionRef: ref.providerRef, seasonYear: season.year });
       await this.enqueue('standings', { competitionRef: ref.providerRef, seasonYear: season.year });
     }
+
+    await this.enqueue('embeddings', { entityType: 'team' });
   }
 }

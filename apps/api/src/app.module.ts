@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { SharedModule } from './shared/shared.module.js';
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { SearchModule } from './modules/search/search.module.js';
 import { ViewsModule } from './modules/views/views.module.js';
 
 @Module({
-  imports: [SharedModule, HealthModule, ViewsModule],
+  imports: [SharedModule, FeatureFlagsModule, HealthModule, ViewsModule, SearchModule],
 })
 export class AppModule {}

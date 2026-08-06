@@ -12,6 +12,6 @@ describe('slugify', () => {
   });
 
   it('collapses non-alphanumeric runs and trims edges', () => {
-    expect(slugify("Saint-Étienne (FC) ")).toBe('saint-etienne-fc');
+    expect(slugify('Saint-Étienne (FC) ')).toBe('saint-etienne-fc');
   });
 });

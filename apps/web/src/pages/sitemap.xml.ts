@@ -4,10 +4,11 @@ import { api } from '../lib/api';
 interface SitemapEntries {
   competitions: Array<{ slug: string }>;
   teams: Array<{ slug: string; updatedAt: string }>;
+  players: Array<{ slug: string }>;
 }
 
 export const GET: APIRoute = async ({ site }) => {
-  const { competitions, teams } = await api<SitemapEntries>('/views/sitemap');
+  const { competitions, teams, players } = await api<SitemapEntries>('/views/sitemap');
 
   const urls = [
     { loc: new URL('/', site).toString(), priority: '1.0' },
@@ -16,6 +17,10 @@ export const GET: APIRoute = async ({ site }) => {
       priority: '0.9',
     })),
     ...teams.map((t) => ({ loc: new URL(`/equipos/${t.slug}`, site).toString(), priority: '0.7' })),
+    ...players.map((p) => ({
+      loc: new URL(`/jugadores/${p.slug}`, site).toString(),
+      priority: '0.6',
+    })),
   ];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

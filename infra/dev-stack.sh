@@ -5,15 +5,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOGS="$ROOT/.logs"
 
+stop_stack() {
+  # patrones sin ruta: los procesos pueden haberse lanzado con ruta relativa o absoluta
+  pkill -f "dist/main.api.js" 2>/dev/null || true
+  pkill -f "dist/main.worker.js" 2>/dev/null || true
+  pkill -f "dist/server/entry.mjs" 2>/dev/null || true
+  sleep 1
+}
+
 if [[ "${1:-}" == "--stop" ]]; then
-  pkill -f "$ROOT/apps/api/dist/main.api.js" 2>/dev/null || true
-  pkill -f "$ROOT/apps/api/dist/main.worker.js" 2>/dev/null || true
-  pkill -f "$ROOT/apps/web/dist/server/entry.mjs" 2>/dev/null || true
+  stop_stack
   echo "Stack detenido (Redis sigue en Docker; usa 'docker compose -f infra/docker-compose.yml down' si quieres pararlo)"
   exit 0
 fi
 
 mkdir -p "$LOGS"
+stop_stack
 docker compose -f "$ROOT/infra/docker-compose.yml" up -d
 
 setsid node --env-file-if-exists="$ROOT/.env" "$ROOT/apps/api/dist/main.api.js" >> "$LOGS/api.log" 2>&1 < /dev/null &

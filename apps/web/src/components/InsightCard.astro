@@ -1,0 +1,53 @@
+---
+import type { MatchInsight } from '../lib/api';
+
+interface Props {
+  insight: MatchInsight;
+}
+
+const { insight } = Astro.props;
+const generated = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'America/Lima',
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+}).format(new Date(insight.generatedAt));
+---
+
+<section class="bg-surface border border-border rounded-lg p-4 mt-4">
+  <div class="flex items-center gap-2 mb-3">
+    <span class="text-[11px] font-medium uppercase tracking-wide text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+      Análisis Athena
+    </span>
+    <span class="text-xs text-ink-muted">generado con IA</span>
+  </div>
+
+  <h2 class="text-lg font-semibold tracking-tight mb-3">{insight.titular}</h2>
+
+  <div class="text-sm leading-relaxed grid gap-3">
+    {insight.analisis.split('\n').filter(Boolean).map((paragraph) => <p>{paragraph}</p>)}
+  </div>
+
+  {insight.claves.length > 0 && (
+    <ul class="mt-4 grid gap-1.5">
+      {insight.claves.map((clave) => (
+        <li class="flex gap-2 text-sm">
+          <span class="text-accent shrink-0">▸</span>
+          <span>{clave}</span>
+        </li>
+      ))}
+    </ul>
+  )}
+
+  <details class="mt-4 border-t border-border pt-3">
+    <summary class="text-xs text-ink-muted cursor-pointer hover:text-ink transition-colors">
+      Ver los datos que respaldan este análisis
+    </summary>
+    <p class="text-[11px] text-ink-muted mt-2">
+      Modelo {insight.model} · prompt {insight.promptVersion} · {generated}
+    </p>
+    <pre class="mt-2 text-[11px] leading-relaxed bg-canvas-subtle rounded-md p-3 overflow-x-auto">{JSON.stringify(insight.evidence, null, 2)}</pre>
+  </details>
+</section>

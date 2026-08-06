@@ -3,6 +3,8 @@
 // Supabase: DATABASE_URL points at the pooled connection (6543),
 // DIRECT_URL at the direct one (5432) for migrations.
 
+// Las extensiones (vector, pg_trgm) se crean en la migración SQL, no aquí:
+// declararlas haría que Prisma trate las extensiones propias de Supabase como drift.
 generator client {
   provider = "prisma-client-js"
 }
@@ -193,18 +195,36 @@ model MatchEvent {
 
 /// Append-only log of meaningful happenings. Feeds timelines, derivation
 /// pipelines (MATCH_FINISHED -> stats -> insights) and AI reasoning.
+/// Append-only + outbox: processedAt marca los eventos ya convertidos en trabajo derivado.
 model DomainEvent {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   kind        String // MATCH_FINISHED | PLAYER_TRANSFER | MANAGER_CHANGE | ...
-  subjectType String   @map("subject_type")
-  subjectId   String   @map("subject_id") @db.Uuid
-  occurredAt  DateTime @map("occurred_at")
+  subjectType String    @map("subject_type")
+  subjectId   String    @map("subject_id") @db.Uuid
+  occurredAt  DateTime  @map("occurred_at")
   payload     Json
-  createdAt   DateTime @default(now()) @map("created_at")
+  processedAt DateTime? @map("processed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@index([subjectType, subjectId, occurredAt])
   @@index([kind, occurredAt])
+  @@index([processedAt])
   @@map("domain_events")
+}
+
+/// Vectores para búsqueda semántica y similitud. `content` guarda el texto
+/// exacto que se embebió (procedencia), `model` permite reindexar sin borrar.
+model Embedding {
+  id         String                     @id @default(uuid()) @db.Uuid
+  entityType String                     @map("entity_type")
+  entityId   String                     @map("entity_id") @db.Uuid
+  model      String
+  content    String
+  vector     Unsupported("vector(1536)")
+  updatedAt  DateTime                   @updatedAt @map("updated_at")
+
+  @@unique([entityType, entityId, model])
+  @@map("embeddings")
 }
 
 /// AI-generated narratives. Never shown without their evidence (provenance).

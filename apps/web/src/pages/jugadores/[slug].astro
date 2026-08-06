@@ -1,0 +1,115 @@
+---
+import Base from '../../layouts/Base.astro';
+import Card from '../../components/Card.astro';
+import { api, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
+import { formatDate } from '../../lib/format';
+
+const { slug } = Astro.params;
+let view: PlayerView;
+try {
+  view = await api<PlayerView>(`/views/player/${slug}`);
+} catch (error) {
+  if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
+  throw error;
+}
+
+const { player, teams, events } = view;
+const position = player.position ? POSITION_LABEL[player.position] : null;
+const goals = events.filter((e) => e.kind.includes('goal') && e.kind !== 'missed_penalty').length;
+const cards = events.filter((e) => e.kind.endsWith('_card')).length;
+
+const EVENT_LABEL: Record<string, string> = {
+  goal: 'Gol',
+  own_goal: 'Autogol',
+  penalty_goal: 'Gol de penal',
+  missed_penalty: 'Penal errado',
+  yellow_card: 'Amarilla',
+  red_card: 'Roja',
+  substitution: 'Cambio',
+  var: 'VAR',
+};
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: player.name,
+  ...(player.nationality ? { nationality: player.nationality } : {}),
+  ...(player.birthDate ? { birthDate: player.birthDate.slice(0, 10) } : {}),
+  ...(player.photoUrl ? { image: player.photoUrl } : {}),
+  ...(teams[0] ? { memberOf: { '@type': 'SportsTeam', name: teams[0].name } } : {}),
+};
+---
+
+<Base
+  title={`${player.name} — Perfil, equipos y estadísticas | Athena`}
+  description={`Perfil de ${player.name}${position ? `, ${position.toLowerCase()}` : ''}${player.nationality ? ` de ${player.nationality}` : ''}: equipos, goles y participaciones recientes.`}
+  ogImage={player.photoUrl}
+  jsonLd={jsonLd}
+>
+  <div class="flex items-center gap-4 mb-6">
+    {player.photoUrl && <img src={player.photoUrl} alt="" width="64" height="64" class="rounded-full" />}
+    <div>
+      <h1 class="text-2xl font-bold tracking-tight">{player.name}</h1>
+      <p class="text-sm text-ink-muted">
+        {[position, player.nationality, player.heightCm ? `${player.heightCm} cm` : null]
+          .filter(Boolean)
+          .join(' · ')}
+      </p>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-2 gap-4 items-start">
+    <div class="grid gap-4">
+      <Card title="Equipos">
+        {teams.length > 0 ? (
+          <ul class="grid gap-2">
+            {teams.map((team) => (
+              <li>
+                <a href={`/equipos/${team.slug}`} class="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                  {team.logoUrl && <img src={team.logoUrl} alt="" width="20" height="20" loading="lazy" />}
+                  {team.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-sm text-ink-muted">Sin equipos registrados todavía.</p>
+        )}
+      </Card>
+
+      {events.length > 0 && (
+        <Card title="En los partidos registrados">
+          <div class="flex gap-6">
+            <span class="text-sm"><span class="text-xl font-semibold tabular">{goals}</span> <span class="text-ink-muted">goles</span></span>
+            <span class="text-sm"><span class="text-xl font-semibold tabular">{cards}</span> <span class="text-ink-muted">tarjetas</span></span>
+          </div>
+          <p class="text-[11px] text-ink-muted mt-2">
+            Conteo sobre los partidos ya sincronizados en Athena, no un total de carrera.
+          </p>
+        </Card>
+      )}
+    </div>
+
+    <Card title="Participaciones recientes">
+      {events.length > 0 ? (
+        <ul class="divide-y divide-border/40">
+          {events.map((event) => (
+            <li class="py-2">
+              <a href={`/partidos/${event.match.id}`} class="block hover:text-primary transition-colors">
+                <span class="text-sm">
+                  {EVENT_LABEL[event.kind] ?? event.kind} · <span class="tabular">{event.minute}'</span>
+                </span>
+                <span class="block text-xs text-ink-muted">
+                  {event.match.homeTeam.name} {event.match.homeScore ?? 0}-{event.match.awayScore ?? 0}{' '}
+                  {event.match.awayTeam.name} · {formatDate(event.match.kickoffUtc)}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="text-sm text-ink-muted">Aún no hay eventos registrados de este jugador.</p>
+      )}
+    </Card>
+  </div>
+</Base>

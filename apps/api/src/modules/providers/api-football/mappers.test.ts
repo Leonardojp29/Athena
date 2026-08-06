@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { mapEvents, mapFixture, mapLeague, mapTeam } from './mappers.js';
+import { mapEvents, mapFixture, mapLeague, mapStandings, mapTeam } from './mappers.js';
 import { mapMatchStatus } from './status-map.js';
 
 const fixture = <T>(name: string): T[] =>
@@ -73,6 +73,25 @@ describe('mapEvents', () => {
         'var',
       ]).toContain(event.kind);
     }
+  });
+});
+
+describe('mapStandings', () => {
+  it('etiqueta los grupos cuando la liga tiene varias tablas (Apertura/Clausura)', () => {
+    const [raw] = fixture<Parameters<typeof mapStandings>[0]>('standings-groups.json');
+    const rows = mapStandings(raw!);
+
+    const labels = [...new Set(rows.map((r) => r.groupLabel))];
+    expect(labels).toEqual(['Apertura', 'Clausura']);
+    expect(rows.every((r) => r.position > 0 && r.played >= 0)).toBe(true);
+  });
+
+  it('deja el grupo vacío cuando hay una sola tabla', () => {
+    const [raw] = fixture<Parameters<typeof mapStandings>[0]>('standings-single.json');
+    const rows = mapStandings(raw!);
+
+    expect(rows.every((r) => r.groupLabel === '')).toBe(true);
+    expect(rows[0]?.teamRef).toMatch(/^\d+$/);
   });
 });
 

@@ -1,0 +1,79 @@
+---
+import Base from '../layouts/Base.astro';
+import Card from '../components/Card.astro';
+import { api, PATH_BY_TYPE, type SearchHit } from '../lib/api';
+
+const query = (Astro.url.searchParams.get('q') ?? '').trim();
+let results: SearchHit[] = [];
+let failed = false;
+
+if (query.length >= 2) {
+  try {
+    const response = await api<{ results: SearchHit[] }>(`/search?q=${encodeURIComponent(query)}`);
+    results = response.results;
+  } catch {
+    failed = true;
+  }
+}
+
+const TYPE_LABEL: Record<SearchHit['type'], string> = {
+  team: 'Equipo',
+  player: 'Jugador',
+  competition: 'Competencia',
+};
+---
+
+<Base
+  title={query ? `Búsqueda: ${query} | Athena` : 'Buscar | Athena'}
+  description="Busca equipos, jugadores y competencias en Athena."
+  noindex
+>
+  <h1 class="text-2xl font-bold tracking-tight mb-4">Buscar</h1>
+
+  <form method="get" action="/buscar" class="mb-6">
+    <input
+      type="search"
+      name="q"
+      value={query}
+      placeholder="Equipo, jugador o competencia"
+      autofocus
+      class="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
+    />
+  </form>
+
+  {query.length < 2 ? (
+    <Card><p class="text-sm text-ink-muted">Escribe al menos dos letras para buscar.</p></Card>
+  ) : failed ? (
+    <Card><p class="text-sm text-danger">La búsqueda no está disponible en este momento.</p></Card>
+  ) : results.length === 0 ? (
+    <Card><p class="text-sm text-ink-muted">Sin resultados para «{query}».</p></Card>
+  ) : (
+    <Card>
+      <ul class="divide-y divide-border/40">
+        {results.map((hit) => (
+          <li>
+            <a
+              href={`${PATH_BY_TYPE[hit.type]}/${hit.slug}`}
+              class="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-md hover:bg-canvas-subtle transition-colors"
+            >
+              {hit.imageUrl ? (
+                <img src={hit.imageUrl} alt="" width="28" height="28" loading="lazy" class="shrink-0" />
+              ) : (
+                <span class="w-7 h-7 rounded-full bg-canvas-subtle shrink-0"></span>
+              )}
+              <span class="min-w-0">
+                <span class="block text-sm font-medium truncate">{hit.name}</span>
+                <span class="block text-xs text-ink-muted">
+                  {TYPE_LABEL[hit.type]}{hit.subtitle ? ` · ${hit.subtitle}` : ''}
+                </span>
+              </span>
+              {hit.matchedBy === 'semántica' && (
+                <span class="ml-auto text-[11px] text-ink-muted shrink-0">similar</span>
+              )}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  )}
+</Base>

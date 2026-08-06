@@ -109,4 +109,72 @@ export interface MatchEventView {
   relatedPlayer: { name: string } | null;
 }
 
-export type MatchView = MatchCard & { events: MatchEventView[] };
+export interface MatchInsight {
+  titular: string;
+  analisis: string;
+  claves: string[];
+  model: string;
+  promptVersion: string;
+  generatedAt: string;
+  evidence: unknown;
+}
+
+export type MatchView = MatchCard & { events: MatchEventView[]; insight: MatchInsight | null };
+
+export interface SearchHit {
+  type: 'team' | 'player' | 'competition';
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  subtitle: string | null;
+  score: number;
+  matchedBy: 'nombre' | 'semántica';
+}
+
+export interface PlayerView {
+  player: {
+    id: string;
+    name: string;
+    fullName: string | null;
+    slug: string;
+    position: string | null;
+    nationality: string | null;
+    birthDate: string | null;
+    heightCm: number | null;
+    photoUrl: string | null;
+  };
+  teams: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    logoUrl: string | null;
+    country: string | null;
+  }>;
+  events: Array<{
+    kind: string;
+    minute: number;
+    match: {
+      id: string;
+      kickoffUtc: string;
+      homeScore: number | null;
+      awayScore: number | null;
+      homeTeam: { name: string };
+      awayTeam: { name: string };
+      season: { competition: { name: string } };
+    };
+  }>;
+}
+
+export const PATH_BY_TYPE: Record<SearchHit['type'], string> = {
+  team: '/equipos',
+  player: '/jugadores',
+  competition: '/competencias',
+};
+
+export const POSITION_LABEL: Record<string, string> = {
+  goalkeeper: 'Arquero',
+  defender: 'Defensor',
+  midfielder: 'Mediocampista',
+  attacker: 'Delantero',
+};

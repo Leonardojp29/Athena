@@ -9,6 +9,7 @@
     "start:api": "node --env-file-if-exists=../../.env dist/main.api.js",
     "start:worker": "node --env-file-if-exists=../../.env dist/main.worker.js",
     "sync:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/sync-bootstrap.js",
+    "ai:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/ai-bootstrap.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
     "test": "vitest run"
@@ -22,6 +23,7 @@
     "@nestjs/swagger": "^11.0.0",
     "bullmq": "^5.40.0",
     "ioredis": "^5.5.0",
+    "openai": "^7.4.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

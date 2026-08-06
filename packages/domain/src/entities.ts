@@ -8,14 +8,7 @@
 
 export type EntityId = string; // UUID v7
 
-export type EntityType =
-  | 'player'
-  | 'team'
-  | 'competition'
-  | 'season'
-  | 'match'
-  | 'venue'
-  | 'coach';
+export type EntityType = 'player' | 'team' | 'competition' | 'season' | 'match' | 'venue' | 'coach';
 
 export interface Player {
   id: EntityId;

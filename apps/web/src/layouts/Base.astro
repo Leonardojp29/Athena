@@ -55,11 +55,21 @@ const NAV = [
             <a href={item.href} class="hover:text-ink whitespace-nowrap transition-colors">{item.label}</a>
           ))}
         </nav>
-        <button
-          id="theme-toggle"
-          class="ml-auto text-ink-muted hover:text-ink text-sm cursor-pointer"
-          aria-label="Cambiar tema"
-        >◐</button>
+        <form method="get" action="/buscar" class="ml-auto flex items-center gap-3">
+          <input
+            type="search"
+            name="q"
+            placeholder="Buscar…"
+            aria-label="Buscar equipos, jugadores o competencias"
+            class="w-28 sm:w-44 bg-canvas-subtle border border-border rounded-md px-2 py-1 text-sm outline-none focus:border-primary focus:w-44 sm:focus:w-56 transition-all"
+          />
+          <button
+            id="theme-toggle"
+            type="button"
+            class="text-ink-muted hover:text-ink text-sm cursor-pointer"
+            aria-label="Cambiar tema"
+          >◐</button>
+        </form>
       </div>
     </header>
 

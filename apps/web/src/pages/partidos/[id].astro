@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import InsightCard from '../../components/InsightCard.astro';
 import MatchCenter from '../../components/MatchCenter';
 import { api, ApiError, type MatchView } from '../../lib/api';
 import { isLive } from '../../lib/format';
@@ -47,4 +48,6 @@ const jsonLd = {
   </a>
 
   {live ? <MatchCenter client:load initial={match} live /> : <MatchCenter initial={match} live={false} />}
+
+  {match.insight && <InsightCard insight={match.insight} />}
 </Base>

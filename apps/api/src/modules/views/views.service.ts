@@ -206,14 +206,93 @@ export class ViewsService {
       },
     });
     if (!match) throw new NotFoundException('Partido no encontrado');
-    return match;
+
+    const insight = await this.prisma.insight.findFirst({
+      where: { subjectType: 'match', subjectId: id, kind: 'post_match_analysis', lang: 'es' },
+      orderBy: { generatedAt: 'desc' },
+      select: {
+        narrative: true,
+        evidence: true,
+        model: true,
+        promptVersion: true,
+        generatedAt: true,
+      },
+    });
+
+    return {
+      ...match,
+      insight: insight
+        ? {
+            ...(JSON.parse(insight.narrative) as {
+              titular: string;
+              analisis: string;
+              claves: string[];
+            }),
+            model: insight.model,
+            promptVersion: insight.promptVersion,
+            generatedAt: insight.generatedAt,
+            evidence: insight.evidence,
+          }
+        : null,
+    };
+  }
+
+  async player(slug: string) {
+    const player = await this.prisma.player.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        name: true,
+        fullName: true,
+        slug: true,
+        position: true,
+        nationality: true,
+        birthDate: true,
+        heightCm: true,
+        photoUrl: true,
+      },
+    });
+    if (!player) throw new NotFoundException('Jugador no encontrado');
+
+    const relationships = await this.prisma.entityRelationship.findMany({
+      where: { fromType: 'player', fromId: player.id, relation: 'played_for' },
+      select: { toId: true },
+    });
+    const teams = await this.prisma.team.findMany({
+      where: { id: { in: relationships.map((r) => r.toId) } },
+      select: { id: true, name: true, slug: true, logoUrl: true, country: true },
+    });
+
+    const events = await this.prisma.matchEvent.findMany({
+      where: { playerId: player.id },
+      orderBy: { match: { kickoffUtc: 'desc' } },
+      take: 20,
+      select: {
+        kind: true,
+        minute: true,
+        match: {
+          select: {
+            id: true,
+            kickoffUtc: true,
+            homeScore: true,
+            awayScore: true,
+            homeTeam: { select: { name: true } },
+            awayTeam: { select: { name: true } },
+            season: { select: { competition: { select: { name: true } } } },
+          },
+        },
+      },
+    });
+
+    return { player, teams, events };
   }
 
   async sitemapEntries() {
-    const [competitions, teams] = await Promise.all([
+    const [competitions, teams, players] = await Promise.all([
       this.prisma.competition.findMany({ where: { isActive: true }, select: { slug: true } }),
       this.prisma.team.findMany({ select: { slug: true, updatedAt: true } }),
+      this.prisma.player.findMany({ select: { slug: true }, take: 5_000 }),
     ]);
-    return { competitions, teams };
+    return { competitions, teams, players };
   }
 }

@@ -23,6 +23,12 @@ export class ViewsController {
     return this.views.team(slug);
   }
 
+  @Get('player/:slug')
+  @Header('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200')
+  player(@Param('slug') slug: string) {
+    return this.views.player(slug);
+  }
+
   @Get('match/:id')
   @Header('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
   match(@Param('id', ParseUUIDPipe) id: string) {
