@@ -1,9 +1,11 @@
 ---
 import Base from '../layouts/Base.astro';
+import Container from '../components/layout/Container.astro';
+import Hero from '../components/home/Hero.astro';
 import Icon from '../components/Icon.astro';
-import Card from '../components/Card.astro';
 import MatchRow from '../components/MatchRow.astro';
 import { api, type HomeView, type PersonalFeed } from '../lib/api';
+import { getHomeView } from '../lib/live';
 import { getSession } from '../lib/supabase';
 
 const session = await getSession(Astro);
@@ -18,102 +20,116 @@ if (session?.accessToken) {
   }
 }
 
-const home = await api<HomeView>('/views/home');
-const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.length > 0 || feed.recent.length > 0);
+const home = (await getHomeView()) ?? ({ live: 0, sections: [] } satisfies HomeView);
+const todos = home.sections.flatMap((s) => s.matches);
+const showFeed =
+  feed?.hasFavorites &&
+  (feed.live.length > 0 || feed.upcoming.length > 0 || feed.recent.length > 0);
+
+const destacado = feed?.insights[0]
+  ? { titular: feed.insights[0].titular, matchId: feed.insights[0].matchId }
+  : null;
+
+const BLOQUES = showFeed && feed
+  ? [
+      { titulo: 'En juego', matches: feed.live, fecha: false },
+      { titulo: 'Próximos de tus equipos', matches: feed.upcoming, fecha: true },
+      { titulo: 'Últimos resultados', matches: feed.recent, fecha: true },
+    ].filter((b) => b.matches.length > 0)
+  : [];
 ---
 
 <Base
   title="Athena — Partidos de hoy y marcadores en vivo"
-  description="Sigue los partidos de hoy en las principales ligas de Europa y Sudamérica: marcadores en vivo, tablas y resultados."
+  description="Sigue los partidos de hoy en las principales ligas de Europa y Sudamérica: marcadores en vivo, alineaciones sobre la cancha, tablas y análisis con evidencia."
+  width="bleed"
+  liveBar={false}
 >
-  {showFeed && feed && (
-    <section class="mb-8">
-      <h1 class="font-display text-3xl font-semibold uppercase mb-1">Lo que sigues</h1>
-      <p class="text-sm text-ink-muted mb-4">
-        {feed.live.length > 0 ? `${feed.live.length} en juego ahora` : 'Tus equipos y competencias'}
-      </p>
+  <Hero live={todos} total={todos.length} destacado={destacado} />
 
-      <div class="grid gap-4 items-start lg:grid-cols-2">
-        {feed.live.length > 0 && (
-          <Card title="En vivo">
-            <div class="divide-y divide-border/40">
-              {feed.live.map((match) => <MatchRow match={match} />)}
-            </div>
-          </Card>
-        )}
-        {feed.upcoming.length > 0 && (
-          <Card title="Próximos">
-            <div class="divide-y divide-border/40">
-              {feed.upcoming.map((match) => <MatchRow match={match} showDate />)}
-            </div>
-          </Card>
-        )}
-        {feed.recent.length > 0 && (
-          <Card title="Últimos resultados">
-            <div class="divide-y divide-border/40">
-              {feed.recent.map((match) => <MatchRow match={match} showDate />)}
-            </div>
-          </Card>
-        )}
-        {feed.insights.length > 0 && (
-          <Card title="Análisis de tus partidos">
-            <ul class="grid gap-2">
-              {feed.insights.map((insight) => (
-                <li>
-                  <a href={`/partidos/${insight.matchId}`} class="flex gap-2 text-sm hover:text-primary-ink transition-colors">
-                    <Icon name="vineta" size={14} class="text-primary-ink mt-0.5" />
-                    <span>{insight.titular}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-      </div>
-    </section>
-  )}
-
-  {showFeed ? (
-    <h2 class="text-xl font-semibold tracking-tight mb-1">Todos los partidos de hoy</h2>
-  ) : (
-    <h1 class="font-display text-3xl font-semibold uppercase mb-1">Partidos de hoy</h1>
-  )}
-  <p class="text-sm text-ink-muted mb-6">
-    {!showFeed && home.live > 0
-      ? `${home.live} en juego ahora`
-      : 'Las principales ligas de Europa y Sudamérica'}
-  </p>
-
-  {session && !feed?.hasFavorites && (
-    <Card>
-      <p class="text-sm text-ink-muted">
-        Sigue equipos y competencias desde sus páginas para armar tu propio inicio.
-      </p>
-    </Card>
-  )}
-
-  {home.sections.length === 0 ? (
-    <Card>
-      <p class="text-sm text-ink-muted">
-        No hay partidos programados en las próximas horas. Vuelve mañana o explora las competencias.
-      </p>
-    </Card>
-  ) : (
-    <div class="grid gap-4 mt-4 items-start lg:grid-cols-2 2xl:grid-cols-3">
-      {home.sections.map(({ competition, matches }) => (
-        <Card>
-          <a
-            href={`/competencias/${competition.slug}`}
-            class="flex items-center gap-2 mb-2 hover:text-primary-ink transition-colors"
-          >
-            {competition.logoUrl && <img src={competition.logoUrl} alt="" width="20" height="20" loading="lazy" />}
-            <h3 class="text-base font-semibold">{competition.name}</h3>
-          </a>
-          <div class="divide-y divide-border/40">
-            {matches.map((match) => <MatchRow match={match} showDate />)}
+  <Container width="wide" class="py-6">
+    {
+      BLOQUES.length > 0 && (
+        <section class="mb-8">
+          <div class="mb-3 flex items-center gap-3">
+            <h2 class="font-display text-xl font-semibold uppercase">Lo que sigues</h2>
+            <span class="h-px flex-1 bg-border" />
           </div>
-        </Card>
-      ))}
+
+          <div class="grid items-start gap-4 lg:grid-cols-3">
+            {BLOQUES.map((bloque) => (
+              <section class="rounded-lg border border-border bg-surface p-3">
+                <h3 class="mb-1.5 px-1 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+                  {bloque.titulo}
+                </h3>
+                <div class="divide-y divide-border/40">
+                  {bloque.matches.map((match) => (
+                    <MatchRow match={match} showDate={bloque.fecha} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    {
+      session && !feed?.hasFavorites && (
+        <p class="mb-6 flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-ink-muted">
+          <Icon name="estrella" size={15} class="shrink-0 text-primary-ink" />
+          Sigue equipos y competencias desde sus páginas para armar tu propio inicio.
+        </p>
+      )
+    }
+
+    <div class="mb-3 flex items-center gap-3">
+      <h2 class="font-display text-xl font-semibold uppercase">
+        {BLOQUES.length > 0 ? 'Todos los partidos de hoy' : 'Hoy por competencia'}
+      </h2>
+      <span class="h-px flex-1 bg-border"></span>
+      <a href="/partidos" class="flex shrink-0 items-center gap-1 text-sm text-primary-ink hover:underline">
+        Ver el calendario
+        <Icon name="chevron-derecha" size={14} />
+      </a>
     </div>
-  )}
+
+    {
+      home.sections.length === 0 ? (
+        <div class="rounded-lg border border-border bg-surface p-8 text-center">
+          <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
+          <p class="mt-3 text-sm text-ink-muted">
+            No hay partidos programados en las próximas horas.
+          </p>
+          <a href="/competencias" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
+            Explorar las competencias
+          </a>
+        </div>
+      ) : (
+        <div class="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          {home.sections.map(({ competition, matches }) => (
+            <section class="rounded-lg border border-border bg-surface">
+              <a
+                href={`/competencias/${competition.slug}`}
+                class="flex items-center gap-2 border-b border-border px-3 py-2.5 transition-colors hover:bg-canvas-subtle"
+              >
+                {competition.logoUrl && (
+                  <img src={competition.logoUrl} alt="" width="20" height="20" loading="lazy" />
+                )}
+                <h3 class="truncate text-sm font-semibold">{competition.name}</h3>
+                <span class="ml-auto shrink-0 tabular text-2xs text-ink-muted">
+                  {matches.length}
+                </span>
+              </a>
+              <div class="p-1">
+                {matches.map((match) => (
+                  <MatchRow match={match} showDate />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      )
+    }
+  </Container>
 </Base>

@@ -6,8 +6,10 @@ import type {
   ProviderLiveMatch,
   ProviderMatch,
   ProviderMatchEvent,
+  ProviderMatchPlayerStats,
   ProviderMatchStatistics,
   ProviderPlayer,
+  ProviderSeasonPlayer,
   ProviderRef,
   ProviderStanding,
   ProviderTeam,
@@ -17,8 +19,10 @@ import type {
   ApiFootballEvent,
   ApiFootballStandings,
   ApiFootballFixture,
+  ApiFootballFixturePlayers,
   ApiFootballLeague,
   ApiFootballLineup,
+  ApiFootballSeasonPlayer,
   ApiFootballSquad,
   ApiFootballStatistics,
   ApiFootballTeam,
@@ -26,8 +30,10 @@ import type {
 import {
   mapEvents,
   mapFixture,
+  mapFixturePlayers,
   mapLeague,
   mapLineup,
+  mapSeasonPlayers,
   mapSquad,
   mapStandings,
   mapStatistics,
@@ -97,6 +103,24 @@ export class ApiFootballAdapter implements FootballDataProvider {
       fixture: matchRef,
     });
     return rows.map(mapLineup);
+  }
+
+  async getMatchPlayerStatistics(matchRef: string): Promise<ProviderMatchPlayerStats[]> {
+    const rows = await this.client.get<ApiFootballFixturePlayers>('/fixtures/players', {
+      fixture: matchRef,
+    });
+    return mapFixturePlayers(rows);
+  }
+
+  async getSeasonPlayers(
+    competitionRef: string,
+    seasonYear: number,
+  ): Promise<ProviderSeasonPlayer[]> {
+    const rows = await this.client.getAllPages<ApiFootballSeasonPlayer>('/players', {
+      league: competitionRef,
+      season: seasonYear,
+    });
+    return mapSeasonPlayers(rows, competitionRef, seasonYear);
   }
 
   async getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]> {

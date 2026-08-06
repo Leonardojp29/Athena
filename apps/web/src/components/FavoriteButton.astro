@@ -1,22 +1,46 @@
 ---
 import type { FavoriteEntity } from '../lib/api';
 
+/*
+ * Los encabezados de entidad viven sobre la pizarra, que es oscura en los dos temas: con la
+ * paleta de superficie el botón quedaba casi invisible. `onBoard` cambia a tinta de tiza, y
+ * las dos variantes viajan en data-* para que el script no repita las clases.
+ */
 interface Props {
   entityType: FavoriteEntity['entityType'];
   entityId: string;
   following: boolean;
   signedIn: boolean;
   label: string;
+  onBoard?: boolean;
 }
 
-const { entityType, entityId, following, signedIn, label } = Astro.props;
+const { entityType, entityId, following, signedIn, label, onBoard = false } = Astro.props;
+
+const PALETA = {
+  board: {
+    on: 'border-primary bg-primary/20 text-primary',
+    off: 'border-chalk/30 text-chalk hover:border-primary hover:text-primary',
+    link: 'border-chalk/30 text-chalk hover:border-primary hover:text-primary',
+  },
+  surface: {
+    on: 'border-primary-ink bg-primary/12 text-primary-ink',
+    off: 'border-border text-ink-muted hover:border-primary-ink hover:text-ink',
+    link: 'border-border text-ink-muted hover:border-primary-ink hover:text-ink',
+  },
+};
+
+const paleta = onBoard ? PALETA.board : PALETA.surface;
 ---
 
 {
   !signedIn ? (
     <a
       href="/entrar"
-      class="text-sm border border-border rounded-md px-3 py-1.5 text-ink-muted hover:text-ink hover:border-primary-ink transition-colors whitespace-nowrap"
+      class:list={[
+        'whitespace-nowrap rounded-md border px-3 py-1.5 text-sm transition-colors',
+        paleta.link,
+      ]}
     >
       Entrar para seguir
     </a>
@@ -27,12 +51,12 @@ const { entityType, entityId, following, signedIn, label } = Astro.props;
       data-entity-type={entityType}
       data-entity-id={entityId}
       data-label={label}
+      data-clase-on={paleta.on}
+      data-clase-off={paleta.off}
       aria-pressed={following ? 'true' : 'false'}
       class:list={[
-        'text-sm rounded-md px-3 py-1.5 border transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60',
-        following
-          ? 'border-primary-ink bg-primary/12 text-primary-ink'
-          : 'border-border text-ink-muted hover:text-ink hover:border-primary-ink',
+        'cursor-pointer whitespace-nowrap rounded-md border px-3 py-1.5 text-sm transition-colors disabled:opacity-60',
+        following ? paleta.on : paleta.off,
       ]}
     >
       {following ? 'Siguiendo' : `Seguir ${label}`}
@@ -43,10 +67,10 @@ const { entityType, entityId, following, signedIn, label } = Astro.props;
 <script>
   // Vanilla en lugar de una isla React: la única interacción es un toggle y no
   // justifica cargar el runtime de React en cada perfil.
-  const FOLLOWING = 'border-primary-ink bg-primary/12 text-primary-ink';
-  const NOT_FOLLOWING = 'border-border text-ink-muted hover:text-ink hover:border-primary-ink';
-
   document.querySelectorAll<HTMLButtonElement>('button[data-favorite]').forEach((button) => {
+    const on = (button.dataset.claseOn ?? '').split(' ').filter(Boolean);
+    const off = (button.dataset.claseOff ?? '').split(' ').filter(Boolean);
+
     button.addEventListener('click', async () => {
       const following = button.getAttribute('aria-pressed') === 'true';
       const next = !following;
@@ -65,8 +89,8 @@ const { entityType, entityId, following, signedIn, label } = Astro.props;
 
         button.setAttribute('aria-pressed', String(next));
         button.textContent = next ? 'Siguiendo' : `Seguir ${button.dataset.label}`;
-        button.classList.remove(...(next ? NOT_FOLLOWING : FOLLOWING).split(' '));
-        button.classList.add(...(next ? FOLLOWING : NOT_FOLLOWING).split(' '));
+        button.classList.remove(...(next ? off : on));
+        button.classList.add(...(next ? on : off));
       } catch {
         button.textContent = 'No se pudo guardar';
       } finally {

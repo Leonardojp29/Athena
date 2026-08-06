@@ -75,3 +75,53 @@
     animation: none !important;
   }
 }
+
+/*
+ * Transiciones de página en CSS puro. El ClientRouter de Astro hace lo mismo con ~8 KB de
+ * JavaScript; `@view-transition` lo hace en el navegador y a cero. Donde no está soportado,
+ * la navegación es la de siempre.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--a-motion-base);
+  animation-timing-function: var(--a-ease);
+}
+
+/*
+ * El marcador es lo que el hincha viene a mirar: se transforma desde la fila del listado
+ * hasta el hero del partido en lugar de cortarse. El nombre lo pone la página.
+ */
+::view-transition-group(marcador) {
+  animation-duration: var(--a-motion-slow);
+  animation-timing-function: var(--a-ease-out-expo);
+}
+
+/* Los imanes entran escalonados cuando la cancha aparece; seis pasos alcanzan para once. */
+[data-cancha] [style*='--largo'] {
+  animation: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;
+  animation-delay: calc(var(--fila, 0) * 45ms);
+}
+
+/* La barra de una estadística crece por escala: animar `width` obliga al layout en cada cuadro. */
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes goal-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  30% {
+    background-color: var(--a-color-primary);
+  }
+}

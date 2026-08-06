@@ -1,8 +1,10 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
+import Container from '../../components/layout/Container.astro';
 import FavoriteButton from '../../components/FavoriteButton.astro';
 import MatchRow from '../../components/MatchRow.astro';
+import SquadGrid from '../../components/team/SquadGrid.astro';
 import { api, type FavoriteEntity, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
 import { paisEnEspanol } from '../../lib/paises';
@@ -16,7 +18,7 @@ try {
   throw error;
 }
 
-const { team, standings, recent, upcoming } = view;
+const { team, standings, recent, upcoming, squad } = view;
 
 // Los equipos similares dependen de embeddings: si aún no existen, la sección no se muestra.
 let similar: SearchHit[] = [];
@@ -52,26 +54,41 @@ const jsonLd = {
   description={`Resultados recientes, próximos partidos y posición en la tabla de ${team.name}.`}
   ogImage={team.logoUrl}
   jsonLd={jsonLd}
+  width="bleed"
+  liveBar={false}
 >
-  <div class="flex items-center gap-3 mb-6">
-    {team.logoUrl && <img src={team.logoUrl} alt="" width="48" height="48" />}
-    <div>
-      <h1 class="font-display text-3xl font-semibold uppercase">{team.name}</h1>
-      <p class="text-sm text-ink-muted">
-        {[paisEnEspanol(team.country), team.founded ? `Fundado en ${team.founded}` : null].filter(Boolean).join(' · ')}
-      </p>
-    </div>
+  <section class="w-full border-b border-board-edge bg-board">
+    <Container width="wide">
+      <div class="flex items-center gap-4 py-6">
+        {team.logoUrl && (
+          <img src={team.logoUrl} alt="" width="64" height="64" class="size-14 shrink-0 sm:size-16" />
+        )}
+        <div class="min-w-0">
+          <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
+            {team.name}
+          </h1>
+          <p class="text-sm text-chalk-dim">
+            {[paisEnEspanol(team.country), team.founded ? `Fundado en ${team.founded}` : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </div>
 
-    <div class="ml-auto shrink-0">
-      <FavoriteButton
-        entityType="team"
-        entityId={team.id}
-        following={following}
-        signedIn={session !== null}
-        label="equipo"
-      />
-    </div>
-  </div>
+        <div class="ml-auto shrink-0">
+          <FavoriteButton
+            entityType="team"
+            entityId={team.id}
+            following={following}
+            signedIn={session !== null}
+            label="equipo"
+            onBoard
+          />
+        </div>
+      </div>
+    </Container>
+  </section>
+
+  <Container width="wide" class="py-6">
 
   <div class="grid lg:grid-cols-2 gap-4 items-start">
     <div class="grid gap-4">
@@ -112,7 +129,7 @@ const jsonLd = {
                 <a href={`/equipos/${hit.slug}`} class="flex items-center gap-2 text-sm hover:text-primary-ink transition-colors">
                   {hit.imageUrl && <img src={hit.imageUrl} alt="" width="20" height="20" loading="lazy" />}
                   <span class="truncate">{hit.name}</span>
-                  {hit.subtitle && <span class="text-xs text-ink-muted ml-auto shrink-0">{hit.subtitle}</span>}
+                  {hit.subtitle && <span class="ml-auto shrink-0 text-2xs text-ink-muted">{paisEnEspanol(hit.subtitle)}</span>}
                 </a>
               </li>
             ))}
@@ -121,14 +138,19 @@ const jsonLd = {
       )}
     </div>
 
-    <Card title="Últimos resultados">
-      {recent.length > 0 ? (
-        <div class="divide-y divide-border/40">
-          {recent.map((match) => <MatchRow match={match} showDate />)}
-        </div>
-      ) : (
-        <p class="text-sm text-ink-muted">Aún no hay resultados registrados.</p>
-      )}
-    </Card>
+    <div class="grid gap-4">
+      <Card title="Últimos resultados">
+        {recent.length > 0 ? (
+          <div class="divide-y divide-border/40">
+            {recent.map((match) => <MatchRow match={match} showDate />)}
+          </div>
+        ) : (
+          <p class="text-sm text-ink-muted">Aún no hay resultados registrados.</p>
+        )}
+      </Card>
+
+      <SquadGrid squad={squad} />
+    </div>
   </div>
+  </Container>
 </Base>

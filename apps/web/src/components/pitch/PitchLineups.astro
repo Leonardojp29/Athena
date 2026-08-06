@@ -1,0 +1,95 @@
+---
+import { layout, type PlacedPlayer } from '@athena/domain';
+import type { LineupPlayer, MatchPlayerStats, TeamLineup, TeamSummary } from '../../lib/api';
+import Icon from '../Icon.astro';
+import Pitch from './Pitch.astro';
+import PlayerToken from './PlayerToken.astro';
+
+/*
+ * Los dos equipos enfrentados sobre una sola cancha: el local ocupa su mitad y el visitante
+ * la otra, espejado. Los jugadores son <button> en una capa absoluta, no nodos del SVG:
+ * así tienen foco real, área táctil de 44px y texto que escala con el navegador.
+ *
+ * Si el grid del proveedor no alcanza, `layout` devuelve null y se muestra la lista. Una
+ * cancha con nueve jugadores mal puestos es peor que ninguna cancha.
+ */
+interface Props {
+  lineups: TeamLineup[];
+  playerStatistics: MatchPlayerStats[];
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+}
+
+const { lineups, playerStatistics, homeTeam, awayTeam } = Astro.props;
+
+const lado = (team: TeamSummary) => lineups.find((l) => l.teamId === team.id) ?? null;
+const local = lado(homeTeam);
+const visita = lado(awayTeam);
+
+const ubicar = (lineup: TeamLineup | null, mirrored: boolean): PlacedPlayer<LineupPlayer>[] | null =>
+  lineup ? layout(lineup.startXi, { formation: lineup.formation, mirrored }) : null;
+
+const xiLocal = ubicar(local, false);
+const xiVisita = ubicar(visita, true);
+const dibujable = xiLocal !== null && xiVisita !== null;
+
+const statsPorJugador = new Map(playerStatistics.map((s) => [s.player.id, s]));
+
+/* La mitad del local va de 0 a 50 sobre el largo; la del visitante se refleja desde 100. */
+const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' ? y / 2 : 100 - y / 2);
+---
+
+{
+  dibujable ? (
+    <div class="grid gap-3">
+      <div class="flex items-center justify-between gap-3 text-2xs">
+        <span class="flex min-w-0 items-center gap-1.5">
+          {homeTeam.logoUrl && <img src={homeTeam.logoUrl} alt="" width="16" height="16" />}
+          <span class="truncate font-medium">{homeTeam.shortName ?? homeTeam.name}</span>
+          {local?.formation && <span class="tabular text-ink-muted">{local.formation}</span>}
+        </span>
+        <span class="flex min-w-0 items-center gap-1.5">
+          {visita?.formation && <span class="tabular text-ink-muted">{visita.formation}</span>}
+          <span class="truncate font-medium">{awayTeam.shortName ?? awayTeam.name}</span>
+          {awayTeam.logoUrl && <img src={awayTeam.logoUrl} alt="" width="16" height="16" />}
+        </span>
+      </div>
+
+      <div
+        class="relative aspect-[680/1000] w-full overflow-hidden rounded-lg border border-board-edge sm:aspect-[1050/680]"
+        data-cancha
+      >
+        <Pitch />
+
+        <div class="absolute inset-0">
+          {[
+            { placed: xiLocal, team: homeTeam, mitad: 'local' as const },
+            { placed: xiVisita, team: awayTeam, mitad: 'visita' as const },
+          ].map(({ placed, team, mitad }) =>
+            placed?.map((slot) => (
+              <PlayerToken
+                player={slot.player}
+                team={team}
+                stats={slot.player.playerId ? (statsPorJugador.get(slot.player.playerId) ?? null) : null}
+                largo={enLaCancha(mitad, slot.y)}
+                ancho={slot.x}
+                fila={slot.row}
+              />
+            )),
+          )}
+        </div>
+      </div>
+
+      <p class="text-2xs text-ink-muted">
+        Toca un jugador para ver su rendimiento en este partido.
+      </p>
+    </div>
+  ) : (
+    <div class="rounded-lg border border-border bg-canvas-subtle p-4">
+      <p class="flex items-center gap-2 text-sm text-ink-muted">
+        <Icon name="formacion" size={16} />
+        La formación que publicó el proveedor no alcanza para dibujar la cancha.
+      </p>
+    </div>
+  )
+}

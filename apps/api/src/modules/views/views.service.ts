@@ -6,6 +6,47 @@ const teamSummary = {
   select: { id: true, name: true, shortName: true, slug: true, logoUrl: true },
 };
 
+/* Un nombre sin slug no lleva a ninguna parte: el timeline traía solo `name`. */
+const playerLink = {
+  select: { id: true, name: true, slug: true, photoUrl: true },
+};
+
+/*
+ * Lo que la ficha del jugador muestra dentro de un partido. Viaja completo con la página
+ * (~6 KB para veintidós jugadores) para que abrir el modal no cueste una llamada.
+ */
+const matchPlayerStats = {
+  teamId: true,
+  shirtNumber: true,
+  position: true,
+  isStarter: true,
+  minutesPlayed: true,
+  rating: true,
+  captain: true,
+  goals: true,
+  goalsConceded: true,
+  assists: true,
+  saves: true,
+  shotsTotal: true,
+  shotsOnTarget: true,
+  passesTotal: true,
+  passesKey: true,
+  passesAccurate: true,
+  tacklesTotal: true,
+  interceptions: true,
+  duelsTotal: true,
+  duelsWon: true,
+  dribblesTotal: true,
+  dribblesSuccess: true,
+  foulsCommitted: true,
+  foulsDrawn: true,
+  yellowCards: true,
+  redCards: true,
+  penaltyScored: true,
+  penaltyMissed: true,
+  penaltySaved: true,
+} as const;
+
 const matchCard = {
   id: true,
   kickoffUtc: true,
@@ -170,7 +211,7 @@ export class ViewsService {
     });
     if (!team) throw new NotFoundException('Equipo no encontrado');
 
-    const [standings, recent, upcoming] = await Promise.all([
+    const [standings, recent, upcoming, squad] = await Promise.all([
       this.prisma.standing.findMany({
         where: { teamId: team.id, season: { isCurrent: true } },
         select: {
@@ -208,9 +249,32 @@ export class ViewsService {
         orderBy: { kickoffUtc: 'asc' },
         take: 10,
       }),
+      /*
+       * El año no se puede fijar: la Liga 1 corre 2026 y la Premier 2025 al mismo tiempo.
+       * Se piden todos y se conserva la campaña más reciente que tenga el equipo.
+       */
+      this.prisma.squadMembership.findMany({
+        where: { teamId: team.id },
+        orderBy: [{ year: 'desc' }, { shirtNumber: 'asc' }],
+        select: {
+          year: true,
+          shirtNumber: true,
+          position: true,
+          player: { select: { id: true, name: true, slug: true, photoUrl: true, position: true } },
+        },
+      }),
     ]);
 
-    return { team, standings, recent, upcoming };
+    const squadYear = squad[0]?.year ?? null;
+    const currentSquad = squad.filter((row) => row.year === squadYear);
+
+    return {
+      team,
+      standings,
+      recent,
+      upcoming,
+      squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },
+    };
   }
 
   async match(id: string) {
@@ -218,6 +282,7 @@ export class ViewsService {
       where: { id },
       select: {
         ...matchCard,
+        venue: { select: { id: true, name: true, city: true, capacity: true } },
         events: {
           orderBy: [{ minute: 'asc' }, { extraMinute: 'asc' }],
           select: {
@@ -227,15 +292,15 @@ export class ViewsService {
             extraMinute: true,
             detail: true,
             team: { select: { id: true } },
-            player: { select: { name: true } },
-            relatedPlayer: { select: { name: true } },
+            player: playerLink,
+            relatedPlayer: playerLink,
           },
         },
       },
     });
     if (!match) throw new NotFoundException('Partido no encontrado');
 
-    const [insights, statistics, lineups] = await Promise.all([
+    const [insights, statistics, lineups, playerStatistics] = await Promise.all([
       this.prisma.insight.findMany({
         where: {
           subjectType: 'match',
@@ -282,6 +347,11 @@ export class ViewsService {
           substitutes: true,
         },
       }),
+      this.prisma.matchPlayerStatistics.findMany({
+        where: { matchId: id },
+        orderBy: [{ isStarter: 'desc' }, { minutesPlayed: 'desc' }],
+        select: { ...matchPlayerStats, player: playerLink },
+      }),
     ]);
 
     const hydrate = (row: (typeof insights)[number]) => ({
@@ -300,6 +370,7 @@ export class ViewsService {
       preview: preview ? hydrate(preview) : null,
       statistics,
       lineups,
+      playerStatistics,
     };
   }
 
@@ -329,28 +400,106 @@ export class ViewsService {
       select: { id: true, name: true, slug: true, logoUrl: true, country: true },
     });
 
-    const events = await this.prisma.matchEvent.findMany({
-      where: { playerId: player.id },
-      orderBy: { match: { kickoffUtc: 'desc' } },
-      take: 20,
-      select: {
-        kind: true,
-        minute: true,
-        match: {
-          select: {
-            id: true,
-            kickoffUtc: true,
-            homeScore: true,
-            awayScore: true,
-            homeTeam: { select: { name: true } },
-            awayTeam: { select: { name: true } },
-            season: { select: { competition: { select: { name: true } } } },
+    const [events, seasons, recentPerformances, squad] = await Promise.all([
+      this.prisma.matchEvent.findMany({
+        where: { playerId: player.id },
+        orderBy: { match: { kickoffUtc: 'desc' } },
+        take: 20,
+        select: {
+          kind: true,
+          minute: true,
+          match: {
+            select: {
+              id: true,
+              kickoffUtc: true,
+              homeScore: true,
+              awayScore: true,
+              homeTeam: { select: { name: true } },
+              awayTeam: { select: { name: true } },
+              season: { select: { competition: { select: { name: true } } } },
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.playerSeasonStatistics.findMany({
+        where: { playerId: player.id },
+        orderBy: [{ season: { year: 'desc' } }],
+        select: {
+          appearances: true,
+          lineups: true,
+          minutesPlayed: true,
+          rating: true,
+          goals: true,
+          assists: true,
+          shotsTotal: true,
+          shotsOnTarget: true,
+          passesTotal: true,
+          passesKey: true,
+          passesAccuracyPercent: true,
+          duelsWon: true,
+          dribblesSuccess: true,
+          yellowCards: true,
+          redCards: true,
+          penaltyScored: true,
+          team: teamSummary,
+          season: {
+            select: {
+              year: true,
+              competition: { select: { name: true, slug: true, logoUrl: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.matchPlayerStatistics.findMany({
+        where: { playerId: player.id },
+        orderBy: { match: { kickoffUtc: 'desc' } },
+        take: 10,
+        select: {
+          ...matchPlayerStats,
+          match: {
+            select: {
+              id: true,
+              kickoffUtc: true,
+              homeScore: true,
+              awayScore: true,
+              homeTeam: teamSummary,
+              awayTeam: teamSummary,
+              season: { select: { competition: { select: { name: true, slug: true } } } },
+            },
+          },
+        },
+      }),
+      this.prisma.squadMembership.findMany({
+        where: { playerId: player.id },
+        orderBy: { year: 'desc' },
+        take: 4,
+        select: { year: true, shirtNumber: true, team: teamSummary },
+      }),
+    ]);
 
-    return { player, teams, events };
+    /* Los acumulados de todas las temporadas: el hincha quiere "cuántos hizo", no un desglose. */
+    const totals = seasons.reduce(
+      (acc, row) => ({
+        appearances: acc.appearances + (row.appearances ?? 0),
+        minutesPlayed: acc.minutesPlayed + (row.minutesPlayed ?? 0),
+        goals: acc.goals + (row.goals ?? 0),
+        assists: acc.assists + (row.assists ?? 0),
+        yellowCards: acc.yellowCards + (row.yellowCards ?? 0),
+        redCards: acc.redCards + (row.redCards ?? 0),
+      }),
+      { appearances: 0, minutesPlayed: 0, goals: 0, assists: 0, yellowCards: 0, redCards: 0 },
+    );
+
+    return {
+      player,
+      teams,
+      events,
+      seasons,
+      totals: seasons.length > 0 ? totals : null,
+      recentPerformances,
+      shirtNumber: squad.find((s) => s.shirtNumber !== null)?.shirtNumber ?? null,
+      squad,
+    };
   }
 
   async sitemapEntries() {
@@ -382,4 +531,31 @@ function groupByCompetition<T extends { season: { competition: { id: string } } 
     bucket.matches.push(match);
   }
   return [...byCompetition.values()];
+}
+
+type SquadRow = {
+  shirtNumber: number | null;
+  position: string | null;
+  player: { position: string | null };
+};
+
+const LINE_ORDER = ['goalkeeper', 'defender', 'midfielder', 'attacker', 'other'] as const;
+const LINE_LABEL: Record<(typeof LINE_ORDER)[number], string> = {
+  goalkeeper: 'Arqueros',
+  defender: 'Defensores',
+  midfielder: 'Mediocampistas',
+  attacker: 'Delanteros',
+  other: 'Sin posición',
+};
+
+/** La plantilla se lee por líneas, no como una lista de treinta nombres. */
+function groupSquadByLine<T extends SquadRow>(rows: T[]): Array<{ line: string; label: string; players: T[] }> {
+  return LINE_ORDER.map((line) => ({
+    line,
+    label: LINE_LABEL[line],
+    players: rows.filter((row) => {
+      const pos = row.position ?? row.player.position;
+      return line === 'other' ? !pos || !LINE_ORDER.includes(pos as never) : pos === line;
+    }),
+  })).filter((group) => group.players.length > 0);
 }

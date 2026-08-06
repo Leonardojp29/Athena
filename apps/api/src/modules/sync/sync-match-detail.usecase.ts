@@ -5,6 +5,12 @@ import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 
+export interface LineupPlayerLink {
+  playerId: string | null;
+  slug: string | null;
+  photoUrl: string | null;
+}
+
 @Injectable()
 export class SyncMatchDetailUseCase {
   private readonly logger = new Logger(SyncMatchDetailUseCase.name);
@@ -67,15 +73,33 @@ export class SyncMatchDetailUseCase {
     return { statistics: statsWritten, lineups: lineupsWritten };
   }
 
-  /** Resuelve el jugador de Athena cuando ya existe; si no, queda solo el nombre. */
+  /**
+   * Resuelve el jugador de Athena cuando ya existe; si no, queda solo el nombre.
+   *
+   * El slug y la foto se guardan dentro del JSONB porque la alineación ya es un snapshot
+   * que se lee como unidad: sin eso, dibujar la cancha costaría un join extra en una
+   * página que se refresca cada veinte segundos.
+   */
   private async withPlayerIds(
     players: ProviderLineupPlayer[],
-  ): Promise<Array<ProviderLineupPlayer & { playerId: string | null }>> {
+  ): Promise<Array<ProviderLineupPlayer & LineupPlayerLink>> {
     const refs = players.map((p) => p.playerRef).filter((ref): ref is string => ref !== null);
-    const known = await this.refs.resolveMany(this.provider.name, 'player', refs);
-    return players.map((player) => ({
-      ...player,
-      playerId: player.playerRef ? (known.get(player.playerRef) ?? null) : null,
-    }));
+    const ids = await this.refs.resolveMany(this.provider.name, 'player', refs);
+    const rows = await this.prisma.player.findMany({
+      where: { id: { in: [...ids.values()] } },
+      select: { id: true, slug: true, photoUrl: true },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+
+    return players.map((player) => {
+      const id = player.playerRef ? (ids.get(player.playerRef) ?? null) : null;
+      const row = id ? byId.get(id) : undefined;
+      return {
+        ...player,
+        playerId: id,
+        slug: row?.slug ?? null,
+        photoUrl: row?.photoUrl ?? null,
+      };
+    });
   }
 }

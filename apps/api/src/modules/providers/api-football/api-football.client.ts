@@ -53,4 +53,56 @@ export class ApiFootballClient {
 
     return envelope.response;
   }
+
+  /**
+   * Recorre todas las páginas. /players devuelve 20 por página: sin esto una liga entera
+   * entraría a la base con los primeros veinte futbolistas y el resto en silencio.
+   */
+  async getAllPages<T>(
+    path: string,
+    params: Record<string, string | number> = {},
+    maxPages = 60,
+  ): Promise<T[]> {
+    const all: T[] = [];
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      const { items, paging } = await this.getPage<T>(path, { ...params, page });
+      all.push(...items);
+      totalPages = paging.total;
+      page += 1;
+    } while (page <= totalPages && page <= maxPages);
+
+    if (totalPages > maxPages) {
+      this.logger.warn(`${path}: ${totalPages} páginas exceden el tope de ${maxPages}`);
+    }
+    return all;
+  }
+
+  private async getPage<T>(
+    path: string,
+    params: Record<string, string | number>,
+  ): Promise<{ items: T[]; paging: { current: number; total: number } }> {
+    await this.budget.assertAvailable();
+
+    const url = new URL(path, this.baseUrl);
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, String(value));
+    }
+
+    const res = await fetch(url, {
+      headers: { 'x-apisports-key': process.env.API_FOOTBALL_KEY ?? '' },
+    });
+    await this.budget.recordFromHeaders(res.headers);
+    if (!res.ok) throw new ApiFootballError(path, { httpStatus: res.status });
+
+    const envelope = (await res.json()) as ApiFootballEnvelope<T>;
+    const hasErrors = Array.isArray(envelope.errors)
+      ? envelope.errors.length > 0
+      : Object.keys(envelope.errors).length > 0;
+    if (hasErrors) throw new ApiFootballError(path, envelope.errors);
+
+    return { items: envelope.response, paging: envelope.paging };
+  }
 }

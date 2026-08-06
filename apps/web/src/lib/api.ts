@@ -104,6 +104,12 @@ export interface CompetitionView {
   upcoming: MatchCard[];
 }
 
+export interface SquadPlayer {
+  shirtNumber: number | null;
+  position: string | null;
+  player: PlayerLink & { position: string | null };
+}
+
 export interface TeamView {
   team: {
     id: string;
@@ -114,6 +120,7 @@ export interface TeamView {
     founded: number | null;
     logoUrl: string | null;
   };
+  squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
   standings: Array<
     Omit<StandingRow, 'team'> & {
       season: { year: number; competition: { name: string; slug: string; logoUrl: string | null } };
@@ -135,8 +142,8 @@ export interface MatchEventView {
     relatedPlayerName?: string | null;
   } | null;
   team: { id: string };
-  player: { name: string } | null;
-  relatedPlayer: { name: string } | null;
+  player: PlayerLink | null;
+  relatedPlayer: PlayerLink | null;
 }
 
 /** Hechos que respaldan una narrativa; el fact sheet que armó el worker. */
@@ -208,12 +215,62 @@ export interface TeamStatistics {
   passesPercent: number | null;
 }
 
+export interface PlayerLink {
+  id: string;
+  name: string;
+  slug: string;
+  photoUrl: string | null;
+}
+
+/** El slug y la foto están denormalizados en el JSONB: dibujar la cancha no cuesta un join. */
 export interface LineupPlayer {
   playerId: string | null;
+  slug: string | null;
+  photoUrl: string | null;
   name: string;
   number: number | null;
   position: string | null;
   grid: string | null;
+}
+
+export interface MatchPlayerStats {
+  teamId: string;
+  player: PlayerLink;
+  shirtNumber: number | null;
+  position: string | null;
+  isStarter: boolean;
+  minutesPlayed: number | null;
+  rating: string | null;
+  captain: boolean;
+  goals: number | null;
+  goalsConceded: number | null;
+  assists: number | null;
+  saves: number | null;
+  shotsTotal: number | null;
+  shotsOnTarget: number | null;
+  passesTotal: number | null;
+  passesKey: number | null;
+  passesAccurate: number | null;
+  tacklesTotal: number | null;
+  interceptions: number | null;
+  duelsTotal: number | null;
+  duelsWon: number | null;
+  dribblesTotal: number | null;
+  dribblesSuccess: number | null;
+  foulsCommitted: number | null;
+  foulsDrawn: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  penaltyScored: number | null;
+  penaltyMissed: number | null;
+  penaltySaved: number | null;
+}
+
+export interface VenueSummary {
+  id: string;
+  name: string;
+  city: string | null;
+  capacity: number | null;
 }
 
 export interface TeamLineup {
@@ -225,11 +282,13 @@ export interface TeamLineup {
 }
 
 export type MatchView = MatchCard & {
+  venue: VenueSummary | null;
   events: MatchEventView[];
   insight: MatchInsight | null;
   preview: MatchPreviewInsight | null;
   statistics: TeamStatistics[];
   lineups: TeamLineup[];
+  playerStatistics: MatchPlayerStats[];
 };
 
 /** Filas de la comparación de estadísticas, en el orden en que se muestran. */
@@ -288,6 +347,49 @@ export interface PlayerView {
       season: { competition: { name: string } };
     };
   }>;
+  seasons: Array<{
+    appearances: number | null;
+    lineups: number | null;
+    minutesPlayed: number | null;
+    rating: string | null;
+    goals: number | null;
+    assists: number | null;
+    shotsTotal: number | null;
+    shotsOnTarget: number | null;
+    passesTotal: number | null;
+    passesKey: number | null;
+    passesAccuracyPercent: number | null;
+    duelsWon: number | null;
+    dribblesSuccess: number | null;
+    yellowCards: number | null;
+    redCards: number | null;
+    penaltyScored: number | null;
+    team: TeamSummary;
+    season: { year: number; competition: { name: string; slug: string; logoUrl: string | null } };
+  }>;
+  totals: {
+    appearances: number;
+    minutesPlayed: number;
+    goals: number;
+    assists: number;
+    yellowCards: number;
+    redCards: number;
+  } | null;
+  recentPerformances: Array<
+    Omit<MatchPlayerStats, 'player'> & {
+      match: {
+        id: string;
+        kickoffUtc: string;
+        homeScore: number | null;
+        awayScore: number | null;
+        homeTeam: TeamSummary;
+        awayTeam: TeamSummary;
+        season: { competition: { name: string; slug: string } };
+      };
+    }
+  >;
+  shirtNumber: number | null;
+  squad: Array<{ year: number; shirtNumber: number | null; team: TeamSummary }>;
 }
 
 export const PATH_BY_TYPE: Record<SearchHit['type'], string> = {

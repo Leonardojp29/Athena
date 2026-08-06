@@ -1,0 +1,50 @@
+---
+/*
+ * Pestañas con enlaces reales. Un panel por URL cuesta 0 KB, es indexable y se comparte;
+ * lo mismo con JavaScript costaría un bundle y rompería el botón de atrás.
+ */
+export interface Tab {
+  id: string;
+  label: string;
+  disabled?: boolean;
+}
+
+interface Props {
+  tabs: Tab[];
+  active: string;
+  baseUrl: string;
+}
+
+const { tabs, active, baseUrl } = Astro.props;
+---
+
+<nav
+  class="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+  aria-label="Secciones del partido"
+>
+  {
+    tabs.map((tab) =>
+      tab.disabled ? (
+        <span
+          class="shrink-0 cursor-not-allowed border-b-2 border-transparent px-3 py-2.5 text-sm text-ink-muted/50"
+          title="Sin datos para este partido"
+        >
+          {tab.label}
+        </span>
+      ) : (
+        <a
+          href={tab.id === 'resumen' ? baseUrl : `${baseUrl}?vista=${tab.id}`}
+          aria-current={tab.id === active ? 'page' : undefined}
+          class:list={[
+            'shrink-0 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors',
+            tab.id === active
+              ? 'border-primary-ink font-medium text-ink'
+              : 'border-transparent text-ink-muted hover:border-border-strong hover:text-ink',
+          ]}
+        >
+          {tab.label}
+        </a>
+      ),
+    )
+  }
+</nav>

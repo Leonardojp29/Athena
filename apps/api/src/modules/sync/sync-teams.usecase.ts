@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { ExternalReferenceService } from './external-reference.service.js';
+import { VenueService } from './venue.service.js';
 
 @Injectable()
 export class SyncTeamsUseCase {
@@ -16,11 +17,13 @@ export class SyncTeamsUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly refs: ExternalReferenceService,
+    private readonly venues: VenueService,
     @Inject(FOOTBALL_DATA_PROVIDER) private readonly provider: FootballDataProvider,
   ) {}
 
   async execute(competitionRef: string, seasonYear: number): Promise<number> {
     const teams = await this.provider.getTeams(competitionRef, seasonYear);
+    const venueIds = await this.venues.resolveMany(teams.map((t) => t.data.venue));
     const known = await this.refs.resolveMany(
       this.provider.name,
       'team',
@@ -40,6 +43,7 @@ export class SyncTeamsUseCase {
           founded: data.founded,
           isNationalTeam: data.isNationalTeam,
           logoUrl: data.logoUrl,
+          venueId: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
         },
       });
     }
@@ -55,6 +59,7 @@ export class SyncTeamsUseCase {
           founded: data.founded,
           isNationalTeam: data.isNationalTeam,
           logoUrl: data.logoUrl,
+          venueId: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
         })),
         select: { id: true },
       });

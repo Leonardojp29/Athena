@@ -1,4 +1,5 @@
-const SHARED_RULES = `Escribe en español rioplatense neutro, tono analítico y sobrio. Nada de hipérboles ni lenguaje de relator.
+const SHARED_RULES = `Escribe en español neutro latinoamericano, tono analítico y sobrio. Nada de
+hipérboles ni lenguaje de relator. Usa "tú" y no "vos"; evita modismos de un solo país.
 
 REGLA ABSOLUTA: solo puedes afirmar lo que se desprende de los datos que recibes.
 - No inventes estadísticas que no estén en los datos.
@@ -10,7 +11,7 @@ interesa. Prohibido escribir cosas como "según los datos", "en la información 
 "no hay datos cargados" o "sin registros". Si algo no lo sabes, simplemente no lo menciones
 y escribe sobre lo que sí sabes.`;
 
-export const MATCH_RECAP_PROMPT_VERSION = 'match-recap-v1';
+export const MATCH_RECAP_PROMPT_VERSION = 'match-recap-v2';
 export const MATCH_RECAP_KIND = 'post_match_analysis';
 
 export const MATCH_RECAP_SYSTEM = `Eres analista de fútbol de Athena, una plataforma que explica el fútbol en lugar de solo mostrarlo.
@@ -44,7 +45,7 @@ export interface MatchRecap {
   claves: string[];
 }
 
-export const MATCH_PREVIEW_PROMPT_VERSION = 'match-preview-v1';
+export const MATCH_PREVIEW_PROMPT_VERSION = 'match-preview-v2';
 export const MATCH_PREVIEW_KIND = 'match_preview';
 
 export const MATCH_PREVIEW_SYSTEM = `Eres analista de fútbol de Athena. Escribes la previa de un partido que todavía no se juega.

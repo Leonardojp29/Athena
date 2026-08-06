@@ -5,6 +5,7 @@ import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { MatchEventWriter } from './match-event.writer.js';
+import { VenueService } from './venue.service.js';
 
 @Injectable()
 export class SyncFixturesUseCase {
@@ -15,6 +16,7 @@ export class SyncFixturesUseCase {
     private readonly refs: ExternalReferenceService,
     private readonly events: DomainEventPublisher,
     private readonly eventWriter: MatchEventWriter,
+    private readonly venues: VenueService,
     @Inject(FOOTBALL_DATA_PROVIDER) private readonly provider: FootballDataProvider,
   ) {}
 
@@ -73,6 +75,9 @@ export class SyncFixturesUseCase {
       return ok;
     });
 
+    // después del filtro: live=all trae el mundo entero y crearíamos sus estadios cada minuto
+    const venueIds = await this.venues.resolveMany(resolvable.map((f) => f.data.venue));
+
     const toFields = ({ data }: ProviderRef<ProviderMatch>) => ({
       seasonId: seasons.get(`${data.competitionRef}:${data.seasonYear}`) as string,
       round: data.round,
@@ -84,6 +89,7 @@ export class SyncFixturesUseCase {
       elapsedMinutes: data.elapsedMinutes,
       homeScore: data.homeScore,
       awayScore: data.awayScore,
+      venueId: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
     });
 
     const fresh = resolvable.filter((f) => !matchIds.has(f.providerRef));

@@ -1,7 +1,10 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
+import Container from '../../components/layout/Container.astro';
 import FavoriteButton from '../../components/FavoriteButton.astro';
+import RecentPerformances from '../../components/player/RecentPerformances.astro';
+import SeasonTable from '../../components/player/SeasonTable.astro';
 import { api, type FavoriteEntity, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
 import { paisEnEspanol } from '../../lib/paises';
@@ -16,7 +19,7 @@ try {
   throw error;
 }
 
-const { player, teams, events } = view;
+const { player, teams, events, seasons, totals, recentPerformances, shirtNumber } = view;
 const position = player.position ? POSITION_LABEL[player.position] : null;
 const goals = events.filter((e) => e.kind.includes('goal') && e.kind !== 'missed_penalty').length;
 const cards = events.filter((e) => e.kind.endsWith('_card')).length;
@@ -59,13 +62,25 @@ const jsonLd = {
   description={`Perfil de ${player.name}${position ? `, ${position.toLowerCase()}` : ''}${player.nationality ? ` de ${player.nationality}` : ''}: equipos, goles y participaciones recientes.`}
   ogImage={player.photoUrl}
   jsonLd={jsonLd}
+  width="bleed"
+  liveBar={false}
 >
-  <div class="flex items-center gap-4 mb-6">
+  <section class="w-full border-b border-board-edge bg-board">
+    <Container width="wide">
+  <div class="flex items-center gap-4 py-6">
     {player.photoUrl && <img src={player.photoUrl} alt="" width="64" height="64" class="rounded-full" />}
     <div>
-      <h1 class="font-display text-3xl font-semibold uppercase">{player.name}</h1>
-      <p class="text-sm text-ink-muted">
-        {[position, paisEnEspanol(player.nationality), player.heightCm ? `${player.heightCm} cm` : null]
+      <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
+        {shirtNumber !== null && <span class="tabular text-chalk-dim">{shirtNumber} </span>}
+        {player.name}
+      </h1>
+      <p class="text-sm text-chalk-dim">
+        {[
+          position,
+          paisEnEspanol(player.nationality),
+          player.heightCm ? `${player.heightCm} cm` : null,
+          player.fullName && player.fullName !== player.name ? player.fullName : null,
+        ]
           .filter(Boolean)
           .join(' · ')}
       </p>
@@ -78,12 +93,20 @@ const jsonLd = {
         following={following}
         signedIn={session !== null}
         label="jugador"
+        onBoard
       />
     </div>
   </div>
+    </Container>
+  </section>
 
-  <div class="grid lg:grid-cols-2 gap-4 items-start">
+  <Container width="wide" class="py-6">
+  <SeasonTable seasons={seasons} totals={totals} />
+
+  <div class="mt-4 grid gap-4 items-start lg:grid-cols-2">
     <div class="grid gap-4">
+      <RecentPerformances performances={recentPerformances} />
+
       <Card title="Equipos">
         {teams.length > 0 ? (
           <ul class="grid gap-2">
@@ -136,4 +159,5 @@ const jsonLd = {
       )}
     </Card>
   </div>
+  </Container>
 </Base>

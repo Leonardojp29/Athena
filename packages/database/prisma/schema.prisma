@@ -51,15 +51,16 @@ model Competition {
 }
 
 model Season {
-  id            String      @id @default(uuid()) @db.Uuid
-  competition   Competition @relation(fields: [competitionId], references: [id])
-  competitionId String      @map("competition_id") @db.Uuid
-  year          Int // start year: 2025 = 2025-26
-  startDate     DateTime?   @map("start_date") @db.Date
-  endDate       DateTime?   @map("end_date") @db.Date
-  isCurrent     Boolean     @default(false) @map("is_current")
-  matches       Match[]
-  standings     Standing[]
+  id               String                   @id @default(uuid()) @db.Uuid
+  competition      Competition              @relation(fields: [competitionId], references: [id])
+  competitionId    String                   @map("competition_id") @db.Uuid
+  year             Int // start year: 2025 = 2025-26
+  startDate        DateTime?                @map("start_date") @db.Date
+  endDate          DateTime?                @map("end_date") @db.Date
+  isCurrent        Boolean                  @default(false) @map("is_current")
+  matches          Match[]
+  standings        Standing[]
+  playerStatistics PlayerSeasonStatistics[]
 
   @@unique([competitionId, year])
   @@map("seasons")
@@ -112,12 +113,16 @@ model Team {
   venue          Venue?  @relation(fields: [venueId], references: [id])
   venueId        String? @map("venue_id") @db.Uuid
 
-  homeMatches Match[]      @relation("home_team")
-  awayMatches Match[]      @relation("away_team")
+  homeMatches Match[]           @relation("home_team")
+  awayMatches Match[]           @relation("away_team")
   events      MatchEvent[]
   standings   Standing[]
   statistics  MatchStatistics[]
   lineups     MatchLineup[]
+
+  playerMatchStatistics  MatchPlayerStatistics[]
+  playerSeasonStatistics PlayerSeasonStatistics[]
+  squadMemberships       SquadMembership[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -136,14 +141,118 @@ model Player {
   position    String? // goalkeeper | defender | midfielder | attacker
   photoUrl    String?   @map("photo_url")
 
-  events        MatchEvent[] @relation("event_player")
-  relatedEvents MatchEvent[] @relation("event_related_player")
+  events           MatchEvent[]             @relation("event_player")
+  relatedEvents    MatchEvent[]             @relation("event_related_player")
+  matchStatistics  MatchPlayerStatistics[]
+  seasonStatistics PlayerSeasonStatistics[]
+  squadMemberships SquadMembership[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([name])
   @@map("players")
+}
+
+/// Rendimiento de un jugador en un partido. Las columnas canónicas son las que la ficha
+/// muestra y por las que se ordena; `raw` guarda el resto del payload del proveedor.
+model MatchPlayerStatistics {
+  id       String @id @default(uuid()) @db.Uuid
+  match    Match  @relation(fields: [matchId], references: [id])
+  matchId  String @map("match_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id])
+  teamId   String @map("team_id") @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id])
+  playerId String @map("player_id") @db.Uuid
+
+  shirtNumber     Int?     @map("shirt_number")
+  position        String?
+  isStarter       Boolean  @default(false) @map("is_starter")
+  minutesPlayed   Int?     @map("minutes_played")
+  rating          Decimal? @db.Decimal(3, 1)
+  captain         Boolean  @default(false)
+  goals           Int?
+  goalsConceded   Int?     @map("goals_conceded")
+  assists         Int?
+  saves           Int?
+  shotsTotal      Int?     @map("shots_total")
+  shotsOnTarget   Int?     @map("shots_on_target")
+  passesTotal     Int?     @map("passes_total")
+  passesKey       Int?     @map("passes_key")
+  passesAccurate  Int?     @map("passes_accurate")
+  tacklesTotal    Int?     @map("tackles_total")
+  interceptions   Int?
+  duelsTotal      Int?     @map("duels_total")
+  duelsWon        Int?     @map("duels_won")
+  dribblesTotal   Int?     @map("dribbles_total")
+  dribblesSuccess Int?     @map("dribbles_success")
+  foulsCommitted  Int?     @map("fouls_committed")
+  foulsDrawn      Int?     @map("fouls_drawn")
+  yellowCards     Int?     @map("yellow_cards")
+  redCards        Int?     @map("red_cards")
+  penaltyScored   Int?     @map("penalty_scored")
+  penaltyMissed   Int?     @map("penalty_missed")
+  penaltySaved    Int?     @map("penalty_saved")
+  raw             Json
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([matchId, playerId])
+  @@index([playerId, matchId])
+  @@index([matchId, teamId])
+  @@map("match_player_statistics")
+}
+
+/// Acumulados de un jugador en una temporada y un club. Llega junto a la bio en
+/// /players?league&season, así que el perfil no cuesta un request por jugador.
+model PlayerSeasonStatistics {
+  id       String @id @default(uuid()) @db.Uuid
+  player   Player @relation(fields: [playerId], references: [id])
+  playerId String @map("player_id") @db.Uuid
+  season   Season @relation(fields: [seasonId], references: [id])
+  seasonId String @map("season_id") @db.Uuid
+  team     Team   @relation(fields: [teamId], references: [id])
+  teamId   String @map("team_id") @db.Uuid
+
+  appearances     Int?     @map("appearances")
+  lineups         Int?
+  minutesPlayed   Int?     @map("minutes_played")
+  rating          Decimal? @db.Decimal(4, 2)
+  goals           Int?
+  assists         Int?
+  shotsTotal      Int?     @map("shots_total")
+  shotsOnTarget   Int?     @map("shots_on_target")
+  passesTotal     Int?     @map("passes_total")
+  passesKey       Int?     @map("passes_key")
+  passesAccuracyPercent Int? @map("passes_accuracy_percent")
+  duelsWon        Int?     @map("duels_won")
+  dribblesSuccess Int?     @map("dribbles_success")
+  yellowCards     Int?     @map("yellow_cards")
+  redCards        Int?     @map("red_cards")
+  penaltyScored   Int?     @map("penalty_scored")
+  raw             Json
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@unique([playerId, seasonId, teamId])
+  @@index([seasonId, teamId])
+  @@map("player_season_statistics")
+}
+
+/// Pertenencia a una plantilla. El dorsal vive acá y no en el jugador porque pertenece
+/// al par club-campaña: el mismo futbolista cambia de número al cambiar de club.
+model SquadMembership {
+  id          String   @id @default(uuid()) @db.Uuid
+  team        Team     @relation(fields: [teamId], references: [id])
+  teamId      String   @map("team_id") @db.Uuid
+  player      Player   @relation(fields: [playerId], references: [id])
+  playerId    String   @map("player_id") @db.Uuid
+  year        Int
+  shirtNumber Int?     @map("shirt_number")
+  position    String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([teamId, playerId, year])
+  @@index([playerId, year])
+  @@map("squad_memberships")
 }
 
 model Match {
@@ -164,9 +273,10 @@ model Match {
   venue          Venue?   @relation(fields: [venueId], references: [id])
   venueId        String?  @map("venue_id") @db.Uuid
 
-  events     MatchEvent[]
-  statistics MatchStatistics[]
-  lineups    MatchLineup[]
+  events           MatchEvent[]
+  statistics       MatchStatistics[]
+  lineups          MatchLineup[]
+  playerStatistics MatchPlayerStatistics[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -267,13 +377,13 @@ model DomainEvent {
 /// Vectores para búsqueda semántica y similitud. `content` guarda el texto
 /// exacto que se embebió (procedencia), `model` permite reindexar sin borrar.
 model Embedding {
-  id         String                     @id @default(uuid()) @db.Uuid
-  entityType String                     @map("entity_type")
-  entityId   String                     @map("entity_id") @db.Uuid
+  id         String                      @id @default(uuid()) @db.Uuid
+  entityType String                      @map("entity_type")
+  entityId   String                      @map("entity_id") @db.Uuid
   model      String
   content    String
   vector     Unsupported("vector(1536)")
-  updatedAt  DateTime                   @updatedAt @map("updated_at")
+  updatedAt  DateTime                    @updatedAt @map("updated_at")
 
   @@unique([entityType, entityId, model])
   @@map("embeddings")
@@ -309,6 +419,7 @@ model EntityRelationship {
   validTo   DateTime? @map("valid_to") @db.Date
   metadata  Json?
 
+  @@unique([fromType, fromId, relation, toType, toId], map: "entity_relationships_edge_key")
   @@index([fromType, fromId, relation])
   @@index([toType, toId, relation])
   @@map("entity_relationships")

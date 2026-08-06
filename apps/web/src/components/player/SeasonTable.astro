@@ -1,0 +1,104 @@
+---
+import type { PlayerView } from '../../lib/api';
+
+/*
+ * Una fila por temporada y competencia. Es el "global" que la ficha del partido promete: el
+ * proveedor entrega estos acumulados junto a la bio, así que ninguna fila cuesta un request.
+ */
+interface Props {
+  seasons: PlayerView['seasons'];
+  totals: PlayerView['totals'];
+}
+
+const { seasons, totals } = Astro.props;
+---
+
+{
+  seasons.length > 0 && (
+    <section class="rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-3 text-base font-semibold">Por temporada</h2>
+
+      {totals && (
+        <div class="mb-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {[
+            { label: 'Partidos', valor: totals.appearances },
+            { label: 'Minutos', valor: totals.minutesPlayed },
+            { label: 'Goles', valor: totals.goals },
+            { label: 'Asistencias', valor: totals.assists },
+            { label: 'Amarillas', valor: totals.yellowCards },
+            { label: 'Rojas', valor: totals.redCards },
+          ].map((item) => (
+            <div class="rounded-md bg-canvas-subtle px-2 py-1.5 text-center">
+              <p class="font-display text-lg font-semibold leading-none tabular">
+                {item.valor.toLocaleString('es-PE')}
+              </p>
+              <p class="mt-0.5 text-2xs text-ink-muted">{item.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[34rem] text-sm">
+          <thead>
+            <tr class="border-b border-border text-2xs text-ink-muted uppercase tracking-label">
+              <th scope="col" class="py-2 pr-2 text-left font-semibold">Temporada</th>
+              <th scope="col" class="px-2 py-2 text-left font-semibold">Equipo</th>
+              <th scope="col" class="px-2 py-2 text-right font-semibold" title="Partidos jugados">PJ</th>
+              <th scope="col" class="px-2 py-2 text-right font-semibold" title="Minutos">Min</th>
+              <th scope="col" class="px-2 py-2 text-right font-semibold">G</th>
+              <th scope="col" class="px-2 py-2 text-right font-semibold">A</th>
+              <th scope="col" class="px-2 py-2 text-right font-semibold">Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            {seasons.map((row) => (
+              <tr class="border-b border-border/50 last:border-0 hover:bg-canvas-subtle">
+                <td class="py-1.5 pr-2">
+                  <a
+                    href={`/competencias/${row.season.competition.slug}`}
+                    class="flex items-center gap-1.5 hover:text-primary-ink hover:underline"
+                  >
+                    {row.season.competition.logoUrl && (
+                      <img
+                        src={row.season.competition.logoUrl}
+                        alt=""
+                        width="14"
+                        height="14"
+                        loading="lazy"
+                      />
+                    )}
+                    <span class="tabular">{row.season.year}</span>
+                    <span class="truncate text-2xs text-ink-muted">
+                      {row.season.competition.name}
+                    </span>
+                  </a>
+                </td>
+                <td class="px-2 py-1.5">
+                  <a
+                    href={`/equipos/${row.team.slug}`}
+                    class="flex items-center gap-1.5 hover:text-primary-ink hover:underline"
+                  >
+                    {row.team.logoUrl && (
+                      <img src={row.team.logoUrl} alt="" width="14" height="14" loading="lazy" />
+                    )}
+                    <span class="truncate">{row.team.shortName ?? row.team.name}</span>
+                  </a>
+                </td>
+                <td class="px-2 py-1.5 text-right tabular">{row.appearances ?? '–'}</td>
+                <td class="px-2 py-1.5 text-right tabular text-ink-muted">
+                  {row.minutesPlayed?.toLocaleString('es-PE') ?? '–'}
+                </td>
+                <td class="px-2 py-1.5 text-right tabular font-medium">{row.goals ?? '–'}</td>
+                <td class="px-2 py-1.5 text-right tabular">{row.assists ?? '–'}</td>
+                <td class="px-2 py-1.5 text-right tabular text-ink-muted">
+                  {row.rating ? Number(row.rating).toFixed(2) : '–'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}

@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
+import Container from '../../components/layout/Container.astro';
 import FavoriteButton from '../../components/FavoriteButton.astro';
 import MatchRow from '../../components/MatchRow.astro';
 import StandingsTable from '../../components/StandingsTable.astro';
@@ -47,24 +48,42 @@ const jsonLd = {
   description={`Tabla de posiciones, resultados y próximos partidos de ${competition.name} temporada ${seasonLabel}.`}
   ogImage={competition.logoUrl}
   jsonLd={jsonLd}
+  width="bleed"
+  liveBar={false}
 >
-  <div class="flex items-center gap-3 mb-6">
-    {competition.logoUrl && <img src={competition.logoUrl} alt="" width="40" height="40" />}
-    <div>
-      <h1 class="font-display text-3xl font-semibold uppercase">{competition.name}</h1>
-      <p class="text-sm text-ink-muted">{paisEnEspanol(competition.country) ?? 'Internacional'} · Temporada {seasonLabel}</p>
-    </div>
+  <section class="w-full border-b border-board-edge bg-board">
+    <Container width="wide">
+      <div class="flex items-center gap-4 py-6">
+        {competition.logoUrl && (
+          <span class="grid size-14 shrink-0 place-items-center rounded-lg bg-chalk/10">
+            <img src={competition.logoUrl} alt="" width="36" height="36" />
+          </span>
+        )}
+        <div class="min-w-0">
+          <p class="text-2xs font-medium tracking-label text-primary uppercase">
+            {paisEnEspanol(competition.country) ?? 'Internacional'}
+          </p>
+          <h1 class="font-display text-3xl font-semibold uppercase text-chalk">
+            {competition.name}
+          </h1>
+          <p class="text-sm text-chalk-dim">Temporada {seasonLabel}</p>
+        </div>
 
-    <div class="ml-auto shrink-0">
-      <FavoriteButton
-        entityType="competition"
-        entityId={competition.id}
-        following={following}
-        signedIn={session !== null}
-        label="competencia"
-      />
-    </div>
-  </div>
+        <div class="ml-auto shrink-0">
+          <FavoriteButton
+            entityType="competition"
+            entityId={competition.id}
+            following={following}
+            signedIn={session !== null}
+            label="competencia"
+            onBoard
+          />
+        </div>
+      </div>
+    </Container>
+  </section>
+
+  <Container width="wide" class="py-6">
 
   <div class="grid lg:grid-cols-[1fr_380px] gap-4 items-start">
     <div class="grid gap-4">
@@ -100,4 +119,5 @@ const jsonLd = {
       </Card>
     </div>
   </div>
+  </Container>
 </Base>

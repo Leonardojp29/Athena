@@ -8,41 +8,90 @@ interface Props {
 }
 
 const { rows, label = '', highlightTeamId } = Astro.props;
+
+/*
+ * El proveedor manda la forma en inglés ("WWDLW") y el más reciente primero. Se traduce y se
+ * invierte para que se lea como el hincha la cuenta: de lo más viejo a lo último.
+ */
+const FORMA: Record<string, { letra: string; clase: string; titulo: string }> = {
+  W: { letra: 'V', clase: 'bg-primary text-primary-contrast', titulo: 'Victoria' },
+  D: { letra: 'E', clase: 'bg-border-strong text-ink', titulo: 'Empate' },
+  L: { letra: 'D', clase: 'bg-card-red/85 text-chalk', titulo: 'Derrota' },
+};
+
+const ultimos = (form: string | null) =>
+  form === null ? [] : [...form.slice(0, 5)].reverse().flatMap((c) => FORMA[c] ?? []);
+
+/* Se arma como un solo string: dos expresiones JSX seguidas meten un espacio en el medio. */
+const diferencia = (row: StandingRow) => {
+  const dg = row.goalsFor - row.goalsAgainst;
+  return dg > 0 ? `+${dg}` : String(dg);
+};
 ---
 
 <div class="overflow-x-auto">
-  {label && <h3 class="text-sm font-semibold text-ink-muted mb-2">{label}</h3>}
+  {label && <h3 class="mb-2 text-sm font-semibold text-ink-muted">{label}</h3>}
   <table class="w-full text-sm">
     <thead>
-      <tr class="text-ink-muted text-xs border-b border-border">
-        <th class="text-left font-medium py-2 pr-2 w-8">#</th>
-        <th class="text-left font-medium py-2">Equipo</th>
-        <th class="text-center font-medium py-2 px-2">PJ</th>
-        <th class="text-center font-medium py-2 px-2 hidden sm:table-cell">G</th>
-        <th class="text-center font-medium py-2 px-2 hidden sm:table-cell">E</th>
-        <th class="text-center font-medium py-2 px-2 hidden sm:table-cell">P</th>
-        <th class="text-center font-medium py-2 px-2 hidden md:table-cell">DG</th>
-        <th class="text-center font-semibold py-2 pl-2">Pts</th>
+      <tr class="border-b border-border text-2xs text-ink-muted uppercase tracking-label">
+        <th scope="col" class="w-8 py-2 pr-2 text-left font-semibold">#</th>
+        <th scope="col" class="py-2 text-left font-semibold">Equipo</th>
+        <th scope="col" class="px-2 py-2 text-center font-semibold">PJ</th>
+        <th scope="col" class="hidden px-2 py-2 text-center font-semibold sm:table-cell">G</th>
+        <th scope="col" class="hidden px-2 py-2 text-center font-semibold sm:table-cell">E</th>
+        <th scope="col" class="hidden px-2 py-2 text-center font-semibold sm:table-cell">P</th>
+        <th scope="col" class="hidden px-2 py-2 text-center font-semibold md:table-cell">DG</th>
+        <th scope="col" class="hidden px-2 py-2 text-left font-semibold lg:table-cell">Forma</th>
+        <th scope="col" class="py-2 pl-2 text-center font-semibold">Pts</th>
       </tr>
     </thead>
     <tbody>
-      {rows.map((row) => (
-        <tr class:list={['border-b border-border/50 hover:bg-canvas-subtle transition-colors', row.team.id === highlightTeamId ? 'bg-primary/8' : '']}>
-          <td class="tabular py-2 pr-2 text-ink-muted">{row.position}</td>
-          <td class="py-2">
-            <a href={`/equipos/${row.team.slug}`} class="flex items-center gap-2 hover:text-primary-ink transition-colors">
-              {row.team.logoUrl && <img src={row.team.logoUrl} alt="" width="18" height="18" loading="lazy" />}
-              <span class="truncate max-w-44 sm:max-w-none">{row.team.name}</span>
-            </a>
-          </td>
-          <td class="tabular text-center py-2 px-2">{row.played}</td>
-          <td class="tabular text-center py-2 px-2 hidden sm:table-cell">{row.won}</td>
-          <td class="tabular text-center py-2 px-2 hidden sm:table-cell">{row.drawn}</td>
-          <td class="tabular text-center py-2 px-2 hidden sm:table-cell">{row.lost}</td>
-          <td class="tabular text-center py-2 px-2 hidden md:table-cell">{row.goalsFor - row.goalsAgainst}</td>
-          <td class="tabular text-center font-semibold py-2 pl-2">{row.points}</td>
-        </tr>
-      ))}
+      {
+        rows.map((row) => (
+          <tr
+            class:list={[
+              'border-b border-border/50 transition-colors hover:bg-canvas-subtle',
+              row.team.id === highlightTeamId ? 'bg-primary/8' : '',
+            ]}
+          >
+            <td class="py-2 pr-2 tabular text-ink-muted">{row.position}</td>
+            <td class="py-2">
+              <a
+                href={`/equipos/${row.team.slug}`}
+                class="flex items-center gap-2 transition-colors hover:text-primary-ink hover:underline"
+              >
+                {row.team.logoUrl && (
+                  <img src={row.team.logoUrl} alt="" width="18" height="18" loading="lazy" />
+                )}
+                <span class="max-w-44 truncate sm:max-w-none">{row.team.name}</span>
+              </a>
+            </td>
+            <td class="px-2 py-2 text-center tabular">{row.played}</td>
+            <td class="hidden px-2 py-2 text-center tabular sm:table-cell">{row.won}</td>
+            <td class="hidden px-2 py-2 text-center tabular sm:table-cell">{row.drawn}</td>
+            <td class="hidden px-2 py-2 text-center tabular sm:table-cell">{row.lost}</td>
+            <td class="hidden px-2 py-2 text-center tabular md:table-cell">
+              {diferencia(row)}
+            </td>
+            <td class="hidden px-2 py-2 lg:table-cell">
+              <span class="flex gap-0.5">
+                {ultimos(row.form).map((r) => (
+                  <span
+                    class:list={[
+                      'grid size-4 place-items-center rounded-[2px] text-[9px] font-bold',
+                      r.clase,
+                    ]}
+                    title={r.titulo}
+                  >
+                    {r.letra}
+                  </span>
+                ))}
+              </span>
+            </td>
+            <td class="py-2 pl-2 text-center font-semibold tabular">{row.points}</td>
+          </tr>
+        ))
+      }
     </tbody>
   </table>
 </div>

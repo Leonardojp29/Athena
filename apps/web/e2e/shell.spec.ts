@@ -36,6 +36,26 @@ test.describe('shell del sitio', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
+  /*
+   * El marcador lleva `view-transition-name`, y eso lo promueve a su propia capa: sin
+   * pointer-events-none esa capa tapa el enlace estirado y el centro de cada fila deja de ser
+   * clickeable. Es invisible a ojo y se rompe con una clase de menos.
+   */
+  test('el centro de una fila de partido es clickeable, no solo los bordes', async ({ page }) => {
+    await page.goto('/partidos');
+    const marcador = page.locator('main [data-marcador], main a[href^="/partidos/"]').first();
+    await expect(marcador).toBeAttached();
+
+    const fila = page.locator('main a[href^="/partidos/"]').first();
+    const caja = await fila.boundingBox();
+    expect(caja).not.toBeNull();
+
+    // clic en el centro geométrico: justo donde vive el marcador
+    await page.mouse.click(caja!.x + caja!.width / 2, caja!.y + caja!.height / 2);
+    // timeout amplio: la vista de partido arma la cancha y viaja a Supabase
+    await expect(page).toHaveURL(/\/partidos\/[0-9a-f-]{36}/, { timeout: 20_000 });
+  });
+
   test('el pie enlaza competencias en todas las páginas', async ({ page }) => {
     await page.goto('/');
     const footer = page.locator('footer');

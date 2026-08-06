@@ -94,6 +94,8 @@
   --animate-magnet-place: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;
   --animate-chalk-draw: chalk-draw var(--a-motion-draw) var(--a-ease-out-expo) both;
   --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-bar-fill: bar-fill var(--a-motion-slow) var(--a-ease-out-expo) both;
+  --animate-goal-flash: goal-flash 900ms var(--a-ease) 1;
 }
 
 @layer base {

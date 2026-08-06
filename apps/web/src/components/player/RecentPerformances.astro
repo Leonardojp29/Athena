@@ -1,0 +1,85 @@
+---
+import type { PlayerView } from '../../lib/api';
+import { formatDate } from '../../lib/format';
+
+/* Los últimos partidos con su rendimiento: el enlace lleva al partido, no a una lista muerta. */
+interface Props {
+  performances: PlayerView['recentPerformances'];
+}
+
+const { performances } = Astro.props;
+---
+
+{
+  performances.length > 0 && (
+    <section class="rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-3 text-base font-semibold">Últimos partidos</h2>
+
+      <ul class="grid gap-0">
+        {performances.map((p) => {
+          const nota = p.rating === null ? null : Number(p.rating);
+          const goles = (p.goals ?? 0) + (p.penaltyScored ?? 0);
+          return (
+            <li class="border-b border-border/50 last:border-0">
+              <a
+                href={`/partidos/${p.match.id}`}
+                class="flex items-center gap-3 py-2 transition-colors hover:bg-canvas-subtle"
+              >
+                <span class="min-w-0 flex-1">
+                  <span class="flex items-center gap-1.5 text-sm">
+                    {p.match.homeTeam.logoUrl && (
+                      <img src={p.match.homeTeam.logoUrl} alt="" width="14" height="14" loading="lazy" />
+                    )}
+                    <span class="truncate">{p.match.homeTeam.shortName ?? p.match.homeTeam.name}</span>
+                    <span class="tabular font-medium">
+                      {p.match.homeScore ?? '–'}–{p.match.awayScore ?? '–'}
+                    </span>
+                    <span class="truncate">{p.match.awayTeam.shortName ?? p.match.awayTeam.name}</span>
+                    {p.match.awayTeam.logoUrl && (
+                      <img src={p.match.awayTeam.logoUrl} alt="" width="14" height="14" loading="lazy" />
+                    )}
+                  </span>
+                  <span class="block text-2xs text-ink-muted">
+                    {formatDate(p.match.kickoffUtc)} · {p.match.season.competition.name}
+                  </span>
+                </span>
+
+                <span class="flex shrink-0 items-center gap-2 text-2xs">
+                  <span class="tabular text-ink-muted">{p.minutesPlayed ?? 0}′</span>
+                  {goles > 0 && (
+                    <span class="rounded bg-primary px-1.5 py-0.5 font-semibold text-primary-contrast tabular">
+                      {goles} G
+                    </span>
+                  )}
+                  {(p.assists ?? 0) > 0 && (
+                    <span class="rounded bg-canvas-subtle px-1.5 py-0.5 tabular">{p.assists} A</span>
+                  )}
+                  {(p.yellowCards ?? 0) > 0 && (
+                    <span class="h-3 w-2 rounded-[1px] bg-card-yellow" title="Amarilla" />
+                  )}
+                  {(p.redCards ?? 0) > 0 && (
+                    <span class="h-3 w-2 rounded-[1px] bg-card-red" title="Roja" />
+                  )}
+                  {nota !== null && (
+                    <span
+                      class:list={[
+                        'w-8 rounded px-1 py-0.5 text-center font-semibold tabular',
+                        nota >= 7.5
+                          ? 'bg-primary text-primary-contrast'
+                          : nota >= 6.5
+                            ? 'bg-canvas-subtle text-ink'
+                            : 'bg-card-red/15 text-card-red-ink',
+                      ]}
+                    >
+                      {nota.toFixed(1)}
+                    </span>
+                  )}
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )
+}

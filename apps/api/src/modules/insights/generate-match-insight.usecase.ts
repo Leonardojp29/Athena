@@ -72,11 +72,18 @@ export class GenerateMatchInsightUseCase {
       return null;
     }
 
+    /*
+     * La versión del prompt entra en la condición: subirla es la forma de decir "esto hay que
+     * volver a escribir". Sin esto, cambiar las reglas de redacción no tocaba un solo análisis
+     * ya publicado y la corrección quedaba solo en el código.
+     */
     const existing = await this.prisma.insight.findFirst({
       where: { subjectType: 'match', subjectId: matchId, kind: spec.kind },
-      select: { id: true },
+      select: { id: true, promptVersion: true },
     });
-    if (existing && !opts.force) return existing.id;
+    if (existing && !opts.force && existing.promptVersion === spec.promptVersion) {
+      return existing.id;
+    }
 
     const facts = await this.factSheets.build(matchId);
     if (facts.partido.estado !== spec.requiredStatus) {

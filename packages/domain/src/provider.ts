@@ -24,6 +24,13 @@ export interface ProviderCompetition {
   seasons: ProviderSeason[];
 }
 
+export interface ProviderVenue {
+  name: string;
+  city: string | null;
+  country: string | null;
+  capacity: number | null;
+}
+
 export interface ProviderTeam {
   name: string;
   shortName: string | null;
@@ -31,6 +38,7 @@ export interface ProviderTeam {
   founded: number | null;
   isNationalTeam: boolean;
   logoUrl: string | null;
+  venue: ProviderRef<ProviderVenue> | null;
 }
 
 export interface ProviderPlayer {
@@ -55,6 +63,7 @@ export interface ProviderMatch {
   elapsedMinutes: number | null;
   homeScore: number | null;
   awayScore: number | null;
+  venue: ProviderRef<ProviderVenue> | null;
 }
 
 export interface ProviderMatchEvent {
@@ -119,6 +128,79 @@ export interface ProviderLineup {
   substitutes: ProviderLineupPlayer[];
 }
 
+/**
+ * Rendimiento de un jugador en un partido. `passesAccurate` es un conteo y no un
+ * porcentaje: el proveedor lo publica bajo la clave "accuracy" en este endpoint y bajo
+ * la misma clave, pero como porcentaje, en los acumulados de temporada.
+ */
+export interface ProviderMatchPlayerStats {
+  teamRef: string;
+  playerRef: string;
+  name: string;
+  photoUrl: string | null;
+  shirtNumber: number | null;
+  position: string | null;
+  isStarter: boolean;
+  minutesPlayed: number | null;
+  rating: number | null;
+  captain: boolean;
+  goals: number | null;
+  goalsConceded: number | null;
+  assists: number | null;
+  saves: number | null;
+  shotsTotal: number | null;
+  shotsOnTarget: number | null;
+  passesTotal: number | null;
+  passesKey: number | null;
+  passesAccurate: number | null;
+  tacklesTotal: number | null;
+  interceptions: number | null;
+  duelsTotal: number | null;
+  duelsWon: number | null;
+  dribblesTotal: number | null;
+  dribblesSuccess: number | null;
+  foulsCommitted: number | null;
+  foulsDrawn: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  penaltyScored: number | null;
+  penaltyMissed: number | null;
+  penaltySaved: number | null;
+  raw: Record<string, unknown>;
+}
+
+export interface ProviderSeasonTotals {
+  appearances: number | null;
+  lineups: number | null;
+  minutesPlayed: number | null;
+  rating: number | null;
+  goals: number | null;
+  assists: number | null;
+  shotsTotal: number | null;
+  shotsOnTarget: number | null;
+  passesTotal: number | null;
+  passesKey: number | null;
+  passesAccuracyPercent: number | null;
+  duelsWon: number | null;
+  dribblesSuccess: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  penaltyScored: number | null;
+  raw: Record<string, unknown>;
+}
+
+/**
+ * Un jugador con su bio y sus acumulados de una temporada. Vienen juntos del mismo
+ * endpoint: pedir las bios aparte costaría un request por futbolista.
+ */
+export interface ProviderSeasonPlayer {
+  player: ProviderRef<ProviderPlayer>;
+  teamRef: string;
+  seasonYear: number;
+  shirtNumber: number | null;
+  totals: ProviderSeasonTotals;
+}
+
 export interface ProviderLiveMatch {
   match: ProviderRef<ProviderMatch>;
   events: ProviderMatchEvent[];
@@ -136,4 +218,6 @@ export interface FootballDataProvider {
   getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]>;
   getMatchStatistics(matchRef: string): Promise<ProviderMatchStatistics[]>;
   getMatchLineups(matchRef: string): Promise<ProviderLineup[]>;
+  getMatchPlayerStatistics(matchRef: string): Promise<ProviderMatchPlayerStats[]>;
+  getSeasonPlayers(competitionRef: string, seasonYear: number): Promise<ProviderSeasonPlayer[]>;
 }

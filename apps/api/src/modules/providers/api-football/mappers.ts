@@ -2,6 +2,9 @@ import type {
   MatchEventKind,
   PlayerPosition,
   ProviderCompetition,
+  ProviderMatchPlayerStats,
+  ProviderSeasonPlayer,
+  ProviderVenue,
   ProviderLineup,
   ProviderLineupPlayer,
   ProviderMatch,
@@ -15,12 +18,15 @@ import type {
 import type {
   ApiFootballEvent,
   ApiFootballFixture,
+  ApiFootballFixturePlayers,
   ApiFootballLeague,
   ApiFootballLineup,
+  ApiFootballSeasonPlayer,
   ApiFootballSquad,
   ApiFootballStandings,
   ApiFootballStatistics,
   ApiFootballTeam,
+  ApiFootballVenue,
 } from './api-football.types.js';
 import { mapMatchStatus } from './status-map.js';
 
@@ -42,6 +48,20 @@ export function mapLeague(raw: ApiFootballLeague): ProviderRef<ProviderCompetiti
   };
 }
 
+/** El estadio viaja dentro de /teams y /fixtures: no cuesta un request propio. */
+export function mapVenue(raw: ApiFootballVenue | undefined): ProviderRef<ProviderVenue> | null {
+  if (!raw?.id || !raw.name) return null;
+  return {
+    providerRef: String(raw.id),
+    data: {
+      name: raw.name,
+      city: raw.city ?? null,
+      country: raw.country ?? null,
+      capacity: raw.capacity ?? null,
+    },
+  };
+}
+
 export function mapTeam(raw: ApiFootballTeam): ProviderRef<ProviderTeam> {
   return {
     providerRef: String(raw.team.id),
@@ -52,6 +72,7 @@ export function mapTeam(raw: ApiFootballTeam): ProviderRef<ProviderTeam> {
       founded: raw.team.founded,
       isNationalTeam: raw.team.national,
       logoUrl: raw.team.logo,
+      venue: mapVenue(raw.venue),
     },
   };
 }
@@ -93,6 +114,7 @@ export function mapFixture(raw: ApiFootballFixture): ProviderRef<ProviderMatch> 
       elapsedMinutes: raw.fixture.status.elapsed,
       homeScore: raw.goals.home,
       awayScore: raw.goals.away,
+      venue: mapVenue(raw.fixture.venue),
     },
   };
 }
@@ -208,6 +230,126 @@ export function mapEvents(matchRef: string, raws: ApiFootballEvent[]): ProviderM
           comments: raw.comments,
           playerName: raw.player.name,
           relatedPlayerName: raw.assist.name,
+        },
+      },
+    ];
+  });
+}
+
+function intOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(String(value).replace('%', '').trim());
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
+function floatOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function mapFixturePlayers(raws: ApiFootballFixturePlayers[]): ProviderMatchPlayerStats[] {
+  return raws.flatMap((entry) =>
+    entry.players.flatMap((row) => {
+      // sin id del proveedor no hay forma de vincularlo a un jugador de Athena
+      if (row.player.id === null) return [];
+      const s = row.statistics[0];
+      if (!s) return [];
+
+      return [
+        {
+          teamRef: String(entry.team.id),
+          playerRef: String(row.player.id),
+          name: row.player.name,
+          photoUrl: row.player.photo,
+          shirtNumber: s.games?.number ?? null,
+          position: s.games?.position ?? null,
+          isStarter: s.games?.substitute === false,
+          minutesPlayed: s.games?.minutes ?? null,
+          rating: floatOrNull(s.games?.rating),
+          captain: s.games?.captain === true,
+          goals: s.goals?.total ?? null,
+          goalsConceded: s.goals?.conceded ?? null,
+          assists: s.goals?.assists ?? null,
+          saves: s.goals?.saves ?? null,
+          shotsTotal: s.shots?.total ?? null,
+          shotsOnTarget: s.shots?.on ?? null,
+          passesTotal: s.passes?.total ?? null,
+          passesKey: s.passes?.key ?? null,
+          passesAccurate: intOrNull(s.passes?.accuracy),
+          tacklesTotal: s.tackles?.total ?? null,
+          interceptions: s.tackles?.interceptions ?? null,
+          duelsTotal: s.duels?.total ?? null,
+          duelsWon: s.duels?.won ?? null,
+          dribblesTotal: s.dribbles?.attempts ?? null,
+          dribblesSuccess: s.dribbles?.success ?? null,
+          foulsCommitted: s.fouls?.committed ?? null,
+          foulsDrawn: s.fouls?.drawn ?? null,
+          yellowCards: s.cards?.yellow ?? null,
+          redCards: s.cards?.red ?? null,
+          penaltyScored: s.penalty?.scored ?? null,
+          penaltyMissed: s.penalty?.missed ?? null,
+          penaltySaved: s.penalty?.saved ?? null,
+          raw: s as unknown as Record<string, unknown>,
+        },
+      ];
+    }),
+  );
+}
+
+/**
+ * Un jugador puede traer varios bloques (préstamos, otras competencias): solo interesa
+ * el de la liga y temporada pedidas, que es el que corresponde a esta sincronización.
+ */
+export function mapSeasonPlayers(
+  raws: ApiFootballSeasonPlayer[],
+  competitionRef: string,
+  seasonYear: number,
+): ProviderSeasonPlayer[] {
+  return raws.flatMap((raw) => {
+    const block = raw.statistics.find(
+      (s) => String(s.league?.id) === competitionRef && s.league?.season === seasonYear,
+    );
+    if (!block?.team?.id) return [];
+
+    const fullName = [raw.player.firstname, raw.player.lastname].filter(Boolean).join(' ');
+    const rawPosition = block.games?.position ?? null;
+
+    return [
+      {
+        player: {
+          providerRef: String(raw.player.id),
+          data: {
+            name: raw.player.name,
+            fullName: fullName || null,
+            birthDate: raw.player.birth?.date ?? null,
+            nationality: raw.player.nationality,
+            heightCm: intOrNull(raw.player.height?.replace(' cm', '')),
+            position: rawPosition ? (POSITION_MAP[rawPosition] ?? null) : null,
+            photoUrl: raw.player.photo,
+          },
+        },
+        teamRef: String(block.team.id),
+        seasonYear,
+        shirtNumber: block.games?.number ?? null,
+        totals: {
+          appearances: block.games?.appearences ?? null,
+          lineups: block.games?.lineups ?? null,
+          minutesPlayed: block.games?.minutes ?? null,
+          rating: floatOrNull(block.games?.rating),
+          goals: block.goals?.total ?? null,
+          assists: block.goals?.assists ?? null,
+          shotsTotal: block.shots?.total ?? null,
+          shotsOnTarget: block.shots?.on ?? null,
+          passesTotal: block.passes?.total ?? null,
+          passesKey: block.passes?.key ?? null,
+          passesAccuracyPercent: intOrNull(block.passes?.accuracy),
+          duelsWon: block.duels?.won ?? null,
+          dribblesSuccess: block.dribbles?.success ?? null,
+          yellowCards: block.cards?.yellow ?? null,
+          redCards: block.cards?.red ?? null,
+          penaltyScored: block.penalty?.scored ?? null,
+          raw: block as unknown as Record<string, unknown>,
         },
       },
     ];

@@ -1,0 +1,32 @@
+---
+import PitchMarks from './PitchMarks.astro';
+
+/*
+ * Dos canchas y una sola capa de jugadores: en un teléfono de 390px la cancha horizontal
+ * apila los nombres, así que abajo de `sm` se muestra vertical. Son ~2 KB de marcas
+ * duplicadas y ninguna línea de JavaScript, contra rotar por CSS, que daría vuelta los
+ * nombres, o hidratar una isla para medir el ancho.
+ */
+---
+
+<svg
+  viewBox="0 0 680 1050"
+  preserveAspectRatio="none"
+  aria-hidden="true"
+  focusable="false"
+  class="absolute inset-0 h-full w-full sm:hidden"
+>
+  <g transform="translate(680, 0) rotate(90)">
+    <PitchMarks />
+  </g>
+</svg>
+
+<svg
+  viewBox="0 0 1050 680"
+  preserveAspectRatio="none"
+  aria-hidden="true"
+  focusable="false"
+  class="absolute inset-0 hidden h-full w-full sm:block"
+>
+  <PitchMarks />
+</svg>

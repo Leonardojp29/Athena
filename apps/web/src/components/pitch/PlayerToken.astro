@@ -1,0 +1,111 @@
+---
+import type { LineupPlayer, MatchPlayerStats, TeamSummary } from '../../lib/api';
+
+/*
+ * El imán del pizarrón. Es un <button> y no un nodo del SVG a propósito: foco visible,
+ * área táctil de 44px y un dorsal que escala si el usuario agranda la tipografía.
+ *
+ * El payload del jugador viaja en data-ficha para que abrir el modal no cueste una llamada;
+ * quien no está vinculado a una entidad de Athena no es clickeable y se muestra apagado.
+ */
+interface Props {
+  player: LineupPlayer;
+  team: TeamSummary;
+  stats: MatchPlayerStats | null;
+  /** Porcentaje a lo largo de la cancha, ya resuelto para la mitad del equipo. */
+  largo: number;
+  /** Porcentaje a lo ancho. */
+  ancho: number;
+  /** Índice de la línea: escalona la entrada de los imanes. */
+  fila?: number;
+}
+
+const { player, team, stats, largo, ancho, fila = 0 } = Astro.props;
+
+const apellido = player.name.split(' ').at(-1) ?? player.name;
+const clickeable = player.playerId !== null;
+const rating = stats?.rating !== null && stats?.rating !== undefined ? Number(stats.rating) : null;
+const amarillas = stats?.yellowCards ?? 0;
+const rojas = stats?.redCards ?? 0;
+const goles = (stats?.goals ?? 0) + (stats?.penaltyScored ?? 0);
+
+const ficha = clickeable
+  ? JSON.stringify({
+      playerId: player.playerId,
+      slug: player.slug,
+      name: player.name,
+      photoUrl: player.photoUrl,
+      number: player.number ?? stats?.shirtNumber ?? null,
+      position: player.position,
+      team: { name: team.name, slug: team.slug, logoUrl: team.logoUrl },
+      stats,
+    })
+  : null;
+---
+
+<!--
+  Las dos coordenadas viajan como variables y la orientación las intercambia en CSS: la
+  cancha vertical no cuesta un segundo juego de veintidós fichas con su JSON.
+-->
+<div
+  class="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center left-[var(--ancho)] top-[calc(100%-var(--largo))] sm:left-[var(--largo)] sm:top-[var(--ancho)]"
+  style={`--largo:${largo}%;--ancho:${ancho}%;--fila:${fila}`}
+>
+  {
+    clickeable ? (
+      <button
+        type="button"
+        data-jugador={player.playerId}
+        data-ficha={ficha}
+        class="group grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-full outline-offset-2"
+        aria-label={`${player.name}${player.number !== null ? `, dorsal ${player.number}` : ''} — ver rendimiento`}
+      >
+        <span class="relative grid size-7 place-items-center rounded-full bg-magnet text-2xs font-semibold text-ink shadow-magnet transition-transform group-hover:scale-110 sm:size-8 sm:text-xs">
+          {player.number ?? apellido.slice(0, 2)}
+
+          {goles > 0 && (
+            <span class="absolute -right-1 -top-1 grid size-3.5 place-items-center rounded-full bg-primary text-[8px] font-bold text-primary-contrast">
+              {goles > 1 ? goles : ''}
+              {goles === 1 && <span class="size-1.5 rounded-full bg-primary-contrast" />}
+            </span>
+          )}
+          {rojas > 0 ? (
+            <span class="absolute -left-1 -top-1 h-3 w-2 rounded-[1px] bg-card-red" />
+          ) : amarillas > 0 ? (
+            <span class="absolute -left-1 -top-1 h-3 w-2 rounded-[1px] bg-card-yellow" />
+          ) : null}
+        </span>
+
+        <span class="mt-0.5 max-w-[8ch] truncate rounded bg-board/80 px-1 text-[9px] leading-tight text-chalk sm:max-w-[11ch] sm:text-[10px]">
+          {apellido}
+        </span>
+      </button>
+    ) : (
+      <span class="grid min-h-11 min-w-11 place-items-center" title="Jugador sin ficha en Athena">
+        <span class="grid size-7 place-items-center rounded-full bg-magnet/60 text-2xs font-semibold text-ink/70 sm:size-8">
+          {player.number ?? apellido.slice(0, 2)}
+        </span>
+        <span class="mt-0.5 max-w-[8ch] truncate rounded bg-board/80 px-1 text-[9px] leading-tight text-chalk/70 sm:max-w-[11ch] sm:text-[10px]">
+          {apellido}
+        </span>
+      </span>
+    )
+  }
+
+  {
+    rating !== null && (
+      <span
+        class:list={[
+          'mt-0.5 rounded px-1 text-[9px] font-semibold tabular sm:text-[10px]',
+          rating >= 7.5
+            ? 'bg-primary text-primary-contrast'
+            : rating >= 6.5
+              ? 'bg-board text-chalk'
+              : 'bg-card-red/85 text-chalk',
+        ]}
+      >
+        {rating.toFixed(1)}
+      </span>
+    )
+  }
+</div>

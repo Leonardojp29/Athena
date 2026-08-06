@@ -1,0 +1,129 @@
+---
+import type { MatchPlayerStats, TeamSummary } from '../../lib/api';
+
+/*
+ * Rendimiento individual de los dos equipos. Cada fila abre la misma ficha que los imanes de
+ * la cancha: el atributo data-ficha es lo que las hermana, sin una línea de JavaScript extra.
+ */
+interface Props {
+  playerStatistics: MatchPlayerStats[];
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+}
+
+const { playerStatistics, homeTeam, awayTeam } = Astro.props;
+
+const porEquipo = [homeTeam, awayTeam].map((team) => ({
+  team,
+  rows: playerStatistics.filter((s) => s.teamId === team.id),
+}));
+
+const ficha = (s: MatchPlayerStats, team: TeamSummary) =>
+  JSON.stringify({
+    playerId: s.player.id,
+    slug: s.player.slug,
+    name: s.player.name,
+    photoUrl: s.player.photoUrl,
+    number: s.shirtNumber,
+    position: s.position,
+    team: { name: team.name, slug: team.slug, logoUrl: team.logoUrl },
+    stats: s,
+  });
+
+const nota = (valor: string | null) => (valor === null ? null : Number(valor));
+---
+
+<div class="grid gap-6 xl:grid-cols-2">
+  {
+    porEquipo
+      .filter(({ rows }) => rows.length > 0)
+      .map(({ team, rows }) => (
+        <section>
+          <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold">
+            {team.logoUrl && <img src={team.logoUrl} alt="" width="18" height="18" loading="lazy" />}
+            {team.name}
+          </h3>
+
+          <div class="overflow-x-auto rounded-lg border border-border">
+            <table class="w-full min-w-[30rem] text-sm">
+              <thead>
+                <tr class="border-b border-border bg-canvas-subtle text-2xs text-ink-muted uppercase tracking-label">
+                  <th scope="col" class="px-2 py-2 text-left font-semibold">Jugador</th>
+                  <th scope="col" class="px-2 py-2 text-right font-semibold">Min</th>
+                  <th scope="col" class="px-2 py-2 text-right font-semibold">G</th>
+                  <th scope="col" class="px-2 py-2 text-right font-semibold">A</th>
+                  <th scope="col" class="px-2 py-2 text-right font-semibold" title="Remates al arco / totales">
+                    Rem
+                  </th>
+                  <th scope="col" class="px-2 py-2 text-right font-semibold">Nota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((s) => {
+                  const n = nota(s.rating);
+                  return (
+                    <tr class="border-b border-border/50 last:border-0 hover:bg-canvas-subtle">
+                      <td class="px-2 py-1.5">
+                        <button
+                          type="button"
+                          data-jugador={s.player.id}
+                          data-ficha={ficha(s, team)}
+                          class="flex cursor-pointer items-center gap-2 text-left hover:text-primary-ink"
+                        >
+                          <span class="w-5 shrink-0 tabular text-2xs text-ink-muted">
+                            {s.shirtNumber ?? '–'}
+                          </span>
+                          <span class="truncate">{s.player.name}</span>
+                          {s.captain && (
+                            <span
+                              class="rounded bg-border px-1 text-[9px] font-bold"
+                              title="Capitán"
+                            >
+                              C
+                            </span>
+                          )}
+                          {!s.isStarter && (
+                            <span class="text-2xs text-ink-muted" title="Ingresó desde el banco">
+                              supl.
+                            </span>
+                          )}
+                        </button>
+                      </td>
+                      <td class="px-2 py-1.5 text-right tabular text-ink-muted">
+                        {s.minutesPlayed ?? '–'}
+                      </td>
+                      <td class="px-2 py-1.5 text-right tabular">
+                        {(s.goals ?? 0) + (s.penaltyScored ?? 0) || '–'}
+                      </td>
+                      <td class="px-2 py-1.5 text-right tabular">{s.assists || '–'}</td>
+                      <td class="px-2 py-1.5 text-right tabular text-ink-muted">
+                        {s.shotsTotal === null ? '–' : `${s.shotsOnTarget ?? 0}/${s.shotsTotal}`}
+                      </td>
+                      <td class="px-2 py-1.5 text-right">
+                        {n === null ? (
+                          <span class="text-ink-muted">–</span>
+                        ) : (
+                          <span
+                            class:list={[
+                              'rounded px-1.5 py-0.5 text-2xs font-semibold tabular',
+                              n >= 7.5
+                                ? 'bg-primary text-primary-contrast'
+                                : n >= 6.5
+                                  ? 'bg-canvas-subtle text-ink'
+                                  : 'bg-card-red/15 text-card-red-ink',
+                            ]}
+                          >
+                            {n.toFixed(1)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))
+  }
+</div>

@@ -1,0 +1,67 @@
+---
+import type { SquadPlayer } from '../../lib/api';
+import Icon from '../Icon.astro';
+
+/*
+ * La plantilla por líneas. Cada jugador es un enlace a su perfil: el clic desde la cancha y
+ * el clic desde acá llegan al mismo lugar.
+ */
+interface Props {
+  squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
+}
+
+const { squad } = Astro.props;
+const total = squad.lines.reduce((n, l) => n + l.players.length, 0);
+---
+
+{
+  total > 0 && (
+    <section class="rounded-lg border border-border bg-surface p-4">
+      <div class="mb-3 flex items-baseline justify-between gap-3">
+        <h2 class="text-base font-semibold">Plantilla</h2>
+        <span class="text-2xs text-ink-muted tabular">
+          {total} jugadores{squad.year !== null ? ` · ${squad.year}` : ''}
+        </span>
+      </div>
+
+      <div class="grid gap-4">
+        {squad.lines.map((line) => (
+          <div>
+            <p class="mb-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+              {line.label}
+            </p>
+            <ul class="grid gap-0.5 sm:grid-cols-2 xl:grid-cols-3">
+              {line.players.map(({ shirtNumber, player }) => (
+                <li>
+                  <a
+                    href={`/jugadores/${player.slug}`}
+                    class="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
+                  >
+                    <span class="w-6 shrink-0 text-right tabular text-2xs text-ink-muted">
+                      {shirtNumber ?? '–'}
+                    </span>
+                    {player.photoUrl ? (
+                      <img
+                        src={player.photoUrl}
+                        alt=""
+                        width="24"
+                        height="24"
+                        loading="lazy"
+                        class="size-6 shrink-0 rounded-full bg-canvas-subtle object-cover"
+                      />
+                    ) : (
+                      <span class="grid size-6 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                        <Icon name="usuario" size={12} class="text-ink-muted" />
+                      </span>
+                    )}
+                    <span class="truncate text-sm">{player.name}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}

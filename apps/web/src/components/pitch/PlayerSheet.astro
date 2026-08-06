@@ -1,0 +1,251 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * Ficha del jugador en un <dialog> nativo: trampa de foco, Escape, backdrop y capa superior
+ * salen gratis del navegador. Se rellena desde el data-ficha del imán, así que abrirla no
+ * cuesta ni una llamada; el estado va al hash para que el enlace sea compartible.
+ */
+---
+
+<dialog
+  id="ficha-jugador"
+  class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-modal backdrop:bg-canvas/70 backdrop:backdrop-blur-sm"
+  aria-labelledby="ficha-nombre"
+>
+  <header class="flex items-start gap-3 border-b border-border p-4">
+    <span data-ficha-foto class="shrink-0 empty:hidden"></span>
+    <div class="min-w-0 flex-1">
+      <p class="flex items-center gap-2 text-2xs text-ink-muted">
+        <span data-ficha-escudo class="empty:hidden"></span>
+        <span data-ficha-equipo class="truncate"></span>
+        <span data-ficha-dorsal class="tabular"></span>
+      </p>
+      <h2 id="ficha-nombre" class="font-display text-xl font-semibold uppercase"></h2>
+      <p data-ficha-posicion class="text-2xs text-ink-muted capitalize"></p>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-1">
+      <a
+        data-ficha-perfil
+        href="/"
+        class="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+        aria-label="Ver el perfil completo"
+      >
+        <Icon name="flecha-externa" size={16} />
+      </a>
+      <button
+        type="button"
+        data-ficha-cerrar
+        class="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+        aria-label="Cerrar"
+      >
+        <Icon name="cerrar" size={18} />
+      </button>
+    </div>
+  </header>
+
+  <div class="max-h-[60vh] overflow-y-auto p-4">
+    <div data-ficha-destacados class="mb-4 grid grid-cols-3 gap-2"></div>
+    <dl data-ficha-detalle class="grid gap-0"></dl>
+    <p data-ficha-vacio class="text-sm text-ink-muted" hidden>
+      Todavía no hay estadísticas individuales de este partido.
+    </p>
+  </div>
+
+  <footer class="border-t border-border px-4 py-3">
+    <a
+      data-ficha-perfil-pie
+      href="/"
+      class="flex items-center gap-1.5 text-sm text-primary-ink hover:underline"
+    >
+      Ver todas sus temporadas
+      <Icon name="chevron-derecha" size={14} />
+    </a>
+  </footer>
+</dialog>
+
+<script>
+  interface FichaStats {
+    minutesPlayed: number | null;
+    rating: string | null;
+    goals: number | null;
+    assists: number | null;
+    saves: number | null;
+    shotsTotal: number | null;
+    shotsOnTarget: number | null;
+    passesTotal: number | null;
+    passesKey: number | null;
+    passesAccurate: number | null;
+    tacklesTotal: number | null;
+    interceptions: number | null;
+    duelsTotal: number | null;
+    duelsWon: number | null;
+    dribblesTotal: number | null;
+    dribblesSuccess: number | null;
+    foulsCommitted: number | null;
+    foulsDrawn: number | null;
+    yellowCards: number | null;
+    redCards: number | null;
+    penaltyScored: number | null;
+    penaltyMissed: number | null;
+    penaltySaved: number | null;
+  }
+
+  interface Ficha {
+    playerId: string;
+    slug: string | null;
+    name: string;
+    photoUrl: string | null;
+    number: number | null;
+    position: string | null;
+    team: { name: string; slug: string; logoUrl: string | null };
+    stats: FichaStats | null;
+  }
+
+  const dialogo = document.getElementById('ficha-jugador') as HTMLDialogElement | null;
+  if (dialogo) {
+    const $ = <T extends Element>(sel: string) => dialogo.querySelector<T>(sel);
+    const foto = $<HTMLElement>('[data-ficha-foto]');
+    const escudo = $<HTMLElement>('[data-ficha-escudo]');
+    const equipo = $<HTMLElement>('[data-ficha-equipo]');
+    const dorsal = $<HTMLElement>('[data-ficha-dorsal]');
+    const nombre = document.getElementById('ficha-nombre');
+    const posicion = $<HTMLElement>('[data-ficha-posicion]');
+    const destacados = $<HTMLElement>('[data-ficha-destacados]');
+    const detalle = $<HTMLElement>('[data-ficha-detalle]');
+    const vacio = $<HTMLElement>('[data-ficha-vacio]');
+    const perfiles = dialogo.querySelectorAll<HTMLAnchorElement>(
+      '[data-ficha-perfil], [data-ficha-perfil-pie]',
+    );
+
+    const num = (valor: number | null | undefined) =>
+      valor === null || valor === undefined ? '–' : String(valor);
+
+    const par = (label: string, valor: string) =>
+      `<div class="flex justify-between gap-4 border-b border-border/60 py-1.5 last:border-0">
+         <dt class="text-sm text-ink-muted">${label}</dt>
+         <dd class="text-sm font-medium tabular">${valor}</dd>
+       </div>`;
+
+    const destacado = (label: string, valor: string) =>
+      `<div class="rounded-md bg-canvas-subtle px-2 py-1.5 text-center">
+         <p class="font-display text-lg font-semibold tabular leading-none">${valor}</p>
+         <p class="mt-0.5 text-2xs text-ink-muted">${label}</p>
+       </div>`;
+
+    function pintarImagen(
+      contenedor: HTMLElement | null,
+      url: string | null | undefined,
+      tamano: number,
+      clases: string,
+    ): void {
+      if (!contenedor) return;
+      contenedor.replaceChildren();
+      if (!url) return;
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.width = tamano;
+      img.height = tamano;
+      if (clases) img.className = clases;
+      contenedor.append(img);
+    }
+
+    function pintar(ficha: Ficha): void {
+      if (nombre) nombre.textContent = ficha.name;
+      if (equipo) equipo.textContent = ficha.team.name;
+      if (dorsal) dorsal.textContent = ficha.number !== null ? `· #${ficha.number}` : '';
+      if (posicion) posicion.textContent = ficha.position ?? '';
+
+      /*
+       * Las imágenes se crean acá y no viven vacías en el HTML: una imagen sin origen es una
+       * caja rota esperando que alguien le quite el `hidden`. Y se arman con createElement en
+       * lugar de innerHTML porque la URL viene de un proveedor.
+       */
+      pintarImagen(foto, ficha.photoUrl, 52, 'size-13 rounded-full bg-canvas-subtle object-cover');
+      pintarImagen(escudo, ficha.team.logoUrl, 14, '');
+      for (const enlace of perfiles) {
+        enlace.href = ficha.slug ? `/jugadores/${ficha.slug}` : `/equipos/${ficha.team.slug}`;
+      }
+
+      const s = ficha.stats;
+      if (!s) {
+        if (destacados) destacados.innerHTML = '';
+        if (detalle) detalle.innerHTML = '';
+        if (vacio) vacio.hidden = false;
+        return;
+      }
+      if (vacio) vacio.hidden = true;
+
+      if (destacados) {
+        destacados.innerHTML = [
+          destacado('Minutos', num(s.minutesPlayed)),
+          destacado('Nota', s.rating ? Number(s.rating).toFixed(1) : '–'),
+          destacado('Goles', num((s.goals ?? 0) + (s.penaltyScored ?? 0))),
+        ].join('');
+      }
+
+      const filas: string[] = [];
+      const agregar = (label: string, valor: string | null) => {
+        if (valor !== null) filas.push(par(label, valor));
+      };
+      const dos = (a: number | null, b: number | null) =>
+        a === null && b === null ? null : `${num(a)}/${num(b)}`;
+
+      agregar('Asistencias', s.assists !== null ? String(s.assists) : null);
+      agregar('Remates (al arco)', dos(s.shotsOnTarget, s.shotsTotal));
+      agregar('Pases (logrados)', dos(s.passesAccurate, s.passesTotal));
+      agregar('Pases clave', s.passesKey !== null ? String(s.passesKey) : null);
+      agregar('Duelos ganados', dos(s.duelsWon, s.duelsTotal));
+      agregar('Regates', dos(s.dribblesSuccess, s.dribblesTotal));
+      agregar('Quites', s.tacklesTotal !== null ? String(s.tacklesTotal) : null);
+      agregar('Intercepciones', s.interceptions !== null ? String(s.interceptions) : null);
+      agregar('Atajadas', s.saves !== null ? String(s.saves) : null);
+      agregar('Faltas cometidas', s.foulsCommitted !== null ? String(s.foulsCommitted) : null);
+      agregar('Faltas recibidas', s.foulsDrawn !== null ? String(s.foulsDrawn) : null);
+      if (s.yellowCards) agregar('Amarillas', String(s.yellowCards));
+      if (s.redCards) agregar('Rojas', String(s.redCards));
+      if (s.penaltyMissed) agregar('Penales errados', String(s.penaltyMissed));
+      if (s.penaltySaved) agregar('Penales atajados', String(s.penaltySaved));
+
+      if (detalle) detalle.innerHTML = filas.join('');
+    }
+
+    function abrir(boton: HTMLElement): void {
+      const crudo = boton.dataset.ficha;
+      if (!crudo) return;
+      pintar(JSON.parse(crudo) as Ficha);
+      if (!dialogo!.open) dialogo!.showModal();
+      const id = boton.dataset.jugador;
+      if (id) history.replaceState(null, '', `#jugador-${id}`);
+    }
+
+    /* Delegación: sirve igual para los imanes del servidor y para los que reemplace la isla. */
+    document.addEventListener('click', (event) => {
+      const boton = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-ficha]');
+      if (boton) abrir(boton);
+    });
+
+    dialogo.querySelector('[data-ficha-cerrar]')?.addEventListener('click', () => dialogo.close());
+    /* Clic en el backdrop: el propio <dialog> es el objetivo solo cuando se toca afuera. */
+    dialogo.addEventListener('click', (event) => {
+      if (event.target === dialogo) dialogo.close();
+    });
+    dialogo.addEventListener('close', () => {
+      if (location.hash.startsWith('#jugador-')) {
+        history.replaceState(null, '', location.pathname + location.search);
+      }
+    });
+
+    /* Enlace compartido: si el hash nombra a un jugador, se abre su ficha al cargar. */
+    const desdeHash = () => {
+      const match = /^#jugador-(.+)$/.exec(location.hash);
+      if (!match) return;
+      const boton = document.querySelector<HTMLElement>(`[data-jugador="${match[1]}"]`);
+      if (boton) abrir(boton);
+    };
+    desdeHash();
+    window.addEventListener('hashchange', desdeHash);
+  }
+</script>

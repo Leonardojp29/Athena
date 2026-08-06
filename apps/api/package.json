@@ -14,7 +14,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src && pnpm run arch",
     "test": "vitest run",
-    "arch": "depcruise src --config .dependency-cruiser.cjs"
+    "arch": "depcruise src --config .dependency-cruiser.cjs",
+    "backfill:players": "node --env-file-if-exists=../../.env dist/scripts/backfill-players.js",
+    "relink:lineups": "node --env-file-if-exists=../../.env dist/scripts/relink-lineups.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",

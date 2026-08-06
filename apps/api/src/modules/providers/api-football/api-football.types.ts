@@ -20,6 +20,14 @@ export interface ApiFootballLeague {
   }>;
 }
 
+export interface ApiFootballVenue {
+  id: number | null;
+  name: string | null;
+  city: string | null;
+  capacity?: number | null;
+  country?: string | null;
+}
+
 export interface ApiFootballTeam {
   team: {
     id: number;
@@ -30,6 +38,7 @@ export interface ApiFootballTeam {
     national: boolean;
     logo: string | null;
   };
+  venue?: ApiFootballVenue;
 }
 
 export interface ApiFootballSquad {
@@ -49,6 +58,7 @@ export interface ApiFootballFixture {
     id: number;
     date: string;
     status: { short: string; long: string; elapsed: number | null };
+    venue?: ApiFootballVenue;
   };
   league: { id: number; season: number; round: string | null };
   teams: {
@@ -120,4 +130,63 @@ export interface ApiFootballEvent {
   type: 'Goal' | 'Card' | 'subst' | 'Var';
   detail: string;
   comments: string | null;
+}
+
+/** Bloque de estadísticas por jugador; se repite igual en /fixtures/players y /players. */
+interface ApiFootballPlayerStatBlock {
+  team?: { id: number; name?: string; logo?: string | null };
+  league?: { id: number; season: number };
+  games?: {
+    appearences?: number | null;
+    lineups?: number | null;
+    minutes: number | null;
+    number: number | null;
+    position: string | null;
+    rating: string | null;
+    captain: boolean | null;
+    substitute?: boolean | null;
+  };
+  offsides?: number | null;
+  shots?: { total: number | null; on: number | null };
+  goals?: {
+    total: number | null;
+    conceded: number | null;
+    assists: number | null;
+    saves: number | null;
+  };
+  passes?: { total: number | null; key: number | null; accuracy: number | string | null };
+  tackles?: { total: number | null; blocks: number | null; interceptions: number | null };
+  duels?: { total: number | null; won: number | null };
+  dribbles?: { attempts: number | null; success: number | null; past: number | null };
+  fouls?: { drawn: number | null; committed: number | null };
+  cards?: { yellow: number | null; yellowred?: number | null; red: number | null };
+  penalty?: {
+    won: number | null;
+    commited: number | null;
+    scored: number | null;
+    missed: number | null;
+    saved: number | null;
+  };
+}
+
+export interface ApiFootballFixturePlayers {
+  team: { id: number };
+  players: Array<{
+    player: { id: number | null; name: string; photo: string | null };
+    statistics: ApiFootballPlayerStatBlock[];
+  }>;
+}
+
+export interface ApiFootballSeasonPlayer {
+  player: {
+    id: number;
+    name: string;
+    firstname: string | null;
+    lastname: string | null;
+    birth?: { date: string | null };
+    nationality: string | null;
+    height: string | null;
+    photo: string | null;
+  };
+  statistics: ApiFootballPlayerStatBlock[];
 }

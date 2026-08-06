@@ -12,15 +12,20 @@ const home = statistics.find((s) => s.teamId === homeTeam.id);
 const away = statistics.find((s) => s.teamId === awayTeam.id);
 
 // Solo filas donde al menos un equipo tiene dato: el proveedor deja métricas en null.
-const rows = home && away
-  ? STAT_ROWS.map((row) => ({
-      ...row,
-      homeValue: home[row.key] as number | null,
-      awayValue: away[row.key] as number | null,
-    })).filter((row) => row.homeValue !== null || row.awayValue !== null)
-  : [];
+const rows =
+  home && away
+    ? STAT_ROWS.map((row) => ({
+        ...row,
+        homeValue: home[row.key] as number | null,
+        awayValue: away[row.key] as number | null,
+      })).filter((row) => row.homeValue !== null || row.awayValue !== null)
+    : [];
 
-// Las barras usan primary/neutral: el dominio no es "bueno" ni "malo" (DESIGN_SYSTEM).
+/*
+ * Lima para el local y pizarra para el visitante. Antes las dos barras eran lima con distinta
+ * opacidad y a 1,5px de alto no se distinguía cuál era cuál, que es lo único que una
+ * comparación tiene que dejar claro. El dominio no es "bueno" ni "malo": ningún rojo ni verde.
+ */
 const share = (a: number | null, b: number | null): number => {
   const total = (a ?? 0) + (b ?? 0);
   return total === 0 ? 50 : Math.round(((a ?? 0) / total) * 100);
@@ -29,31 +34,53 @@ const share = (a: number | null, b: number | null): number => {
 
 {
   rows.length > 0 && (
-    <section class="bg-surface border border-border rounded-lg p-4 mt-4">
-      <h2 class="text-base font-semibold mb-4">Estadísticas</h2>
+    <section class="mt-4 rounded-lg border border-border bg-surface p-4">
+      <div class="mb-4 flex items-center justify-between gap-3">
+        <span class="flex min-w-0 items-center gap-2">
+          <span class="size-2.5 shrink-0 rounded-sm bg-primary" />
+          {homeTeam.logoUrl && <img src={homeTeam.logoUrl} alt="" width="18" height="18" />}
+          <span class="truncate text-sm font-medium">{homeTeam.shortName ?? homeTeam.name}</span>
+        </span>
+
+        <h2 class="shrink-0 text-base font-semibold">Estadísticas</h2>
+
+        <span class="flex min-w-0 items-center justify-end gap-2">
+          <span class="truncate text-sm font-medium">{awayTeam.shortName ?? awayTeam.name}</span>
+          {awayTeam.logoUrl && <img src={awayTeam.logoUrl} alt="" width="18" height="18" />}
+          <span class="size-2.5 shrink-0 rounded-sm bg-ink-muted" />
+        </span>
+      </div>
+
       <div class="grid gap-3.5">
         {rows.map((row) => {
           const homeShare = share(row.homeValue, row.awayValue);
           const suffix = row.isPercent ? '%' : '';
           return (
             <div>
-              <div class="flex items-baseline justify-between text-sm mb-1">
-                <span class="tabular font-medium w-12">
+              <div class="mb-1 flex items-baseline justify-between text-sm">
+                <span class="w-12 font-medium tabular">
                   {row.homeValue ?? '–'}
                   {row.homeValue !== null ? suffix : ''}
                 </span>
-                <span class="text-xs text-ink-muted">{row.label}</span>
-                <span class="tabular font-medium w-12 text-right">
+                <span class="text-2xs text-ink-muted">{row.label}</span>
+                <span class="w-12 text-right font-medium tabular">
                   {row.awayValue ?? '–'}
                   {row.awayValue !== null ? suffix : ''}
                 </span>
               </div>
-              <div class="flex gap-0.5 h-1.5" role="presentation">
-                <div class="flex-1 flex justify-end bg-canvas-subtle rounded-l-full overflow-hidden">
-                  <div class="bg-primary h-full rounded-l-full" style={`width:${homeShare}%`}></div>
+
+              <div class="flex h-2 gap-0.5" role="presentation">
+                <div class="flex flex-1 justify-end overflow-hidden rounded-l-full bg-canvas-subtle">
+                  <div
+                    class="h-full origin-right rounded-l-full bg-primary animate-bar-fill"
+                    style={`width:${homeShare}%`}
+                  />
                 </div>
-                <div class="flex-1 bg-canvas-subtle rounded-r-full overflow-hidden">
-                  <div class="bg-primary/40 h-full rounded-r-full" style={`width:${100 - homeShare}%`}></div>
+                <div class="flex-1 overflow-hidden rounded-r-full bg-canvas-subtle">
+                  <div
+                    class="h-full origin-left rounded-r-full bg-ink-muted animate-bar-fill"
+                    style={`width:${100 - homeShare}%`}
+                  />
                 </div>
               </div>
             </div>
