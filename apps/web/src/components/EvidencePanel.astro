@@ -1,0 +1,167 @@
+---
+import type { MatchEvidence } from '../lib/api';
+
+interface Props {
+  evidence: MatchEvidence;
+}
+
+const { evidence } = Astro.props;
+const { partido, eventos = [], tabla = [], historial = [], forma = [] } = evidence;
+const hasAnything = partido || eventos.length || tabla.length || historial.length || forma.length;
+
+const RESULT_STYLE: Record<string, string> = {
+  G: 'bg-success/15 text-success',
+  E: 'bg-canvas-subtle text-ink-muted',
+  P: 'bg-danger/15 text-danger',
+};
+
+const formatDay = (iso: string): string =>
+  new Intl.DateTimeFormat('es-PE', {
+    timeZone: 'America/Lima',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(iso));
+---
+
+{
+  !hasAnything ? (
+    <p class="text-sm text-ink-muted">No se registraron los datos de respaldo de este análisis.</p>
+  ) : (
+    <div class="grid gap-5">
+      {partido && (
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Partido</h3>
+          <dl class="grid grid-cols-2 sm:grid-cols-4 gap-y-2 gap-x-4 text-sm">
+            <div>
+              <dt class="text-xs text-ink-muted">Competencia</dt>
+              <dd>{partido.competencia}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-ink-muted">Jornada</dt>
+              <dd>{partido.jornada ?? '—'}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-ink-muted">Fecha</dt>
+              <dd>{formatDay(partido.fecha)}</dd>
+            </div>
+            <div>
+              <dt class="text-xs text-ink-muted">Marcador</dt>
+              <dd class="tabular">
+                {partido.golesLocal ?? '–'} – {partido.golesVisitante ?? '–'}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
+      {eventos.length > 0 && (
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+            Eventos registrados ({eventos.length})
+          </h3>
+          <ul class="grid gap-1 text-sm">
+            {eventos.map((evento) => (
+              <li class="flex gap-2">
+                <span class="tabular text-ink-muted w-12 shrink-0">{evento.minuto}'</span>
+                <span class="min-w-0">
+                  <span class="capitalize">{evento.tipo}</span>
+                  {evento.jugador && <span class="text-ink-muted"> · {evento.jugador}</span>}
+                  {evento.asistencia && (
+                    <span class="text-ink-muted"> (asiste {evento.asistencia})</span>
+                  )}
+                  <span class="text-xs text-ink-muted block sm:inline sm:ml-1">{evento.equipo}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tabla.length > 0 && (
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+            Posición en la tabla
+          </h3>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-xs text-ink-muted border-b border-border">
+                <th class="text-left font-medium py-1.5">Equipo</th>
+                <th class="text-center font-medium py-1.5 px-2">Pos</th>
+                <th class="text-center font-medium py-1.5 px-2">Pts</th>
+                <th class="text-center font-medium py-1.5 px-2">PJ</th>
+                <th class="text-center font-medium py-1.5 pl-2">DG</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tabla.map((fila) => (
+                <tr class="border-b border-border/40 last:border-0">
+                  <td class="py-1.5 truncate">{fila.equipo}</td>
+                  <td class="tabular text-center py-1.5 px-2">{fila.posicion}°</td>
+                  <td class="tabular text-center py-1.5 px-2 font-medium">{fila.puntos}</td>
+                  <td class="tabular text-center py-1.5 px-2">{fila.jugados}</td>
+                  <td class="tabular text-center py-1.5 pl-2">
+                    {fila.diferenciaGoles > 0 ? `+${fila.diferenciaGoles}` : fila.diferenciaGoles}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {forma.length > 0 && (
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+            Forma reciente
+            <span class="font-normal normal-case tracking-normal"> · del más reciente al más antiguo</span>
+          </h3>
+          <div class="grid gap-3">
+            {forma.map((equipo) => (
+              <div>
+                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span class="text-sm font-medium">{equipo.equipo}</span>
+                  <span class="flex gap-1">
+                    {[...equipo.ultimosCinco].map((letra) => (
+                      <span
+                        class:list={[
+                          'w-5 h-5 rounded text-[11px] font-semibold grid place-items-center',
+                          RESULT_STYLE[letra] ?? 'bg-canvas-subtle text-ink-muted',
+                        ]}
+                        title={letra === 'G' ? 'Ganó' : letra === 'E' ? 'Empató' : 'Perdió'}
+                      >
+                        {letra}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <ul class="text-xs text-ink-muted grid gap-0.5">
+                  {equipo.detalle.map((linea) => <li>{linea}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {historial.length > 0 && (
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+            Historial entre ambos
+          </h3>
+          <ul class="grid gap-1 text-sm">
+            {historial.map((cruce) => (
+              <li class="flex items-baseline gap-2">
+                <span class="text-xs text-ink-muted w-24 shrink-0">{formatDay(cruce.fecha)}</span>
+                <span class="min-w-0 truncate">
+                  {cruce.local} <span class="tabular font-medium">{cruce.marcador}</span>{' '}
+                  {cruce.visitante}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}

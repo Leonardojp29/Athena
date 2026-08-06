@@ -1,4 +1,5 @@
 ---
+import EvidencePanel from './EvidencePanel.astro';
 import type { MatchInsight } from '../lib/api';
 
 interface Props {
@@ -41,13 +42,17 @@ const generated = new Intl.DateTimeFormat('es-PE', {
     </ul>
   )}
 
-  <details class="mt-4 border-t border-border pt-3">
-    <summary class="text-xs text-ink-muted cursor-pointer hover:text-ink transition-colors">
+  <details class="mt-4 border-t border-border pt-3 group">
+    <summary class="text-xs text-ink-muted cursor-pointer hover:text-ink transition-colors list-none flex items-center gap-1.5">
+      <span class="transition-transform group-open:rotate-90">▸</span>
       Ver los datos que respaldan este análisis
     </summary>
-    <p class="text-[11px] text-ink-muted mt-2">
-      Modelo {insight.model} · prompt {insight.promptVersion} · {generated}
-    </p>
-    <pre class="mt-2 text-[11px] leading-relaxed bg-canvas-subtle rounded-md p-3 overflow-x-auto">{JSON.stringify(insight.evidence, null, 2)}</pre>
+    <div class="mt-3 bg-canvas-subtle rounded-md p-4">
+      <EvidencePanel evidence={insight.evidence} />
+      <p class="text-[11px] text-ink-muted mt-5 pt-3 border-t border-border">
+        Generado por {insight.model} · prompt <code>{insight.promptVersion}</code> · {generated}.
+        Toda cifra del análisis se verifica contra estos datos antes de publicarse.
+      </p>
+    </div>
   </details>
 </section>

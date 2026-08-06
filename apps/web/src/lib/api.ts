@@ -109,6 +109,38 @@ export interface MatchEventView {
   relatedPlayer: { name: string } | null;
 }
 
+/** Hechos que respaldan una narrativa; el fact sheet que armó el worker. */
+export interface MatchEvidence {
+  partido?: {
+    competencia: string;
+    temporada: number;
+    jornada: string | null;
+    fecha: string;
+    estado: string;
+    local: string;
+    visitante: string;
+    golesLocal: number | null;
+    golesVisitante: number | null;
+    resultado: string;
+  };
+  eventos?: Array<{
+    minuto: string;
+    tipo: string;
+    equipo: string;
+    jugador: string | null;
+    asistencia: string | null;
+  }>;
+  tabla?: Array<{
+    equipo: string;
+    posicion: number;
+    puntos: number;
+    jugados: number;
+    diferenciaGoles: number;
+  }>;
+  historial?: Array<{ fecha: string; local: string; marcador: string; visitante: string }>;
+  forma?: Array<{ equipo: string; orden?: string; ultimosCinco: string; detalle: string[] }>;
+}
+
 export interface MatchInsight {
   titular: string;
   analisis: string;
@@ -116,7 +148,7 @@ export interface MatchInsight {
   model: string;
   promptVersion: string;
   generatedAt: string;
-  evidence: unknown;
+  evidence: MatchEvidence;
 }
 
 export type MatchView = MatchCard & { events: MatchEventView[]; insight: MatchInsight | null };

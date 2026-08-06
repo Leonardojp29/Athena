@@ -29,7 +29,7 @@ export interface MatchFactSheet {
     diferenciaGoles: number;
   }>;
   historial: Array<{ fecha: string; local: string; marcador: string; visitante: string }>;
-  forma: Array<{ equipo: string; ultimosCinco: string; detalle: string[] }>;
+  forma: Array<{ equipo: string; orden: string; ultimosCinco: string; detalle: string[] }>;
 }
 
 const EVENT_LABEL: Record<string, string> = {
@@ -172,7 +172,7 @@ export class MatchFactSheetBuilder {
   private async recentForm(
     teamId: string,
     before: Date,
-  ): Promise<{ ultimosCinco: string; detalle: string[] }> {
+  ): Promise<{ orden: string; ultimosCinco: string; detalle: string[] }> {
     const games = await this.prisma.match.findMany({
       where: {
         status: 'finished',
@@ -201,6 +201,11 @@ export class MatchFactSheetBuilder {
         `${game.homeTeam.name} ${game.homeScore ?? 0}-${game.awayScore ?? 0} ${game.awayTeam.name}`,
       );
     }
-    return { ultimosCinco: letters.join('') || 'sin partidos previos', detalle };
+    return {
+      // sin esta aclaración el modelo puede leer la racha en orden cronológico inverso
+      orden: 'del partido más reciente al más antiguo',
+      ultimosCinco: letters.join('') || 'sin partidos previos',
+      detalle,
+    };
   }
 }
