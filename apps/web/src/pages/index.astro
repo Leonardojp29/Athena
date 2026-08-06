@@ -72,9 +72,11 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
     </section>
   )}
 
-  <h2 class:list={[showFeed ? 'text-xl font-semibold tracking-tight mb-1' : 'text-2xl font-bold tracking-tight mb-1']}>
-    {showFeed ? 'Todos los partidos de hoy' : 'Partidos de hoy'}
-  </h2>
+  {showFeed ? (
+    <h2 class="text-xl font-semibold tracking-tight mb-1">Todos los partidos de hoy</h2>
+  ) : (
+    <h1 class="text-2xl font-bold tracking-tight mb-1">Partidos de hoy</h1>
+  )}
   <p class="text-sm text-ink-muted mb-6">
     {!showFeed && home.live > 0
       ? `${home.live} en juego ahora`

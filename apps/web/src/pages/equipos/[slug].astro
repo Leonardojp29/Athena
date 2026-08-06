@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
-import FavoriteButton from '../../components/FavoriteButton';
+import FavoriteButton from '../../components/FavoriteButton.astro';
 import MatchRow from '../../components/MatchRow.astro';
 import { api, type FavoriteEntity, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
@@ -63,11 +63,10 @@ const jsonLd = {
 
     <div class="ml-auto shrink-0">
       <FavoriteButton
-        client:load
         entityType="team"
         entityId={team.id}
-        initiallyFollowing={following}
-        signedIn={Boolean(session)}
+        following={following}
+        signedIn={session !== null}
         label="equipo"
       />
     </div>

@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
-import FavoriteButton from '../../components/FavoriteButton';
+import FavoriteButton from '../../components/FavoriteButton.astro';
 import MatchRow from '../../components/MatchRow.astro';
 import StandingsTable from '../../components/StandingsTable.astro';
 import { api, type FavoriteEntity, ApiError, type CompetitionView } from '../../lib/api';
@@ -56,11 +56,10 @@ const jsonLd = {
 
     <div class="ml-auto shrink-0">
       <FavoriteButton
-        client:load
         entityType="competition"
         entityId={competition.id}
-        initiallyFollowing={following}
-        signedIn={Boolean(session)}
+        following={following}
+        signedIn={session !== null}
         label="competencia"
       />
     </div>

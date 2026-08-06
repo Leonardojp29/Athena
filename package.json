@@ -2,7 +2,7 @@
   "name": "athena",
   "private": true,
   "version": "0.1.0",
-  "description": "Athena — Football Intelligence Platform",
+  "description": "Athena \u2014 Football Intelligence Platform",
   "packageManager": "pnpm@11.20.0",
   "engines": {
     "node": ">=20"
@@ -14,7 +14,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "verify": "turbo run lint typecheck test build",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "e2e": "pnpm --filter @athena/web e2e"
   },
   "devDependencies": {
     "prettier": "^3.5.0",

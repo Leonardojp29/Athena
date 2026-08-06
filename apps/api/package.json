@@ -12,8 +12,9 @@
     "ai:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/ai-bootstrap.js",
     "backfill:matches": "node --env-file-if-exists=../../.env dist/scripts/backfill-match-detail.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint src",
-    "test": "vitest run"
+    "lint": "eslint src && pnpm run arch",
+    "test": "vitest run",
+    "arch": "depcruise src --config .dependency-cruiser.cjs"
   },
   "dependencies": {
     "@athena/database": "workspace:*",
@@ -22,6 +23,7 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/swagger": "^11.0.0",
+    "@sentry/node": "^10.69.0",
     "bullmq": "^5.40.0",
     "ioredis": "^5.5.0",
     "jose": "^6.2.8",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@athena/config": "workspace:*",
     "@types/node": "^22.13.0",
+    "dependency-cruiser": "^18.1.1",
     "eslint": "^9.20.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"

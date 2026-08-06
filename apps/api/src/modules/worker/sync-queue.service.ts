@@ -8,6 +8,7 @@ import {
 import { Queue, Worker, type Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { PrismaService } from '../../shared/prisma.service.js';
+import { logJson, reportError } from '../../shared/observability.js';
 import { REDIS } from '../../shared/redis.provider.js';
 import { GenerateMatchInsightUseCase } from '../insights/generate-match-insight.usecase.js';
 import { SyncEmbeddingsUseCase } from '../search/sync-embeddings.usecase.js';
@@ -67,7 +68,13 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       concurrency: 4,
     });
     this.worker.on('failed', (job, err) => {
-      this.logger.error(`${job?.name}#${job?.id} failed: ${err.message}`);
+      logJson('error', 'job_failed', {
+        job: job?.name,
+        jobId: job?.id,
+        attempts: job?.attemptsMade,
+        error: err.message,
+      });
+      reportError(err, { job: job?.name, jobId: job?.id });
     });
 
     await this.queue.upsertJobScheduler('live-tick', { every: 60_000 }, { name: 'live-tick' });

@@ -1,0 +1,77 @@
+---
+import type { FavoriteEntity } from '../lib/api';
+
+interface Props {
+  entityType: FavoriteEntity['entityType'];
+  entityId: string;
+  following: boolean;
+  signedIn: boolean;
+  label: string;
+}
+
+const { entityType, entityId, following, signedIn, label } = Astro.props;
+---
+
+{
+  !signedIn ? (
+    <a
+      href="/entrar"
+      class="text-sm border border-border rounded-md px-3 py-1.5 text-ink-muted hover:text-ink hover:border-primary transition-colors whitespace-nowrap"
+    >
+      Entrar para seguir
+    </a>
+  ) : (
+    <button
+      type="button"
+      data-favorite
+      data-entity-type={entityType}
+      data-entity-id={entityId}
+      data-label={label}
+      aria-pressed={following ? 'true' : 'false'}
+      class:list={[
+        'text-sm rounded-md px-3 py-1.5 border transition-colors cursor-pointer whitespace-nowrap disabled:opacity-60',
+        following
+          ? 'border-primary bg-primary/10 text-primary'
+          : 'border-border text-ink-muted hover:text-ink hover:border-primary',
+      ]}
+    >
+      {following ? 'Siguiendo' : `Seguir ${label}`}
+    </button>
+  )
+}
+
+<script>
+  // Vanilla en lugar de una isla React: la única interacción es un toggle y no
+  // justifica cargar el runtime de React en cada perfil.
+  const FOLLOWING = 'border-primary bg-primary/10 text-primary';
+  const NOT_FOLLOWING = 'border-border text-ink-muted hover:text-ink hover:border-primary';
+
+  document.querySelectorAll<HTMLButtonElement>('button[data-favorite]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const following = button.getAttribute('aria-pressed') === 'true';
+      const next = !following;
+      button.disabled = true;
+
+      try {
+        const response = await fetch('/api/favoritos', {
+          method: next ? 'POST' : 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: button.dataset.entityType,
+            entityId: button.dataset.entityId,
+          }),
+        });
+        if (!response.ok) throw new Error(String(response.status));
+
+        button.setAttribute('aria-pressed', String(next));
+        button.textContent = next ? 'Siguiendo' : `Seguir ${button.dataset.label}`;
+        button.classList.remove(...(next ? NOT_FOLLOWING : FOLLOWING).split(' '));
+        button.classList.add(...(next ? FOLLOWING : NOT_FOLLOWING).split(' '));
+      } catch {
+        button.textContent = 'No se pudo guardar';
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+</script>
