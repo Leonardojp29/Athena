@@ -1,6 +1,11 @@
 ---
 import type { LineupPlayer, TeamLineup, TeamSummary } from '../lib/api';
+import Icon from './Icon.astro';
 
+/*
+ * Las listas debajo de la cancha. Cada nombre vinculado lleva a su perfil: la cancha ofrece
+ * la ficha del partido y acá se llega a la carrera del jugador.
+ */
 interface Props {
   lineups: TeamLineup[];
   homeTeam: TeamSummary;
@@ -10,50 +15,97 @@ interface Props {
 const { lineups, homeTeam, awayTeam } = Astro.props;
 const ordered = [homeTeam, awayTeam]
   .map((team) => ({ team, lineup: lineups.find((l) => l.teamId === team.id) }))
-  .filter((entry): entry is { team: TeamSummary; lineup: TeamLineup } => entry.lineup !== undefined);
-
-const playerLine = (player: LineupPlayer) =>
-  `${player.number !== null ? `${player.number}. ` : ''}${player.name}`;
+  .filter(
+    (entry): entry is { team: TeamSummary; lineup: TeamLineup } => entry.lineup !== undefined,
+  );
 ---
 
 {
   ordered.length > 0 && (
-    <section class="bg-surface border border-border rounded-lg p-4 mt-4">
-      <h2 class="text-base font-semibold mb-4">Alineaciones</h2>
-      <div class="grid sm:grid-cols-2 gap-6">
+    <section class="mt-4 rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-4 text-base font-semibold">Alineaciones</h2>
+      <div class="grid gap-6 sm:grid-cols-2">
         {ordered.map(({ team, lineup }) => (
           <div>
-            <div class="flex items-center gap-2 mb-1">
-              {team.logoUrl && <img src={team.logoUrl} alt="" width="20" height="20" loading="lazy" />}
-              <span class="text-sm font-medium truncate">{team.name}</span>
-              {lineup.formation && (
-                <span class="text-xs text-ink-muted tabular ml-auto shrink-0">{lineup.formation}</span>
+            <a
+              href={`/equipos/${team.slug}`}
+              class="mb-1 flex items-center gap-2 transition-colors hover:text-primary-ink"
+            >
+              {team.logoUrl && (
+                <img src={team.logoUrl} alt="" width="20" height="20" loading="lazy" />
               )}
-            </div>
+              <span class="truncate text-sm font-medium">{team.name}</span>
+              {lineup.formation && (
+                <span class="ml-auto shrink-0 tabular text-2xs text-ink-muted">
+                  {lineup.formation}
+                </span>
+              )}
+            </a>
             {lineup.coachName && (
-              <p class="text-xs text-ink-muted mb-2">DT: {lineup.coachName}</p>
+              <p class="mb-2 flex items-center gap-1.5 text-2xs text-ink-muted">
+                <Icon name="formacion" size={12} />
+                {lineup.coachName}
+              </p>
             )}
 
-            <ul class="grid gap-1 text-sm">
-              {lineup.startXi.map((player) => (
-                <li class="flex gap-2">
-                  <span class="tabular text-ink-muted w-6 shrink-0 text-right">{player.number ?? '–'}</span>
-                  {player.playerId ? (
-                    <span class="truncate">{player.name}</span>
+            <ul class="grid gap-0">
+              {lineup.startXi.map((player: LineupPlayer) => (
+                <li>
+                  {player.slug ? (
+                    <a
+                      href={`/jugadores/${player.slug}`}
+                      class="flex items-center gap-2 rounded-md px-1 py-1 text-sm transition-colors hover:bg-canvas-subtle hover:text-primary-ink"
+                    >
+                      <span class="w-6 shrink-0 text-right tabular text-2xs text-ink-muted">
+                        {player.number ?? '–'}
+                      </span>
+                      <span class="truncate">{player.name}</span>
+                    </a>
                   ) : (
-                    <span class="truncate text-ink">{player.name}</span>
+                    <span class="flex items-center gap-2 px-1 py-1 text-sm">
+                      <span class="w-6 shrink-0 text-right tabular text-2xs text-ink-muted">
+                        {player.number ?? '–'}
+                      </span>
+                      <span class="truncate text-ink-muted">{player.name}</span>
+                    </span>
                   )}
                 </li>
               ))}
             </ul>
 
             {lineup.substitutes.length > 0 && (
-              <details class="mt-3">
-                <summary class="text-xs text-ink-muted cursor-pointer hover:text-ink transition-colors">
+              <details class="group mt-3">
+                <summary class="flex cursor-pointer list-none items-center gap-1.5 text-2xs text-ink-muted transition-colors hover:text-ink">
+                  <Icon
+                    name="chevron-derecha"
+                    size={12}
+                    class="transition-transform group-open:rotate-90"
+                  />
                   Suplentes ({lineup.substitutes.length})
                 </summary>
-                <ul class="grid gap-0.5 mt-2 text-xs text-ink-muted">
-                  {lineup.substitutes.map((player) => <li>{playerLine(player)}</li>)}
+                <ul class="mt-1 grid gap-0">
+                  {lineup.substitutes.map((player: LineupPlayer) => (
+                    <li>
+                      {player.slug ? (
+                        <a
+                          href={`/jugadores/${player.slug}`}
+                          class="flex items-center gap-2 rounded-md px-1 py-0.5 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+                        >
+                          <span class="w-6 shrink-0 text-right tabular">
+                            {player.number ?? '–'}
+                          </span>
+                          <span class="truncate">{player.name}</span>
+                        </a>
+                      ) : (
+                        <span class="flex items-center gap-2 px-1 py-0.5 text-2xs text-ink-muted">
+                          <span class="w-6 shrink-0 text-right tabular">
+                            {player.number ?? '–'}
+                          </span>
+                          <span class="truncate">{player.name}</span>
+                        </span>
+                      )}
+                    </li>
+                  ))}
                 </ul>
               </details>
             )}

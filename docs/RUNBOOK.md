@@ -57,10 +57,29 @@ pnpm --filter @athena/web exec playwright install-deps --dry-run chromium
 |---|---|---|
 | Competencias, equipos, fixtures, tabla | `pnpm --filter @athena/api sync:bootstrap` | ~50 requests |
 | Eventos, estadísticas y alineaciones faltantes | `pnpm --filter @athena/api backfill:matches` | 3 requests por partido |
+| Bios, acumulados de temporada, plantillas y dorsales | `FASE=temporadas pnpm --filter @athena/api backfill:players` | ~30 requests por liga |
+| Rendimiento por jugador de cada partido | `FASE=partidos pnpm --filter @athena/api backfill:players` | 1 request por partido |
+| Revincular alineaciones con los jugadores que existen hoy | `pnpm --filter @athena/api relink:lineups` | 0 requests |
 | Flags, plantillas, embeddings, insights, previas | `pnpm --filter @athena/api ai:bootstrap [pasos]` | ver abajo |
 
 Pasos de `ai:bootstrap` (sin argumentos corre todos): `flags`, `squads`, `events`,
 `detail`, `previews`, `embeddings`, `insights`.
+
+**El orden de `backfill:players` importa.** `temporadas` primero: trae el nombre completo y
+de ahí sale el slug, que se asigna una sola vez y no se cambia nunca porque es una URL. Si
+el jugador nace de `partidos`, queda como `j-alarcon` para siempre. Sin `FASE` corre las dos
+en el orden correcto.
+
+`relink:lineups` se corre **después** de las dos fases: mete el `playerId`, el `slug` y la
+foto dentro del JSONB de la alineación, que es lo que hace clickeable cada jugador de la
+cancha. No gasta cuota, así que se puede repetir cuantas veces haga falta.
+
+En agosto las ligas europeas devuelven vacío para la temporada que arranca: `temporadas` cae
+sola a la campaña anterior y lo dice en el log.
+
+Un cambio de `MATCH_RECAP_PROMPT_VERSION` o `MATCH_PREVIEW_PROMPT_VERSION` hace que el
+siguiente `ai:bootstrap insights` regenere los análisis ya publicados. Subir la versión es la
+forma de decir "esto hay que volver a escribir".
 
 El worker mantiene los datos frescos solo: `live-tick` cada 60 s (solo llama al
 proveedor si la base indica que puede haber fútbol en juego), `process-outbox`

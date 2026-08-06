@@ -21,8 +21,9 @@ try {
 
 const { player, teams, events, seasons, totals, recentPerformances, shirtNumber } = view;
 const position = player.position ? POSITION_LABEL[player.position] : null;
-const goals = events.filter((e) => e.kind.includes('goal') && e.kind !== 'missed_penalty').length;
-const cards = events.filter((e) => e.kind.endsWith('_card')).length;
+
+/* Un cambio no dice nada de un jugador; los goles y las tarjetas sí. */
+const destacados = events.filter((e) => e.kind !== 'substitution' && e.kind !== 'var');
 
 const EVENT_LABEL: Record<string, string> = {
   goal: 'Gol',
@@ -124,23 +125,12 @@ const jsonLd = {
         )}
       </Card>
 
-      {events.length > 0 && (
-        <Card title="En los partidos registrados">
-          <div class="flex gap-6">
-            <span class="text-sm"><span class="text-xl font-semibold tabular">{goals}</span> <span class="text-ink-muted">goles</span></span>
-            <span class="text-sm"><span class="text-xl font-semibold tabular">{cards}</span> <span class="text-ink-muted">tarjetas</span></span>
-          </div>
-          <p class="text-[11px] text-ink-muted mt-2">
-            Conteo sobre los partidos ya sincronizados en Athena, no un total de carrera.
-          </p>
-        </Card>
-      )}
     </div>
 
-    <Card title="Participaciones recientes">
-      {events.length > 0 ? (
+    <Card title="Goles y tarjetas">
+      {destacados.length > 0 ? (
         <ul class="divide-y divide-border/40">
-          {events.map((event) => (
+          {destacados.map((event) => (
             <li class="py-2">
               <a href={`/partidos/${event.match.id}`} class="block hover:text-primary-ink transition-colors">
                 <span class="text-sm">
@@ -155,7 +145,9 @@ const jsonLd = {
           ))}
         </ul>
       ) : (
-        <p class="text-sm text-ink-muted">Aún no hay eventos registrados de este jugador.</p>
+        <p class="text-sm text-ink-muted">
+          Sin goles ni tarjetas en los partidos que Athena tiene sincronizados.
+        </p>
       )}
     </Card>
   </div>

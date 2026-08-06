@@ -31,6 +31,13 @@ const ficha = (s: MatchPlayerStats, team: TeamSummary) =>
   });
 
 const nota = (valor: string | null) => (valor === null ? null : Number(valor));
+
+/*
+ * Cero y "no sabemos" no son lo mismo, y con `|| '–'` se veían igual. En un producto cuya
+ * tesis es que cada cifra viene con su origen, confundirlos es peor que dejar la celda vacía.
+ */
+const goles = (s: MatchPlayerStats) =>
+  s.goals === null && s.penaltyScored === null ? '–' : (s.goals ?? 0) + (s.penaltyScored ?? 0);
 ---
 
 <div class="grid gap-6 xl:grid-cols-2">
@@ -92,10 +99,10 @@ const nota = (valor: string | null) => (valor === null ? null : Number(valor));
                       <td class="px-2 py-1.5 text-right tabular text-ink-muted">
                         {s.minutesPlayed ?? '–'}
                       </td>
+                      <td class="px-2 py-1.5 text-right tabular">{goles(s)}</td>
                       <td class="px-2 py-1.5 text-right tabular">
-                        {(s.goals ?? 0) + (s.penaltyScored ?? 0) || '–'}
+                        {s.assists === null ? '–' : s.assists}
                       </td>
-                      <td class="px-2 py-1.5 text-right tabular">{s.assists || '–'}</td>
                       <td class="px-2 py-1.5 text-right tabular text-ink-muted">
                         {s.shotsTotal === null ? '–' : `${s.shotsOnTarget ?? 0}/${s.shotsTotal}`}
                       </td>
