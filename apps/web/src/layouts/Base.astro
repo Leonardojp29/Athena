@@ -1,7 +1,10 @@
 ---
 import '../styles/global.css';
-import Icon from '../components/Icon.astro';
-import Logo from '../components/brand/Logo.astro';
+import Container from '../components/layout/Container.astro';
+import LiveBar from '../components/layout/LiveBar.astro';
+import SiteFooter from '../components/layout/SiteFooter.astro';
+import SiteHeader from '../components/layout/SiteHeader.astro';
+import SkipLink from '../components/layout/SkipLink.astro';
 import { getSession } from '../lib/supabase';
 
 interface Props {
@@ -10,19 +13,25 @@ interface Props {
   ogImage?: string | null;
   jsonLd?: Record<string, unknown> | null;
   noindex?: boolean;
+  chrome?: 'full' | 'minimal';
+  liveBar?: boolean;
+  /* `bleed` deja que la página componga sus propias secciones a sangre. */
+  width?: 'wide' | 'content' | 'prose' | 'bleed';
 }
 
-const { title, description, ogImage = null, jsonLd = null, noindex = false } = Astro.props;
+const {
+  title,
+  description,
+  ogImage = null,
+  jsonLd = null,
+  noindex = false,
+  chrome = 'full',
+  liveBar = true,
+  width = 'content',
+} = Astro.props;
+
 const session = await getSession(Astro);
 const canonical = new URL(Astro.url.pathname, Astro.site);
-
-const NAV = [
-  { label: 'Premier League', href: '/competencias/premier-league' },
-  { label: 'LaLiga', href: '/competencias/la-liga' },
-  { label: 'Champions', href: '/competencias/uefa-champions-league' },
-  { label: 'Libertadores', href: '/competencias/conmebol-libertadores' },
-  { label: 'Liga 1', href: '/competencias/primera-division' },
-];
 ---
 
 <!doctype html>
@@ -55,7 +64,7 @@ const NAV = [
       if (dark) document.documentElement.dataset.theme = 'dark';
     </script>
   </head>
-  <body class="min-h-screen">
+  <body class="flex min-h-screen flex-col">
     <!--
       THESIS: Athena explica el fútbol sobre la pizarra donde el fútbol siempre se explicó.
         Rechaza la lista de tarjetas oscuras con punto verde que envía toda app de resultados.
@@ -69,65 +78,30 @@ const NAV = [
       FORM: pizarra del técnico, candidato 4 de 7 por resonancia; seed d9ac50d8.
       FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
     -->
-    <header class="border-b border-border bg-surface/80 backdrop-blur sticky top-0 z-10">
-      <div class="mx-auto max-w-6xl px-4 h-14 flex items-center gap-6">
-        <a href="/" aria-label="Athena — inicio" class="text-ink hover:text-primary-ink transition-colors shrink-0">
-          <Logo size={26} />
-        </a>
-        <nav class="hidden md:flex gap-4 text-sm text-ink-muted overflow-x-auto">
-          {NAV.map((item) => (
-            <a href={item.href} class="hover:text-ink whitespace-nowrap transition-colors">{item.label}</a>
-          ))}
-        </nav>
-        <form method="get" action="/buscar" class="ml-auto flex items-center gap-3">
-          <input
-            type="search"
-            name="q"
-            placeholder="Buscar…"
-            aria-label="Buscar equipos, jugadores o competencias"
-            class="w-28 sm:w-44 bg-canvas-subtle border border-border rounded-md px-2 py-1 text-sm outline-none focus:border-primary-ink focus:w-44 sm:focus:w-56 transition-all"
-          />
-          <button
-            id="theme-toggle"
-            type="button"
-            class="text-ink-muted hover:text-ink text-sm cursor-pointer"
-            aria-label="Cambiar tema"
-          ><Icon name="tema" size={18} /></button>
-        </form>
+    <SkipLink />
+    <SiteHeader session={session} />
+    {chrome === 'full' && liveBar && <LiveBar />}
 
-        {session ? (
-          <form method="post" action="/salir" class="shrink-0">
-            <button
-              type="submit"
-              class="text-sm text-ink-muted hover:text-ink transition-colors cursor-pointer"
-              title={session.user.email ?? 'Salir'}
-            >Salir</button>
-          </form>
+    <main id="contenido" class="flex-1 pb-10">
+      {
+        width === 'bleed' ? (
+          <slot />
         ) : (
-          <a href="/entrar" class="text-sm text-ink-muted hover:text-ink transition-colors shrink-0">
-            Entrar
-          </a>
-        )}
-      </div>
-    </header>
-
-    <main class="mx-auto max-w-6xl px-4 py-6">
-      <slot />
+          <Container width={width} class="py-6">
+            <slot />
+          </Container>
+        )
+      }
     </main>
 
-    <footer class="border-t border-border mt-12">
-      <div class="mx-auto max-w-6xl px-4 py-6 text-sm text-ink-muted flex flex-wrap gap-2 justify-between">
-        <span>Athena — inteligencia futbolística</span>
-        <span>Datos: API-Football</span>
-      </div>
-    </footer>
+    {chrome === 'full' && <SiteFooter />}
 
     <script is:inline>
       document.getElementById('theme-toggle')?.addEventListener('click', () => {
         const root = document.documentElement;
         const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-        root.dataset.theme = next === 'dark' ? 'dark' : '';
-        if (next === 'light') delete root.dataset.theme;
+        if (next === 'dark') root.dataset.theme = 'dark';
+        else delete root.dataset.theme;
         localStorage.setItem('theme', next);
       });
     </script>

@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Header, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ViewsService } from './views.service.js';
 
 @Controller('views')
@@ -9,6 +9,18 @@ export class ViewsController {
   @Header('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
   home() {
     return this.views.home();
+  }
+
+  @Get('competitions')
+  @Header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200')
+  competitions() {
+    return this.views.competitions();
+  }
+
+  @Get('matches')
+  @Header('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300')
+  matches(@Query('fecha') fecha: string) {
+    return this.views.matchesOnDate(fecha ?? limaToday());
   }
 
   @Get('competition/:slug')
@@ -40,4 +52,8 @@ export class ViewsController {
   sitemap() {
     return this.views.sitemapEntries();
   }
+}
+
+function limaToday(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 }

@@ -6,6 +6,7 @@ import MatchRow from '../../components/MatchRow.astro';
 import StandingsTable from '../../components/StandingsTable.astro';
 import { api, type FavoriteEntity, ApiError, type CompetitionView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
+import { paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
 let view: CompetitionView;
@@ -51,7 +52,7 @@ const jsonLd = {
     {competition.logoUrl && <img src={competition.logoUrl} alt="" width="40" height="40" />}
     <div>
       <h1 class="font-display text-3xl font-semibold uppercase">{competition.name}</h1>
-      <p class="text-sm text-ink-muted">{competition.country ?? 'Internacional'} · Temporada {seasonLabel}</p>
+      <p class="text-sm text-ink-muted">{paisEnEspanol(competition.country) ?? 'Internacional'} · Temporada {seasonLabel}</p>
     </div>
 
     <div class="ml-auto shrink-0">

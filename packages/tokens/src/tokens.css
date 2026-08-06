@@ -110,7 +110,9 @@
   --a-motion-draw: 560ms;
   --a-ease: cubic-bezier(0.2, 0, 0, 1);
   --a-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --a-ease-magnet: cubic-bezier(0.34, 1.4, 0.64, 1);
+  /* El imán asienta con un sobrepaso mínimo, y eso vive en los keyframes de escala:
+     una curva con rebote hace que todo lo demás se mueva como un juguete. */
+  --a-ease-magnet: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* --- geometría de la cancha, en metros reales ×10 --- */
   --a-pitch-length: 1050;

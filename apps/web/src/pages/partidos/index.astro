@@ -1,0 +1,138 @@
+---
+import Icon from '../../components/Icon.astro';
+import MatchRow from '../../components/MatchRow.astro';
+import Base from '../../layouts/Base.astro';
+import { api, type MatchDayView } from '../../lib/api';
+import { formatDateLong } from '../../lib/format';
+
+const TZ = 'America/Lima';
+const DAY_MS = 86_400_000;
+
+const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
+const hoy = isoDay(new Date());
+
+const pedida = Astro.url.searchParams.get('fecha');
+const fecha = pedida && /^\d{4}-\d{2}-\d{2}$/.test(pedida) ? pedida : hoy;
+
+let dia: MatchDayView | null = null;
+try {
+  dia = await api<MatchDayView>(`/views/matches?fecha=${fecha}`);
+} catch {
+  dia = null;
+}
+
+/* La tira de días se ancla al mediodía para que el desplazamiento no cruce un cambio de día. */
+const ancla = new Date(`${fecha}T12:00:00-05:00`);
+const dias = [-3, -2, -1, 0, 1, 2, 3].map((offset) => {
+  const d = new Date(ancla.getTime() + offset * DAY_MS);
+  const iso = isoDay(d);
+  return {
+    iso,
+    dia: new Intl.DateTimeFormat('es-PE', { timeZone: TZ, weekday: 'short' }).format(d),
+    numero: new Intl.DateTimeFormat('es-PE', { timeZone: TZ, day: 'numeric' }).format(d),
+    esHoy: iso === hoy,
+    activo: iso === fecha,
+  };
+});
+
+const anterior = isoDay(new Date(ancla.getTime() - DAY_MS));
+const siguiente = isoDay(new Date(ancla.getTime() + DAY_MS));
+const titulo = formatDateLong(`${fecha}T12:00:00-05:00`);
+---
+
+<Base
+  title={`Partidos del ${titulo} | Athena`}
+  description={`Todos los partidos del ${titulo} en las competencias que sigue Athena.`}
+  width="wide"
+  liveBar={false}
+>
+  <header class="flex flex-wrap items-end justify-between gap-4 pb-5">
+    <div>
+      <p class="text-2xs font-semibold tracking-label text-ink-muted uppercase">Calendario</p>
+      <h1 class="font-display text-3xl font-semibold uppercase">Partidos</h1>
+      <p class="mt-1 text-sm text-ink-muted first-letter:uppercase">{titulo}</p>
+    </div>
+
+    <div class="flex items-center gap-1">
+      <a
+        href={`/partidos?fecha=${anterior}`}
+        aria-label="Día anterior"
+        class="rounded-md border border-border p-2 text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+      >
+        <Icon name="flecha-izquierda" size={16} />
+      </a>
+
+      <div class="flex gap-1" role="group" aria-label="Elegir día">
+        {
+          dias.map((d) => (
+            <a
+              href={`/partidos?fecha=${d.iso}`}
+              aria-current={d.activo ? 'page' : undefined}
+              class:list={[
+                'flex w-12 flex-col items-center rounded-md border py-1.5 text-2xs transition-colors',
+                d.activo
+                  ? 'border-primary-ink bg-primary/12 text-ink'
+                  : 'border-border text-ink-muted hover:border-border-strong hover:text-ink',
+              ]}
+            >
+              <span class="uppercase">{d.dia.replace('.', '')}</span>
+              <span class:list={['tabular text-sm font-semibold', d.esHoy && !d.activo && 'text-primary-ink']}>
+                {d.numero}
+              </span>
+            </a>
+          ))
+        }
+      </div>
+
+      <a
+        href={`/partidos?fecha=${siguiente}`}
+        aria-label="Día siguiente"
+        class="rounded-md border border-border p-2 text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+      >
+        <Icon name="chevron-derecha" size={16} />
+      </a>
+    </div>
+  </header>
+
+  {
+    dia === null ? (
+      <p class="rounded-lg border border-border bg-surface p-6 text-sm text-ink-muted">
+        No pudimos cargar el calendario. Intenta de nuevo en un momento.
+      </p>
+    ) : dia.sections.length === 0 ? (
+      <div class="rounded-lg border border-border bg-surface p-8 text-center">
+        <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
+        <p class="mt-3 text-sm text-ink-muted">
+          Sin partidos este día en las competencias que seguimos.
+        </p>
+        {fecha !== hoy && (
+          <a href="/partidos" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
+            Ver los de hoy
+          </a>
+        )}
+      </div>
+    ) : (
+      <div class="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+        {dia.sections.map((section) => (
+          <section class="rounded-lg border border-border bg-surface">
+            <a
+              href={`/competencias/${section.competition.slug}`}
+              class="flex items-center gap-2 border-b border-border px-4 py-3 transition-colors hover:bg-canvas-subtle"
+            >
+              {section.competition.logoUrl && (
+                <img src={section.competition.logoUrl} alt="" width="20" height="20" loading="lazy" />
+              )}
+              <h2 class="text-sm font-semibold">{section.competition.name}</h2>
+              <span class="ml-auto tabular text-2xs text-ink-muted">{section.matches.length}</span>
+            </a>
+            <div class="p-1">
+              {section.matches.map((match) => (
+                <MatchRow match={match} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    )
+  }
+</Base>

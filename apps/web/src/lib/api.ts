@@ -72,9 +72,21 @@ export interface StandingRow {
   team: TeamSummary;
 }
 
+export interface MatchSection {
+  competition: MatchCard['season']['competition'];
+  matches: MatchCard[];
+}
+
 export interface HomeView {
   live: number;
-  sections: Array<{ competition: MatchCard['season']['competition']; matches: MatchCard[] }>;
+  sections: MatchSection[];
+}
+
+export interface MatchDayView {
+  date: string;
+  total: number;
+  live: number;
+  sections: MatchSection[];
 }
 
 export interface CompetitionView {

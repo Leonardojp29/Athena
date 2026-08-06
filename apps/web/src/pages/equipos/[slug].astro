@@ -5,6 +5,7 @@ import FavoriteButton from '../../components/FavoriteButton.astro';
 import MatchRow from '../../components/MatchRow.astro';
 import { api, type FavoriteEntity, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
+import { paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
 let view: TeamView;
@@ -57,7 +58,7 @@ const jsonLd = {
     <div>
       <h1 class="font-display text-3xl font-semibold uppercase">{team.name}</h1>
       <p class="text-sm text-ink-muted">
-        {[team.country, team.founded ? `Fundado en ${team.founded}` : null].filter(Boolean).join(' · ')}
+        {[paisEnEspanol(team.country), team.founded ? `Fundado en ${team.founded}` : null].filter(Boolean).join(' · ')}
       </p>
     </div>
 

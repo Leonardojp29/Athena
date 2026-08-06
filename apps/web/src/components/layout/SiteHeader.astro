@@ -1,0 +1,240 @@
+---
+import Icon from '../Icon.astro';
+import Logo from '../brand/Logo.astro';
+import Container from './Container.astro';
+import { getHomeView } from '../../lib/live';
+import { destacadas, getNavGroups } from '../../lib/nav';
+
+interface Props {
+  session: { user: { email: string | null } } | null;
+}
+
+const { session } = Astro.props;
+const [groups, home] = await Promise.all([getNavGroups(), getHomeView()]);
+const liveCount = home?.live ?? 0;
+const rapidas = destacadas(groups);
+const actual = Astro.url.pathname;
+---
+
+<header class="sticky top-0 z-30 w-full border-b border-border bg-surface/72 backdrop-blur-xl">
+  <!-- Hairline de marcador: el detalle que separa un header propio de uno genérico. -->
+  <div class="h-px w-full bg-primary/30"></div>
+
+  <Container width="wide">
+    <div class="flex h-16 items-center gap-3 sm:gap-6">
+      <a
+        href="/"
+        aria-label="Athena — inicio"
+        class="shrink-0 text-ink transition-colors hover:text-primary-ink"
+      >
+        <Logo size={28} />
+      </a>
+
+      <nav class="hidden items-center gap-1 md:flex" aria-label="Navegación principal">
+        {
+          rapidas.map((competition) => (
+            <a
+              href={`/competencias/${competition.slug}`}
+              aria-current={actual === `/competencias/${competition.slug}` ? 'page' : undefined}
+              class:list={[
+                'rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors',
+                actual === `/competencias/${competition.slug}`
+                  ? 'bg-canvas-subtle text-ink'
+                  : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
+              ]}
+            >
+              {competition.name}
+            </a>
+          ))
+        }
+
+        <details class="group relative" data-menu>
+          <summary
+            class="flex cursor-pointer list-none items-center gap-1 rounded-md px-2.5 py-1.5 text-sm text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+          >
+            Competencias
+            <Icon name="chevron-abajo" size={14} class="transition-transform group-open:rotate-180" />
+          </summary>
+          <div
+            class="absolute left-0 top-full z-40 mt-1 grid w-[min(46rem,calc(100vw-3rem))] grid-cols-2 gap-x-6 gap-y-4 rounded-xl bg-surface-raised p-4 shadow-panel sm:grid-cols-3"
+          >
+            {
+              groups.map((group) => (
+                <div>
+                  <p class="mb-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+                    {group.label}
+                  </p>
+                  <ul class="grid gap-0.5">
+                    {group.competitions.map((competition) => (
+                      <li>
+                        <a
+                          href={`/competencias/${competition.slug}`}
+                          class="flex items-start gap-2 rounded-md px-1.5 py-1 text-sm leading-snug text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+                        >
+                          {competition.logoUrl && (
+                            <img
+                              src={competition.logoUrl}
+                              alt=""
+                              width="16"
+                              height="16"
+                              loading="lazy"
+                              class="mt-0.5 shrink-0"
+                            />
+                          )}
+                          <span>{competition.name}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))
+            }
+            <a
+              href="/competencias"
+              class="col-span-full flex items-center gap-1.5 border-t border-border pt-3 text-sm text-primary-ink hover:underline"
+            >
+              Ver todas las competencias
+              <Icon name="chevron-derecha" size={14} />
+            </a>
+          </div>
+        </details>
+      </nav>
+
+      <div class="ml-auto flex items-center gap-2 sm:gap-3">
+        {
+          liveCount > 0 && (
+            <a
+              href="/"
+              class="hidden items-center gap-1.5 rounded-full bg-live/12 px-2.5 py-1 text-2xs font-medium text-live transition-colors hover:bg-live/20 sm:flex"
+            >
+              <span data-live-dot class="size-1.5 rounded-full bg-live animate-live-pulse"></span>
+              {liveCount} en vivo
+            </a>
+          )
+        }
+
+        <a
+          href="/buscar"
+          aria-label="Buscar"
+          class="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink sm:hidden"
+        >
+          <Icon name="buscar" size={18} />
+        </a>
+
+        <form method="get" action="/buscar" class="hidden items-center sm:flex">
+          <label class="relative flex items-center">
+            <Icon name="buscar" size={15} class="absolute left-2.5 text-ink-muted" />
+            <input
+              type="search"
+              name="q"
+              placeholder="Buscar…"
+              aria-label="Buscar equipos, jugadores o competencias"
+              class="w-40 rounded-md border border-border bg-canvas-subtle py-1.5 pl-8 pr-2 text-sm outline-none transition-all focus:border-primary-ink focus:w-56"
+            />
+          </label>
+        </form>
+
+        <button
+          id="theme-toggle"
+          type="button"
+          class="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+          aria-label="Cambiar tema"
+        >
+          <Icon name="tema" size={18} />
+        </button>
+
+        {
+          session ? (
+            <form method="post" action="/salir" class="shrink-0">
+              <button
+                type="submit"
+                class="cursor-pointer rounded-md px-2 py-1.5 text-sm text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+                title={session.user.email ?? 'Salir'}
+              >
+                Salir
+              </button>
+            </form>
+          ) : (
+            <a
+              href="/entrar"
+              class="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90"
+            >
+              Entrar
+            </a>
+          )
+        }
+
+        <details class="group md:hidden" data-menu>
+          <summary
+            class="flex cursor-pointer list-none items-center rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+            aria-label="Abrir menú"
+          >
+            <Icon name="menu" size={20} class="group-open:hidden" />
+            <Icon name="cerrar" size={20} class="hidden group-open:block" />
+          </summary>
+          <div
+            class="fixed inset-x-0 top-16 z-40 h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-surface px-4 pb-8 pt-4"
+          >
+            <div class="grid grid-cols-2 gap-3 pb-4">
+              <a
+                href="/partidos"
+                class="rounded-md border border-border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-canvas-subtle"
+              >
+                Partidos
+              </a>
+              <a
+                href="/competencias"
+                class="rounded-md border border-border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-canvas-subtle"
+              >
+                Competencias
+              </a>
+            </div>
+            {
+              groups.map((group) => (
+                <nav aria-label={group.label} class="border-t border-border py-3">
+                  <p class="mb-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+                    {group.label}
+                  </p>
+                  <ul class="grid gap-0.5">
+                    {group.competitions.map((competition) => (
+                      <li>
+                        <a
+                          href={`/competencias/${competition.slug}`}
+                          class="flex items-center gap-2.5 rounded-md px-1.5 py-2 text-sm transition-colors hover:bg-canvas-subtle"
+                        >
+                          {competition.logoUrl && (
+                            <img src={competition.logoUrl} alt="" width="18" height="18" loading="lazy" />
+                          )}
+                          <span class="truncate">{competition.name}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              ))
+            }
+          </div>
+        </details>
+      </div>
+    </div>
+  </Container>
+</header>
+
+<script>
+  // Cierra el mega-menú con Escape o al hacer clic fuera; sin esto un <details> queda abierto.
+  const menus = document.querySelectorAll<HTMLDetailsElement>('details[data-menu]');
+  document.addEventListener('click', (event) => {
+    for (const menu of menus) {
+      if (menu.open && !menu.contains(event.target as Node)) menu.open = false;
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    for (const menu of menus) {
+      if (menu.open) {
+        menu.open = false;
+        menu.querySelector('summary')?.focus();
+      }
+    }
+  });
+</script>

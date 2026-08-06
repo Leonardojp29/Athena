@@ -1,0 +1,24 @@
+---
+import Container from './Container.astro';
+
+/* Sección a sangre: el fondo cruza toda la pantalla y el contenido respeta su medida. */
+interface Props {
+  bg?: 'canvas' | 'surface' | 'board';
+  width?: 'wide' | 'content' | 'prose';
+  class?: string;
+}
+
+const { bg = 'canvas', width = 'content', class: className } = Astro.props;
+
+const FONDOS = {
+  canvas: '',
+  surface: 'bg-surface',
+  board: 'bg-board',
+};
+---
+
+<section class:list={['w-full', FONDOS[bg], className]}>
+  <Container width={width}>
+    <slot />
+  </Container>
+</section>

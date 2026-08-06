@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma.service.js';
+import { regionOf, type Region } from './regions.js';
 
 const teamSummary = {
   select: { id: true, name: true, shortName: true, slug: true, logoUrl: true },
@@ -24,9 +25,26 @@ const matchCard = {
   },
 } as const;
 
+/* Perú no tiene horario de verano: el desplazamiento fijo es correcto para siempre. */
+const LIMA_OFFSET = '-05:00';
+const DAY_MS = 86_400_000;
+
 @Injectable()
 export class ViewsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** Alimenta la navegación: la lista de competencias no puede seguir cableada en el header. */
+  async competitions() {
+    const rows = await this.prisma.competition.findMany({
+      where: { isActive: true },
+      orderBy: [{ country: 'asc' }, { name: 'asc' }],
+      select: { id: true, name: true, slug: true, country: true, format: true, logoUrl: true },
+    });
+    return rows.map((row) => ({
+      ...row,
+      region: regionOf(row.country, row.format) satisfies Region,
+    }));
+  }
 
   async home() {
     const now = new Date();
@@ -45,20 +63,30 @@ export class ViewsService {
       take: 100,
     });
 
-    const byCompetition = new Map<
-      string,
-      { competition: (typeof matches)[number]['season']['competition']; matches: typeof matches }
-    >();
-    for (const match of matches) {
-      const key = match.season.competition.id;
-      if (!byCompetition.has(key)) {
-        byCompetition.set(key, { competition: match.season.competition, matches: [] });
-      }
-      byCompetition.get(key)?.matches.push(match);
-    }
     return {
       live: matches.filter((m) => m.status === 'in_play' || m.status === 'paused').length,
-      sections: [...byCompetition.values()],
+      sections: groupByCompetition(matches),
+    };
+  }
+
+  /** El índice de partidos: un día calendario de Lima, agrupado por competencia. */
+  async matchesOnDate(date: string) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Fecha inválida');
+    const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
+    if (Number.isNaN(start.getTime())) throw new BadRequestException('Fecha inválida');
+
+    const matches = await this.prisma.match.findMany({
+      where: { kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) } },
+      select: matchCard,
+      orderBy: { kickoffUtc: 'asc' },
+      take: 300,
+    });
+
+    return {
+      date,
+      total: matches.length,
+      live: matches.filter((m) => m.status === 'in_play' || m.status === 'paused').length,
+      sections: groupByCompetition(matches),
     };
   }
 
@@ -333,4 +361,25 @@ export class ViewsService {
     ]);
     return { competitions, teams, players };
   }
+}
+
+type Grouped<T extends { season: { competition: { id: string } } }> = Array<{
+  competition: T['season']['competition'];
+  matches: T[];
+}>;
+
+function groupByCompetition<T extends { season: { competition: { id: string } } }>(
+  matches: T[],
+): Grouped<T> {
+  const byCompetition = new Map<string, { competition: T['season']['competition']; matches: T[] }>();
+  for (const match of matches) {
+    const key = match.season.competition.id;
+    let bucket = byCompetition.get(key);
+    if (!bucket) {
+      bucket = { competition: match.season.competition, matches: [] };
+      byCompetition.set(key, bucket);
+    }
+    bucket.matches.push(match);
+  }
+  return [...byCompetition.values()];
 }

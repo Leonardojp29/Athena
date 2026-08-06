@@ -1,0 +1,74 @@
+---
+import type { MatchCard } from '../../lib/api';
+import { formatKickoff, isLive } from '../../lib/format';
+import { getHomeView } from '../../lib/live';
+import Container from './Container.astro';
+
+/*
+ * La tira de partidos del día. Es lo que hace que la web se sienta viva antes de que el
+ * hincha toque nada, y por eso vive en el chrome y no dentro de una página. Se arma en el
+ * servidor; el refresco en vivo llega en el tramo de animación.
+ */
+const home = await getHomeView();
+const todos = home?.sections.flatMap((s) => s.matches) ?? [];
+// primero lo que está en juego, después lo que viene
+const matches: MatchCard[] = [
+  ...todos.filter((m) => isLive(m.status)),
+  ...todos.filter((m) => !isLive(m.status)),
+].slice(0, 18);
+---
+
+{
+  matches.length > 0 && (
+    <div class="w-full border-b border-border bg-canvas-subtle">
+      <Container width="wide" class="!px-0">
+        <div
+          class="flex gap-1.5 overflow-x-auto py-1.5 px-4 sm:px-6 lg:px-8 xl:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="list"
+          aria-label="Partidos de hoy"
+        >
+          {matches.map((match) => {
+            const vivo = isLive(match.status);
+            const marcador = match.homeScore !== null && match.awayScore !== null;
+            return (
+              <a
+                role="listitem"
+                href={`/partidos/${match.id}`}
+                class:list={[
+                  'group flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-2xs transition-colors',
+                  vivo ? 'bg-live/10 hover:bg-live/16' : 'hover:bg-surface',
+                ]}
+              >
+                <span class="flex items-center gap-1.5">
+                  {match.homeTeam.logoUrl && (
+                    <img src={match.homeTeam.logoUrl} alt="" width="14" height="14" loading="lazy" />
+                  )}
+                  <span class="max-w-[7ch] truncate font-medium text-ink">
+                    {match.homeTeam.shortName ?? match.homeTeam.name}
+                  </span>
+                </span>
+
+                <span class:list={['font-display font-semibold tabular', vivo ? 'text-live' : 'text-ink']}>
+                  {marcador ? `${match.homeScore}–${match.awayScore}` : formatKickoff(match.kickoffUtc)}
+                </span>
+
+                <span class="flex items-center gap-1.5">
+                  <span class="max-w-[7ch] truncate font-medium text-ink">
+                    {match.awayTeam.shortName ?? match.awayTeam.name}
+                  </span>
+                  {match.awayTeam.logoUrl && (
+                    <img src={match.awayTeam.logoUrl} alt="" width="14" height="14" loading="lazy" />
+                  )}
+                </span>
+
+                {vivo && match.elapsedMinutes !== null && (
+                  <span class="tabular text-live/90">{match.elapsedMinutes}'</span>
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </Container>
+    </div>
+  )
+}

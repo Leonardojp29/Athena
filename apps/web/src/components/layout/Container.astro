@@ -1,0 +1,25 @@
+---
+/*
+ * El ancho completo no puede ser literal: texto a 2560px no se lee. El chrome, los heros,
+ * la cancha y las tablas llegan a 1600px; la prosa se limita aparte, dentro de su tarjeta.
+ */
+type Ancho = 'wide' | 'content' | 'prose';
+
+interface Props {
+  width?: Ancho;
+  as?: string;
+  class?: string;
+}
+
+const { width = 'content', as: Tag = 'div', class: className } = Astro.props as Props;
+
+const ANCHOS: Record<Ancho, string> = {
+  wide: 'max-w-[1600px]',
+  content: 'max-w-[1440px]',
+  prose: 'max-w-[68ch]',
+};
+---
+
+<Tag class:list={['mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-10', ANCHOS[width], className]}>
+  <slot />
+</Tag>

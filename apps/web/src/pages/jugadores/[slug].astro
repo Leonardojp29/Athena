@@ -4,6 +4,7 @@ import Card from '../../components/Card.astro';
 import FavoriteButton from '../../components/FavoriteButton.astro';
 import { api, type FavoriteEntity, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
+import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
 
 const { slug } = Astro.params;
@@ -64,7 +65,7 @@ const jsonLd = {
     <div>
       <h1 class="font-display text-3xl font-semibold uppercase">{player.name}</h1>
       <p class="text-sm text-ink-muted">
-        {[position, player.nationality, player.heightCm ? `${player.heightCm} cm` : null]
+        {[position, paisEnEspanol(player.nationality), player.heightCm ? `${player.heightCm} cm` : null]
           .filter(Boolean)
           .join(' · ')}
       </p>

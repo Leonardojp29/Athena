@@ -33,7 +33,7 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
         {feed.live.length > 0 ? `${feed.live.length} en juego ahora` : 'Tus equipos y competencias'}
       </p>
 
-      <div class="grid gap-4">
+      <div class="grid gap-4 items-start lg:grid-cols-2">
         {feed.live.length > 0 && (
           <Card title="En vivo">
             <div class="divide-y divide-border/40">
@@ -99,7 +99,7 @@ const showFeed = feed?.hasFavorites && (feed.live.length > 0 || feed.upcoming.le
       </p>
     </Card>
   ) : (
-    <div class="grid gap-4 mt-4">
+    <div class="grid gap-4 mt-4 items-start lg:grid-cols-2 2xl:grid-cols-3">
       {home.sections.map(({ competition, matches }) => (
         <Card>
           <a
