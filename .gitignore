@@ -20,6 +20,10 @@ dist/
 test-results/
 playwright-report/
 
+# agent tooling (local only)
+.claude/
+skills-lock.json
+
 # editor
 .vscode/*
 !.vscode/extensions.json
