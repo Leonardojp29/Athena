@@ -4,18 +4,22 @@ const RUTAS = ['/', '/partidos', '/competencias', '/competencias/primera-divisio
 
 test.describe('shell del sitio', () => {
   /*
-   * El header quedó con el logo, el buscador y un solo acceso al catálogo: el cajón. Es el mismo
-   * en todas las medidas, así que la prueba también.
+   * El header se quedó con lo mínimo: el catálogo vive en la barra lateral de la home. Si alguien
+   * vuelve a colgar navegación acá, este test lo dice.
    */
-  test('el cajón del header lleva al catálogo completo', async ({ page }) => {
+  test('el header queda con el logo, el buscador y la sesión', async ({ page, isMobile }) => {
     await page.goto('/');
-    await page.getByLabel('Abrir el catálogo de competencias').click();
-    await page.locator('header').getByRole('link', { name: 'Competencias', exact: true }).click();
+    const header = page.locator('header');
 
-    await expect(page).toHaveURL(/\/competencias$/);
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(/competencias/i);
-    // el catálogo real pasa los cuarenta torneos; con menos, la nav cayó al respaldo cableado
-    expect(await page.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(30);
+    await expect(header.getByLabel('Athena — inicio')).toBeVisible();
+    // en móvil el campo cede su lugar al atajo a /buscar: no hay ancho para las dos cosas
+    await expect(
+      isMobile
+        ? header.getByLabel('Buscar', { exact: true })
+        : header.getByLabel('Buscar equipos, jugadores o competencias'),
+    ).toBeVisible();
+    await expect(header.getByLabel('Abrir el catálogo de competencias')).toHaveCount(0);
+    await expect(header.getByRole('link', { name: 'Competencias', exact: true })).toHaveCount(0);
   });
 
   /*
@@ -34,6 +38,52 @@ test.describe('shell del sitio', () => {
     const primerPais = page.locator('main section section').first();
     await expect(primerPais.locator('h3')).not.toBeEmpty();
     expect(await primerPais.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(0);
+    // el catálogo real pasa los cuarenta torneos; con menos, la nav cayó al respaldo cableado
+    expect(await page.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(30);
+  });
+
+  /*
+   * La barra lateral es la navegación de la home: Hoy, Favoritos y Competencias. Una liga se abre
+   * en el mismo contenedor —sin cambiar de página— y deja la salida a la vista completa.
+   */
+  test('la barra lateral abre una liga sin salir de la home', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'la barra lateral no se muestra en móvil');
+    await page.goto('/');
+
+    const nav = page.locator('main nav[aria-label="Navegación de la home"]');
+    await expect(nav.getByRole('link', { name: /^Hoy/ })).toBeVisible();
+    await expect(nav.getByText('Favoritos', { exact: true })).toBeVisible();
+    await expect(nav.getByText('Competencias', { exact: true })).toBeVisible();
+
+    const pais = nav.locator('summary').filter({ hasText: /Per[uú]/ }).first();
+    await pais.click();
+
+    const liga = nav.locator('a[href^="/?liga="]').first();
+    const slug = (await liga.getAttribute('href'))!.replace('/?liga=', '');
+    await liga.click();
+
+    await expect(page).toHaveURL(new RegExp(`\\?liga=${slug}$`));
+    await expect(page.getByRole('link', { name: /ver la liga completa/i })).toHaveAttribute(
+      'href',
+      `/competencias/${slug}`,
+    );
+  });
+
+  /*
+   * Los favoritos viven en el navegador y eso hay que decirlo: un favorito que desaparece al
+   * cambiar de dispositivo, sin haberlo avisado, se siente como un bug.
+   */
+  test('marcar una liga favorita avisa dónde queda guardada', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'la barra lateral no se muestra en móvil');
+    await page.goto('/');
+
+    const nav = page.locator('main nav[aria-label="Navegación de la home"]');
+    await nav.locator('summary').filter({ hasText: /Per[uú]/ }).first().click();
+    await nav.locator('button[data-favorito]').first().click();
+
+    await expect(page.getByText(/en este navegador/i)).toBeVisible();
+    await expect(nav.locator('[data-favoritos-lista] a')).toHaveCount(1);
+    await expect(nav.locator('button[data-favorito][aria-pressed="true"]')).toHaveCount(1);
   });
 
   test('la home agrupa los partidos del día por continente y país', async ({ page }) => {
@@ -57,8 +107,11 @@ test.describe('shell del sitio', () => {
     test.skip(isMobile, 'el filtro lateral no se muestra en móvil');
     await page.goto('/');
 
-    const peru = page.locator('main nav[aria-label="Filtrar por país"] a[href="/?pais=PE"]');
-    test.skip((await peru.count()) === 0, 'hoy no hay partidos en Perú');
+    const nav = page.locator('main nav[aria-label="Navegación de la home"]');
+    await nav.locator('summary').filter({ hasText: /Per[uú]/ }).first().click();
+
+    const peru = nav.locator('a[href="/?pais=PE"]');
+    test.skip((await peru.count()) === 0, 'Perú no está en el catálogo');
 
     await peru.first().click();
     await expect(page).toHaveURL(/\?pais=PE/);

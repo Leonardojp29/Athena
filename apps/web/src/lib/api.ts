@@ -9,10 +9,68 @@ export class ApiError extends Error {
   }
 }
 
+/*
+ * Caché de respuestas del API, en el proceso del servidor de la web.
+ *
+ * Medido antes de escribirla: cada navegación tardaba entre 7 y 9 segundos porque cada página
+ * rearmaba las mismas vistas y cada vista viaja a Supabase, que está fuera de la región. El API
+ * ya declara cuánto vale cada respuesta en su `Cache-Control: s-maxage`; nadie lo estaba
+ * honrando. Esto lo honra.
+ *
+ * Solo se cachea lo público —lo que va sin token—: `/me/*` lleva Authorization y nunca entra
+ * acá. Un caché compartido entre visitantes con datos de sesión sería una filtración, no una
+ * optimización.
+ *
+ * Y se guarda la promesa, no el valor: dos componentes que piden lo mismo en el mismo render
+ * comparten una sola llamada en vuelo en lugar de disparar dos.
+ */
+interface Entrada {
+  vence: number;
+  promesa: Promise<unknown>;
+}
+
+const cache = new Map<string, Entrada>();
+const TTL_POR_DEFECTO_MS = 30_000;
+const MAX_ENTRADAS = 300;
+
+/** Lee el s-maxage que el propio API declara; si no dice nada, 30 segundos. */
+function ttlDe(res: Response): number {
+  const header = res.headers.get('cache-control') ?? '';
+  const match = /s-maxage=(\d+)/.exec(header);
+  return match?.[1] ? Number(match[1]) * 1000 : TTL_POR_DEFECTO_MS;
+}
+
 export async function api<T>(path: string, accessToken?: string | null): Promise<T> {
+  if (accessToken) return pedir<T>(path, accessToken);
+
+  const ahora = Date.now();
+  const guardada = cache.get(path);
+  if (guardada && guardada.vence > ahora) return guardada.promesa as Promise<T>;
+
+  /* Vence al TTL por defecto y se corrige con el del API en cuanto llega la respuesta. */
+  const entrada: Entrada = {
+    vence: ahora + TTL_POR_DEFECTO_MS,
+    promesa: pedir<T>(path, null, (res) => {
+      entrada.vence = Date.now() + ttlDe(res);
+    }),
+  };
+  /* Una petición que falla no se queda cacheada: el próximo render vuelve a intentar. */
+  entrada.promesa.catch(() => cache.delete(path));
+
+  if (cache.size >= MAX_ENTRADAS) cache.clear();
+  cache.set(path, entrada);
+  return entrada.promesa as Promise<T>;
+}
+
+async function pedir<T>(
+  path: string,
+  accessToken: string | null,
+  alResponder?: (res: Response) => void,
+): Promise<T> {
   const res = await fetch(`${API_URL}/v1${path}`, {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
   });
+  alResponder?.(res);
   if (!res.ok) throw new ApiError(res.status, `${path} → ${res.status}`);
   return res.json() as Promise<T>;
 }

@@ -1,0 +1,64 @@
+---
+/*
+ * El aviso de que algo está cargando: una pelota que recorre la línea de banda.
+ *
+ * Aparece recién a los 180 ms. Con las vistas cacheadas y el prefetch al pasar el cursor, la
+ * mayoría de las navegaciones terminan antes, y un indicador que parpadea en cada clic se siente
+ * más lento que ninguno.
+ *
+ * No usa el enrutador de Astro (8 KB) sino los eventos del propio navegador: en una navegación
+ * normal la página vieja sigue en pantalla hasta que llega la nueva, así que basta con escuchar
+ * el clic y desmontar en `pagehide`.
+ */
+---
+
+<div
+  id="progreso"
+  class="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 opacity-0 transition-opacity duration-150"
+  aria-hidden="true"
+>
+  <div class="relative h-full w-full bg-primary/15">
+    <span id="progreso-pelota" class="absolute -top-1 size-2.5 rounded-full bg-primary shadow-magnet"
+    ></span>
+  </div>
+</div>
+
+<script>
+  const barra = document.getElementById('progreso');
+  const pelota = document.getElementById('progreso-pelota');
+  const RETARDO_MS = 180;
+
+  if (barra && pelota) {
+    let temporizador: number | undefined;
+
+    const arrancar = () => {
+      clearTimeout(temporizador);
+      temporizador = window.setTimeout(() => {
+        barra.style.opacity = '1';
+        /* La pelota rueda de banda a banda: un ancho creciente mentiría sobre el progreso. */
+        pelota.style.animation = 'banda 900ms cubic-bezier(0.4, 0, 0.6, 1) infinite';
+      }, RETARDO_MS);
+    };
+
+    const parar = () => {
+      clearTimeout(temporizador);
+      barra.style.opacity = '0';
+      pelota.style.animation = '';
+    };
+
+    document.addEventListener('click', (event) => {
+      const enlace = (event.target as HTMLElement | null)?.closest('a');
+      if (!enlace || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
+      const href = enlace.getAttribute('href');
+      /* Solo navegaciones internas de verdad: un ancla o un target nuevo no cargan nada. */
+      if (!href || href.startsWith('#') || enlace.target === '_blank') return;
+      if (new URL(enlace.href, location.href).origin !== location.origin) return;
+      arrancar();
+    });
+
+    /* Los formularios del sitio son GET de búsqueda y POST de sesión: los dos navegan. */
+    document.addEventListener('submit', arrancar);
+    window.addEventListener('pagehide', parar);
+    window.addEventListener('pageshow', parar);
+  }
+</script>

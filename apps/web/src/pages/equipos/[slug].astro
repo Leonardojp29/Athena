@@ -10,25 +10,29 @@ import { getSession } from '../../lib/supabase';
 import { paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
+
+/*
+ * Los tres pedidos arrancan juntos y se esperan después: ninguno necesita el resultado de otro y
+ * en serie cada uno sumaba su viaje a Supabase. Los equipos similares dependen de embeddings, así
+ * que si todavía no existen la sección no se muestra.
+ */
+const pedidoVista = api<TeamView>(`/views/team/${slug}`);
+const pedidoSimilar = api<{ results: SearchHit[] }>(`/search/similar/team/${slug}`)
+  .then((r) => r.results)
+  .catch(() => [] as SearchHit[]);
+const pedidoSesion = getSession(Astro);
+
 let view: TeamView;
 try {
-  view = await api<TeamView>(`/views/team/${slug}`);
+  view = await pedidoVista;
 } catch (error) {
   if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
   throw error;
 }
 
 const { team, standings, recent, upcoming, squad } = view;
-
-// Los equipos similares dependen de embeddings: si aún no existen, la sección no se muestra.
-let similar: SearchHit[] = [];
-try {
-  similar = (await api<{ results: SearchHit[] }>(`/search/similar/team/${slug}`)).results;
-} catch {
-  similar = [];
-}
-
-const session = await getSession(Astro);
+const similar = await pedidoSimilar;
+const session = await pedidoSesion;
 let following = false;
 if (session?.accessToken) {
   try {

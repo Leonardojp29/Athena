@@ -4,6 +4,7 @@ import Container from '../components/layout/Container.astro';
 import LiveBar from '../components/layout/LiveBar.astro';
 import SiteFooter from '../components/layout/SiteFooter.astro';
 import SiteHeader from '../components/layout/SiteHeader.astro';
+import ProgresoNavegacion from '../components/layout/ProgresoNavegacion.astro';
 import SkipLink from '../components/layout/SkipLink.astro';
 import { getSession } from '../lib/supabase';
 
@@ -79,6 +80,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       FORM: pizarra del técnico, candidato 4 de 7 por resonancia; seed d9ac50d8.
       FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
     -->
+    <ProgresoNavegacion />
     <SkipLink />
     <SiteHeader session={session} />
     {chrome === 'full' && liveBar && <LiveBar />}

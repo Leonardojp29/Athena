@@ -11,9 +11,14 @@ import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
 
 const { slug } = Astro.params;
+
+/* Los dos pedidos arrancan juntos: la sesión no depende del jugador. */
+const pedidoVista = api<PlayerView>(`/views/player/${slug}`);
+const pedidoSesion = getSession(Astro);
+
 let view: PlayerView;
 try {
-  view = await api<PlayerView>(`/views/player/${slug}`);
+  view = await pedidoVista;
 } catch (error) {
   if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
   throw error;
@@ -36,7 +41,7 @@ const EVENT_LABEL: Record<string, string> = {
   var: 'VAR',
 };
 
-const session = await getSession(Astro);
+const session = await pedidoSesion;
 let following = false;
 if (session?.accessToken) {
   try {

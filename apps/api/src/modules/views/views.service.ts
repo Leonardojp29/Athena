@@ -12,6 +12,14 @@ const teamSummary = {
   select: { id: true, name: true, shortName: true, slug: true, logoUrl: true },
 };
 
+/*
+ * Una consulta, no una por relación. Prisma resuelve las relaciones con consultas aparte por
+ * omisión y desde fuera de la región de Supabase cada ida y vuelta cuesta cerca de 0,8 s: la vista
+ * de partido tardaba 2,4 s y con el join tarda 0,8 s. Va explícito en cada consulta de lectura y
+ * no globalmente para no tocar el camino de escritura de la sincronización.
+ */
+const JOIN = 'join' as const;
+
 /* Un nombre sin slug no lleva a ninguna parte: el timeline traía solo `name`. */
 const playerLink = {
   select: { id: true, name: true, slug: true, photoUrl: true },
@@ -101,6 +109,7 @@ export class ViewsService {
    */
   async competitions() {
     const rows = await this.prisma.competition.findMany({
+      relationLoadStrategy: JOIN,
       where: { isActive: true },
       orderBy: { name: 'asc' },
       select: {
@@ -157,6 +166,7 @@ export class ViewsService {
     const dayEnd = new Date(now.getTime() + 24 * 3600_000);
 
     const matches = await this.prisma.match.findMany({
+      relationLoadStrategy: JOIN,
       where: {
         OR: [
           { status: { in: ['in_play', 'paused'] } },
@@ -186,15 +196,19 @@ export class ViewsService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Fecha inválida');
 
     /*
-     * A media mañana ningún partido del día terminó todavía y el podio quedaría vacío. Se cae
-     * al día anterior y se devuelve la fecha usada, para que la interfaz pueda decir de cuándo
-     * es lo que muestra en lugar de dejar un hueco.
+     * A media mañana ningún partido del día terminó todavía y el podio quedaría vacío, así que
+     * se mira también ayer y anteayer. Los tres días van en paralelo: en serie eran tres viajes
+     * a Supabase sumados, y desde fuera de su región cada uno cuesta cerca de un segundo.
      */
-    for (const offset of [0, -1, -2]) {
-      const dia = new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() + offset * DAY_MS);
-      const iso = dia.toISOString().slice(0, 10);
-      const players = await this.performersOn(iso, limite);
-      if (players.length > 0) return { date: iso, esDeHoy: offset === 0, players };
+    const dias = [0, -1, -2].map((offset) =>
+      new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() + offset * DAY_MS)
+        .toISOString()
+        .slice(0, 10),
+    );
+    const resultados = await Promise.all(dias.map((iso) => this.performersOn(iso, limite)));
+
+    for (const [i, players] of resultados.entries()) {
+      if (players.length > 0) return { date: dias[i] as string, esDeHoy: i === 0, players };
     }
     return { date, esDeHoy: true, players: [] };
   }
@@ -203,6 +217,7 @@ export class ViewsService {
     const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
 
     return this.prisma.matchPlayerStatistics.findMany({
+      relationLoadStrategy: JOIN,
       where: {
         rating: { not: null },
         minutesPlayed: { gte: 45 },
@@ -242,6 +257,7 @@ export class ViewsService {
     if (Number.isNaN(start.getTime())) throw new BadRequestException('Fecha inválida');
 
     const matches = await this.prisma.match.findMany({
+      relationLoadStrategy: JOIN,
       where: { kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) } },
       select: matchCard,
       orderBy: { kickoffUtc: 'asc' },
@@ -257,23 +273,29 @@ export class ViewsService {
     };
   }
 
+  /*
+   * Todo cuelga del slug y de "la temporada vigente", así que nada tiene que esperar a nada: pedir
+   * la competencia, después su temporada y después la tabla eran tres viajes en fila.
+   */
   async competition(slug: string) {
-    const competition = await this.prisma.competition.findUnique({
-      where: { slug },
-      select: { id: true, name: true, slug: true, country: true, format: true, logoUrl: true },
-    });
-    if (!competition) throw new NotFoundException('Competencia no encontrada');
+    const temporadaVigente = {
+      competition: { slug },
+      isCurrent: true,
+    };
 
-    const season = await this.prisma.season.findFirst({
-      where: { competitionId: competition.id, isCurrent: true },
-      orderBy: { year: 'desc' },
-      select: { id: true, year: true },
-    });
-    if (!season) throw new NotFoundException('Sin temporada activa');
-
-    const [standings, recent, upcoming] = await Promise.all([
+    const [competition, season, standings, recent, upcoming] = await Promise.all([
+      this.prisma.competition.findUnique({
+        where: { slug },
+        select: { id: true, name: true, slug: true, country: true, format: true, logoUrl: true },
+      }),
+      this.prisma.season.findFirst({
+        where: temporadaVigente,
+        orderBy: { year: 'desc' },
+        select: { id: true, year: true },
+      }),
       this.prisma.standing.findMany({
-        where: { seasonId: season.id },
+        relationLoadStrategy: JOIN,
+        where: { season: temporadaVigente },
         orderBy: [{ groupLabel: 'asc' }, { position: 'asc' }],
         select: {
           groupLabel: true,
@@ -290,14 +312,16 @@ export class ViewsService {
         },
       }),
       this.prisma.match.findMany({
-        where: { seasonId: season.id, status: 'finished' },
+        relationLoadStrategy: JOIN,
+        where: { season: temporadaVigente, status: 'finished' },
         select: matchCard,
         orderBy: { kickoffUtc: 'desc' },
         take: 10,
       }),
       this.prisma.match.findMany({
+        relationLoadStrategy: JOIN,
         where: {
-          seasonId: season.id,
+          season: temporadaVigente,
           status: { in: ['scheduled', 'in_play', 'paused'] },
           kickoffUtc: { gte: new Date(Date.now() - 3 * 3600_000) },
         },
@@ -306,6 +330,8 @@ export class ViewsService {
         take: 10,
       }),
     ]);
+    if (!competition) throw new NotFoundException('Competencia no encontrada');
+    if (!season) throw new NotFoundException('Sin temporada activa');
 
     const groups = new Map<string, typeof standings>();
     for (const row of standings) {
@@ -322,24 +348,27 @@ export class ViewsService {
     };
   }
 
+  /*
+   * Todo por slug y en paralelo. Pedir el equipo primero para tener su id costaba un viaje entero
+   * a Supabase; filtrar por la relación cuesta un join, que del lado de la base no se nota.
+   */
   async team(slug: string) {
-    const team = await this.prisma.team.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        name: true,
-        shortName: true,
-        slug: true,
-        country: true,
-        founded: true,
-        logoUrl: true,
-      },
-    });
-    if (!team) throw new NotFoundException('Equipo no encontrado');
-
-    const [standings, recent, upcoming, squad] = await Promise.all([
+    const [team, standings, recent, upcoming, squad] = await Promise.all([
+      this.prisma.team.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          name: true,
+          shortName: true,
+          slug: true,
+          country: true,
+          founded: true,
+          logoUrl: true,
+        },
+      }),
       this.prisma.standing.findMany({
-        where: { teamId: team.id, season: { isCurrent: true } },
+        relationLoadStrategy: JOIN,
+        where: { team: { slug }, season: { isCurrent: true } },
         select: {
           position: true,
           points: true,
@@ -360,16 +389,18 @@ export class ViewsService {
         },
       }),
       this.prisma.match.findMany({
-        where: { status: 'finished', OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }] },
+        relationLoadStrategy: JOIN,
+        where: { status: 'finished', OR: [{ homeTeam: { slug } }, { awayTeam: { slug } }] },
         select: matchCard,
         orderBy: { kickoffUtc: 'desc' },
         take: 10,
       }),
       this.prisma.match.findMany({
+        relationLoadStrategy: JOIN,
         where: {
           status: { in: ['scheduled', 'in_play', 'paused'] },
           kickoffUtc: { gte: new Date(Date.now() - 3 * 3600_000) },
-          OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
+          OR: [{ homeTeam: { slug } }, { awayTeam: { slug } }],
         },
         select: matchCard,
         orderBy: { kickoffUtc: 'asc' },
@@ -380,7 +411,8 @@ export class ViewsService {
        * Se piden todos y se conserva la campaña más reciente que tenga el equipo.
        */
       this.prisma.squadMembership.findMany({
-        where: { teamId: team.id },
+        relationLoadStrategy: JOIN,
+        where: { team: { slug } },
         orderBy: [{ year: 'desc' }, { shirtNumber: 'asc' }],
         select: {
           year: true,
@@ -390,6 +422,7 @@ export class ViewsService {
         },
       }),
     ]);
+    if (!team) throw new NotFoundException('Equipo no encontrado');
 
     const squadYear = squad[0]?.year ?? null;
     const currentSquad = squad.filter((row) => row.year === squadYear);
@@ -403,30 +436,34 @@ export class ViewsService {
     };
   }
 
+  /*
+   * Las cinco consultas van juntas, incluida la del partido. Encadenar el `findUnique` primero
+   * costaba un viaje entero a Supabase —cerca de un segundo desde fuera de su región— para
+   * enterarse de algo que las otras cuatro toleran: un id que no existe devuelve listas vacías.
+   */
   async match(id: string) {
-    const match = await this.prisma.match.findUnique({
-      where: { id },
-      select: {
-        ...matchCard,
-        venue: { select: { id: true, name: true, city: true, capacity: true } },
-        events: {
-          orderBy: [{ minute: 'asc' }, { extraMinute: 'asc' }],
-          select: {
-            id: true,
-            kind: true,
-            minute: true,
-            extraMinute: true,
-            detail: true,
-            team: { select: { id: true } },
-            player: playerLink,
-            relatedPlayer: playerLink,
+    const [match, insights, statistics, lineups, playerStatistics] = await Promise.all([
+      this.prisma.match.findUnique({
+        relationLoadStrategy: JOIN,
+        where: { id },
+        select: {
+          ...matchCard,
+          venue: { select: { id: true, name: true, city: true, capacity: true } },
+          events: {
+            orderBy: [{ minute: 'asc' }, { extraMinute: 'asc' }],
+            select: {
+              id: true,
+              kind: true,
+              minute: true,
+              extraMinute: true,
+              detail: true,
+              team: { select: { id: true } },
+              player: playerLink,
+              relatedPlayer: playerLink,
+            },
           },
         },
-      },
-    });
-    if (!match) throw new NotFoundException('Partido no encontrado');
-
-    const [insights, statistics, lineups, playerStatistics] = await Promise.all([
+      }),
       this.prisma.insight.findMany({
         where: {
           subjectType: 'match',
@@ -474,11 +511,13 @@ export class ViewsService {
         },
       }),
       this.prisma.matchPlayerStatistics.findMany({
+        relationLoadStrategy: JOIN,
         where: { matchId: id },
         orderBy: [{ isStarter: 'desc' }, { minutesPlayed: 'desc' }],
         select: { ...matchPlayerStats, player: playerLink },
       }),
     ]);
+    if (!match) throw new NotFoundException('Partido no encontrado');
 
     const hydrate = (row: (typeof insights)[number]) => ({
       ...(JSON.parse(row.narrative) as Record<string, unknown>),
@@ -501,34 +540,41 @@ export class ViewsService {
   }
 
   async player(slug: string) {
-    const player = await this.prisma.player.findUnique({
-      where: { slug },
-      select: {
-        id: true,
-        name: true,
-        fullName: true,
-        slug: true,
-        position: true,
-        nationality: true,
-        birthDate: true,
-        heightCm: true,
-        photoUrl: true,
-      },
-    });
-    if (!player) throw new NotFoundException('Jugador no encontrado');
-
-    const relationships = await this.prisma.entityRelationship.findMany({
-      where: { fromType: 'player', fromId: player.id, relation: 'played_for' },
-      select: { toId: true },
-    });
-    const teams = await this.prisma.team.findMany({
-      where: { id: { in: relationships.map((r) => r.toId) } },
-      select: { id: true, name: true, slug: true, logoUrl: true, country: true },
-    });
-
-    const [events, seasons, recentPerformances, squad] = await Promise.all([
+    /*
+     * Antes eran cuatro viajes en fila —jugador, relaciones, equipos y el resto— y desde fuera de
+     * la región de Supabase cada uno cuesta cerca de un segundo. Ahora todo lo que se puede pedir
+     * por slug va junto; los equipos son el único paso que necesita el resultado anterior.
+     */
+    const [player, teams, events, seasons, recentPerformances, squad] = await Promise.all([
+      this.prisma.player.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          name: true,
+          fullName: true,
+          slug: true,
+          position: true,
+          nationality: true,
+          birthDate: true,
+          heightCm: true,
+          photoUrl: true,
+        },
+      }),
+      /*
+       * En SQL y de una: `entity_relationships` no tiene relación con `players`, así que por
+       * Prisma harían falta dos viajes —las aristas y después los equipos— para armar una lista
+       * que un join resuelve sin salir de la base.
+       */
+      this.prisma.$queryRaw<TeamOfPlayer[]>`
+        SELECT t.id, t.name, t.slug, t.logo_url AS "logoUrl", t.country
+        FROM entity_relationships r
+        JOIN teams t ON t.id = r.to_id
+        JOIN players p ON p.id = r.from_id
+        WHERE r.from_type = 'player' AND r.relation = 'played_for' AND p.slug = ${slug}
+        ORDER BY t.name`,
       this.prisma.matchEvent.findMany({
-        where: { playerId: player.id },
+        relationLoadStrategy: JOIN,
+        where: { player: { slug } },
         orderBy: { match: { kickoffUtc: 'desc' } },
         take: 20,
         select: {
@@ -548,7 +594,8 @@ export class ViewsService {
         },
       }),
       this.prisma.playerSeasonStatistics.findMany({
-        where: { playerId: player.id },
+        relationLoadStrategy: JOIN,
+        where: { player: { slug } },
         orderBy: [{ season: { year: 'desc' } }],
         select: {
           appearances: true,
@@ -577,7 +624,8 @@ export class ViewsService {
         },
       }),
       this.prisma.matchPlayerStatistics.findMany({
-        where: { playerId: player.id },
+        relationLoadStrategy: JOIN,
+        where: { player: { slug } },
         orderBy: { match: { kickoffUtc: 'desc' } },
         take: 10,
         select: {
@@ -596,12 +644,14 @@ export class ViewsService {
         },
       }),
       this.prisma.squadMembership.findMany({
-        where: { playerId: player.id },
+        relationLoadStrategy: JOIN,
+        where: { player: { slug } },
         orderBy: { year: 'desc' },
         take: 4,
         select: { year: true, shirtNumber: true, team: teamSummary },
       }),
     ]);
+    if (!player) throw new NotFoundException('Jugador no encontrado');
 
     /* Los acumulados de todas las temporadas: el hincha quiere "cuántos hizo", no un desglose. */
     const totals = seasons.reduce(
@@ -636,6 +686,14 @@ export class ViewsService {
     ]);
     return { competitions, teams, players };
   }
+}
+
+export interface TeamOfPlayer {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  country: string | null;
 }
 
 type Grouped<T extends { season: { competition: { id: string } } }> = Array<{

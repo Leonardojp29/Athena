@@ -1,19 +1,15 @@
 ---
-import ContinentIcon from '../ContinentIcon.astro';
-import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
 import Logo from '../brand/Logo.astro';
 import Container from './Container.astro';
 import { getHomeView } from '../../lib/live';
-import { getNavTree } from '../../lib/nav';
-import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 interface Props {
   session: { user: { email: string | null } } | null;
 }
 
 const { session } = Astro.props;
-const [tree, home] = await Promise.all([getNavTree(), getHomeView()]);
+const home = await getHomeView();
 const liveCount = home?.live ?? 0;
 ---
 
@@ -35,16 +31,28 @@ const liveCount = home?.live ?? 0;
         El buscador va con el logo y no en el grupo de acciones: sin la navegación en el header,
         la mitad izquierda quedaba vacía y eso se lee como inacabado, no como limpio.
       -->
+      <!--
+        Ancho fijo y sin puntos suspensivos. Con `w-44` que crecía al enfocar, el campo se leía
+        como recortado —y "Buscar…" parecía un texto cortado, no una invitación—. La tecla `/` es
+        el atajo que espera cualquiera que use esto todos los días.
+      -->
       <form method="get" action="/buscar" class="hidden items-center sm:flex">
         <label class="relative flex items-center">
           <Icon name="buscar" size={15} class="absolute left-2.5 text-ink-muted" />
           <input
             type="search"
             name="q"
-            placeholder="Buscar equipo, jugador o torneo…"
+            data-buscador
+            placeholder="Buscar equipos o jugadores"
             aria-label="Buscar equipos, jugadores o competencias"
-            class="w-56 rounded-md border border-border bg-canvas-subtle py-1.5 pl-8 pr-2 text-sm outline-none transition-all focus:border-primary-ink focus:w-72"
+            class="w-72 rounded-md border border-border bg-canvas-subtle py-1.5 pl-8 pr-9 text-sm outline-none transition-colors focus:border-primary-ink"
           />
+          <kbd
+            aria-hidden="true"
+            class="pointer-events-none absolute right-2 rounded border border-border bg-surface px-1.5 py-0.5 font-sans text-[10px] text-ink-muted"
+          >
+            /
+          </kbd>
         </label>
       </form>
 
@@ -99,101 +107,20 @@ const liveCount = home?.live ?? 0;
           )
         }
 
-        <details class="group" data-menu>
-          <summary
-            class="flex cursor-pointer list-none items-center rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-            aria-label="Abrir el catálogo de competencias"
-          >
-            <Icon name="menu" size={20} class="group-open:hidden" />
-            <Icon name="cerrar" size={20} class="hidden group-open:block" />
-            <span class="ml-1.5 hidden text-sm sm:inline">Competencias</span>
-          </summary>
-          <div
-            class="fixed inset-x-0 top-16 z-40 h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-surface px-4 pb-8 pt-4"
-          >
-            <div class="grid grid-cols-2 gap-3 pb-4">
-              <a
-                href="/partidos"
-                class="rounded-md border border-border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-canvas-subtle"
-              >
-                Partidos
-              </a>
-              <a
-                href="/competencias"
-                class="rounded-md border border-border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-canvas-subtle"
-              >
-                Competencias
-              </a>
-            </div>
-
-            {
-              tree.map((continente) => (
-                <div class="border-t border-border py-3">
-                  <p class="mb-2 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-primary-ink uppercase">
-                    <ContinentIcon name={continente.continent} size={13} />
-                    {continente.label}
-                  </p>
-
-                  <div class="grid gap-3">
-                    {continente.countries.map((pais) => (
-                      <details class="group/pais">
-                        <summary class="flex cursor-pointer list-none items-center gap-2 py-1 text-sm">
-                          <CountryFlag
-                            url={pais.flagUrl}
-                            code={pais.code}
-                            name={paisEnEspanol(pais.name)}
-                            size={18}
-                          />
-                          <span class="truncate">{paisEnEspanol(pais.name) ?? 'Internacional'}</span>
-                          <span class="ml-auto tabular text-2xs text-ink-muted">
-                            {pais.competitions.length}
-                          </span>
-                          <Icon
-                            name="chevron-derecha"
-                            size={13}
-                            class="text-ink-muted transition-transform group-open/pais:rotate-90"
-                          />
-                        </summary>
-                        <ul class="ml-6 grid gap-0.5 py-1">
-                          {pais.competitions.map((competition) => (
-                            <li>
-                              <a
-                                href={`/competencias/${competition.slug}`}
-                                class="block truncate rounded-md px-1.5 py-1.5 text-sm text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-                              >
-                                {nombreTorneo(competition.name)}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    ))}
-                  </div>
-                </div>
-              ))
-            }
-          </div>
-        </details>
       </div>
     </div>
   </Container>
 </header>
 
 <script>
-  // Cierra el mega-menú con Escape o al hacer clic fuera; sin esto un <details> queda abierto.
-  const menus = document.querySelectorAll<HTMLDetailsElement>('details[data-menu]');
-  document.addEventListener('click', (event) => {
-    for (const menu of menus) {
-      if (menu.open && !menu.contains(event.target as Node)) menu.open = false;
-    }
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') return;
-    for (const menu of menus) {
-      if (menu.open) {
-        menu.open = false;
-        menu.querySelector('summary')?.focus();
-      }
-    }
+  /* `/` enfoca el buscador, salvo cuando ya se está escribiendo en otro campo. */
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key !== '/' || evento.metaKey || evento.ctrlKey) return;
+    const activo = document.activeElement;
+    if (activo instanceof HTMLInputElement || activo instanceof HTMLTextAreaElement) return;
+    const buscador = document.querySelector<HTMLInputElement>('header [data-buscador]');
+    if (!buscador) return;
+    evento.preventDefault();
+    buscador.focus();
   });
 </script>

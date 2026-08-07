@@ -63,23 +63,17 @@ const RESPALDO: NavContinent[] = [
   },
 ];
 
-const TTL_MS = 300_000;
-let cache: { at: number; value: NavContinent[] } | null = null;
+/* El catálogo cambia una vez por temporada y el API lo declara con s-maxage=3600. */
+let ultimoBueno: NavContinent[] | null = null;
 
 export async function getNavTree(): Promise<NavContinent[]> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
-
-  let tree: NavContinent[];
   try {
-    tree = await api<NavContinent[]>('/views/competitions');
-    if (tree.length === 0) tree = RESPALDO;
+    const tree = await api<NavContinent[]>('/views/competitions');
+    if (tree.length > 0) ultimoBueno = tree;
+    return tree.length > 0 ? tree : (ultimoBueno ?? RESPALDO);
   } catch {
-    if (cache) return cache.value;
-    tree = RESPALDO;
+    return ultimoBueno ?? RESPALDO;
   }
-
-  cache = { at: Date.now(), value: tree };
-  return tree;
 }
 
 /** Plano, para el pie y el buscador. */

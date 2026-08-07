@@ -18,6 +18,16 @@ export default defineConfig({
   output: 'server',
   adapter: node({ mode: 'standalone' }),
   integrations: [react()],
+  /*
+   * Prefetch al pasar el cursor. Con las vistas cacheadas, la página ya está descargada cuando
+   * el dedo llega al clic y la navegación se siente instantánea. Cuesta cerca de 1 KB de script
+   * en todo el sitio, y es la única excepción al 0 KB de las páginas de entidad: el usuario
+   * pidió navegación instantánea, y sin esto la primera visita a cada ruta paga el viaje.
+   */
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover',
+  },
   security: {
     // Sin esto Astro descarta el Host recibido y calcula el origen como "http://localhost"
     // (sin puerto), con lo que la protección CSRF rechaza TODO POST de formulario.

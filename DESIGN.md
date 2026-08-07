@@ -275,17 +275,44 @@ pico calados por `fill-rule="evenodd"`.
 
 ### Inputs / Fields
 - **Style:** `bg-canvas-subtle`, borde de 1px, `rounded-md`, icono absoluto a la izquierda.
-- **Focus:** el borde pasa a `primary-ink` y el buscador del header se ensancha de 10rem a
-  14rem con `transition-all`.
+- **Focus:** el borde pasa a `primary-ink`. **El ancho no se anima:** un campo que crece al
+  enfocarlo se lee como recortado antes de tocarlo. Ancho fijo de 18rem y el atajo `/` en un
+  `<kbd>` a la derecha.
+- **Los placeholders no llevan puntos suspensivos:** "Buscar…" parece texto cortado, no una
+  invitación. Se escribe entero: "Buscar equipos o jugadores".
 
 ### Navigation
-- Header pegajoso y translúcido, altura 4rem. Las competencias destacadas van sueltas; el
-  resto en un mega-menú por región construido con `<details>` (cero JavaScript más allá de
-  cerrar con Escape y clic afuera). En móvil el mismo `<details>` se vuelve un cajón de altura
-  completa.
-- El activo se marca con `aria-current="page"` y fondo `canvas-subtle`, no solo con color.
+- Header pegajoso y translúcido, altura 4rem, y **nada de navegación colgando de él**: logo,
+  buscador y sesión. El catálogo vive en la barra lateral de la home, que es donde alguien lo
+  busca.
+- **Barra lateral de la home:** Hoy · Favoritos · Competencias. El árbol continente → país →
+  liga son `<details>` anidados, así que abrir y cerrar no cuesta JavaScript, y se abre solo por
+  donde está la selección. Una liga se abre **en el mismo contenedor** (`?liga=`) con un resumen
+  —tabla recortada, lo que viene, últimos resultados— y un botón a la vista completa: mirar la
+  Liga 1 no debería costar perder de vista el resto del día.
+- **En móvil los partidos van primero.** La barra lateral pasa a `order-2`: nadie baja ocho
+  países para llegar a lo que vino a ver.
+- El activo se marca con `aria-current="page"` y fondo `primary/12`, no solo con color.
 - Las pestañas del partido son **enlaces reales** con `?vista=`: cada panel es indexable,
   compartible y cuesta 0 KB.
+
+### Tablero de cifras (hero de la home)
+
+El recuento del día no va dentro de una frase. Como párrafo, "14 partidos hoy" caía media línea
+por debajo del título y se leía como un pie de foto perdido; como marcador —cifra condensada de
+`text-3xl` arriba, etiqueta `tracking-label` en versalitas abajo, separadas por una línea de
+`chalk/15`— es lo primero que el ojo encuentra y suena a estadio. Los partidos en juego usan
+`live-board` con su punto que late; la fecha cierra la fila a la derecha.
+
+### Cargando
+
+Dos animaciones distintas, porque son dos cosas distintas:
+
+- **Navegar:** una pelota rueda por la línea de banda en el borde superior. Aparece recién a los
+  180 ms —con las vistas cacheadas la mayoría de las navegaciones terminan antes, y un indicador
+  que parpadea en cada clic se siente más lento que ninguno.
+- **Abrir la ficha:** el `<dialog>` crece desde 0.96 con `@starting-style` mientras el backdrop se
+  desenfoca. Nada rueda: la ficha no viaja a ninguna parte, ya estaba en la página.
 
 ### Cancha interactiva (componente firma)
 

@@ -13,6 +13,19 @@ export interface PlayerSeed {
 /* Tamaño de lote de las transacciones: el pooler cobra caro cada ida y vuelta. */
 const LOTE = 100;
 
+/** "J. Mosqueira", "Á. Di María": inicial con punto, que es como vienen las alineaciones. */
+const ABREVIADO = /(?:^|\s)\p{L}\.(?:\s|$)/u;
+
+/**
+ * El nombre no se degrada. `/players` trae "Joaquín Mosqueira" y `/fixtures/players` el mismo
+ * jugador como "J. Mosqueira": si la alineación gana, la web entera pierde los nombres de pila.
+ */
+export function mejorNombre(actual: string, entrante: string): string {
+  if (entrante === actual) return actual;
+  if (ABREVIADO.test(entrante) && !ABREVIADO.test(actual)) return actual;
+  return entrante;
+}
+
 /**
  * Único dueño de crear jugadores y de asignar slugs.
  *
@@ -135,8 +148,9 @@ export class PlayerResolverService {
       if (!id || !actual) continue;
 
       const fecha = seed.data.birthDate ? new Date(seed.data.birthDate) : null;
+      const nombre = mejorNombre(actual.name, seed.data.name);
       const distinto =
-        seed.data.name !== actual.name ||
+        nombre !== actual.name ||
         (!!seed.data.fullName && seed.data.fullName !== actual.fullName) ||
         (!!fecha && actual.birthDate?.getTime() !== fecha.getTime()) ||
         (!!seed.data.nationality && seed.data.nationality !== actual.nationality) ||
@@ -148,7 +162,7 @@ export class PlayerResolverService {
       /* COALESCE en el SQL: lo que el proveedor no sabe no borra lo que ya había. */
       cambiados.push({
         id,
-        name: seed.data.name,
+        name: nombre,
         full_name: seed.data.fullName,
         birth_date: fecha,
         nationality: seed.data.nationality,

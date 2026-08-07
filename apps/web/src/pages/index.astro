@@ -1,49 +1,75 @@
 ---
 import Base from '../layouts/Base.astro';
+import BarraLateral from '../components/home/BarraLateral.astro';
 import Container from '../components/layout/Container.astro';
-import FiltroPaises from '../components/home/FiltroPaises.astro';
 import Hero from '../components/home/Hero.astro';
 import Icon from '../components/Icon.astro';
 import MatchGeography from '../components/home/MatchGeography.astro';
 import MatchRow from '../components/MatchRow.astro';
 import MejoresDelDia from '../components/home/MejoresDelDia.astro';
-import { api, type HomeView, type PersonalFeed, type TopPerformers } from '../lib/api';
+import VistaLiga from '../components/home/VistaLiga.astro';
+import {
+  api,
+  ApiError,
+  type CompetitionView,
+  type HomeView,
+  type PersonalFeed,
+  type TopPerformers,
+} from '../lib/api';
 import { getHomeView } from '../lib/live';
+import { getNavTree, todasLasCompetencias } from '../lib/nav';
 import { getSession } from '../lib/supabase';
 import { paisEnEspanol } from '../lib/paises';
 
+/*
+ * Todo en paralelo. En serie, cada vista sumaba su viaje a Supabase y la home tardaba siete
+ * segundos; ninguna de estas depende del resultado de las otras.
+ */
 const session = await getSession(Astro);
+const [homeView, catalogo, mejores, feed] = await Promise.all([
+  getHomeView(),
+  getNavTree(),
+  api<TopPerformers>('/views/top-performers').catch(
+    () => ({ date: '', esDeHoy: true, players: [] }) satisfies TopPerformers,
+  ),
+  session?.accessToken
+    ? api<PersonalFeed>('/me/feed', session.accessToken).catch(() => null)
+    : Promise.resolve(null),
+]);
 
-// El feed personal solo se pide con sesión; si falla, la home general sigue funcionando.
-let feed: PersonalFeed | null = null;
-if (session?.accessToken) {
-  try {
-    feed = await api<PersonalFeed>('/me/feed', session.accessToken);
-  } catch {
-    feed = null;
-  }
-}
-
-const home =
-  (await getHomeView()) ?? ({ live: 0, sections: [], geography: [] } satisfies HomeView);
-
-/* El podio del día es contenido propio: si falla, la home no se cae por eso. */
-let mejores: TopPerformers = { date: '', esDeHoy: true, players: [] };
-try {
-  mejores = await api<TopPerformers>('/views/top-performers');
-} catch {
-  mejores = { date: '', esDeHoy: true, players: [] };
-}
+const home = homeView ?? ({ live: 0, sections: [], geography: [] } satisfies HomeView);
 
 /*
- * El filtro es un parámetro y no un estado hidratado: la URL es compartible, el botón atrás
- * funciona y `@view-transition` anima el cambio sin una línea de JavaScript.
+ * La selección va en la URL —`?pais=` o `?liga=`— y no en estado hidratado: el enlace es
+ * compartible, el botón atrás funciona, la página sigue casi sin JavaScript y las transiciones
+ * de vista animan el cambio solas.
  */
+const ligaPedida = Astro.url.searchParams.get('liga');
+const ligasValidas = new Set(todasLasCompetencias(catalogo).map((c) => c.slug));
+const liga = ligaPedida && ligasValidas.has(ligaPedida) ? ligaPedida : null;
+
 const paisPedido = Astro.url.searchParams.get('pais');
 const codigos = new Set(
   home.geography.flatMap((c) => c.countries.map((p) => p.code ?? 'internacional')),
 );
-const pais = paisPedido && codigos.has(paisPedido) ? paisPedido : null;
+const pais = !liga && paisPedido && codigos.has(paisPedido) ? paisPedido : null;
+
+/* La liga elegida se abre en el mismo contenedor; si falla, se cae a la lista del día. */
+let vistaLiga: CompetitionView | null = null;
+if (liga) {
+  try {
+    vistaLiga = await api<CompetitionView>(`/views/competition/${liga}`);
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    vistaLiga = null;
+  }
+}
+
+/* La bandera y el país de la liga abierta salen del catálogo: la vista de competencia no los trae. */
+const paisDeLaLiga = liga
+  ? (catalogo.flatMap((c) => c.countries).find((p) => p.competitions.some((t) => t.slug === liga)) ??
+    null)
+  : null;
 
 const geografia = pais
   ? home.geography
@@ -80,24 +106,24 @@ const destacado = feed?.insights[0]
   <Hero live={todos} total={todos.length} destacado={destacado} />
 
   <Container width="wide" class="py-5">
-    <!--
-      Tres columnas: el filtro a la izquierda, los partidos en el centro con medida propia y el
-      podio del día a la derecha. La columna del centro no ocupa todo el ancho a propósito: una
-      fila de partido de 1400px separa los dos equipos con medio metro de vacío en el medio.
-    -->
     <div
-      class="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,44rem)_22rem] xl:justify-center"
+      class="grid gap-5 lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,46rem)_21rem] xl:justify-center"
     >
-      <aside class="lg:sticky lg:top-20 lg:self-start">
-        <h2 class="mb-2 px-1 font-display text-sm font-semibold uppercase tracking-tight">
-          Países
-        </h2>
-        <div class="max-h-[calc(100dvh-9rem)] overflow-y-auto pr-1 [scrollbar-width:thin]">
-          <FiltroPaises geography={home.geography} activo={pais} base="/" />
-        </div>
+      <!--
+        En móvil los partidos van primero: nadie baja ocho países para llegar a lo que vino a ver.
+      -->
+      <aside
+        class="order-2 lg:order-none lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto lg:pr-1"
+      >
+        <BarraLateral
+          catalogo={catalogo}
+          geography={home.geography}
+          paisActivo={pais}
+          ligaActiva={liga}
+        />
       </aside>
 
-      <div class="min-w-0">
+      <div class="order-1 min-w-0 lg:order-none">
         {
           showFeed && feed && (
             <section class="mb-5">
@@ -111,50 +137,54 @@ const destacado = feed?.insights[0]
           )
         }
 
-        <div class="mb-3 flex items-center gap-3">
-          <h2 class="font-display text-base font-semibold uppercase">
-            {nombrePais ? `Hoy en ${nombrePais}` : 'Hoy por país'}
-          </h2>
-          {
-            pais && (
-              <a href="/" class="text-2xs text-primary-ink hover:underline">
-                quitar filtro
-              </a>
-            )
-          }
-          <span class="h-px flex-1 bg-border"></span>
-          <a
-            href="/partidos"
-            class="flex shrink-0 items-center gap-1 text-2xs text-primary-ink hover:underline"
-          >
-            Calendario
-            <Icon name="chevron-derecha" size={12} />
-          </a>
-        </div>
-
         {
-          geografia.length === 0 ? (
-            <div class="rounded-lg border border-border bg-surface p-8 text-center">
-              <Icon name="cancha" size={30} class="mx-auto text-ink-muted" />
-              <p class="mt-3 text-sm text-ink-muted">
-                {pais
-                  ? 'Sin partidos hoy en este país.'
-                  : 'No hay partidos programados en las próximas horas.'}
-              </p>
-              <a
-                href={pais ? '/' : '/competencias'}
-                class="mt-3 inline-block text-sm text-primary-ink hover:underline"
-              >
-                {pais ? 'Ver todos los países' : 'Explorar las competencias'}
-              </a>
-            </div>
+          vistaLiga ? (
+            <VistaLiga view={vistaLiga} banderaUrl={paisDeLaLiga?.flagUrl ?? null} />
           ) : (
-            <MatchGeography geography={geografia} filtrado={pais !== null} />
+            <>
+              <div class="mb-3 flex items-center gap-3">
+                <h2 class="font-display text-base font-semibold uppercase">
+                  {nombrePais ? `Hoy en ${nombrePais}` : 'Hoy'}
+                </h2>
+                {pais && (
+                  <a href="/" class="text-2xs text-primary-ink hover:underline">
+                    ver todos
+                  </a>
+                )}
+                <span class="h-px flex-1 bg-border" />
+                <a
+                  href="/partidos"
+                  class="flex shrink-0 items-center gap-1 text-2xs text-primary-ink hover:underline"
+                >
+                  Calendario
+                  <Icon name="chevron-derecha" size={12} />
+                </a>
+              </div>
+
+              {geografia.length === 0 ? (
+                <div class="rounded-lg border border-border bg-surface p-8 text-center">
+                  <Icon name="cancha" size={30} class="mx-auto text-ink-muted" />
+                  <p class="mt-3 text-sm text-ink-muted">
+                    {pais
+                      ? 'Sin partidos hoy en este país.'
+                      : 'No hay partidos programados en las próximas horas.'}
+                  </p>
+                  <a
+                    href={pais ? '/' : '/competencias'}
+                    class="mt-3 inline-block text-sm text-primary-ink hover:underline"
+                  >
+                    {pais ? 'Ver todos los países' : 'Explorar las competencias'}
+                  </a>
+                </div>
+              ) : (
+                <MatchGeography geography={geografia} filtrado={pais !== null} />
+              )}
+            </>
           )
         }
       </div>
 
-      <aside class="grid gap-4 xl:sticky xl:top-20 xl:self-start">
+      <aside class="order-3 grid gap-4 lg:order-none xl:sticky xl:top-20 xl:self-start">
         <MejoresDelDia top={mejores} />
 
         {
@@ -163,13 +193,13 @@ const destacado = feed?.insights[0]
               <p class="text-sm font-medium">Armá tu propio inicio</p>
               <p class="mt-1 text-2xs text-ink-muted">
                 Seguí equipos y competencias y sus partidos aparecen arriba, con el análisis de
-                cada uno.
+                cada uno. Con cuenta, tus favoritos te siguen a cualquier dispositivo.
               </p>
               <a
                 href="/entrar"
                 class="mt-2.5 flex items-center justify-center gap-1 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
               >
-                Entrar
+                Crear cuenta
               </a>
             </section>
           )

@@ -204,7 +204,8 @@
   }
 }
 
-[data-grupo] {
+[data-grupo],
+[data-orden] {
   animation: group-enter var(--a-motion-base) var(--a-ease-out-expo) both;
   animation-delay: calc(var(--orden, 0) * 40ms);
 }
@@ -216,4 +217,57 @@
 ::view-transition-group(*) {
   animation-duration: var(--a-motion-base);
   animation-timing-function: var(--a-ease-out-expo);
+}
+
+/* La pelota del indicador de carga rueda de banda a banda. */
+@keyframes banda {
+  0% {
+    left: 0;
+    transform: rotate(0deg);
+  }
+  100% {
+    left: calc(100% - 0.625rem);
+    transform: rotate(720deg);
+  }
+}
+
+/*
+ * La ficha del jugador entra desde el tablero: crece un poco y se asienta. `@starting-style` es
+ * lo que permite animar la apertura de un <dialog> sin tocar una clase desde JavaScript.
+ */
+#ficha-jugador {
+  transition:
+    opacity var(--a-motion-base) var(--a-ease-out-expo),
+    transform var(--a-motion-base) var(--a-ease-out-expo),
+    overlay var(--a-motion-base) allow-discrete,
+    display var(--a-motion-base) allow-discrete;
+  opacity: 1;
+  transform: scale(1);
+}
+
+#ficha-jugador:not([open]) {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+@starting-style {
+  #ficha-jugador[open] {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+#ficha-jugador::backdrop {
+  transition:
+    background-color var(--a-motion-base) var(--a-ease),
+    backdrop-filter var(--a-motion-base) var(--a-ease),
+    overlay var(--a-motion-base) allow-discrete,
+    display var(--a-motion-base) allow-discrete;
+}
+
+@starting-style {
+  #ficha-jugador[open]::backdrop {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
 }

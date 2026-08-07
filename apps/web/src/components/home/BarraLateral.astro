@@ -1,0 +1,311 @@
+---
+import type { GeographyContinent, NavContinent } from '../../lib/nav-types';
+import ContinentIcon from '../ContinentIcon.astro';
+import CountryFlag from '../CountryFlag.astro';
+import Icon from '../Icon.astro';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+
+/*
+ * La navegación de la home: Hoy, Favoritos y Competencias.
+ *
+ * El árbol se despliega con <details> anidados, así que no cuesta JavaScript: el navegador ya
+ * sabe abrir y cerrar, recuerda el foco y funciona sin script. Lo único hidratado es el botón de
+ * favorito, que necesita el almacenamiento del navegador.
+ *
+ * Los partidos del día quedan a un clic (Hoy) y una liga se abre en el mismo contenedor de la
+ * derecha (`?liga=`), no en otra página: mirar la Liga 1 no debería costar perder el contexto.
+ */
+interface Props {
+  /** El árbol completo del catálogo: todas las competencias, jueguen hoy o no. */
+  catalogo: NavContinent[];
+  /** Los partidos de hoy, para los contadores de la sección Hoy. */
+  geography: GeographyContinent[];
+  /** Qué hay seleccionado: nada, un país o una liga. */
+  paisActivo: string | null;
+  ligaActiva: string | null;
+}
+
+const { catalogo, geography, paisActivo, ligaActiva } = Astro.props;
+
+const partidosPorPais = new Map(
+  geography.flatMap((c) =>
+    c.countries.map((p) => [
+      p.code ?? 'internacional',
+      p.competitions.reduce((n, t) => n + t.matches.length, 0),
+    ]),
+  ),
+);
+const partidosPorLiga = new Map(
+  geography.flatMap((c) =>
+    c.countries.flatMap((p) => p.competitions.map((t) => [t.competition.slug, t.matches.length])),
+  ),
+);
+const totalHoy = [...partidosPorPais.values()].reduce((a, b) => a + b, 0);
+
+const enJuegoPorPais = new Map(
+  geography.flatMap((c) =>
+    c.countries.map((p) => [
+      p.code ?? 'internacional',
+      p.competitions.reduce(
+        (n, t) => n + t.matches.filter((m) => m.status === 'in_play' || m.status === 'paused').length,
+        0,
+      ),
+    ]),
+  ),
+);
+
+const seleccionVacia = paisActivo === null && ligaActiva === null;
+
+/* El árbol se abre por donde está la selección: nadie debería tener que buscar dónde está parado. */
+const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
+  (pais.code ?? 'internacional') === paisActivo ||
+  (ligaActiva !== null && pais.competitions.some((c) => c.slug === ligaActiva));
+---
+
+<nav class="grid gap-1 text-sm" aria-label="Navegación de la home">
+  <!-- Hoy -->
+  <a
+    href="/"
+    aria-current={seleccionVacia ? 'page' : undefined}
+    class:list={[
+      'flex items-center gap-2 rounded-lg px-2.5 py-2 font-medium transition-colors',
+      seleccionVacia
+        ? 'bg-primary/12 text-ink'
+        : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
+    ]}
+  >
+    <Icon name="cancha" size={16} class={seleccionVacia ? 'text-primary-ink' : ''} />
+    Hoy
+    <span class="ml-auto tabular text-2xs text-ink-muted">{totalHoy}</span>
+  </a>
+
+  <!-- Favoritos: se rellena desde el navegador, así que el servidor manda el molde vacío. -->
+  <div data-favoritos class="grid gap-1">
+    <p class="flex items-center gap-2 px-2.5 pt-2 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+      <Icon name="estrella" size={13} />
+      Favoritos
+      <span data-favoritos-cuenta class="ml-auto tabular"></span>
+    </p>
+    <ul data-favoritos-lista class="grid gap-0.5"></ul>
+    <p data-favoritos-vacio class="px-2.5 pb-1 text-2xs text-ink-muted">
+      Marcá una liga con la estrella y aparece acá.
+    </p>
+  </div>
+
+  <!-- Competencias: continente → país → ligas, todo con <details> -->
+  <p class="flex items-center gap-2 px-2.5 pt-3 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+    <Icon name="formacion" size={13} />
+    Competencias
+  </p>
+
+  {
+    catalogo.map((continente) => (
+      <details
+        class="group/cont"
+        open={
+          continente.countries.some(tieneSeleccion) ||
+          (seleccionVacia && continente.continent === 'sudamerica')
+        }
+      >
+        <summary
+          class="flex cursor-pointer list-none items-center gap-2 rounded-md px-2.5 py-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+        >
+          <ContinentIcon name={continente.continent} size={14} />
+          <span class="truncate">{continente.label}</span>
+          <Icon
+            name="chevron-derecha"
+            size={12}
+            class="ml-auto shrink-0 transition-transform group-open/cont:rotate-90"
+          />
+        </summary>
+
+        <div class="ml-2 grid gap-0.5 border-l border-border pl-1.5">
+          {continente.countries.map((pais) => {
+            const clave = pais.code ?? 'internacional';
+            const hoy = partidosPorPais.get(clave) ?? 0;
+            const vivos = enJuegoPorPais.get(clave) ?? 0;
+            const paisSeleccionado = tieneSeleccion(pais);
+            return (
+              <details class="group/pais" open={paisSeleccionado}>
+                <summary
+                  class:list={[
+                    'flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
+                    paisSeleccionado
+                      ? 'bg-primary/12 font-medium text-ink'
+                      : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
+                  ]}
+                >
+                  <CountryFlag
+                    url={pais.flagUrl}
+                    code={pais.code}
+                    name={paisEnEspanol(pais.name)}
+                    size={16}
+                  />
+                  <span class="min-w-0 flex-1 truncate">
+                    {paisEnEspanol(pais.name) ?? 'Internacional'}
+                  </span>
+                  {vivos > 0 ? (
+                    <span class="flex items-center gap-1 text-2xs font-medium text-live">
+                      <span class="size-1.5 rounded-full bg-live animate-live-pulse" />
+                      {vivos}
+                    </span>
+                  ) : hoy > 0 ? (
+                    <span class="tabular text-2xs text-primary-ink">{hoy}</span>
+                  ) : null}
+                  <Icon
+                    name="chevron-derecha"
+                    size={11}
+                    class="shrink-0 transition-transform group-open/pais:rotate-90"
+                  />
+                </summary>
+
+                <ul class="ml-2 grid gap-0.5 border-l border-border py-0.5 pl-1.5">
+                  <li>
+                    <a
+                      href={`/?pais=${clave}`}
+                      class="block truncate rounded px-1.5 py-1 text-2xs text-primary-ink transition-colors hover:bg-canvas-subtle"
+                    >
+                      Ver los partidos de hoy
+                    </a>
+                  </li>
+                  {pais.competitions.map((competition) => (
+                    <li class="group/liga flex items-center gap-1">
+                      <a
+                        href={`/?liga=${competition.slug}`}
+                        aria-current={ligaActiva === competition.slug ? 'page' : undefined}
+                        class:list={[
+                          'min-w-0 flex-1 truncate rounded px-1.5 py-1 text-2xs transition-colors',
+                          ligaActiva === competition.slug
+                            ? 'bg-primary/12 font-medium text-ink'
+                            : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
+                        ]}
+                      >
+                        {nombreTorneo(competition.name)}
+                      </a>
+                      {(partidosPorLiga.get(competition.slug) ?? 0) > 0 && (
+                        <span class="shrink-0 tabular text-[10px] text-primary-ink">
+                          {partidosPorLiga.get(competition.slug)}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        data-favorito={competition.slug}
+                        data-favorito-nombre={nombreTorneo(competition.name)}
+                        class="shrink-0 cursor-pointer rounded p-0.5 text-border-strong opacity-0 transition-all hover:text-primary-ink focus-visible:opacity-100 group-hover/liga:opacity-100 aria-pressed:text-primary-ink aria-pressed:opacity-100"
+                        aria-pressed="false"
+                        aria-label={`Marcar ${nombreTorneo(competition.name)} como favorita`}
+                      >
+                        <Icon name="estrella" size={12} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            );
+          })}
+        </div>
+      </details>
+    ))
+  }
+</nav>
+
+<!-- El aviso de dónde se guardan: aparece la primera vez que alguien marca una liga. -->
+<p
+  data-favoritos-aviso
+  hidden
+  class="mt-3 rounded-lg border border-data/30 bg-data/8 p-2.5 text-[11px] leading-snug text-ink-muted"
+>
+  Guardado <strong class="font-medium text-ink">en este navegador</strong>. Si entrás con una
+  cuenta, tus favoritos te siguen a cualquier dispositivo.
+  <a href="/entrar" class="text-primary-ink hover:underline">Crear cuenta</a>
+</p>
+
+<script>
+  /*
+   * Los favoritos de liga viven en el navegador y no en la base: marcar una liga no debería
+   * exigir una cuenta. La lista se pinta en el cliente porque el servidor no puede conocerla, y
+   * la primera vez se avisa dónde quedó guardada —un favorito que desaparece al cambiar de
+   * dispositivo, sin haberlo dicho, se siente como un bug.
+   */
+  const CLAVE = 'athena:ligas-favoritas';
+  const CLAVE_AVISO = 'athena:aviso-favoritos';
+
+  interface Favorita {
+    slug: string;
+    nombre: string;
+  }
+
+  const leer = (): Favorita[] => {
+    try {
+      const raw = localStorage.getItem(CLAVE);
+      const lista = raw ? (JSON.parse(raw) as Favorita[]) : [];
+      return Array.isArray(lista) ? lista.filter((f) => f && typeof f.slug === 'string') : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const guardar = (lista: Favorita[]) => {
+    try {
+      localStorage.setItem(CLAVE, JSON.stringify(lista));
+    } catch {
+      /* Modo privado o almacenamiento lleno: la interfaz sigue, sin persistir. */
+    }
+  };
+
+  const lista = document.querySelector<HTMLElement>('[data-favoritos-lista]');
+  const vacio = document.querySelector<HTMLElement>('[data-favoritos-vacio]');
+  const cuenta = document.querySelector<HTMLElement>('[data-favoritos-cuenta]');
+  const aviso = document.querySelector<HTMLElement>('[data-favoritos-aviso]');
+  const botones = document.querySelectorAll<HTMLButtonElement>('[data-favorito]');
+
+  function pintar(): void {
+    const favoritas = leer();
+    if (cuenta) cuenta.textContent = favoritas.length > 0 ? String(favoritas.length) : '';
+    if (vacio) vacio.hidden = favoritas.length > 0;
+
+    if (lista) {
+      lista.replaceChildren(
+        ...favoritas.map((f) => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = `/?liga=${encodeURIComponent(f.slug)}`;
+          a.className =
+            'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink';
+          a.textContent = f.nombre;
+          li.append(a);
+          return li;
+        }),
+      );
+    }
+
+    for (const boton of botones) {
+      const activo = favoritas.some((f) => f.slug === boton.dataset.favorito);
+      boton.setAttribute('aria-pressed', String(activo));
+    }
+  }
+
+  for (const boton of botones) {
+    boton.addEventListener('click', () => {
+      const slug = boton.dataset.favorito;
+      const nombre = boton.dataset.favoritoNombre ?? slug ?? '';
+      if (!slug) return;
+
+      const favoritas = leer();
+      const existe = favoritas.some((f) => f.slug === slug);
+      guardar(existe ? favoritas.filter((f) => f.slug !== slug) : [...favoritas, { slug, nombre }]);
+
+      if (!existe && aviso && !localStorage.getItem(CLAVE_AVISO)) {
+        aviso.hidden = false;
+        try {
+          localStorage.setItem(CLAVE_AVISO, '1');
+        } catch {
+          /* si no se puede recordar el aviso, se vuelve a mostrar: es lo menos malo */
+        }
+      }
+      pintar();
+    });
+  }
+
+  pintar();
+</script>

@@ -5,8 +5,11 @@
 
 // Las extensiones (vector, pg_trgm) se crean en la migración SQL, no aquí:
 // declararlas haría que Prisma trate las extensiones propias de Supabase como drift.
+// relationJoins: sin esto Prisma resuelve cada relación con una consulta aparte, y contra
+// Supabase cada ida y vuelta cuesta cerca de 0,8 s. La vista de partido pasa de tres viajes a uno.
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
@@ -205,6 +208,7 @@ model MatchPlayerStatistics {
   @@unique([matchId, playerId])
   @@index([playerId, matchId])
   @@index([matchId, teamId])
+  @@index([rating(sort: Desc), minutesPlayed(sort: Desc)], map: "match_player_statistics_rating_idx")
   @@map("match_player_statistics")
 }
 

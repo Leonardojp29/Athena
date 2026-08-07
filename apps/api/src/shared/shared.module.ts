@@ -4,11 +4,12 @@ import { AiBudgetService } from './ai-budget.service.js';
 import { ApiBudgetService } from './api-budget.service.js';
 import { PrismaService } from './prisma.service.js';
 import { redisProvider, REDIS } from './redis.provider.js';
+import { ViewCacheService } from './view-cache.service.js';
 
 @Global()
 @Module({
-  providers: [PrismaService, redisProvider, ApiBudgetService, AiBudgetService],
-  exports: [PrismaService, REDIS, ApiBudgetService, AiBudgetService],
+  providers: [PrismaService, redisProvider, ApiBudgetService, AiBudgetService, ViewCacheService],
+  exports: [PrismaService, REDIS, ApiBudgetService, AiBudgetService, ViewCacheService],
 })
 export class SharedModule implements OnModuleDestroy {
   constructor(@Inject(REDIS) private readonly redis: Redis) {}
