@@ -271,3 +271,48 @@
     backdrop-filter: blur(0);
   }
 }
+
+/*
+ * La marquesina de la tira: dos copias de la lista y un translate al infinito, así que el corte
+ * nunca se ve. La duración crece con la cantidad de partidos —`--partidos` lo pone el servidor—
+ * para que la velocidad de lectura no dependa de cuántos haya.
+ */
+@keyframes marquesina {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+[data-marquesina] {
+  /* Los bordes se desvanecen: cortado a filo, el partido de la punta parece un error de maquetado. */
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 1.5rem,
+    black calc(100% - 1.5rem),
+    transparent
+  );
+}
+
+[data-marquesina] > * {
+  animation: marquesina calc(var(--partidos, 6) * 3.2s) linear infinite;
+}
+
+/* Se detiene al pasar el cursor: si algo interesa, hay que poder leerlo y hacerle clic. */
+[data-marquesina]:hover > *,
+[data-marquesina]:focus-within > * {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-marquesina] {
+    overflow-x: auto;
+  }
+
+  [data-marquesina] > * {
+    animation: none;
+  }
+}

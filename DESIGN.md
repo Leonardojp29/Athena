@@ -314,6 +314,18 @@ Y las ligas favoritas suben al principio, en el cliente: el servidor no puede sa
 queja es justa —"salen jugadores de ligas que no me interesan"—. Se reordena, no se filtra: si
 alguien hizo dos goles en otra parte, sigue estando.
 
+### La marquesina de la tira
+
+Los partidos del día pasan como en el zócalo de la tele: escudo, nombre corto, marcador o hora, y el
+minuto si está en juego. Es **CSS puro** —dos copias de la lista y un `translateX(-50%)` al infinito,
+así que el corte nunca se ve— y por lo tanto **0 KB**. Se detiene al pasar el cursor o al enfocar
+—si algo interesa hay que poder leerlo y hacerle clic—, los bordes se desvanecen con una máscara
+porque cortado a filo el partido de la punta parece un error de maquetado, y con
+`prefers-reduced-motion` se queda quieta y se puede arrastrar.
+
+La duración crece con la cantidad de partidos (`--partidos`), así que la velocidad de lectura no
+depende de cuántos haya.
+
 ### El once de la fecha
 
 Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada: quien abre la Liga 1 quiere lo
@@ -321,6 +333,15 @@ de la Liga 1. El riel cambia de contenido según dónde estés, y lo más futbol
 con lo que hay —notas por jugador y su puesto— es **el equipo ideal de la última jornada**: un
 arquero, cuatro defensores, cuatro volantes y dos delanteros, cada uno el mejor calificado de su
 puesto, en el orden en que se lee una alineación.
+
+Se dibuja **sobre la cancha, vertical**: vive en un riel de 24rem, donde una cancha a lo ancho deja
+fichas de 60px. La geometría es la misma función del dominio que usa el partido, así que las
+distancias entre líneas son las de una cancha de verdad y no una lista disfrazada; la formación sale
+de lo que dio la jornada (4-4-2, 4-3-3) y se muestra como insignia. Si no cierra en once, cae a la
+lista por puesto: media cancha con seis fichas no es una alineación.
+
+Los dos rótulos de cada ficha van en **una sola plaquita oscura**: el nombre del equipo suelto sobre
+el césped quedaba por debajo del contraste mínimo a 9px.
 
 Dos decisiones de dato: se prefiere la última jornada con **tres o más partidos** jugados —la fecha
 en curso arranca con uno y un once salido de ahí sería el once de ese partido—, y el pie dice que la

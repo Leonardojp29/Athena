@@ -1,6 +1,6 @@
 ---
 import type { MatchCard } from '../../lib/api';
-import { isLive } from '../../lib/format';
+import { formatKickoff, isLive } from '../../lib/format';
 import Icon from '../Icon.astro';
 import Container from '../layout/Container.astro';
 
@@ -22,7 +22,17 @@ interface Props {
 }
 
 const { live, total, destacado } = Astro.props;
-const jugando = live.filter((m) => isLive(m.status)).length;
+const enJuego = live.filter((m) => isLive(m.status));
+const jugando = enJuego.length;
+
+/*
+ * La marquesina muestra lo que está pasando y, si no hay nada en juego, lo que viene. Ordenada por
+ * hora: el zócalo de un partido de ayer no le sirve a nadie.
+ */
+const porEmpezar = live
+  .filter((m) => m.status === 'scheduled')
+  .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+const cartelera = [...enJuego, ...porEmpezar].slice(0, 12);
 
 const fecha = new Intl.DateTimeFormat('es-PE', {
   timeZone: 'America/Lima',
@@ -57,11 +67,59 @@ const fecha = new Intl.DateTimeFormat('es-PE', {
         }
       </p>
 
+      <!--
+        La marquesina: los partidos del día pasando como en el zócalo de la tele. Es CSS puro —dos
+        copias de la lista y un `translateX` al infinito—, así que no cuesta JavaScript, se detiene
+        al pasar el cursor y con `prefers-reduced-motion` se queda quieta y se puede arrastrar.
+      -->
+      {
+        cartelera.length > 0 && (
+          <div data-marquesina class="ml-auto hidden min-w-0 flex-1 overflow-hidden md:block">
+            <div
+              class="flex w-max items-center gap-5"
+              style={`--partidos:${cartelera.length}`}
+            >
+              {[...cartelera, ...cartelera].map((match) => (
+                <a
+                  href={`/partidos/${match.id}`}
+                  class="flex shrink-0 items-center gap-1.5 text-2xs text-chalk-dim transition-colors hover:text-chalk"
+                >
+                  {isLive(match.status) && (
+                    <span class="size-1.5 shrink-0 rounded-full bg-live-board animate-live-pulse" />
+                  )}
+                  {match.homeTeam.logoUrl && (
+                    <img src={match.homeTeam.logoUrl} alt="" width="14" height="14" />
+                  )}
+                  <span class="text-chalk">{match.homeTeam.shortName ?? match.homeTeam.name}</span>
+                  <span
+                    class:list={[
+                      'font-display font-semibold tabular',
+                      isLive(match.status) ? 'text-live-board' : 'text-chalk',
+                    ]}
+                  >
+                    {match.status === 'scheduled'
+                      ? formatKickoff(match.kickoffUtc)
+                      : `${match.homeScore ?? 0}–${match.awayScore ?? 0}`}
+                  </span>
+                  <span class="text-chalk">{match.awayTeam.shortName ?? match.awayTeam.name}</span>
+                  {match.awayTeam.logoUrl && (
+                    <img src={match.awayTeam.logoUrl} alt="" width="14" height="14" />
+                  )}
+                  {isLive(match.status) && match.elapsedMinutes !== null && (
+                    <span class="tabular text-live-board">{match.elapsedMinutes}'</span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
       {
         destacado && (
           <a
             href={`/partidos/${destacado.matchId}?vista=analisis`}
-            class="ml-auto hidden min-w-0 items-center gap-1.5 text-2xs text-chalk-dim transition-colors hover:text-chalk lg:flex"
+            class="ml-auto hidden min-w-0 items-center gap-1.5 text-2xs text-chalk-dim transition-colors hover:text-chalk xl:flex xl:max-w-[22rem]"
           >
             <Icon name="destello" size={12} class="shrink-0 text-data" />
             <span class="truncate">{destacado.titular}</span>

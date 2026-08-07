@@ -170,6 +170,24 @@ test.describe('shell del sitio', () => {
     await expect(once).toBeVisible();
     /* Y deja de mostrar lo mejor del día global. */
     await expect(page.getByRole('heading', { name: /lo mejor de/i })).toHaveCount(0);
+
+    /*
+     * Once fichas sobre la cancha, no una lista: si `layout` deja de cerrar la formación, el
+     * componente cae a la lista por puesto y esto lo dice.
+     */
+    const riel = page.locator('main aside').last();
+    const fichas = riel.locator('a[href^="/?jugador="]');
+    expect(await fichas.count()).toBe(11);
+
+    /* Vertical: más alta que ancha, porque vive en un riel de 24rem. */
+    const cancha = await riel.locator('[class*="aspect-"]').first().boundingBox();
+    expect(cancha!.height).toBeGreaterThan(cancha!.width);
+
+    /* El arquero abajo y los delanteros arriba, como se mira una alineación. */
+    const alturas = await fichas.evaluateAll((as) =>
+      as.map((a) => Math.round(a.getBoundingClientRect().top)),
+    );
+    expect(Math.max(...alturas)).toBeGreaterThan(Math.min(...alturas) + 100);
   });
 
   /*
