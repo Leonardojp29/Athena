@@ -446,6 +446,17 @@ India en Asia— y normalizado para llenar la misma caja, así que ninguno parec
 otro. El aro del globo aparece recién desde 20px; abajo le come el aire a la silueta. Internacional
 no es un continente: ahí el globo entero sí es el dibujo.
 
+### El partido en vivo se rehace solo
+
+El marcador y el minuto a minuto los refresca la isla, pero la cancha, las notas y las estadísticas
+las dibuja el servidor: sin nada más, los números se quedaban en el minuto en que abriste la página
+—justo cuando la gente está mirando el partido—. Mientras está en juego, la página **se recarga cada
+60 segundos**, y como la vista en vivo se cachea quince segundos, cada recarga trae datos nuevos por
+una consulta a Redis.
+
+Nunca recarga con la ficha abierta ni con la pestaña de fondo —sería robarle el foco a alguien que
+está leyendo— y **se avisa**: una página que se mueve sola sin decirlo se siente rota.
+
 ### Cargando
 
 Dos animaciones distintas, porque son dos cosas distintas:
