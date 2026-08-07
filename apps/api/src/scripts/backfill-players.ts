@@ -79,7 +79,12 @@ async function main(): Promise<void> {
   if (fase === 'todo' || fase === 'partidos') {
     const limit = Number(process.env.BACKFILL_LIMIT ?? 2000);
     const pending = await prisma.match.findMany({
-      where: { status: 'finished', playerStatistics: { none: {} }, lineups: { some: {} } },
+      /*
+       * Sin exigir alineación. La exigía, y dejaba afuera 595 partidos terminados: verificado que
+       * al menos uno —el 1530123 de la Leagues Cup— tiene diecinueve jugadores con nota en el
+       * proveedor. Las notas por jugador no dependen de que la alineación se haya podido cargar.
+       */
+      where: { status: 'finished', playerStatistics: { none: {} } },
       orderBy: { kickoffUtc: 'desc' },
       take: limit,
       select: { id: true },
