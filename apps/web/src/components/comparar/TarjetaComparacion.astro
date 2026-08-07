@@ -1,0 +1,249 @@
+---
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import type { PlayerView, TeamView } from '../../lib/api';
+import { POSITION_LABEL } from '../../lib/api';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+
+/*
+ * Los dos lados, fila por fila, con una barra que reparte cada número entre los dos.
+ *
+ * La barra es la comparación: dos columnas de cifras obligan a hacer la resta mentalmente. El lado
+ * que gana la fila queda en lima; si empatan, ninguno. En las filas donde menos es mejor —tarjetas,
+ * goles en contra— gana el más chico, y eso va declarado en la fila, no adivinado.
+ */
+interface Fila {
+  etiqueta: string;
+  a: number;
+  b: number;
+  /** Cierto cuando el número más chico es el mejor. */
+  menosEsMejor?: boolean;
+  /** Filas donde ninguno gana: más empates no es mejor ni peor. */
+  neutral?: boolean;
+  sufijo?: string;
+  decimales?: number;
+}
+
+interface Props {
+  tipo: 'jugador' | 'equipo';
+  uno: PlayerView | TeamView;
+  dos: PlayerView | TeamView;
+  slugA: string;
+  slugB: string;
+}
+
+const { tipo, uno, dos, slugA, slugB } = Astro.props;
+
+const esJugador = (v: PlayerView | TeamView): v is PlayerView => 'player' in v;
+const num = (valor: number | null | undefined) => valor ?? 0;
+
+/** Promedio simple de las notas de sus temporadas: el proveedor no da una nota de carrera. */
+const notaMedia = (v: PlayerView): number => {
+  const notas = v.seasons.map((s) => (s.rating === null ? null : Number(s.rating))).filter((n): n is number => n !== null);
+  return notas.length === 0 ? 0 : notas.reduce((x, y) => x + y, 0) / notas.length;
+};
+
+const sumaJugador = (v: PlayerView, campo: 'shotsTotal' | 'passesKey' | 'duelsWon' | 'dribblesSuccess'): number =>
+  v.seasons.reduce((total, s) => total + num(s[campo]), 0);
+
+/* La tabla que más avanzó es la del torneo en curso: el API ya la manda primera. */
+const tablaDe = (v: TeamView) => v.standings[0] ?? null;
+
+const filas: Fila[] =
+  esJugador(uno) && esJugador(dos)
+    ? [
+        { etiqueta: 'Partidos', a: num(uno.totals?.appearances), b: num(dos.totals?.appearances), neutral: true },
+        { etiqueta: 'Goles', a: num(uno.totals?.goals), b: num(dos.totals?.goals) },
+        { etiqueta: 'Asistencias', a: num(uno.totals?.assists), b: num(dos.totals?.assists) },
+        {
+          etiqueta: 'Goles cada 90′',
+          a: num(uno.totals?.minutesPlayed) === 0 ? 0 : (num(uno.totals?.goals) * 90) / num(uno.totals?.minutesPlayed),
+          b: num(dos.totals?.minutesPlayed) === 0 ? 0 : (num(dos.totals?.goals) * 90) / num(dos.totals?.minutesPlayed),
+          decimales: 2,
+        },
+        { etiqueta: 'Minutos', a: num(uno.totals?.minutesPlayed), b: num(dos.totals?.minutesPlayed), neutral: true },
+        { etiqueta: 'Nota media', a: notaMedia(uno), b: notaMedia(dos), decimales: 1 },
+        { etiqueta: 'Remates', a: sumaJugador(uno, 'shotsTotal'), b: sumaJugador(dos, 'shotsTotal') },
+        { etiqueta: 'Pases clave', a: sumaJugador(uno, 'passesKey'), b: sumaJugador(dos, 'passesKey') },
+        { etiqueta: 'Duelos ganados', a: sumaJugador(uno, 'duelsWon'), b: sumaJugador(dos, 'duelsWon') },
+        { etiqueta: 'Regates', a: sumaJugador(uno, 'dribblesSuccess'), b: sumaJugador(dos, 'dribblesSuccess') },
+        {
+          etiqueta: 'Amarillas',
+          a: num(uno.totals?.yellowCards),
+          b: num(dos.totals?.yellowCards),
+          menosEsMejor: true,
+        },
+        {
+          etiqueta: 'Rojas',
+          a: num(uno.totals?.redCards),
+          b: num(dos.totals?.redCards),
+          menosEsMejor: true,
+        },
+      ]
+    : (() => {
+        const ta = tablaDe(uno as TeamView);
+        const tb = tablaDe(dos as TeamView);
+        return [
+          { etiqueta: 'Posición', a: num(ta?.position), b: num(tb?.position), menosEsMejor: true },
+          { etiqueta: 'Puntos', a: num(ta?.points), b: num(tb?.points) },
+          { etiqueta: 'Jugados', a: num(ta?.played), b: num(tb?.played), neutral: true },
+          { etiqueta: 'Ganados', a: num(ta?.won), b: num(tb?.won) },
+          { etiqueta: 'Empatados', a: num(ta?.drawn), b: num(tb?.drawn), neutral: true },
+          { etiqueta: 'Perdidos', a: num(ta?.lost), b: num(tb?.lost), menosEsMejor: true },
+          { etiqueta: 'Goles a favor', a: num(ta?.goalsFor), b: num(tb?.goalsFor) },
+          { etiqueta: 'Goles en contra', a: num(ta?.goalsAgainst), b: num(tb?.goalsAgainst), menosEsMejor: true },
+          {
+            etiqueta: 'Diferencia',
+            a: num(ta?.goalsFor) - num(ta?.goalsAgainst),
+            b: num(tb?.goalsFor) - num(tb?.goalsAgainst),
+          },
+        ];
+      })();
+
+const cabecera = (v: PlayerView | TeamView) =>
+  esJugador(v)
+    ? {
+        nombre: v.player.name,
+        foto: v.player.photoUrl,
+        detalle: [
+          v.player.position ? POSITION_LABEL[v.player.position] : null,
+          v.teams[0]?.name ?? null,
+          paisEnEspanol(v.player.nationality),
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        href: `/jugadores/${v.player.slug}`,
+        torneo: v.seasons[0]?.season.competition ?? null,
+      }
+    : {
+        nombre: v.team.name,
+        foto: v.team.logoUrl,
+        detalle: [paisEnEspanol(v.team.country), v.team.founded ? `desde ${v.team.founded}` : null]
+          .filter(Boolean)
+          .join(' · '),
+        href: `/equipos/${v.team.slug}`,
+        torneo: v.standings[0]?.season.competition ?? null,
+      };
+
+const izq = cabecera(uno);
+const der = cabecera(dos);
+
+const fmt = (valor: number, decimales = 0) =>
+  decimales === 0 ? String(Math.round(valor)) : valor.toFixed(decimales);
+
+/** Quién gana la fila. `null` cuando empatan: pintar a los dos no compara nada. */
+const gana = (f: Fila): 'a' | 'b' | null => {
+  if (f.neutral || f.a === f.b) return null;
+  const mayor = f.a > f.b ? 'a' : 'b';
+  return f.menosEsMejor ? (mayor === 'a' ? 'b' : 'a') : mayor;
+};
+
+/* La barra reparte el total entre los dos; con los dos en cero se queda al medio. */
+const parte = (f: Fila, lado: 'a' | 'b') => {
+  const total = f.a + f.b;
+  if (total === 0) return 50;
+  return Math.round(((lado === 'a' ? f.a : f.b) / total) * 100);
+};
+---
+
+<div class="mx-auto max-w-[52rem]">
+  <div class="grid grid-cols-2 gap-3">
+    {
+      [izq, der].map((lado) => (
+        <a
+          href={lado.href}
+          class="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface p-3 text-center transition-colors hover:border-primary-ink"
+        >
+          {lado.foto ? (
+            <img
+              src={lado.foto}
+              alt=""
+              width="64"
+              height="64"
+              class="size-16 rounded-full bg-canvas-subtle object-cover"
+            />
+          ) : (
+            <span class="grid size-16 place-items-center rounded-full bg-canvas-subtle">
+              <Icon name="usuario" size={26} class="text-ink-muted" />
+            </span>
+          )}
+          <span class="min-w-0">
+            <span class="block truncate font-display text-base font-semibold uppercase leading-tight">
+              {lado.nombre}
+            </span>
+            <span class="mt-0.5 block truncate text-2xs text-ink-muted">{lado.detalle}</span>
+          </span>
+          {lado.torneo && (
+            <span class="flex items-center gap-1.5 text-2xs text-ink-muted">
+              <EscudoTorneo url={lado.torneo.logoUrl} size={12} />
+              <span class="truncate">{nombreTorneo(lado.torneo.name)}</span>
+            </span>
+          )}
+        </a>
+      ))
+    }
+  </div>
+
+  <section class="mt-3 rounded-xl border border-border bg-surface p-3">
+    <ul class="grid gap-2.5">
+      {
+        filas.map((fila) => {
+          const ganador = gana(fila);
+          return (
+            <li>
+              <div class="flex items-baseline justify-between gap-3">
+                <span
+                  class:list={[
+                    'font-display text-base font-semibold tabular',
+                    ganador === 'a' ? 'text-primary-ink' : 'text-ink',
+                  ]}
+                >
+                  {fmt(fila.a, fila.decimales)}
+                </span>
+                <span class="text-2xs tracking-label text-ink-muted uppercase">{fila.etiqueta}</span>
+                <span
+                  class:list={[
+                    'font-display text-base font-semibold tabular',
+                    ganador === 'b' ? 'text-primary-ink' : 'text-ink',
+                  ]}
+                >
+                  {fmt(fila.b, fila.decimales)}
+                </span>
+              </div>
+              <div class="mt-1 flex h-1 gap-0.5 overflow-hidden rounded-full">
+                <span
+                  class:list={[
+                    'transition-all',
+                    ganador === 'a' ? 'bg-primary' : 'bg-border-strong',
+                  ]}
+                  style={`width:${parte(fila, 'a')}%`}
+                />
+                <span
+                  class:list={[
+                    'flex-1 transition-all',
+                    ganador === 'b' ? 'bg-primary' : 'bg-border-strong',
+                  ]}
+                />
+              </div>
+            </li>
+          );
+        })
+      }
+    </ul>
+  </section>
+
+  <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-2xs text-ink-muted">
+    <p>
+      {tipo === 'jugador'
+        ? 'Acumulado de todas las temporadas cargadas. La nota media es el promedio de sus temporadas.'
+        : 'Temporada en curso, en la fase que se está jugando.'}
+    </p>
+    <a
+      href={`/comparar?tipo=${tipo}&a=${slugB}&b=${slugA}`}
+      class="flex items-center gap-1 text-primary-ink hover:underline"
+    >
+      Dar vuelta la comparación
+      <Icon name="flecha-izquierda" size={12} />
+    </a>
+  </div>
+</div>

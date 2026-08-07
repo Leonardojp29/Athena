@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
+import Icon from '../../components/Icon.astro';
 import Container from '../../components/layout/Container.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import RecentPerformances from '../../components/player/RecentPerformances.astro';
@@ -84,6 +85,13 @@ const jsonLd = {
     </div>
 
     <div class="ml-auto shrink-0">
+      <a
+        href={`/comparar?tipo=jugador&a=${player.slug}`}
+        class="flex items-center gap-1.5 whitespace-nowrap rounded-md border border-chalk/30 px-2.5 py-1.5 text-2xs font-medium text-chalk transition-colors hover:border-primary hover:text-primary"
+      >
+        <Icon name="formacion" size={13} />
+        Comparar
+      </a>
       <BotonFavorito
         tipo="jugador"
         id={player.id}

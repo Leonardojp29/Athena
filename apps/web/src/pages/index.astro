@@ -240,7 +240,8 @@ const destacado = feed?.insights[0]
                 <MatchGeography
                   geography={geografia}
                   filtrado={pais !== null}
-                  hrefEquipo={(slug) => `/?equipo=${slug}`}
+                  hrefEquipo={(slug: string) => `/?equipo=${slug}`}
+                  hrefLiga={(slug: string) => `/?liga=${slug}`}
                 />
               )}
             </>

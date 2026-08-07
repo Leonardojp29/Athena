@@ -50,6 +50,41 @@ test.describe('recorrido de lectura', () => {
   });
 });
 
+test.describe('comparar', () => {
+  /*
+   * Comparar dos jugadores es media conversación de fútbol y los acumulados ya estaban en la base.
+   * Todo va por la URL, así que la comparación es un enlace que se puede mandar.
+   */
+  test('dos jugadores quedan uno al lado del otro', async ({ page, request }) => {
+    const busqueda = await (
+      await request.get('http://localhost:3001/v1/search?q=valera&limit=6')
+    ).json();
+    const jugadores: Array<{ slug: string }> = busqueda.results.filter(
+      (h: { type: string }) => h.type === 'player',
+    );
+    test.skip(jugadores.length < 1, 'no hay jugadores para comparar');
+
+    await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}`);
+    /* Con un solo lado, la página es el buscador del segundo. */
+    await expect(page.getByRole('button', { name: /buscar/i })).toBeVisible();
+
+    await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}&b=e-castillo`);
+    const filas = page.locator('main section li');
+    expect(await filas.count()).toBeGreaterThan(8);
+    /* El que gana la fila queda marcado, y nunca los dos a la vez. */
+    const primera = filas.first();
+    expect(await primera.locator('.text-primary-ink').count()).toBeLessThan(2);
+  });
+
+  test('el perfil ofrece comparar', async ({ page }) => {
+    await page.goto('/equipos/alianza-lima');
+    const comparar = page.getByRole('link', { name: /comparar/i }).first();
+    await expect(comparar).toBeVisible();
+    await comparar.click();
+    await expect(page).toHaveURL(/\/comparar\?tipo=equipo&a=alianza-lima/);
+  });
+});
+
 test.describe('sesión y favoritos', () => {
   /*
    * Seguir a un equipo ya no exige una cuenta: se guarda en el navegador y el aviso dice dónde

@@ -5,6 +5,7 @@ import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
+import Icon from '../../components/Icon.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import SquadGrid from '../../components/team/SquadGrid.astro';
@@ -161,6 +162,13 @@ const jsonLd = {
           )
         }
 
+        <a
+          href={`/comparar?tipo=equipo&a=${team.slug}`}
+          class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-chalk/30 px-2.5 py-1.5 text-2xs font-medium text-chalk transition-colors hover:border-primary hover:text-primary"
+        >
+          <Icon name="formacion" size={13} />
+          Comparar
+        </a>
         <BotonFavorito
           tipo="equipo"
           id={team.id}

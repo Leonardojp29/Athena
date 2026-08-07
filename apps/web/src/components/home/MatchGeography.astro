@@ -23,9 +23,17 @@ interface Props {
   filtrado?: boolean;
   /** Se pasa tal cual a cada fila: la home abre el equipo sin cambiar de página. */
   hrefEquipo?: (slug: string) => string;
+  /** A dónde lleva el nombre de la liga; en la home, a su vista dentro de la home. */
+  hrefLiga?: (slug: string) => string;
 }
 
-const { geography, abiertos = ['sudamerica'], filtrado = false, hrefEquipo } = Astro.props;
+const {
+  geography,
+  abiertos = ['sudamerica'],
+  filtrado = false,
+  hrefEquipo,
+  hrefLiga = (slug: string) => `/competencias/${slug}`,
+} = Astro.props;
 
 const contarPartidos = (continente: GeographyContinent) =>
   continente.countries.reduce(
@@ -97,7 +105,7 @@ const contarVivos = (continente: GeographyContinent) =>
                   {pais.competitions.map(({ competition, matches }) => (
                     <div>
                       <a
-                        href={`/competencias/${competition.slug}`}
+                        href={hrefLiga(competition.slug)}
                         class="flex items-center gap-1.5 rounded px-2 py-1 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
                       >
                         <EscudoTorneo url={competition.logoUrl} size={13} />

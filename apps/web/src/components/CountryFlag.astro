@@ -32,13 +32,15 @@ const alto = Math.round((size * 2) / 3);
       ]}
       style={`width:${size}px;height:${alto}px`}
     />
-  ) : (
+  ) : code ? (
     <span
       class:list={['grid shrink-0 place-items-center rounded-[2px] bg-canvas-subtle', className]}
       style={`width:${size}px;height:${alto}px`}
       aria-hidden="true"
     >
-      {code && <span class="text-[8px] font-bold text-ink-muted">{code.slice(0, 2)}</span>}
+      <span class="text-[8px] font-bold text-ink-muted">{code.slice(0, 2)}</span>
     </span>
-  )
+  ) : null
+  /* Sin bandera ni código no se dibuja nada: un rectángulo gris al lado del país se lee como
+     una imagen rota, no como un espacio reservado. */
 }
