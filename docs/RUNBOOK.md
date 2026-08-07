@@ -85,6 +85,24 @@ El worker mantiene los datos frescos solo: `live-tick` cada 60 s (solo llama al
 proveedor si la base indica que puede haber fútbol en juego), `process-outbox`
 cada 30 s y `daily-refresh` a las 05:00 UTC.
 
+**Esa cadencia vive en la tabla `sync_schedules`, no en el código.** Se siembra sola en el
+primer arranque del worker y se relee en cada arranque:
+
+| Columna | Para qué |
+|---|---|
+| `cron` | patrón de cinco campos, para lo que se puede expresar en cron |
+| `metadata.everyMs` | intervalos que cron no puede decir (30 s), en milisegundos |
+| `metadata.tz` | zona del patrón; sin ella, UTC |
+| `enabled` | en `false` el scheduler se quita de BullMQ en el siguiente arranque |
+| `last_run_at` | lo sella el propio job: es la forma de ver si un recurrente dejó de correr |
+
+Exactamente uno de `cron` o `metadata.everyMs`. Una fila sin ninguno, o con un `job_kind` que
+este worker no sabe ejecutar, se omite con un warning: una cadencia mal escrita no apaga el
+worker. Si la base no responde al arrancar, cae a la cadencia por defecto — un worker que no
+levanta por no poder leer una cadencia es peor que uno con la de fábrica.
+
+Cambiar una cadencia es un `UPDATE` y reiniciar el worker; no requiere desplegar.
+
 ### Migraciones
 
 ```bash

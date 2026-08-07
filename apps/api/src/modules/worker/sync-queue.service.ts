@@ -21,6 +21,7 @@ import { SyncMatchEventsUseCase } from '../sync/sync-match-events.usecase.js';
 import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
+import { SyncScheduleService } from './sync-schedule.service.js';
 
 const QUEUE = 'sync';
 
@@ -58,6 +59,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly syncSquad: SyncSquadUseCase,
     private readonly matchInsight: GenerateMatchInsightUseCase,
     private readonly embeddings: SyncEmbeddingsUseCase,
+    private readonly schedules: SyncScheduleService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -77,18 +79,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       reportError(err, { job: job?.name, jobId: job?.id });
     });
 
-    await this.queue.upsertJobScheduler('live-tick', { every: 60_000 }, { name: 'live-tick' });
-    await this.queue.upsertJobScheduler(
-      'process-outbox',
-      { every: 30_000 },
-      { name: 'process-outbox' },
-    );
-    await this.queue.upsertJobScheduler(
-      'daily-refresh',
-      { pattern: '0 5 * * *', tz: 'UTC' },
-      { name: 'daily-refresh' },
-    );
-    this.logger.log('Sync queue ready (live-tick 60s, outbox 30s, daily-refresh 05:00 UTC)');
+    await this.schedules.apply(this.queue);
+    this.logger.log('Sync queue lista');
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -133,11 +125,15 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return job.data.entityType === 'team'
           ? this.embeddings.syncTeams()
           : this.embeddings.syncPlayers();
+      /* Los recurrentes sellan su corrida: sin eso sync_schedules no diagnostica nada. */
       case 'live-tick':
+        await this.schedules.markRun('live-tick');
         return this.liveTick();
       case 'process-outbox':
+        await this.schedules.markRun('process-outbox');
         return this.processOutbox();
       case 'daily-refresh':
+        await this.schedules.markRun('daily-refresh');
         return this.dailyRefresh();
       default:
         throw new Error(`Unknown job: ${(job as Job).name}`);
