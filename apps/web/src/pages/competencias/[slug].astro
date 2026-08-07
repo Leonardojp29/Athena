@@ -203,7 +203,7 @@ const jsonLd = {
           <ListaPartidosCompacta
             titulo="Próximos partidos"
             icono="reloj"
-            partidos={upcoming}
+            partidos={upcoming.slice(0, 7)}
             vacio="Sin partidos programados por ahora."
           />
         </section>
@@ -211,7 +211,7 @@ const jsonLd = {
           <ListaPartidosCompacta
             titulo="Últimos resultados"
             icono="cancha"
-            partidos={recent}
+            partidos={recent.slice(0, 7)}
             vacio="Aún no hay resultados esta temporada."
           />
         </section>
