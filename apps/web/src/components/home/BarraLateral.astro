@@ -95,7 +95,7 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
       Favoritos
       <span data-favoritos-cuenta class="ml-auto tabular"></span>
     </p>
-    <div data-favoritos-lista class="grid gap-1.5"></div>
+    <div data-favoritos-lista class="grid gap-2 pt-0.5"></div>
     <p data-favoritos-vacio class="px-2.5 pb-1 text-2xs leading-snug text-ink-muted">
       Marcá una liga o un equipo con la estrella y aparecen acá.
     </p>
@@ -111,6 +111,7 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
     catalogo.map((continente) => (
       <details
         class="group/cont"
+        data-rama={`cont:${continente.continent}`}
         open={
           continente.countries.some(tieneSeleccion) ||
           (seleccionVacia && continente.continent === 'sudamerica')
@@ -136,7 +137,7 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
             const paisSeleccionado = tieneSeleccion(pais);
             const nombrePais = paisEnEspanol(pais.name) ?? 'Internacional';
             return (
-              <details class="group/pais" open={paisSeleccionado}>
+              <details class="group/pais" data-rama={`pais:${clave}`} open={paisSeleccionado}>
                 <summary
                   class:list={[
                     'flex cursor-pointer list-none items-center gap-2 rounded-md px-2 py-1.5 transition-colors',
@@ -327,6 +328,73 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
 
   window.addEventListener(EVENTO_FAVORITOS, pintar);
   pintar();
+
+  /*
+   * El árbol y el scroll se recuerdan entre navegaciones.
+   *
+   * Abrir un equipo o una liga es una navegación de verdad —la página se rearma en el servidor— y
+   * eso reiniciaba la barra: los países que habías desplegado se cerraban y el scroll volvía
+   * arriba, como si hubieras entrado de nuevo. Con esto, de una vista a otra solo cambia el
+   * contenedor de la derecha, que es lo que uno espera.
+   *
+   * La rama que contiene lo que estás viendo la abre el servidor y acá no se cierra nunca: perder
+   * de vista dónde estás parado sería peor que el problema original.
+   */
+  const CLAVE_RAMAS = 'athena:ramas';
+
+  const ramas = document.querySelectorAll<HTMLDetailsElement>('[data-rama]');
+  const riel = document.querySelector<HTMLElement>('[data-riel]');
+
+  const leerRamas = (): Set<string> => {
+    try {
+      const raw = sessionStorage.getItem(CLAVE_RAMAS);
+      const lista = raw ? (JSON.parse(raw) as string[]) : [];
+      return new Set(Array.isArray(lista) ? lista : []);
+    } catch {
+      return new Set();
+    }
+  };
+
+  const guardarRamas = () => {
+    const abiertas = [...ramas].filter((r) => r.open).map((r) => r.dataset.rama as string);
+    try {
+      sessionStorage.setItem(CLAVE_RAMAS, JSON.stringify(abiertas));
+    } catch {
+      /* Modo privado: la barra sigue funcionando, solo no recuerda. */
+    }
+  };
+
+  const recordadas = leerRamas();
+  if (recordadas.size > 0) {
+    for (const rama of ramas) {
+      /* Lo que el servidor abrió por la selección se respeta; el resto sale de lo recordado. */
+      if (!rama.open) rama.open = recordadas.has(rama.dataset.rama as string);
+    }
+  }
+  for (const rama of ramas) rama.addEventListener('toggle', guardarRamas);
+  guardarRamas();
+
+  if (riel) {
+    const CLAVE_SCROLL = 'athena:riel';
+    const guardado = Number(sessionStorage.getItem(CLAVE_SCROLL) ?? '0');
+    if (guardado > 0) riel.scrollTop = guardado;
+
+    let pendiente = 0;
+    riel.addEventListener(
+      'scroll',
+      () => {
+        clearTimeout(pendiente);
+        pendiente = window.setTimeout(() => {
+          try {
+            sessionStorage.setItem(CLAVE_SCROLL, String(riel.scrollTop));
+          } catch {
+            /* ídem */
+          }
+        }, 120);
+      },
+      { passive: true },
+    );
+  }
 
   /* Marca la liga o el equipo abierto si además es favorito: el estado se lee de un vistazo. */
   const abierta = new URL(location.href).searchParams;

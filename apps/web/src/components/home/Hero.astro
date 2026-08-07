@@ -1,17 +1,19 @@
 ---
 import type { MatchCard } from '../../lib/api';
-import { formatKickoff, isLive } from '../../lib/format';
+import { isLive } from '../../lib/format';
 import Icon from '../Icon.astro';
 import Container from '../layout/Container.astro';
 
 /*
- * El primer viewport: la pizarra a sangre con lo que está pasando ahora mismo, que es la razón
- * por la que alguien abre una web de fútbol.
+ * Una tira, no un hero.
  *
- * Las cifras grandes se fueron. "24 partidos · 11 competencias" era un dato sobre la base de
- * datos, no sobre el fútbol: a nadie le cambia el día saber cuántos torneos hay cargados. Ese
- * espacio ahora lo ocupa lo que sí importa a esta hora —lo que está en juego, y si no hay nada en
- * juego, lo que arranca en un rato—, y el recuento queda en una línea discreta.
+ * Tuvo título grande, bajada, cifras y tarjetas de los partidos que arrancaban. Nada de eso es por
+ * lo que alguien abre una web de fútbol: entra a ver partidos, equipos y jugadores, y todo eso
+ * empieza más abajo. Queda lo que sirve —qué día es, cuántos partidos hay, cuántos se están
+ * jugando— en una línea de 44px.
+ *
+ * El h1 se queda porque la página necesita uno, pero al tamaño de una etiqueta: nombra lo que
+ * estás mirando, no es un cartel.
  */
 interface Props {
   live: MatchCard[];
@@ -20,18 +22,7 @@ interface Props {
 }
 
 const { live, total, destacado } = Astro.props;
-
-const jugando = live.filter((m) => isLive(m.status));
-const porEmpezar = live
-  .filter((m) => m.status === 'scheduled' && new Date(m.kickoffUtc).getTime() > Date.now())
-  .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
-
-/*
- * Si hay partidos en juego, mandan ellos. Si no, lo que viene: la pizarra vacía a media mañana
- * era media pantalla en blanco, y una web de fútbol siempre tiene algo que contar.
- */
-const enVivo = jugando.length > 0;
-const cartelera = (enVivo ? jugando : porEmpezar).slice(0, 4);
+const jugando = live.filter((m) => isLive(m.status)).length;
 
 const fecha = new Intl.DateTimeFormat('es-PE', {
   timeZone: 'America/Lima',
@@ -43,119 +34,38 @@ const fecha = new Intl.DateTimeFormat('es-PE', {
 
 <section class="w-full border-b border-board-edge bg-board">
   <Container width="wide">
-    <div
-      class:list={[
-        'grid gap-x-8 gap-y-5 py-5',
-        cartelera.length > 0
-          ? 'lg:grid-cols-[minmax(0,26rem)_minmax(0,28rem)] lg:items-center lg:justify-between'
-          : '',
-      ]}
-    >
-      <div>
-        <h1
-          class="max-w-[16ch] font-display text-4xl font-semibold uppercase leading-[0.92] text-balance text-chalk sm:text-5xl"
-        >
-          Todos los partidos de hoy
-        </h1>
-        <p class="mt-2 max-w-[30ch] text-lg font-medium leading-snug text-primary">
-          Y por qué terminó así cada uno.
-        </p>
+    <div class="flex h-11 items-center gap-x-3 overflow-hidden">
+      <h1 class="shrink-0 font-display text-base font-semibold uppercase leading-none text-chalk">
+        Partidos de hoy
+      </h1>
 
-        <p class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-2xs tracking-label text-chalk-dim uppercase">
-          <span>{fecha}</span>
-          <span class="text-chalk/25">·</span>
-          <span class="tabular">{total} {total === 1 ? 'partido' : 'partidos'}</span>
-          {
-            jugando.length > 0 && (
-              <>
-                <span class="text-chalk/25">·</span>
-                <span class="flex items-center gap-1.5 font-medium text-live-board">
-                  <span class="size-1.5 rounded-full bg-live-board animate-live-pulse" />
-                  {jugando.length} en juego
-                </span>
-              </>
-            )
-          }
-        </p>
-
+      <p class="flex min-w-0 items-center gap-x-2 text-2xs tracking-label text-chalk-dim uppercase">
+        <span class="hidden shrink-0 text-chalk/25 sm:inline">·</span>
+        <span class="hidden truncate sm:inline">{fecha}</span>
+        <span class="shrink-0 text-chalk/25">·</span>
+        <span class="shrink-0 tabular">{total} {total === 1 ? 'partido' : 'partidos'}</span>
         {
-          destacado && (
-            <a
-              href={`/partidos/${destacado.matchId}?vista=analisis`}
-              class="mt-4 flex max-w-[44ch] items-start gap-2 rounded-lg border border-data/30 bg-chalk/5 p-3 transition-colors hover:border-data/60"
-            >
-              <Icon name="destello" size={14} class="mt-0.5 shrink-0 text-data" />
-              <span>
-                <span class="block text-sm font-medium text-chalk">{destacado.titular}</span>
-                <span class="mt-0.5 block text-2xs text-chalk-dim">Análisis Athena · leer</span>
+          jugando > 0 && (
+            <>
+              <span class="shrink-0 text-chalk/25">·</span>
+              <span class="flex shrink-0 items-center gap-1.5 font-medium text-live-board">
+                <span class="size-1.5 rounded-full bg-live-board animate-live-pulse" />
+                {jugando} en juego
               </span>
-            </a>
+            </>
           )
         }
-      </div>
+      </p>
 
       {
-        cartelera.length > 0 && (
-          <div>
-            <p
-              class:list={[
-                'mb-2 flex items-center gap-1.5 text-2xs font-medium tracking-label uppercase',
-                enVivo ? 'text-live-board' : 'text-chalk-dim',
-              ]}
-            >
-              {enVivo ? (
-                <>
-                  <span class="size-1.5 rounded-full bg-live-board animate-live-pulse" />
-                  En juego ahora
-                </>
-              ) : (
-                <>
-                  <Icon name="reloj" size={12} />
-                  Empieza pronto
-                </>
-              )}
-            </p>
-            <div class="grid gap-0.5 rounded-lg border border-chalk/12 bg-chalk/6 p-1.5">
-              {cartelera.map((match) => (
-                <a
-                  href={`/partidos/${match.id}`}
-                  class="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-chalk/8"
-                >
-                  <span
-                    class:list={[
-                      'grid text-2xs leading-tight tabular',
-                      enVivo ? 'text-live-board' : 'text-chalk-dim',
-                    ]}
-                  >
-                    <span class="font-medium text-chalk">
-                      {enVivo && match.elapsedMinutes !== null
-                        ? `${match.elapsedMinutes}'`
-                        : formatKickoff(match.kickoffUtc)}
-                    </span>
-                    <span class="truncate">{match.season.competition.name}</span>
-                  </span>
-
-                  <span class="grid min-w-0 gap-0.5">
-                    {[match.homeTeam, match.awayTeam].map((team) => (
-                      <span class="flex min-w-0 items-center gap-1.5">
-                        {team.logoUrl && (
-                          <img src={team.logoUrl} alt="" width="15" height="15" class="shrink-0" />
-                        )}
-                        <span class="truncate text-sm text-chalk">{team.name}</span>
-                      </span>
-                    ))}
-                  </span>
-
-                  {enVivo && (
-                    <span class="grid gap-0.5 text-right font-display text-sm font-semibold tabular text-chalk">
-                      <span>{match.homeScore ?? 0}</span>
-                      <span>{match.awayScore ?? 0}</span>
-                    </span>
-                  )}
-                </a>
-              ))}
-            </div>
-          </div>
+        destacado && (
+          <a
+            href={`/partidos/${destacado.matchId}?vista=analisis`}
+            class="ml-auto hidden min-w-0 items-center gap-1.5 text-2xs text-chalk-dim transition-colors hover:text-chalk lg:flex"
+          >
+            <Icon name="destello" size={12} class="shrink-0 text-data" />
+            <span class="truncate">{destacado.titular}</span>
+          </a>
         )
       }
     </div>
