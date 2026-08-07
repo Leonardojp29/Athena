@@ -141,24 +141,29 @@ const nota = (valor: string | null) => (valor === null ? null : Number(valor).to
           <Icon name="cancha" size={12} />
           Sus últimos partidos
         </h3>
+        <!--
+          Grilla y no flex: un `li` de grilla mide max-content por omisión y la fila se salía de la
+          tarjeta treinta píxeles, con la nota cortada por el borde. Tres columnas explícitas —con
+          `minmax(0,1fr)` en la del medio— no se pueden desbordar.
+        -->
         <ul class="grid gap-0.5">
           {recentPerformances.slice(0, 5).map((actuacion) => (
-            <li>
+            <li class="min-w-0">
               <a
                 href={`/partidos/${actuacion.match.id}`}
-                class="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
+                class="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
               >
-                <span class="w-14 shrink-0 text-2xs text-ink-muted tabular">
+                <span class="text-2xs text-ink-muted tabular">
                   {formatDate(actuacion.match.kickoffUtc)}
                 </span>
-                <span class="min-w-0 flex-1 truncate text-sm">
+                <span class="min-w-0 truncate text-sm">
                   {actuacion.match.homeTeam.shortName ?? actuacion.match.homeTeam.name}
                   <span class="mx-1 font-display font-semibold tabular">
                     {actuacion.match.homeScore ?? '–'}–{actuacion.match.awayScore ?? '–'}
                   </span>
                   {actuacion.match.awayTeam.shortName ?? actuacion.match.awayTeam.name}
                 </span>
-                <span class="flex shrink-0 items-center gap-1.5 text-2xs text-ink-muted">
+                <span class="flex items-center gap-1.5 text-2xs text-ink-muted">
                   {(actuacion.goals ?? 0) > 0 && (
                     <span class="text-primary-ink">
                       {actuacion.goals} {actuacion.goals === 1 ? 'gol' : 'goles'}
