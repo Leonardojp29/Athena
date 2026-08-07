@@ -59,6 +59,46 @@ const jornada = (() => {
 const nota = (valor: string | null) => (valor === null ? null : Number(valor).toFixed(1));
 const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
 
+/*
+ * El mismo payload que la cancha del partido: así el clic abre la ficha con las estadísticas de
+ * ese encuentro —por el que fue elegido figura— sin salir de la página ni pedir nada al servidor.
+ */
+const ficha = (j: JugadorDelOnce): string =>
+  JSON.stringify({
+    playerId: j.player_id,
+    slug: j.player_slug,
+    name: j.player_name,
+    photoUrl: j.photo_url,
+    number: j.shirt_number,
+    position: LINEA[j.position] ?? j.position,
+    team: { name: j.team_name, slug: j.team_slug, logoUrl: j.team_logo },
+    stats: {
+      minutesPlayed: j.minutes_played,
+      rating: j.rating,
+      goals: j.goals,
+      assists: j.assists,
+      saves: j.saves,
+      shotsTotal: j.shots_total,
+      shotsOnTarget: j.shots_on_target,
+      passesTotal: j.passes_total,
+      passesKey: j.passes_key,
+      passesAccurate: j.passes_accurate,
+      tacklesTotal: j.tackles_total,
+      interceptions: j.interceptions,
+      duelsTotal: j.duels_total,
+      duelsWon: j.duels_won,
+      dribblesTotal: j.dribbles_total,
+      dribblesSuccess: j.dribbles_success,
+      foulsCommitted: j.fouls_committed,
+      foulsDrawn: j.fouls_drawn,
+      yellowCards: j.yellow_cards,
+      redCards: j.red_cards,
+      penaltyScored: j.penalty_scored,
+      penaltyMissed: j.penalty_missed,
+      penaltySaved: j.penalty_saved,
+    },
+  });
+
 const LINEA: Record<string, string> = {
   G: 'Arquero',
   D: 'Defensa',
@@ -110,9 +150,11 @@ const LINEA: Record<string, string> = {
 
           <div class="absolute inset-0">
             {ubicados.map((puesto) => (
-              <a
-                href={`/?jugador=${puesto.player.player_slug}`}
-                class="absolute flex w-[5.5rem] -translate-x-1/2 translate-y-1/2 flex-col items-center gap-0.5 text-center"
+              <button
+                type="button"
+                data-iman
+                data-ficha={ficha(puesto.player)}
+                class="absolute flex w-[5.75rem] -translate-x-1/2 translate-y-1/2 cursor-pointer flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 style={`left:${puesto.x}%;bottom:${puesto.y}%`}
                 title={`${puesto.player.player_name} · ${puesto.player.team_name}`}
               >
@@ -121,24 +163,29 @@ const LINEA: Record<string, string> = {
                     <img
                       src={puesto.player.photo_url}
                       alt=""
-                      width="34"
-                      height="34"
+                      width="46"
+                      height="46"
                       loading="lazy"
-                      class="size-[34px] rounded-full border border-chalk/40 bg-board object-cover"
+                      class="size-[46px] rounded-full border-2 border-chalk/50 bg-board object-cover"
                     />
                   ) : (
-                    <span class="grid size-[34px] place-items-center rounded-full border border-chalk/40 bg-board">
-                      <Icon name="usuario" size={16} class="text-chalk-dim" />
+                    <span class="grid size-[46px] place-items-center rounded-full border-2 border-chalk/50 bg-board">
+                      <Icon name="usuario" size={20} class="text-chalk-dim" />
                     </span>
                   )}
-                  {nota(puesto.player.rating) && (
-                    <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded bg-primary px-1 font-display text-[10px] font-bold tabular text-primary-contrast">
-                      {nota(puesto.player.rating)}
+                  {typeof puesto.player.shirt_number === 'number' && (
+                    <span class="absolute -left-1.5 -top-1 grid size-4 place-items-center rounded-full bg-board text-[10px] font-bold tabular text-chalk ring-1 ring-chalk/40">
+                      {puesto.player.shirt_number}
                     </span>
                   )}
                   {(puesto.player.goals ?? 0) > 0 && (
-                    <span class="absolute -right-1 -top-1 grid size-3.5 place-items-center rounded-full bg-chalk text-[9px] font-bold text-board">
+                    <span class="absolute -right-1.5 -top-1 grid size-4 place-items-center rounded-full bg-chalk text-[10px] font-bold text-board">
                       {puesto.player.goals}
+                    </span>
+                  )}
+                  {nota(puesto.player.rating) && (
+                    <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-primary px-1.5 font-display text-[11px] font-bold tabular text-primary-contrast">
+                      {nota(puesto.player.rating)}
                     </span>
                   )}
                 </span>
@@ -146,15 +193,15 @@ const LINEA: Record<string, string> = {
                   Las dos etiquetas en una sola plaquita: el nombre del equipo, suelto sobre el
                   césped, quedaba por debajo del contraste mínimo a 9px.
                 -->
-                <span class="mt-1 grid max-w-full rounded bg-board/85 px-1 py-0.5 leading-tight">
-                  <span class="truncate text-[10px] font-medium text-chalk">
+                <span class="mt-1.5 grid max-w-full rounded bg-board/85 px-1 py-0.5 leading-tight">
+                  <span class="truncate text-[11px] font-medium text-chalk">
                     {apellido(puesto.player.player_name)}
                   </span>
-                  <span class="truncate text-[9px] leading-none text-chalk/70">
+                  <span class="truncate text-[10px] leading-none text-chalk/70">
                     {puesto.player.team_short ?? puesto.player.team_name}
                   </span>
                 </span>
-              </a>
+              </button>
             ))}
           </div>
         </div>

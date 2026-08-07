@@ -288,6 +288,11 @@ pico calados por `fill-rule="evenodd"`.
 - Header pegajoso y translúcido, altura 4rem, y **nada de navegación colgando de él**: logo,
   buscador y sesión. El catálogo vive en la barra lateral de la home, que es donde alguien lo
   busca.
+- **Las copas de la confederación viven dentro de su continente y arriba de los países:** la
+  Libertadores es fútbol sudamericano, no "internacional", y quien abre Sudamérica la espera ahí.
+  Van ordenadas por jerarquía real —Champions antes que Conference, Libertadores antes que Recopa—,
+  no alfabéticamente. Solo el Mundial de Clubes queda en su propia sección, porque cruza todas las
+  confederaciones.
 - **Barra lateral de la home:** Hoy · Favoritos · Competencias. Cada liga con su escudo; "ver los
   partidos de hoy" va **al final y en gris**, porque es una salida y no el contenido —arriba y en
   lima competía con las ligas, que es lo que la gente viene a buscar—.
@@ -333,6 +338,10 @@ de la Liga 1. El riel cambia de contenido según dónde estés, y lo más futbol
 con lo que hay —notas por jugador y su puesto— es **el equipo ideal de la última jornada**: un
 arquero, cuatro defensores, cuatro volantes y dos delanteros, cada uno el mejor calificado de su
 puesto, en el orden en que se lee una alineación.
+
+Las fichas son **botones**, no enlaces: el clic abre la ficha del jugador con las estadísticas **de
+ese partido** —el partido por el que entró al once—, no su perfil. El payload viaja en `data-ficha`,
+así que abrirla no cuesta una llamada, y es el mismo `<dialog>` que usa la cancha del partido.
 
 Se dibuja **sobre la cancha, vertical**: vive en un riel de 24rem, donde una cancha a lo ancho deja
 fichas de 60px. La geometría es la misma función del dominio que usa el partido, así que las

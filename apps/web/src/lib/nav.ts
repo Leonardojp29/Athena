@@ -29,6 +29,8 @@ export interface NavCountry {
 export interface NavContinent {
   continent: Continent;
   label: string;
+  /** Las copas de la confederación: van sueltas y arriba de los países. */
+  competitions: NavCompetition[];
   countries: NavCountry[];
 }
 
@@ -40,6 +42,7 @@ const RESPALDO: NavContinent[] = [
   {
     continent: 'sudamerica',
     label: 'Sudamérica',
+    competitions: [],
     countries: [
       {
         code: 'PE',
@@ -78,7 +81,7 @@ export async function getNavTree(): Promise<NavContinent[]> {
 
 /** Plano, para el pie y el buscador. */
 export function todasLasCompetencias(tree: NavContinent[]): NavCompetition[] {
-  return tree.flatMap((c) => c.countries.flatMap((p) => p.competitions));
+  return tree.flatMap((c) => [...c.competitions, ...c.countries.flatMap((p) => p.competitions)]);
 }
 
 /**

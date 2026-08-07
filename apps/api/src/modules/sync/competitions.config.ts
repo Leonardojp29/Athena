@@ -81,16 +81,21 @@ export const CONFIGURED_COMPETITIONS: readonly ConfiguredCompetition[] = [
   { providerRef: '102', label: 'Copa del Emperador', countryCode: 'JP', continent: 'asia' },
 
   // ---------- Internacional de clubes ----------
-  { providerRef: '2', label: 'UEFA Champions League', countryCode: null, continent: 'mundial' },
-  { providerRef: '3', label: 'UEFA Europa League', countryCode: null, continent: 'mundial' },
-  { providerRef: '848', label: 'UEFA Conference League', countryCode: null, continent: 'mundial' },
-  { providerRef: '531', label: 'Supercopa de Europa', countryCode: null, continent: 'mundial' },
-  { providerRef: '13', label: 'CONMEBOL Libertadores', countryCode: null, continent: 'mundial' },
-  { providerRef: '11', label: 'CONMEBOL Sudamericana', countryCode: null, continent: 'mundial' },
-  { providerRef: '541', label: 'CONMEBOL Recopa', countryCode: null, continent: 'mundial' },
-  { providerRef: '16', label: 'Concacaf Champions Cup', countryCode: null, continent: 'mundial' },
-  { providerRef: '772', label: 'Leagues Cup', countryCode: null, continent: 'mundial' },
-  { providerRef: '17', label: 'AFC Champions League Elite', countryCode: null, continent: 'mundial' },
-  { providerRef: '12', label: 'CAF Champions League', countryCode: null, continent: 'mundial' },
+  /*
+   * Las copas de clubes van en el continente de su confederación, no en un cajón aparte: la
+   * Libertadores es fútbol sudamericano y quien busca fútbol sudamericano la busca ahí. Solo el
+   * Mundial de Clubes se queda sin continente, porque justamente los cruza todos.
+   */
+  { providerRef: '2', label: 'UEFA Champions League', countryCode: null, continent: 'europa' },
+  { providerRef: '3', label: 'UEFA Europa League', countryCode: null, continent: 'europa' },
+  { providerRef: '848', label: 'UEFA Conference League', countryCode: null, continent: 'europa' },
+  { providerRef: '531', label: 'Supercopa de Europa', countryCode: null, continent: 'europa' },
+  { providerRef: '13', label: 'CONMEBOL Libertadores', countryCode: null, continent: 'sudamerica' },
+  { providerRef: '11', label: 'CONMEBOL Sudamericana', countryCode: null, continent: 'sudamerica' },
+  { providerRef: '541', label: 'CONMEBOL Recopa', countryCode: null, continent: 'sudamerica' },
+  { providerRef: '16', label: 'Concacaf Champions Cup', countryCode: null, continent: 'norteamerica' },
+  { providerRef: '772', label: 'Leagues Cup', countryCode: null, continent: 'norteamerica' },
+  { providerRef: '17', label: 'AFC Champions League Elite', countryCode: null, continent: 'asia' },
+  { providerRef: '12', label: 'CAF Champions League', countryCode: null, continent: 'africa' },
   { providerRef: '15', label: 'Mundial de Clubes', countryCode: null, continent: 'mundial' },
 ] as const;

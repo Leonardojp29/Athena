@@ -126,6 +126,39 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
         </summary>
 
         <div class="ml-2 grid gap-0.5 border-l border-border pl-1.5">
+          <!--
+            Las copas de la confederación, arriba de los países: la Libertadores es fútbol
+            sudamericano y quien abre Sudamérica la espera ahí, no en un cajón llamado
+            "Internacional".
+          -->
+          {continente.competitions.map((competition) => (
+            <div class="group/liga flex items-center gap-1">
+              <a
+                href={`/?liga=${competition.slug}`}
+                aria-current={ligaActiva === competition.slug ? 'page' : undefined}
+                class:list={[
+                  'flex min-w-0 flex-1 items-center gap-1.5 truncate rounded px-1.5 py-1 text-2xs transition-colors',
+                  ligaActiva === competition.slug
+                    ? 'bg-primary/12 font-medium text-ink'
+                    : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
+                ]}
+              >
+                <EscudoTorneo url={competition.logoUrl} size={13} />
+                <span class="truncate">{nombreTorneo(competition.name)}</span>
+              </a>
+              <BotonFavorito
+                tipo="liga"
+                id={competition.id}
+                slug={competition.slug}
+                nombre={nombreTorneo(competition.name)}
+                logoUrl={competition.logoUrl}
+                pais={continente.label}
+                conCuenta={conCuenta}
+                class="opacity-0 focus-visible:opacity-100 group-hover/liga:opacity-100 aria-pressed:opacity-100"
+              />
+            </div>
+          ))}
+
           {continente.countries.map((pais) => {
             const clave = pais.code ?? 'internacional';
             const hoy = partidosPorPais.get(clave) ?? 0;

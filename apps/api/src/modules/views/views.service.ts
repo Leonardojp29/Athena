@@ -5,6 +5,7 @@ import {
   CONTINENT_LABEL,
   CONTINENT_ORDER,
   competitionRank,
+  continentalRank,
   countryRank,
   type Continent,
 } from './regions.js';
@@ -146,25 +147,30 @@ export class ViewsService {
       porContinente.set(continente, paises);
     }
 
+    const porNombre = (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+      competitionRank(a.format, a.name) - competitionRank(b.format, b.name) ||
+      a.name.localeCompare(b.name, 'es');
+
     return CONTINENT_ORDER.filter((c) => porContinente.has(c)).map((continent) => {
       const paises = porContinente.get(continent) as Map<string, typeof rows>;
       return {
         continent,
         label: CONTINENT_LABEL[continent],
+        /*
+         * Las copas de la confederación van sueltas y arriba de los países: la Libertadores es
+         * fútbol sudamericano, no "internacional", y quien busca fútbol sudamericano la busca ahí.
+         */
+        competitions: [...(paises.get('') ?? [])].sort(
+          (a, b) =>
+            continentalRank(a.name) - continentalRank(b.name) || a.name.localeCompare(b.name, 'es'),
+        ),
         countries: [...paises.entries()]
+          .filter(([code]) => code !== '')
           .map(([code, competitions]) => ({
-            code: code === '' ? null : code,
-            /*
-             * Sin código no hay país, y el nombre tiene que ser null: heredar el `country` de
-             * la primera fila hacía que el grupo internacional se llamara "Germany".
-             */
-            name: code === '' ? null : (competitions[0]?.country ?? null),
-            flagUrl: code === '' ? null : (competitions[0]?.flagUrl ?? null),
-            competitions: [...competitions].sort(
-              (a, b) =>
-                competitionRank(a.format, a.name) - competitionRank(b.format, b.name) ||
-                a.name.localeCompare(b.name, 'es'),
-            ),
+            code,
+            name: competitions[0]?.country ?? null,
+            flagUrl: competitions[0]?.flagUrl ?? null,
+            competitions: [...competitions].sort(porNombre),
           }))
           .sort((a, b) => countryRank(a.code) - countryRank(b.code)),
       };
@@ -444,7 +450,11 @@ export class ViewsService {
         SELECT round FROM jornadas ORDER BY (partidos >= 3) DESC, ultima DESC LIMIT 1
       ),
       notas AS (
-        SELECT ps.position, ps.rating, ps.goals, ps.assists, ps.minutes_played,
+        SELECT ps.position, ps.rating, ps.goals, ps.assists, ps.minutes_played, ps.shirt_number,
+               ps.saves, ps.shots_total, ps.shots_on_target, ps.passes_total, ps.passes_key,
+               ps.passes_accurate, ps.tackles_total, ps.interceptions, ps.duels_total, ps.duels_won,
+               ps.dribbles_total, ps.dribbles_success, ps.fouls_committed, ps.fouls_drawn,
+               ps.yellow_cards, ps.red_cards, ps.penalty_scored, ps.penalty_missed, ps.penalty_saved,
                p.id AS player_id, p.name AS player_name, p.slug AS player_slug, p.photo_url,
                t.name AS team_name, t.short_name AS team_short, t.slug AS team_slug, t.logo_url AS team_logo,
                m.id AS match_id, j.round,
@@ -460,7 +470,11 @@ export class ViewsService {
       )
       -- Columnas explícitas y rating como texto: row_number() devuelve bigint y con SELECT *
       -- viajaba hasta el JSON, que no sabe serializarlo y tiraba la vista entera con un 500.
-      SELECT position, rating::text AS rating, goals, assists, minutes_played,
+      SELECT position, rating::text AS rating, goals, assists, minutes_played, shirt_number,
+             saves, shots_total, shots_on_target, passes_total, passes_key, passes_accurate,
+             tackles_total, interceptions, duels_total, duels_won, dribbles_total, dribbles_success,
+             fouls_committed, fouls_drawn, yellow_cards, red_cards,
+             penalty_scored, penalty_missed, penalty_saved,
              player_id, player_name, player_slug, photo_url,
              team_name, team_short, team_slug, team_logo, match_id, round
       FROM notas
@@ -876,6 +890,26 @@ export interface FilaOnce {
   goals: number | null;
   assists: number | null;
   minutes_played: number | null;
+  shirt_number: number | null;
+  saves: number | null;
+  shots_total: number | null;
+  shots_on_target: number | null;
+  passes_total: number | null;
+  passes_key: number | null;
+  passes_accurate: number | null;
+  tackles_total: number | null;
+  interceptions: number | null;
+  duels_total: number | null;
+  duels_won: number | null;
+  dribbles_total: number | null;
+  dribbles_success: number | null;
+  fouls_committed: number | null;
+  fouls_drawn: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+  penalty_scored: number | null;
+  penalty_missed: number | null;
+  penalty_saved: number | null;
   player_id: string;
   player_name: string;
   player_slug: string;

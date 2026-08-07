@@ -14,17 +14,20 @@ export const CONTINENT_LABEL: Record<Continent, string> = {
   norteamerica: 'Norteamérica',
   africa: 'África',
   asia: 'Asia',
-  mundial: 'Internacional',
+  mundial: 'Mundial',
 };
 
-/* El orden de la navegación: primero lo que mira este público, al final las copas de clubes. */
+/*
+ * El orden de la navegación: primero lo que mira este público. El Mundial de Clubes va al final
+ * porque es una vez al año; las demás copas de clubes viven dentro de su continente.
+ */
 export const CONTINENT_ORDER: Continent[] = [
   'sudamerica',
   'europa',
-  'mundial',
   'norteamerica',
   'asia',
   'africa',
+  'mundial',
 ];
 
 /**
@@ -36,6 +39,18 @@ export function competitionRank(format: string, name: string): number {
   if (format === 'league') return 0;
   if (/supercopa|super cup|campeón de campeones|trofeo/i.test(name)) return 2;
   return 1;
+}
+
+/**
+ * Las copas de la confederación no se ordenan alfabéticamente: la Champions va antes que la
+ * Conference y la Libertadores antes que la Recopa. Es la jerarquía real del fútbol de clubes.
+ */
+export function continentalRank(name: string): number {
+  if (/champions league|libertadores/i.test(name)) return 0;
+  if (/europa league|sudamericana/i.test(name)) return 1;
+  if (/conference|leagues cup/i.test(name)) return 2;
+  if (/super ?copa|super cup|recopa/i.test(name)) return 3;
+  return 4;
 }
 
 /* Perú primero: es el público de esta versión. Después, peso futbolístico del continente. */

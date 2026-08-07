@@ -176,7 +176,7 @@ test.describe('shell del sitio', () => {
      * componente cae a la lista por puesto y esto lo dice.
      */
     const riel = page.locator('main aside').last();
-    const fichas = riel.locator('a[href^="/?jugador="]');
+    const fichas = riel.locator('[data-iman]');
     expect(await fichas.count()).toBe(11);
 
     /* Vertical: más alta que ancha, porque vive en un riel de 24rem. */
@@ -188,6 +188,17 @@ test.describe('shell del sitio', () => {
       as.map((a) => Math.round(a.getBoundingClientRect().top)),
     );
     expect(Math.max(...alturas)).toBeGreaterThan(Math.min(...alturas) + 100);
+
+    /*
+     * Y la ficha abre las estadísticas de ese partido, que es el partido por el que el jugador
+     * entró al once. Antes navegaba a su perfil y perdías el contexto de la jornada.
+     */
+    const ficha = page.locator('#ficha-jugador');
+    await expect(ficha).toBeHidden();
+    await fichas.first().click();
+    await expect(ficha).toBeVisible();
+    await expect(ficha.locator('#ficha-nombre')).not.toBeEmpty();
+    expect(await ficha.locator('[data-ficha-detalle] > *').count()).toBeGreaterThan(2);
   });
 
   /*
