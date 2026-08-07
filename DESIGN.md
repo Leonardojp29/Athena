@@ -303,6 +303,17 @@ pico calados por `fill-rule="evenodd"`.
 - Las pestañas del partido son **enlaces reales** con `?vista=`: cada panel es indexable,
   compartible y cuesta 0 KB.
 
+### "Lo mejor de hoy" ordena por lo que hizo, no por la nota
+
+La nota sola no le dice nada a nadie: ponía arriba a un defensor con 7.6 que no tocó la pelota y
+dejaba afuera al que hizo dos goles. El orden es **goles × 2 + asistencias + nota/10**, la fórmula
+está a la vista en el código, y cada fila dice **por qué está ahí** —"2 goles · Copa do Brasil",
+"3 asistencias"— en lugar de un número abstracto.
+
+Y las ligas favoritas suben al principio, en el cliente: el servidor no puede saberlas y sin eso la
+queja es justa —"salen jugadores de ligas que no me interesan"—. Se reordena, no se filtra: si
+alguien hizo dos goles en otra parte, sigue estando.
+
 ### El once de la fecha
 
 Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada: quien abre la Liga 1 quiere lo

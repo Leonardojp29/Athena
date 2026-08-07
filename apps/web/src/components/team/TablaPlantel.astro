@@ -1,0 +1,97 @@
+---
+import type { TeamView } from '../../lib/api';
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import { nombreTorneo } from '../../lib/paises';
+
+/*
+ * Lo que hizo cada futbolista con este club esta temporada.
+ *
+ * La página tenía la plantilla —quiénes están— y la posición del equipo, pero no lo que hacen: la
+ * pregunta siguiente a "quiénes son" es "quién mete los goles". Sale de los acumulados que el
+ * proveedor manda junto a la bio, así que no cuesta una llamada más.
+ */
+interface Props {
+  jugadores: TeamView['scorers'];
+}
+
+const { jugadores } = Astro.props;
+const nota = (valor: string | null) => (valor === null ? null : Number(valor).toFixed(1));
+---
+
+<section class="rounded-xl border border-border bg-surface">
+  <header class="flex flex-wrap items-center gap-2 border-b border-border p-3">
+    <h2 class="flex items-center gap-2 font-display text-base font-semibold uppercase">
+      <Icon name="destello" size={14} class="text-primary-ink" />
+      Quién define los partidos
+    </h2>
+    <span class="text-2xs text-ink-muted">acumulado de la temporada</span>
+  </header>
+
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border text-2xs text-ink-muted uppercase tracking-label">
+          <th scope="col" class="py-2 pl-3 text-left font-semibold">Jugador</th>
+          <th scope="col" class="hidden py-2 text-left font-semibold sm:table-cell">Torneo</th>
+          <th scope="col" class="w-12 py-2 text-center font-semibold">PJ</th>
+          <th scope="col" class="w-12 py-2 text-center font-semibold">Goles</th>
+          <th scope="col" class="w-12 py-2 text-center font-semibold">Asist.</th>
+          <th scope="col" class="hidden w-14 py-2 text-center font-semibold md:table-cell">Min.</th>
+          <th scope="col" class="w-14 py-2 pr-3 text-center font-semibold">Nota</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          jugadores.map((fila) => (
+            <tr class="border-b border-border/50 last:border-0 transition-colors hover:bg-canvas-subtle">
+              <td class="py-1.5 pl-3">
+                <a
+                  href={`/jugadores/${fila.player.slug}`}
+                  class="flex min-w-0 items-center gap-2 transition-colors hover:text-primary-ink"
+                >
+                  {fila.player.photoUrl ? (
+                    <img
+                      src={fila.player.photoUrl}
+                      alt=""
+                      width="24"
+                      height="24"
+                      loading="lazy"
+                      class="size-6 shrink-0 rounded-full bg-canvas-subtle object-cover"
+                    />
+                  ) : (
+                    <span class="grid size-6 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                      <Icon name="usuario" size={12} class="text-ink-muted" />
+                    </span>
+                  )}
+                  <span class="truncate">{fila.player.name}</span>
+                </a>
+              </td>
+              <td class="hidden py-1.5 sm:table-cell">
+                <span class="flex items-center gap-1.5 text-2xs text-ink-muted">
+                  <EscudoTorneo url={null} size={12} />
+                  <span class="truncate">{nombreTorneo(fila.season.competition.name)}</span>
+                </span>
+              </td>
+              <td class="py-1.5 text-center tabular">{fila.appearances ?? 0}</td>
+              <td class="py-1.5 text-center font-semibold tabular">{fila.goals ?? 0}</td>
+              <td class="py-1.5 text-center tabular">{fila.assists ?? 0}</td>
+              <td class="hidden py-1.5 text-center tabular text-ink-muted md:table-cell">
+                {fila.minutesPlayed ?? 0}
+              </td>
+              <td class="py-1.5 pr-3 text-center">
+                {nota(fila.rating) ? (
+                  <span class="rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
+                    {nota(fila.rating)}
+                  </span>
+                ) : (
+                  <span class="text-2xs text-ink-muted">–</span>
+                )}
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</section>

@@ -32,6 +32,18 @@ const cuando = top.esDeHoy
 
 const nota = (valor: string | null) => (valor === null ? 0 : Number(valor));
 const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
+
+/*
+ * Lo que hizo, en palabras. Una nota de 8.3 no le dice nada a nadie; "2 goles" sí, y es la razón
+ * por la que ese jugador está en la lista.
+ */
+const hazana = (p: TopPerformer): string => {
+  const partes: string[] = [];
+  if (goles(p) > 0) partes.push(`${goles(p)} ${goles(p) === 1 ? 'gol' : 'goles'}`);
+  if ((p.assists ?? 0) > 0)
+    partes.push(`${p.assists} ${p.assists === 1 ? 'asistencia' : 'asistencias'}`);
+  return partes.join(' · ');
+};
 ---
 
 {
@@ -110,9 +122,12 @@ const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
         </p>
       </a>
 
-      <ul class="grid gap-0">
+      <ul data-mejores class="grid gap-0">
         {resto.map((p, i) => (
-          <li class="border-b border-border/50 last:border-0">
+          <li
+            class="border-b border-border/50 last:border-0"
+            data-liga={p.match.season.competition.slug}
+          >
             <a
               href={hrefJugador(p.player.slug)}
               class="flex items-center gap-2.5 px-3 py-2 transition-colors hover:bg-canvas-subtle"
@@ -135,7 +150,8 @@ const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm">{p.player.name}</span>
                 <span class="block truncate text-2xs text-ink-muted">
-                  {p.team.shortName ?? p.team.name}
+                  {hazana(p) || p.team.shortName || p.team.name}
+                  <span class="text-ink-muted/70"> · {p.match.season.competition.name}</span>
                 </span>
               </span>
               <span
@@ -159,3 +175,36 @@ const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
     </section>
   )
 }
+
+<script>
+  import { EVENTO_FAVORITOS, leerFavoritos } from '../../lib/favoritos';
+
+  /*
+   * Las ligas favoritas suben al principio de la lista.
+   *
+   * El servidor no puede saberlas —viven en el navegador— y sin esto la queja es justa: "lo mejor
+   * del día" traía a un volante de una liga que a esta persona no le interesa. No se filtra nada,
+   * solo se reordena: si alguien hizo dos goles en otra parte, sigue estando.
+   */
+  const lista = document.querySelector<HTMLElement>('[data-mejores]');
+
+  function ordenar(): void {
+    if (!lista) return;
+    const favoritas = new Set(
+      leerFavoritos()
+        .filter((f) => f.tipo === 'liga')
+        .map((f) => f.slug),
+    );
+    if (favoritas.size === 0) return;
+
+    const filas = [...lista.children] as HTMLElement[];
+    const suyas = filas.filter((li) => favoritas.has(li.dataset.liga ?? ''));
+    if (suyas.length === 0 || suyas.length === filas.length) return;
+
+    lista.prepend(...suyas);
+    for (const li of suyas) li.dataset.tuya = 'si';
+  }
+
+  window.addEventListener(EVENTO_FAVORITOS, ordenar);
+  ordenar();
+</script>

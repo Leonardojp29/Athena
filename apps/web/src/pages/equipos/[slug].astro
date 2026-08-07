@@ -8,6 +8,7 @@ import Container from '../../components/layout/Container.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import SquadGrid from '../../components/team/SquadGrid.astro';
+import TablaPlantel from '../../components/team/TablaPlantel.astro';
 import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
@@ -33,7 +34,7 @@ try {
   throw error;
 }
 
-const { team, standings, recent, upcoming, squad } = view;
+const { team, standings, recent, upcoming, squad, scorers } = view;
 const similar = await pedidoSimilar;
 const session = await pedidoSesion;
 
@@ -209,6 +210,8 @@ const jsonLd = {
             )
           }
         </section>
+
+        {scorers.length > 0 && <TablaPlantel jugadores={scorers} />}
 
         <SquadGrid squad={squad} />
       </div>

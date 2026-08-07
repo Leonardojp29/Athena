@@ -1,0 +1,57 @@
+---
+import Icon from '../Icon.astro';
+import type { TeamView } from '../../lib/api';
+
+/*
+ * La plantilla en el ancho de una tarjeta: por línea, con el dorsal y el apellido.
+ *
+ * La vista simplificada del equipo mostraba cómo va y sus partidos, y no a los futbolistas —que es
+ * la mitad de por qué alguien entra a un club—. Acá caben los treinta y uno sin volverse una
+ * página: dorsal, nombre y nada más; el resto está en el perfil de cada uno.
+ */
+interface Props {
+  squad: TeamView['squad'];
+  /** A dónde lleva un jugador: en la home, a su vista dentro de la home. */
+  hrefJugador?: (slug: string) => string;
+}
+
+const { squad, hrefJugador = (slug: string) => `/jugadores/${slug}` } = Astro.props;
+const total = squad.lines.reduce((n, l) => n + l.players.length, 0);
+---
+
+{
+  total > 0 && (
+    <div class="grid gap-2">
+      <h3 class="flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+        <Icon name="usuario" size={12} />
+        Plantilla
+        <span class="ml-auto font-normal tabular">
+          {total} jugadores{squad.year !== null && ` · ${squad.year}`}
+        </span>
+      </h3>
+
+      {squad.lines.map((linea) => (
+        <div>
+          <p class="mb-0.5 text-[10px] font-semibold tracking-label text-ink-muted uppercase">
+            {linea.label}
+          </p>
+          <ul class="grid gap-x-3 gap-y-0.5 sm:grid-cols-2 xl:grid-cols-3">
+            {linea.players.map((miembro) => (
+              <li class="min-w-0">
+                <a
+                  href={hrefJugador(miembro.player.slug)}
+                  class="flex min-w-0 items-center gap-1.5 rounded px-1 py-0.5 text-sm transition-colors hover:bg-canvas-subtle"
+                >
+                  <span class="w-5 shrink-0 text-right text-2xs text-ink-muted tabular">
+                    {miembro.shirtNumber ?? '–'}
+                  </span>
+                  <span class="truncate">{miembro.player.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}

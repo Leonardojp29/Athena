@@ -227,7 +227,7 @@ export class ViewsService {
   private async performersOn(date: string, limite: number) {
     const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
 
-    return this.prisma.matchPlayerStatistics.findMany({
+    const filas = await this.prisma.matchPlayerStatistics.findMany({
       relationLoadStrategy: JOIN,
       where: {
         rating: { not: null },
@@ -238,7 +238,8 @@ export class ViewsService {
         },
       },
       orderBy: [{ rating: 'desc' }, { minutesPlayed: 'desc' }],
-      take: limite,
+      /* Se pide de sobra para poder reordenar por lo que de verdad importa y recortar después. */
+      take: Math.max(limite * 6, 40),
       select: {
         rating: true,
         minutesPlayed: true,
@@ -254,11 +255,26 @@ export class ViewsService {
             awayScore: true,
             homeTeam: teamSummary,
             awayTeam: teamSummary,
-            season: { select: { competition: { select: { name: true, slug: true } } } },
+            season: {
+              select: {
+                competition: {
+                  select: { name: true, slug: true, logoUrl: true, country: true, flagUrl: true },
+                },
+              },
+            },
           },
         },
       },
     });
+
+    /*
+     * Ordenado por lo que un hincha llama "jugó bien", no por la nota pelada. La nota sola ponía
+     * arriba a un defensor con 7.6 que no tocó la pelota, y dejaba afuera al que hizo dos goles.
+     * Los goles pesan doble, la asistencia una, y la nota decide los empates.
+     */
+    return [...filas]
+      .sort((a, b) => puntaje(b) - puntaje(a))
+      .slice(0, limite);
   }
 
   /** El índice de partidos: un día calendario de Lima, agrupado por competencia. */
@@ -463,7 +479,7 @@ export class ViewsService {
    * a Supabase; filtrar por la relación cuesta un join, que del lado de la base no se nota.
    */
   async team(slug: string) {
-    const [team, standings, recent, upcoming, squad] = await Promise.all([
+    const [team, standings, recent, upcoming, squad, scorers] = await Promise.all([
       this.prisma.team.findUnique({
         where: { slug },
         select: {
@@ -531,6 +547,21 @@ export class ViewsService {
           player: { select: { id: true, name: true, slug: true, photoUrl: true, position: true } },
         },
       }),
+      /*
+       * Los goleadores del club en la temporada. La plantilla dice quiénes están; esto dice quiénes
+       * juegan, que es la pregunta siguiente.
+       */
+      this.prisma.playerSeasonStatistics.findMany({
+        relationLoadStrategy: JOIN,
+        where: { team: { slug }, season: { isCurrent: true } },
+        orderBy: [{ goals: 'desc' }, { assists: 'desc' }, { appearances: 'desc' }],
+        take: 10,
+        select: {
+          ...goleador,
+          rating: true,
+          season: { select: { year: true, competition: { select: { name: true, slug: true } } } },
+        },
+      }),
     ]);
     if (!team) throw new NotFoundException('Equipo no encontrado');
 
@@ -573,6 +604,7 @@ export class ViewsService {
       recent,
       upcoming,
       squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },
+      scorers,
     };
   }
 
@@ -826,6 +858,16 @@ export class ViewsService {
     ]);
     return { competitions, teams, players };
   }
+}
+
+/** Goles x2 + asistencias + la nota como desempate: la fórmula está a la vista a propósito. */
+function puntaje(fila: {
+  rating: string | { toString(): string } | null;
+  goals: number | null;
+  assists: number | null;
+}): number {
+  const nota = fila.rating === null ? 0 : Number(fila.rating.toString());
+  return (fila.goals ?? 0) * 2 + (fila.assists ?? 0) + nota / 10;
 }
 
 export interface FilaOnce {

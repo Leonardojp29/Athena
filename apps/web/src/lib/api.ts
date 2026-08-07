@@ -278,6 +278,8 @@ export interface TeamView {
     logoUrl: string | null;
   };
   squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
+  /** Los goleadores del club en la temporada: quiénes juegan, no solo quiénes están. */
+  scorers: Array<SeasonLeader & { rating: string | null; season: { year: number; competition: { name: string; slug: string } } }>;
   /** Con la fase en juego primero: un equipo puede tener el Apertura cerrado y el Clausura en curso. */
   standings: Array<
     Omit<StandingRow, 'team'> & {
