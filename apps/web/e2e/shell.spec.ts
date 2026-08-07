@@ -122,6 +122,29 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * Abrir un equipo o una liga es una navegación de verdad: la página se rearma en el servidor. Sin
+   * recordar el árbol, los países que habías desplegado se cerraban y el scroll volvía arriba, como
+   * si hubieras entrado de nuevo. De una vista a otra solo tiene que cambiar el contenedor.
+   */
+  test('la barra lateral no se reinicia al abrir un equipo', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'la barra lateral no se muestra en móvil');
+    await page.goto('/?liga=primera-division');
+
+    const nav = page.locator('main nav[aria-label="Navegación de la home"]');
+    /* se despliega algo que el servidor no abre solo: así se comprueba que se recordó */
+    await nav.locator('summary').filter({ hasText: /Uruguay/ }).first().click();
+    const abiertas = (r: typeof nav) =>
+      r.locator('details[open]').evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.rama));
+    const antes = await abiertas(nav);
+    expect(antes).toContain('pais:UY');
+
+    await page.locator('main a[href^="/?equipo="]').first().click();
+    await expect(page).toHaveURL(/\?equipo=/);
+
+    expect(await abiertas(nav)).toEqual(antes);
+  });
+
+  /*
    * Los favoritos viven en el navegador y eso hay que decirlo: un favorito que desaparece al
    * cambiar de dispositivo, sin haberlo avisado, se siente como un bug.
    */
