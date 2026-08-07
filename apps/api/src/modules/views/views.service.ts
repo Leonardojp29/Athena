@@ -21,6 +21,16 @@ const teamSummary = {
  */
 const JOIN = 'join' as const;
 
+/* Lo que hace falta para una tabla de goleadores: quién, en qué equipo y cuánto. */
+const goleador = {
+  goals: true,
+  assists: true,
+  appearances: true,
+  minutesPlayed: true,
+  player: { select: { id: true, name: true, slug: true, photoUrl: true } },
+  team: { select: { id: true, name: true, shortName: true, slug: true, logoUrl: true } },
+};
+
 /* Un nombre sin slug no lleva a ninguna parte: el timeline traía solo `name`. */
 const playerLink = {
   select: { id: true, name: true, slug: true, photoUrl: true },
@@ -284,7 +294,8 @@ export class ViewsService {
       isCurrent: true,
     };
 
-    const [competition, season, standings, recent, upcoming] = await Promise.all([
+    const [competition, season, standings, recent, upcoming, scorers, assisters] =
+      await Promise.all([
       this.prisma.competition.findUnique({
         where: { slug },
         select: {
@@ -339,6 +350,25 @@ export class ViewsService {
         orderBy: { kickoffUtc: 'asc' },
         take: 10,
       }),
+      /*
+       * Goleadores y asistidores de la temporada. Ya estaban en la base —vienen con la bio en
+       * /players— y no se mostraban en ninguna parte, mientras la página de la competencia dejaba
+       * media pantalla vacía debajo de la tabla.
+       */
+      this.prisma.playerSeasonStatistics.findMany({
+        relationLoadStrategy: JOIN,
+        where: { season: temporadaVigente, goals: { gt: 0 } },
+        orderBy: [{ goals: 'desc' }, { assists: 'desc' }, { minutesPlayed: 'asc' }],
+        take: 10,
+        select: goleador,
+      }),
+      this.prisma.playerSeasonStatistics.findMany({
+        relationLoadStrategy: JOIN,
+        where: { season: temporadaVigente, assists: { gt: 0 } },
+        orderBy: [{ assists: 'desc' }, { goals: 'desc' }, { minutesPlayed: 'asc' }],
+        take: 10,
+        select: goleador,
+      }),
     ]);
     if (!competition) throw new NotFoundException('Competencia no encontrada');
     if (!season) throw new NotFoundException('Sin temporada activa');
@@ -369,6 +399,8 @@ export class ViewsService {
       standingGroups,
       recent,
       upcoming,
+      scorers,
+      assisters,
     };
   }
 

@@ -1,10 +1,12 @@
 ---
+import EscudoTorneo from '../EscudoTorneo.astro';
 import BotonFavorito from '../BotonFavorito.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
 import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
 import SelectorFase from '../SelectorFase.astro';
 import StandingsTable from '../StandingsTable.astro';
+import TablaLideres from '../TablaLideres.astro';
 import type { CompetitionView } from '../../lib/api';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
@@ -26,7 +28,7 @@ interface Props {
 }
 
 const { view, banderaUrl = null, fase = null, conCuenta = false } = Astro.props;
-const { competition, season, standingGroups, recent, upcoming } = view;
+const { competition, season, standingGroups, recent, upcoming, scorers, assisters } = view;
 
 /*
  * El API manda la fase en juego primero, así que el grupo por defecto es el primero y no hay que
@@ -63,13 +65,7 @@ const bloques = [
     vista, y le da al escudo un fondo parejo sin importar de qué color venga.
   -->
   <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3">
-    {
-      competition.logoUrl && (
-        <span class="grid size-11 shrink-0 place-items-center rounded-lg bg-chalk/10">
-          <img src={competition.logoUrl} alt="" width="28" height="28" />
-        </span>
-      )
-    }
+    <EscudoTorneo url={competition.logoUrl} size={30} class="!rounded-lg !p-1.5" />
     <div class="min-w-0 flex-1 basis-40">
       <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
         {nombre}
@@ -131,6 +127,27 @@ const bloques = [
         <StandingsTable
           rows={grupo.rows}
           maxAlto="15.5rem"
+          hrefEquipo={(slug) => `/?equipo=${slug}`}
+        />
+      </div>
+    )
+  }
+
+  {
+    (scorers.length > 0 || assisters.length > 0) && (
+      <div class="grid gap-x-5 gap-y-3 border-b border-border p-3 sm:grid-cols-2">
+        <TablaLideres
+          titulo="Goleadores"
+          lideres={scorers}
+          metrica="goals"
+          filas={3}
+          hrefEquipo={(slug) => `/?equipo=${slug}`}
+        />
+        <TablaLideres
+          titulo="Asistencias"
+          lideres={assisters}
+          metrica="assists"
+          filas={3}
           hrefEquipo={(slug) => `/?equipo=${slug}`}
         />
       </div>

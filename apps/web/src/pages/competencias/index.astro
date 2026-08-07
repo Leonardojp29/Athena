@@ -1,4 +1,5 @@
 ---
+import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
 import ContinentIcon from '../../components/ContinentIcon.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
@@ -64,13 +65,7 @@ const paises = tree.reduce((n, c) => n + c.countries.filter((p) => p.code !== nu
                       >
                         <span class="flex size-7 shrink-0 items-center justify-center rounded bg-canvas-subtle">
                           {competition.logoUrl ? (
-                            <img
-                              src={competition.logoUrl}
-                              alt=""
-                              width="20"
-                              height="20"
-                              loading="lazy"
-                            />
+                            <EscudoTorneo url={competition.logoUrl} size={18} />
                           ) : (
                             <Icon name="estadio" size={14} class="text-ink-muted" />
                           )}

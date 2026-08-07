@@ -1,4 +1,5 @@
 ---
+import EscudoTorneo from '../EscudoTorneo.astro';
 import BotonFavorito from '../BotonFavorito.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
@@ -97,9 +98,7 @@ const bloques = [
         <div>
           <p class="font-display text-2xl font-semibold leading-none tabular">{`${principal.position}º`}</p>
           <p class="mt-1 flex items-center gap-1 text-2xs text-ink-muted">
-            {principal.season.competition.logoUrl && (
-              <img src={principal.season.competition.logoUrl} alt="" width="12" height="12" />
-            )}
+            <EscudoTorneo url={principal.season.competition.logoUrl} size={12} />
             <a
               href={`/?liga=${principal.season.competition.slug}`}
               class="truncate hover:text-primary-ink hover:underline"
@@ -153,9 +152,7 @@ const bloques = [
               href={`/?liga=${fila.season.competition.slug}`}
               class="flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink"
             >
-              {fila.season.competition.logoUrl && (
-                <img src={fila.season.competition.logoUrl} alt="" width="12" height="12" />
-              )}
+              <EscudoTorneo url={fila.season.competition.logoUrl} size={12} />
               <span class="truncate">
                 {nombreTorneo(fila.season.competition.name)}
                 {fila.groupLabel ? ` · ${nombreFase(fila.groupLabel)}` : ''}

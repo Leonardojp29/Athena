@@ -1,0 +1,44 @@
+---
+/*
+ * El escudo de una competencia sobre una plaquita clara.
+ *
+ * Los logos del proveedor son PNG pensados para fondo blanco y muchos son negros macizos —Copa de
+ * la Liga, Supercopa do Brasil, media docena más—: en tema oscuro desaparecían, y sobre la pizarra
+ * también. La plaquita usa `chalk`, que es casi blanco en los dos temas, así que cualquier logo se
+ * lee sin tener que saber de qué color es.
+ */
+interface Props {
+  url?: string | null;
+  /** Lado de la imagen; la plaquita agrega su propio aire. */
+  size?: number;
+  class?: string;
+}
+
+const { url = null, size = 16, class: className } = Astro.props;
+const lado = `${size}px`;
+---
+
+{
+  url ? (
+    <span
+      class:list={['inline-grid shrink-0 place-items-center rounded-[3px] bg-chalk p-[2px]', className]}
+    >
+      <img
+        src={url}
+        alt=""
+        width={size}
+        height={size}
+        loading="lazy"
+        class="object-contain"
+        style={`width:${lado};height:${lado}`}
+      />
+    </span>
+  ) : (
+    /* Sin logo, el hueco del mismo tamaño: así las listas no bailan. */
+    <span
+      class:list={['inline-block shrink-0', className]}
+      style={`width:calc(${lado} + 4px);height:calc(${lado} + 4px)`}
+      aria-hidden="true"
+    />
+  )
+}

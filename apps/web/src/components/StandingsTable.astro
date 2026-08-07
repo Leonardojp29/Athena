@@ -49,13 +49,13 @@ const diferencia = (row: StandingRow) => {
       <tr class="border-b border-border text-2xs text-ink-muted uppercase tracking-label">
         <th scope="col" class="w-8 py-2 pr-2 text-left font-semibold">#</th>
         <th scope="col" class="py-2 text-left font-semibold">Equipo</th>
-        <th scope="col" class="px-2 py-2 text-center font-semibold">PJ</th>
-        <th scope="col" class="hidden px-2 py-2 text-center font-semibold sm:table-cell">G</th>
-        <th scope="col" class="hidden px-2 py-2 text-center font-semibold sm:table-cell">E</th>
-        <th scope="col" class="hidden px-2 py-2 text-center font-semibold sm:table-cell">P</th>
-        <th scope="col" class="hidden px-2 py-2 text-center font-semibold md:table-cell">DG</th>
-        <th scope="col" class="hidden px-2 py-2 text-left font-semibold lg:table-cell">Forma</th>
-        <th scope="col" class="py-2 pl-2 text-center font-semibold">Pts</th>
+        <th scope="col" class="w-11 py-2 text-center font-semibold">PJ</th>
+        <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">G</th>
+        <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">E</th>
+        <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">P</th>
+        <th scope="col" class="hidden w-11 py-2 text-center font-semibold md:table-cell">DG</th>
+        <th scope="col" class="hidden w-28 py-2 text-left font-semibold lg:table-cell">Forma</th>
+        <th scope="col" class="w-12 py-2 text-center font-semibold">Pts</th>
       </tr>
     </thead>
     <tbody>
@@ -79,14 +79,12 @@ const diferencia = (row: StandingRow) => {
                 <span class="max-w-44 truncate sm:max-w-none">{row.team.name}</span>
               </a>
             </td>
-            <td class="px-2 py-2 text-center tabular">{row.played}</td>
-            <td class="hidden px-2 py-2 text-center tabular sm:table-cell">{row.won}</td>
-            <td class="hidden px-2 py-2 text-center tabular sm:table-cell">{row.drawn}</td>
-            <td class="hidden px-2 py-2 text-center tabular sm:table-cell">{row.lost}</td>
-            <td class="hidden px-2 py-2 text-center tabular md:table-cell">
-              {diferencia(row)}
-            </td>
-            <td class="hidden px-2 py-2 lg:table-cell">
+            <td class="py-2 text-center tabular">{row.played}</td>
+            <td class="hidden py-2 text-center tabular sm:table-cell">{row.won}</td>
+            <td class="hidden py-2 text-center tabular sm:table-cell">{row.drawn}</td>
+            <td class="hidden py-2 text-center tabular sm:table-cell">{row.lost}</td>
+            <td class="hidden py-2 text-center tabular md:table-cell">{diferencia(row)}</td>
+            <td class="hidden py-2 lg:table-cell">
               <span class="flex gap-0.5">
                 {ultimos(row.form).map((r) => (
                   <span
@@ -101,7 +99,7 @@ const diferencia = (row: StandingRow) => {
                 ))}
               </span>
             </td>
-            <td class="py-2 pl-2 text-center font-semibold tabular">{row.points}</td>
+            <td class="py-2 text-center font-semibold tabular">{row.points}</td>
           </tr>
         ))
       }

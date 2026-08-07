@@ -1,4 +1,5 @@
 ---
+import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
 import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
@@ -8,6 +9,7 @@ import CountryFlag from '../../components/CountryFlag.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import SelectorFase from '../../components/SelectorFase.astro';
 import StandingsTable from '../../components/StandingsTable.astro';
+import TablaLideres from '../../components/TablaLideres.astro';
 import { api, ApiError, type CompetitionView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
 import { nombreFase, paisEnEspanol } from '../../lib/paises';
@@ -27,7 +29,7 @@ try {
 }
 const session = await pedidoSesion;
 
-const { competition, season, standingGroups, recent, upcoming } = view;
+const { competition, season, standingGroups, recent, upcoming, scorers, assisters } = view;
 const seasonLabel =
   competition.format === 'league' &&
   competition.country !== null &&
@@ -76,13 +78,7 @@ const jsonLd = {
   <section class="w-full border-b border-board-edge bg-board">
     <Container width="wide">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-3 py-6">
-        {
-          competition.logoUrl && (
-            <span class="grid size-14 shrink-0 place-items-center rounded-lg bg-chalk/10">
-              <img src={competition.logoUrl} alt="" width="36" height="36" />
-            </span>
-          )
-        }
+        <EscudoTorneo url={competition.logoUrl} size={38} class="!rounded-lg !p-2" />
         <div class="min-w-0 flex-1">
           <h1 class="font-display text-3xl font-semibold uppercase leading-none text-chalk sm:text-4xl">
             {competition.name}
@@ -122,9 +118,16 @@ const jsonLd = {
     </Container>
   </section>
 
+  <!--
+    Tres zonas, y en pantallas anchas las tres en fila: tabla, los que deciden y los partidos. En
+    una sola columna la tabla se estiraba hasta 1200px para poner nueve números, con un hueco en el
+    medio entre el nombre del equipo y las cifras.
+  -->
   <Container width="wide" class="py-5">
-    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]">
-      <div class="grid gap-4">
+    <div
+      class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] 2xl:grid-cols-[minmax(0,1fr)_25rem_23rem]"
+    >
+      <div class="grid gap-4 lg:col-start-1 lg:row-start-1">
         {
           grupo ? (
             <section class="rounded-xl border border-border bg-surface">
@@ -155,13 +158,29 @@ const jsonLd = {
             </Card>
           )
         }
+
       </div>
+
+      {
+        (scorers.length > 0 || assisters.length > 0) && (
+          <section class="rounded-xl border border-border bg-surface lg:col-start-1 lg:row-start-2 2xl:col-start-2 2xl:row-start-1">
+            <header class="flex items-center gap-2 border-b border-border p-3">
+              <h2 class="font-display text-base font-semibold uppercase">Los que deciden</h2>
+              <span class="text-2xs text-ink-muted">temporada {seasonLabel}</span>
+            </header>
+            <div class="grid gap-x-6 gap-y-4 p-3 sm:grid-cols-2 2xl:grid-cols-1">
+              <TablaLideres titulo="Goleadores" lideres={scorers} metrica="goals" filas={8} />
+              <TablaLideres titulo="Asistencias" lideres={assisters} metrica="assists" filas={8} />
+            </div>
+          </section>
+        )
+      }
 
       <!--
         Los partidos van con los equipos apilados: en un riel de 23rem, enfrentados, los nombres se
         cortaban en "Sport Huanc…" y "Club Deporti…".
       -->
-      <div class="grid gap-4">
+      <div class="grid gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 2xl:col-start-3 2xl:row-span-1">
         <section class="rounded-xl border border-border bg-surface p-3">
           {
             upcoming.length > 0 ? (

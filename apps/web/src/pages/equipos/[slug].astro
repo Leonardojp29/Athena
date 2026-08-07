@@ -1,4 +1,5 @@
 ---
+import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
 import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
@@ -223,16 +224,7 @@ const jsonLd = {
                       href={`/competencias/${row.season.competition.slug}`}
                       class="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
                     >
-                      {row.season.competition.logoUrl && (
-                        <img
-                          src={row.season.competition.logoUrl}
-                          alt=""
-                          width="18"
-                          height="18"
-                          loading="lazy"
-                          class="shrink-0"
-                        />
-                      )}
+                      <EscudoTorneo url={row.season.competition.logoUrl} size={17} />
                       <span class="min-w-0 flex-1">
                         <span class="block truncate text-sm">
                           {nombreTorneo(row.season.competition.name)}

@@ -1,0 +1,88 @@
+---
+import type { SeasonLeader } from '../lib/api';
+
+/*
+ * Goleadores y asistidores de la temporada.
+ *
+ * Estos números ya estaban en la base —el proveedor los manda junto a la bio del jugador— y no se
+ * mostraban en ninguna parte, mientras la página de la competencia dejaba media pantalla vacía
+ * debajo de la tabla. Son, además, lo segundo que un hincha busca después de las posiciones.
+ */
+interface Props {
+  titulo: string;
+  lideres: SeasonLeader[];
+  /** Qué columna manda: la otra queda como dato secundario. */
+  metrica: 'goals' | 'assists';
+  filas?: number;
+  /** A dónde lleva un equipo; la home lo abre en su propio contenedor. */
+  hrefEquipo?: (slug: string) => string;
+}
+
+const {
+  titulo,
+  lideres,
+  metrica,
+  filas = 6,
+  hrefEquipo = (slug: string) => `/equipos/${slug}`,
+} = Astro.props;
+
+const lista: SeasonLeader[] = lideres.slice(0, filas);
+const secundaria: 'goals' | 'assists' = metrica === 'goals' ? 'assists' : 'goals';
+const ETIQUETA: Record<'goals' | 'assists', string> = { goals: 'G', assists: 'A' };
+---
+
+{
+  lista.length > 0 && (
+    <div class="min-w-0">
+      <h3 class="mb-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">{titulo}</h3>
+      <ul class="grid">
+        {lista.map((lider: SeasonLeader, i: number) => (
+          <li class="flex items-center gap-2 border-b border-border/40 py-1 last:border-0">
+            <span class="w-3 shrink-0 text-right tabular text-2xs text-ink-muted">{i + 1}</span>
+
+            {lider.player.photoUrl ? (
+              <img
+                src={lider.player.photoUrl}
+                alt=""
+                width="22"
+                height="22"
+                loading="lazy"
+                class="size-[22px] shrink-0 rounded-full bg-canvas-subtle object-cover"
+              />
+            ) : (
+              <span class="size-[22px] shrink-0 rounded-full bg-canvas-subtle" />
+            )}
+
+            <span class="min-w-0 flex-1">
+              <a
+                href={`/jugadores/${lider.player.slug}`}
+                class="block truncate text-sm transition-colors hover:text-primary-ink"
+              >
+                {lider.player.name}
+              </a>
+              <a
+                href={hrefEquipo(lider.team.slug)}
+                class="flex min-w-0 items-center gap-1 text-2xs text-ink-muted transition-colors hover:text-ink"
+              >
+                {lider.team.logoUrl && (
+                  <img src={lider.team.logoUrl} alt="" width="10" height="10" loading="lazy" />
+                )}
+                <span class="truncate">{lider.team.shortName ?? lider.team.name}</span>
+              </a>
+            </span>
+
+            <span class="shrink-0 text-right">
+              <span class="font-display text-base font-semibold leading-none tabular">
+                {lider[metrica] ?? 0}
+              </span>
+              <span class="ml-1 text-2xs text-ink-muted">{ETIQUETA[metrica]}</span>
+              <span class="block text-2xs text-ink-muted tabular">
+                {lider[secundaria] ?? 0} {ETIQUETA[secundaria]} · {lider.appearances ?? 0} PJ
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}

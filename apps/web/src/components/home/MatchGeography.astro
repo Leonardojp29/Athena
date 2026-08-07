@@ -1,6 +1,7 @@
 ---
 import type { GeographyContinent } from '../../lib/api';
 import { isLive } from '../../lib/format';
+import EscudoTorneo from '../EscudoTorneo.astro';
 import ContinentIcon from '../ContinentIcon.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
@@ -20,9 +21,11 @@ interface Props {
   abiertos?: string[];
   /** Con un país elegido no hay nada que colapsar: se abre todo. */
   filtrado?: boolean;
+  /** Se pasa tal cual a cada fila: la home abre el equipo sin cambiar de página. */
+  hrefEquipo?: (slug: string) => string;
 }
 
-const { geography, abiertos = ['sudamerica'], filtrado = false } = Astro.props;
+const { geography, abiertos = ['sudamerica'], filtrado = false, hrefEquipo } = Astro.props;
 
 const contarPartidos = (continente: GeographyContinent) =>
   continente.countries.reduce(
@@ -97,21 +100,13 @@ const contarVivos = (continente: GeographyContinent) =>
                         href={`/competencias/${competition.slug}`}
                         class="flex items-center gap-1.5 rounded px-2 py-1 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
                       >
-                        {competition.logoUrl && (
-                          <img
-                            src={competition.logoUrl}
-                            alt=""
-                            width="14"
-                            height="14"
-                            loading="lazy"
-                          />
-                        )}
+                        <EscudoTorneo url={competition.logoUrl} size={13} />
                         <span class="truncate font-medium tracking-label uppercase">
                           {nombreTorneo(competition.name)}
                         </span>
                       </a>
                       {matches.map((match) => (
-                        <MatchRow match={match} showDate />
+                        <MatchRow match={match} showDate hrefEquipo={hrefEquipo} />
                       ))}
                     </div>
                   ))}

@@ -10,9 +10,18 @@ import { formatDate, formatKickoff, isLive, statusLabel } from '../lib/format';
 interface Props {
   match: MatchCard;
   showDate?: boolean;
+  /**
+   * A dónde lleva un equipo. En la home abre su vista simplificada en el mismo contenedor; en el
+   * resto del sitio, su página. El valor por omisión es la página, que es lo correcto fuera de casa.
+   */
+  hrefEquipo?: (slug: string) => string;
 }
 
-const { match, showDate = false } = Astro.props;
+const {
+  match,
+  showDate = false,
+  hrefEquipo = (slug: string) => `/equipos/${slug}`,
+} = Astro.props;
 const live = isLive(match.status);
 const finished = match.status === 'finished';
 const hasScore = match.homeScore !== null && match.awayScore !== null;
@@ -35,7 +44,7 @@ const estado = live && match.elapsedMinutes !== null
 
   <span class="flex min-w-0 items-center justify-end gap-2 text-right">
     <a
-      href={`/equipos/${match.homeTeam.slug}`}
+      href={hrefEquipo(match.homeTeam.slug)}
       class="relative truncate text-sm hover:text-primary-ink hover:underline"
     >
       {match.homeTeam.name}
@@ -77,7 +86,7 @@ const estado = live && match.elapsedMinutes !== null
       )
     }
     <a
-      href={`/equipos/${match.awayTeam.slug}`}
+      href={hrefEquipo(match.awayTeam.slug)}
       class="relative truncate text-sm hover:text-primary-ink hover:underline"
     >
       {match.awayTeam.name}

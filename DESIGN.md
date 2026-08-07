@@ -193,8 +193,11 @@ el resto. Las dos autoalojadas y precargadas, con un fallback de métricas ajust
 ## Layout
 
 El ancho completo no puede ser literal: texto a 2560px no se lee. La regla es un contenedor de
-tres medidas — `wide` 1600px para el chrome, los encabezados a sangre, la cancha y las grillas;
-`content` 1440px para el cuerpo; `prose` 68ch para la narrativa de la IA dentro de su tarjeta.
+tres medidas — `wide` **1920px** para el chrome, los encabezados a sangre, la cancha y las grillas;
+`content` 1600px para el cuerpo; `prose` 68ch para la narrativa de la IA dentro de su tarjeta.
+
+1600px se quedaba corto: con el zoom al 67% —que es como se mira un 1920 de cerca— la ventana pasa a
+2865px CSS y sobraban 600px de margen a cada lado.
 
 El fondo cruza toda la pantalla y el contenido respeta su medida: un encabezado de entidad es
 una `<section>` a sangre con un contenedor adentro, nunca un `div` con márgenes automáticos.
@@ -299,6 +302,26 @@ pico calados por `fill-rule="evenodd"`.
 - El activo se marca con `aria-current="page"` y fondo `primary/12`, no solo con color.
 - Las pestañas del partido son **enlaces reales** con `?vista=`: cada panel es indexable,
   compartible y cuesta 0 KB.
+
+### Escudos de competencia
+
+Los logos del proveedor son PNG pensados para fondo blanco y **muchos son negros macizos** —Copa de
+la Liga, Supercopa do Brasil, media docena más—: en tema oscuro desaparecían, y sobre la pizarra
+también. Todos van sobre una plaquita de `chalk`, que es casi blanco en los dos temas, así que
+cualquier logo se lee sin tener que saber de qué color es. Un componente, todos los lugares.
+
+### La página de una competencia
+
+Tres zonas, y en pantallas anchas las tres en fila: **tabla · los que deciden · partidos**. En una
+sola columna la tabla se estiraba a 1200px para poner nueve números, con un hueco en el medio entre
+el nombre del equipo y las cifras, y media pantalla vacía debajo.
+
+Ese hueco lo llena **la tabla de goleadores y asistencias**: datos que ya estaban en la base —vienen
+con la bio del jugador— y no se mostraban en ninguna parte, siendo lo segundo que un hincha busca
+después de las posiciones.
+
+Las columnas numéricas llevan ancho fijo y se agrupan a la derecha: repartidas por todo el ancho, la
+fila se leía como un formulario.
 
 ### Fases de una temporada
 

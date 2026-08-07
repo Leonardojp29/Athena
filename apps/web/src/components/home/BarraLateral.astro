@@ -1,4 +1,5 @@
 ---
+import EscudoTorneo from '../EscudoTorneo.astro';
 import AvisoFavoritos from '../AvisoFavoritos.astro';
 import BotonFavorito from '../BotonFavorito.astro';
 import ContinentIcon from '../ContinentIcon.astro';
@@ -176,18 +177,7 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                             : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
                         ]}
                       >
-                        {competition.logoUrl ? (
-                          <img
-                            src={competition.logoUrl}
-                            alt=""
-                            width="14"
-                            height="14"
-                            loading="lazy"
-                            class="shrink-0"
-                          />
-                        ) : (
-                          <span class="size-3.5 shrink-0" />
-                        )}
+                        <EscudoTorneo url={competition.logoUrl} size={13} />
                         <span class="truncate">{nombreTorneo(competition.name)}</span>
                       </a>
                       {(partidosPorLiga.get(competition.slug) ?? 0) > 0 && (

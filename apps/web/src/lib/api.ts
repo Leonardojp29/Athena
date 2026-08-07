@@ -221,6 +221,18 @@ export interface CompetitionView {
   standingGroups: Array<{ label: string; rows: StandingRow[]; current: boolean }>;
   recent: MatchCard[];
   upcoming: MatchCard[];
+  /** Goleadores y asistidores de la temporada, ya ordenados. */
+  scorers: SeasonLeader[];
+  assisters: SeasonLeader[];
+}
+
+export interface SeasonLeader {
+  goals: number | null;
+  assists: number | null;
+  appearances: number | null;
+  minutesPlayed: number | null;
+  player: PlayerLink;
+  team: TeamSummary;
 }
 
 export interface SquadPlayer {

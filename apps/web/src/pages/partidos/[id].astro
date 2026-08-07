@@ -1,4 +1,5 @@
 ---
+import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
 import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
@@ -76,9 +77,7 @@ const jsonLd = {
           href={`/competencias/${match.season.competition.slug}`}
           class="flex items-center gap-1.5 transition-colors hover:text-primary"
         >
-          {match.season.competition.logoUrl && (
-            <img src={match.season.competition.logoUrl} alt="" width="14" height="14" />
-          )}
+          <EscudoTorneo url={match.season.competition.logoUrl} size={13} />
           {match.season.competition.name}
           {match.round && <span>· {match.round}</span>}
         </a>

@@ -155,7 +155,7 @@ const destacado = feed?.insights[0]
               <h2 class="mb-2 font-display text-base font-semibold uppercase">Lo que sigues</h2>
               <div class="rounded-lg border border-border bg-surface p-1">
                 {[...feed.live, ...feed.upcoming, ...feed.recent].slice(0, 5).map((match) => (
-                  <MatchRow match={match} showDate />
+                  <MatchRow match={match} showDate hrefEquipo={(slug) => `/?equipo=${slug}`} />
                 ))}
               </div>
             </section>
@@ -209,7 +209,11 @@ const destacado = feed?.insights[0]
                   </a>
                 </div>
               ) : (
-                <MatchGeography geography={geografia} filtrado={pais !== null} />
+                <MatchGeography
+                  geography={geografia}
+                  filtrado={pais !== null}
+                  hrefEquipo={(slug) => `/?equipo=${slug}`}
+                />
               )}
             </>
           )

@@ -1,7 +1,9 @@
 ---
 /*
- * El ancho completo no puede ser literal: texto a 2560px no se lee. El chrome, los heros,
- * la cancha y las tablas llegan a 1600px; la prosa se limita aparte, dentro de su tarjeta.
+ * El ancho completo no puede ser literal: texto a 2560px no se lee. Pero 1600px se quedaba corto:
+ * con el zoom al 67% —que es como se mira un 1920 de cerca— la ventana pasa a 2865px CSS y sobraban
+ * 600px de margen a cada lado. El tope sube a 1920, que llena esa ventana y sigue frenando los 4K.
+ * La prosa se limita aparte, dentro de su tarjeta.
  */
 type Ancho = 'wide' | 'content' | 'prose';
 
@@ -14,8 +16,8 @@ interface Props {
 const { width = 'content', as: Tag = 'div', class: className } = Astro.props as Props;
 
 const ANCHOS: Record<Ancho, string> = {
-  wide: 'max-w-[1600px]',
-  content: 'max-w-[1440px]',
+  wide: 'max-w-[1920px]',
+  content: 'max-w-[1600px]',
   prose: 'max-w-[68ch]',
 };
 ---
