@@ -50,7 +50,7 @@ const bloques = [
         </span>
       )
     }
-    <div class="min-w-0 flex-1">
+    <div class="min-w-0 flex-1 basis-40">
       <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
         {team.name}
       </h2>
@@ -68,7 +68,8 @@ const bloques = [
       </p>
     </div>
 
-    <div class="flex shrink-0 items-center gap-2">
+    <!-- En móvil los botones se van a su propia línea: en la misma, el título se comía a "PRI…". -->
+    <div class="flex w-full shrink-0 items-center gap-2 sm:w-auto">
       <BotonFavorito
         tipo="equipo"
         id={team.id}
