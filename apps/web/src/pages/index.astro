@@ -6,7 +6,7 @@ import Hero from '../components/home/Hero.astro';
 import Icon from '../components/Icon.astro';
 import MatchGeography from '../components/home/MatchGeography.astro';
 import MatchRow from '../components/MatchRow.astro';
-import MejoresDelDia from '../components/home/MejoresDelDia.astro';
+import LideresDelMundo from '../components/home/LideresDelMundo.astro';
 import OnceDeLaFecha from '../components/home/OnceDeLaFecha.astro';
 import PlayerSheet from '../components/pitch/PlayerSheet.astro';
 import VistaEquipo from '../components/home/VistaEquipo.astro';
@@ -31,12 +31,24 @@ import { paisEnEspanol } from '../lib/paises';
  * Todo en paralelo. En serie, cada vista sumaba su viaje a Supabase y la home tardaba siete
  * segundos; ninguna de estas depende del resultado de las otras.
  */
+/* La región del riel viaja en la URL: el enlace es compartible y no cuesta hidratar nada. */
+const REGIONES = new Set(['sudamerica', 'europa', 'norteamerica', 'asia', 'africa', 'mundial']);
+const regionPedida = Astro.url.searchParams.get('region');
+const region = regionPedida && REGIONES.has(regionPedida) ? regionPedida : 'sudamerica';
+
 const session = await getSession(Astro);
 const [homeView, catalogo, mejores, feed] = await Promise.all([
   getHomeView(),
   getNavTree(),
-  api<TopPerformers>('/views/top-performers').catch(
-    () => ({ date: '', esDeHoy: true, players: [] }) satisfies TopPerformers,
+  api<TopPerformers>(`/views/top-performers?continente=${region}`).catch(
+    () =>
+      ({
+        continent: region,
+        scorers: [],
+        date: '',
+        esDeHoy: true,
+        players: [],
+      }) satisfies TopPerformers,
   ),
   session?.accessToken
     ? api<PersonalFeed>('/me/feed', session.accessToken).catch(() => null)
@@ -249,7 +261,11 @@ const destacado = feed?.insights[0]
               nombreLiga={vistaLiga.competition.name}
             />
           ) : (
-            <MejoresDelDia top={mejores} hrefJugador={(slug) => `/?jugador=${slug}`} />
+            <LideresDelMundo
+              top={mejores}
+              href={(continente: string) => `/?region=${continente}`}
+              hrefJugador={(slug: string) => `/?jugador=${slug}`}
+            />
           )
         }
 

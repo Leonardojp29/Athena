@@ -122,6 +122,30 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * El riel de la home muestra los goleadores de una región, y arranca en la de este público. "Lo
+   * mejor del mundo" traía a un delantero de la MLS que a quien mira desde Lima no le mueve nada.
+   */
+  test('los goleadores del riel cambian de región por URL', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'el riel no se muestra en móvil');
+    await page.goto('/');
+
+    const riel = page.locator('main aside').last();
+    const selector = riel.locator('[role="group"][aria-label="Región"]');
+    await expect(selector.locator('a[aria-current="true"]')).toHaveText(/sudam[eé]rica/i);
+
+    const sudamericanos = await riel.locator('a[href^="/?jugador="]').allInnerTexts();
+    test.skip(sudamericanos.length === 0, 'todavía no hay goleadores cargados');
+
+    await selector.getByRole('link', { name: 'Europa' }).click();
+    await expect(page).toHaveURL(/\?region=europa$/);
+    await expect(selector.locator('a[aria-current="true"]')).toHaveText(/europa/i);
+
+    /* Otra región, otros goleadores: si la lista no cambia, el filtro no está filtrando. */
+    const europeos = await riel.locator('a[href^="/?jugador="]').allInnerTexts();
+    expect(europeos).not.toEqual(sudamericanos);
+  });
+
+  /*
    * La vista simplificada del equipo tiene que traer a los futbolistas: sin ellos mostraba cómo va
    * y sus partidos, que es la mitad de por qué alguien entra a un club.
    */

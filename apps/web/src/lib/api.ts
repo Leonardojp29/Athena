@@ -192,8 +192,28 @@ export interface TopPerformer {
   };
 }
 
-/** El podio y de qué día es: a media mañana todavía no terminó ningún partido de hoy. */
+/** Un goleador de la temporada, con lo que hizo sumado en toda la región. */
+export interface Goleador {
+  goals: number;
+  assists: number;
+  appearances: number;
+  team_name: string;
+  team_short: string | null;
+  team_slug: string;
+  team_logo: string | null;
+  competition_name: string;
+  competition_slug: string;
+  competition_logo: string | null;
+  player_id: string;
+  player_name: string;
+  player_slug: string;
+  photo_url: string | null;
+}
+
+/** Los líderes de una región: goleadores de la temporada y lo mejor del último día jugado. */
 export interface TopPerformers {
+  continent: string;
+  scorers: Goleador[];
   date: string;
   esDeHoy: boolean;
   players: TopPerformer[];

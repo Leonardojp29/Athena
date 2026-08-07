@@ -21,6 +21,9 @@ const TTL = {
   sitemap: 3600,
 } as const;
 
+/* Lo que el selector puede pedir; cualquier otra cosa cae en la región de este público. */
+const CONTINENTES = new Set(['sudamerica', 'europa', 'norteamerica', 'asia', 'africa', 'mundial']);
+
 @Controller('views')
 export class ViewsController {
   constructor(
@@ -49,9 +52,12 @@ export class ViewsController {
 
   @Get('top-performers')
   @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
-  topPerformers(@Query('fecha') fecha: string) {
+  topPerformers(@Query('fecha') fecha: string, @Query('continente') continente: string) {
     const dia = fecha ?? limaToday();
-    return this.cache.wrap(`top:${dia}`, TTL.topPerformers, () => this.views.topPerformers(dia));
+    const region = CONTINENTES.has(continente) ? continente : 'sudamerica';
+    return this.cache.wrap(`top:${dia}:${region}`, TTL.topPerformers, () =>
+      this.views.topPerformers(dia, 6, region),
+    );
   }
 
   @Get('competition/:slug')

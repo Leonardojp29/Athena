@@ -1,0 +1,230 @@
+---
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import type { Goleador, TopPerformer, TopPerformers } from '../../lib/api';
+
+/*
+ * Quién la está rompiendo, por región.
+ *
+ * Antes acá vivía "lo mejor de hoy" del mundo entero, y el problema era de raíz: a quien mira desde
+ * Lima, la mejor nota de la MLS no le mueve nada, y encima el podio dependía de que ya hubiera
+ * terminado algún partido. Ahora manda la **tabla de goleadores de la temporada** —lo segundo que
+ * mira un hincha después de las posiciones, y que no caduca a media mañana— con un selector de
+ * continente que arranca en el suyo. Lo mejor del último día jugado queda abajo, como complemento.
+ *
+ * El selector son enlaces: la región queda en la URL, el enlace es compartible y la página sigue
+ * costando 0 KB.
+ */
+interface Props {
+  top: TopPerformers;
+  /** Construye el enlace de cada región. */
+  href: (continente: string) => string;
+  hrefJugador?: (slug: string) => string;
+}
+
+const { top, href, hrefJugador = (slug: string) => `/jugadores/${slug}` } = Astro.props;
+
+const REGIONES = [
+  { clave: 'sudamerica', label: 'Sudamérica' },
+  { clave: 'europa', label: 'Europa' },
+  { clave: 'norteamerica', label: 'Norteamérica' },
+] as const;
+
+const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
+
+/* Lo que hizo, en palabras: una nota de 8.3 no le dice nada a nadie; "2 goles" sí. */
+const hazana = (p: TopPerformer): string => {
+  const partes: string[] = [];
+  if (goles(p) > 0) partes.push(`${goles(p)} ${goles(p) === 1 ? 'gol' : 'goles'}`);
+  if ((p.assists ?? 0) > 0)
+    partes.push(`${p.assists} ${p.assists === 1 ? 'asistencia' : 'asistencias'}`);
+  return partes.join(' · ');
+};
+
+const cuando = top.esDeHoy
+  ? 'Hoy'
+  : new Intl.DateTimeFormat('es-PE', {
+      timeZone: 'America/Lima',
+      weekday: 'long',
+      day: 'numeric',
+    }).format(new Date(`${top.date}T12:00:00-05:00`));
+
+const lider: Goleador | null = top.scorers[0] ?? null;
+const resto: Goleador[] = top.scorers.slice(1, 8);
+---
+
+<section class="overflow-hidden rounded-xl border border-border bg-surface">
+  <header class="border-b border-border p-3">
+    <div class="flex items-center gap-2">
+      <Icon name="destello" size={14} class="shrink-0 text-primary-ink" />
+      <h2 class="font-display text-sm font-semibold uppercase leading-none">Los que la rompen</h2>
+      <span class="ml-auto text-2xs text-ink-muted">temporada</span>
+    </div>
+
+    <div
+      class="mt-2 flex flex-wrap items-center gap-1 rounded-lg bg-canvas-subtle p-1"
+      role="group"
+      aria-label="Región"
+    >
+      {
+        REGIONES.map((region) => {
+          const activa = region.clave === top.continent;
+          return (
+            <a
+              href={href(region.clave)}
+              aria-current={activa ? 'true' : undefined}
+              class:list={[
+                'rounded-md px-2 py-1 text-2xs font-medium transition-colors',
+                activa
+                  ? 'bg-surface text-ink shadow-card'
+                  : 'text-ink-muted hover:bg-surface/60 hover:text-ink',
+              ]}
+            >
+              {region.label}
+            </a>
+          );
+        })
+      }
+    </div>
+  </header>
+
+  {
+    lider ? (
+      <>
+        <!-- El primero grande: una lista de ocho iguales no tiene puntero. -->
+        <a
+          href={hrefJugador(lider.player_slug)}
+          class="group flex items-start gap-3 border-b border-border p-3 transition-colors hover:bg-canvas-subtle"
+        >
+          <span class="relative shrink-0">
+            {lider.photo_url ? (
+              <img
+                src={lider.photo_url}
+                alt=""
+                width="56"
+                height="56"
+                loading="lazy"
+                class="size-14 rounded-full bg-canvas-subtle object-cover"
+              />
+            ) : (
+              <span class="grid size-14 place-items-center rounded-full bg-canvas-subtle">
+                <Icon name="usuario" size={22} class="text-ink-muted" />
+              </span>
+            )}
+            <span class="absolute -bottom-1 -right-1 rounded bg-primary px-1.5 py-0.5 font-display text-sm font-bold tabular text-primary-contrast">
+              {lider.goals}
+            </span>
+          </span>
+
+          <span class="min-w-0 flex-1">
+            <span class="block truncate font-display text-lg font-semibold uppercase leading-tight group-hover:text-primary-ink">
+              {lider.player_name}
+            </span>
+            <span class="flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
+              {lider.team_logo && (
+                <img src={lider.team_logo} alt="" width="13" height="13" loading="lazy" />
+              )}
+              <span class="truncate">{lider.team_short ?? lider.team_name}</span>
+            </span>
+            <span class="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs">
+              <span class="rounded bg-primary px-1.5 py-0.5 font-semibold tabular text-primary-contrast">
+                {lider.goals} {lider.goals === 1 ? 'gol' : 'goles'}
+              </span>
+              {lider.assists > 0 && (
+                <span class="rounded bg-canvas-subtle px-1.5 py-0.5 tabular">
+                  {lider.assists} {lider.assists === 1 ? 'asistencia' : 'asistencias'}
+                </span>
+              )}
+              <span class="rounded bg-canvas-subtle px-1.5 py-0.5 tabular">
+                {lider.appearances} PJ
+              </span>
+            </span>
+          </span>
+        </a>
+
+        <ul class="grid">
+          {resto.map((goleador: Goleador, i: number) => (
+            <li class="border-b border-border/50 last:border-0">
+              <a
+                href={hrefJugador(goleador.player_slug)}
+                class="flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-canvas-subtle"
+              >
+                <span class="w-3 shrink-0 tabular text-2xs text-ink-muted">{i + 2}</span>
+                {goleador.photo_url ? (
+                  <img
+                    src={goleador.photo_url}
+                    alt=""
+                    width="26"
+                    height="26"
+                    loading="lazy"
+                    class="size-[26px] shrink-0 rounded-full bg-canvas-subtle object-cover"
+                  />
+                ) : (
+                  <span class="grid size-[26px] shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                    <Icon name="usuario" size={12} class="text-ink-muted" />
+                  </span>
+                )}
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm">{goleador.player_name}</span>
+                  <span class="flex min-w-0 items-center gap-1 text-2xs text-ink-muted">
+                    <EscudoTorneo url={goleador.competition_logo} size={10} />
+                    <span class="truncate">{goleador.team_short ?? goleador.team_name}</span>
+                  </span>
+                </span>
+                <span class="shrink-0 text-right">
+                  <span class="font-display text-base font-semibold leading-none tabular">
+                    {goleador.goals}
+                  </span>
+                  <span class="ml-0.5 text-2xs text-ink-muted">G</span>
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    ) : (
+      <p class="p-3 text-sm text-ink-muted">
+        Todavía no hay goles cargados en esta región esta temporada.
+      </p>
+    )
+  }
+
+  {
+    top.players.length > 0 && (
+      <div class="border-t border-border p-3">
+        <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+          <Icon name="reloj" size={12} />
+          Lo mejor de {cuando}
+        </h3>
+        <ul class="grid gap-0.5">
+          {top.players.slice(0, 3).map((p: TopPerformer) => (
+            <li>
+              <a
+                href={hrefJugador(p.player.slug)}
+                class="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
+              >
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm">{p.player.name}</span>
+                  <span class="block truncate text-2xs text-ink-muted">
+                    {hazana(p) || (p.team.shortName ?? p.team.name)}
+                    <span class="text-ink-muted/70"> · {p.match.season.competition.name}</span>
+                  </span>
+                </span>
+                {p.rating !== null && (
+                  <span class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
+                    {Number(p.rating).toFixed(1)}
+                  </span>
+                )}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
+    Goles de todas las competencias de la región en la temporada en curso.
+    {top.players.length > 0 && ' Las notas son del proveedor de datos.'}
+  </p>
+</section>

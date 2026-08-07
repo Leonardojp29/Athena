@@ -308,7 +308,22 @@ pico calados por `fill-rule="evenodd"`.
 - Las pestañas del partido son **enlaces reales** con `?vista=`: cada panel es indexable,
   compartible y cuesta 0 KB.
 
-### "Lo mejor de hoy" ordena por lo que hizo, no por la nota
+### El riel de la home: goleadores por región
+
+"Lo mejor de hoy del mundo" tenía dos problemas de raíz: a quien mira desde Lima la mejor nota de la
+MLS no le mueve nada, y el podio dependía de que ya hubiera terminado algún partido —a media mañana
+mostraba el de anteayer—.
+
+Manda la **tabla de goleadores de la temporada**, que es lo segundo que mira un hincha después de las
+posiciones y que no caduca a media mañana, con un **selector de región que arranca en la propia**
+(Sudamérica). Suma lo que cada futbolista hizo en todas las competencias de esa región —liga, copa
+nacional y copa continental—, que es como lo cuenta un hincha: "lleva veinte esta temporada". El
+selector son enlaces (`?region=`), así que la elección queda en la URL y cuesta 0 KB.
+
+Lo mejor del último día jugado queda abajo como complemento, en tres líneas, y ahí sí ordenado por
+lo que hizo y no por la nota:
+
+### Cómo se ordena "lo mejor del día"
 
 La nota sola no le dice nada a nadie: ponía arriba a un defensor con 7.6 que no tocó la pelota y
 dejaba afuera al que hizo dos goles. El orden es **goles × 2 + asistencias + nota/10**, la fórmula

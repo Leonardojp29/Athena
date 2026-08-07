@@ -209,28 +209,41 @@ export class ViewsService {
    * individual ya está en la base, así que "quién jugó mejor hoy" cuesta una consulta y no una
    * llamada al proveedor.
    */
-  async topPerformers(date: string, limite = 6) {
+  /**
+   * Los líderes de una región: los goleadores de la temporada y lo mejor del último día con
+   * partidos jugados.
+   *
+   * Va por continente porque "lo mejor del mundo" no le sirve a nadie: a quien mira desde Lima, la
+   * mejor nota de la MLS no le mueve nada. El continente lo elige quien lee; por omisión, el suyo.
+   */
+  async topPerformers(date: string, limite = 6, continente = 'sudamerica') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Fecha inválida');
 
     /*
      * A media mañana ningún partido del día terminó todavía y el podio quedaría vacío, así que
-     * se mira también ayer y anteayer. Los tres días van en paralelo: en serie eran tres viajes
-     * a Supabase sumados, y desde fuera de su región cada uno cuesta cerca de un segundo.
+     * se mira también ayer y anteayer. Los tres días y los goleadores van en paralelo: en serie
+     * eran cuatro viajes a Supabase sumados, y desde fuera de su región cada uno cuesta cerca de
+     * un segundo.
      */
     const dias = [0, -1, -2].map((offset) =>
       new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() + offset * DAY_MS)
         .toISOString()
         .slice(0, 10),
     );
-    const resultados = await Promise.all(dias.map((iso) => this.performersOn(iso, limite)));
+    const [scorers, ...resultados] = await Promise.all([
+      this.goleadoresDe(continente),
+      ...dias.map((iso) => this.performersOn(iso, limite, continente)),
+    ]);
 
     for (const [i, players] of resultados.entries()) {
-      if (players.length > 0) return { date: dias[i] as string, esDeHoy: i === 0, players };
+      if (players.length > 0) {
+        return { continent: continente, scorers, date: dias[i] as string, esDeHoy: i === 0, players };
+      }
     }
-    return { date, esDeHoy: true, players: [] };
+    return { continent: continente, scorers, date, esDeHoy: true, players: [] };
   }
 
-  private async performersOn(date: string, limite: number) {
+  private async performersOn(date: string, limite: number, continente?: string) {
     const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
 
     const filas = await this.prisma.matchPlayerStatistics.findMany({
@@ -241,6 +254,7 @@ export class ViewsService {
         match: {
           status: 'finished',
           kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) },
+          ...(continente ? { season: { competition: { continent: continente } } } : {}),
         },
       },
       orderBy: [{ rating: 'desc' }, { minutesPlayed: 'desc' }],
@@ -426,6 +440,45 @@ export class ViewsService {
       assisters,
       once,
     };
+  }
+
+  /**
+   * Los goleadores de un continente en la temporada en curso.
+   *
+   * Suma lo que cada futbolista hizo en todas las competencias de esa región —liga, copa nacional
+   * y copa continental—, que es como lo cuenta un hincha: "lleva veinte esta temporada". El equipo
+   * y el torneo que se muestran son los de mayor peso en su fila, no el primero que devolvió la
+   * base.
+   */
+  private async goleadoresDe(continente: string, limite = 10): Promise<Goleador[]> {
+    return this.prisma.$queryRaw<Goleador[]>`
+      WITH acumulado AS (
+        SELECT s.player_id,
+               sum(s.goals)::int       AS goals,
+               sum(s.assists)::int     AS assists,
+               sum(s.appearances)::int AS appearances,
+               (array_agg(t.name       ORDER BY s.appearances DESC NULLS LAST))[1] AS team_name,
+               (array_agg(t.short_name ORDER BY s.appearances DESC NULLS LAST))[1] AS team_short,
+               (array_agg(t.slug       ORDER BY s.appearances DESC NULLS LAST))[1] AS team_slug,
+               (array_agg(t.logo_url   ORDER BY s.appearances DESC NULLS LAST))[1] AS team_logo,
+               (array_agg(c.name       ORDER BY s.goals DESC NULLS LAST))[1] AS competition_name,
+               (array_agg(c.slug       ORDER BY s.goals DESC NULLS LAST))[1] AS competition_slug,
+               (array_agg(c.logo_url   ORDER BY s.goals DESC NULLS LAST))[1] AS competition_logo
+        FROM player_season_statistics s
+        JOIN seasons se ON se.id = s.season_id
+        JOIN competitions c ON c.id = se.competition_id
+        JOIN teams t ON t.id = s.team_id
+        WHERE se.is_current AND c.is_active AND c.continent = ${continente} AND s.goals > 0
+        GROUP BY s.player_id
+      )
+      SELECT a.goals, a.assists, a.appearances,
+             a.team_name, a.team_short, a.team_slug, a.team_logo,
+             a.competition_name, a.competition_slug, a.competition_logo,
+             p.id AS player_id, p.name AS player_name, p.slug AS player_slug, p.photo_url
+      FROM acumulado a
+      JOIN players p ON p.id = a.player_id
+      ORDER BY a.goals DESC, a.assists DESC, a.appearances ASC
+      LIMIT ${limite}`;
   }
 
   /**
@@ -882,6 +935,23 @@ function puntaje(fila: {
 }): number {
   const nota = fila.rating === null ? 0 : Number(fila.rating.toString());
   return (fila.goals ?? 0) * 2 + (fila.assists ?? 0) + nota / 10;
+}
+
+export interface Goleador {
+  goals: number;
+  assists: number;
+  appearances: number;
+  team_name: string;
+  team_short: string | null;
+  team_slug: string;
+  team_logo: string | null;
+  competition_name: string;
+  competition_slug: string;
+  competition_logo: string | null;
+  player_id: string;
+  player_name: string;
+  player_slug: string;
+  photo_url: string | null;
 }
 
 export interface FilaOnce {
