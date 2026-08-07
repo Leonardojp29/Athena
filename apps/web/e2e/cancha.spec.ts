@@ -106,6 +106,36 @@ test.describe('cancha interactiva', () => {
     await expect(page.locator('#ficha-jugador')).toBeVisible();
   });
 
+  /*
+   * El trazo se dibuja con stroke-dasharray, y eso solo funciona si cada forma lleva
+   * pathLength="1": en un <g> el atributo no existe y el guion se interpreta en unidades del
+   * viewBox, o sea una cancha punteada para siempre. Se ve en una captura y en nada más.
+   */
+  test('las líneas de la cancha terminan sólidas, no punteadas', async ({ page }) => {
+    const id = await partidoConAlineacion(page);
+    test.skip(id === null, 'ningún partido del día tiene alineación sincronizada');
+
+    await page.goto(`/partidos/${id}?vista=alineaciones`);
+    const cancha = page.locator('[data-cancha]');
+    await expect(cancha).toBeVisible();
+
+    const formas = cancha.locator('[data-trazo] rect, [data-trazo] circle, [data-trazo] path');
+    expect(await formas.count()).toBeGreaterThan(0);
+    // pathLength es lo que normaliza el guion; sin él la animación deja la cancha rota
+    for (const forma of await formas.all()) {
+      await expect(forma).toHaveAttribute('pathLength', '1');
+    }
+
+    // y al terminar la animación el trazo vuelve a su estilo base, sin guion residual
+    await page.waitForTimeout(1200);
+    const residual = await cancha.evaluate((raiz) =>
+      [...raiz.querySelectorAll('[data-trazo]')]
+        .filter((g) => (g as SVGElement).checkVisibility?.() !== false)
+        .map((g) => getComputedStyle(g).strokeDashoffset),
+    );
+    for (const offset of residual) expect(offset).toBe('0px');
+  });
+
   test('la ficha enlaza al perfil del jugador', async ({ page }) => {
     const id = await partidoConAlineacion(page);
     test.skip(id === null, 'ningún partido del día tiene alineación sincronizada');

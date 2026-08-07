@@ -104,8 +104,11 @@ explicó. La decisión formal nace de ahí y de un rechazo explícito: la lista 
 con un punto verde parpadeando que envía cualquier app de resultados. Ese patrón informa; no
 explica.
 
-De la pizarra salen tres materiales y cada uno tiene una regla propia. La **tiza** dibuja lo
-plano: bordes de un píxel, líneas de cancha, separadores. El **tablero** es la superficie a
+De la pizarra salen tres materiales y cada uno tiene una regla propia. El **trazo** dibuja lo
+plano: filos de un píxel, líneas de cancha, separadores. No imita la textura de la tiza —una
+textura falsa es la marca más confiable del diseño hecho a máquina— sino su **gesto**: las
+marcas de la cancha se trazan en tres tiempos, contorno, áreas y círculos, y recién entonces
+caen los imanes. El **tablero** es la superficie a
 sangre donde vive todo encabezado de entidad y todo marcador; es oscuro en los dos temas, así
 que lo que se apoya encima usa tinta de tiza y no la paleta de superficie. Los **imanes** son
 lo único que se levanta del tablero: los jugadores sobre la cancha, los paneles flotantes, el
@@ -234,7 +237,9 @@ imanes. Nada de esquinas rectas ni de píldoras gigantes.
 
 La geometría recurrente es la de la cancha: proporciones reglamentarias 105 × 68 en el
 `viewBox`, franjas de césped alternas, y las mismas marcas rotadas 90° para la variante
-vertical de móvil.
+vertical de móvil. Cada forma trazada lleva `pathLength="1"`, que normaliza el largo para que
+todas tarden lo mismo al dibujarse; en un `<g>` ese atributo no existe y el guion se
+interpretaría en unidades del viewBox, o sea una cancha punteada.
 
 La marca es un búho geométrico dentro de un escudo. La muesca superior se lee a la vez como
 las orejas del búho y como el jefe de un escudo de club; el pico triangular hace de vértice de

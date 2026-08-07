@@ -32,14 +32,42 @@
   }
 }
 
-/* La tiza se dibuja sola: requiere pathLength="1" en el trazo. */
+/*
+ * El trazo se dibuja solo. Las dos propiedades del guion viven DENTRO de los keyframes y el
+ * relleno es `backwards`, no `forwards`: así, al terminar, el trazo vuelve a su estilo normal.
+ * Si un navegador ignorara pathLength="1", el peor caso son 560 ms de guiones raros y después
+ * una línea sólida correcta, en lugar de una cancha punteada para siempre.
+ */
 @keyframes chalk-draw {
   from {
+    stroke-dasharray: 1;
     stroke-dashoffset: 1;
   }
   to {
+    stroke-dasharray: 1;
     stroke-dashoffset: 0;
   }
+}
+
+/*
+ * El gesto del entrenador: la cancha se traza en tres tiempos —el contorno, las áreas, los
+ * círculos— en lugar de aparecer dibujada. Es la única forma honesta de entregar la promesa
+ * del mundo: no imitamos la textura de la tiza, entregamos el trazo.
+ */
+[data-trazo] {
+  animation: chalk-draw var(--a-motion-draw) var(--a-ease-out-expo) backwards;
+}
+
+[data-trazo='contorno'] {
+  animation-delay: 0ms;
+}
+
+[data-trazo='areas'] {
+  animation-delay: 180ms;
+}
+
+[data-trazo='circulos'] {
+  animation-delay: 320ms;
 }
 
 @keyframes shimmer {
@@ -107,7 +135,8 @@
  */
 [data-cancha] [data-iman] {
   animation: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;
-  animation-delay: calc(var(--fila, 0) * 45ms);
+  /* Después del trazo: el técnico dibuja la cancha y recién entonces pone los imanes. */
+  animation-delay: calc(380ms + var(--fila, 0) * 45ms);
 }
 
 /* La barra de una estadística crece por escala: animar `width` obliga al layout en cada cuadro. */
