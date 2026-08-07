@@ -169,6 +169,11 @@ export function mapStatistics(raw: ApiFootballStatistics): ProviderMatchStatisti
   };
 }
 
+/** "ff0000" sí, "" o "None" no: el proveedor manda las dos cosas. */
+function hex(valor: string | null | undefined): string | null {
+  return typeof valor === 'string' && /^[0-9a-fA-F]{6}$/.test(valor) ? valor.toLowerCase() : null;
+}
+
 const LINEUP_POSITION: Record<string, string> = {
   G: 'arquero',
   D: 'defensor',
@@ -190,6 +195,10 @@ export function mapLineup(raw: ApiFootballLineup): ProviderLineup {
     teamRef: String(raw.team.id),
     formation: raw.formation,
     coachName: raw.coach?.name ?? null,
+    colors: {
+      primary: hex(raw.team.colors?.player?.primary),
+      secondary: hex(raw.team.colors?.player?.number),
+    },
     startXi: (raw.startXI ?? []).map(mapPlayer),
     substitutes: (raw.substitutes ?? []).map(mapPlayer),
   };

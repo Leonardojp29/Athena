@@ -12,6 +12,7 @@ import SquadGrid from '../../components/team/SquadGrid.astro';
 import TablaPlantel from '../../components/team/TablaPlantel.astro';
 import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
+import { colorEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
@@ -40,6 +41,10 @@ const similar = await pedidoSimilar;
 const session = await pedidoSesion;
 
 const pais = paisEnEspanol(team.country);
+
+/* Ver arriba: el color del club es acento, nunca fondo de texto. */
+const color = colorEquipo(team.primaryColor);
+const segundo = colorEquipo(team.secondaryColor);
 
 /* El API manda la fase en juego primero: la primera fila es "cómo va hoy". */
 const principal = standings[0] ?? null;
@@ -74,19 +79,30 @@ const jsonLd = {
     La cabecera carga el resumen: escudo, nombre y cómo va. Antes las cifras estaban dentro de una
     tarjeta más abajo, y había que buscar en qué puesto va el equipo que fuiste a ver.
   -->
-  <section class="w-full border-b border-board-edge bg-board">
+  {
+    color && (
+      <span
+        class="block h-1.5 w-full"
+        style={`background:linear-gradient(90deg, ${color.base}, ${segundo?.base ?? color.suave(0.3)})`}
+        aria-hidden="true"
+      />
+    )
+  }
+  <section
+    class="w-full border-b border-board-edge bg-board"
+    style={color ? `background-image:linear-gradient(100deg, ${color.suave(0.3)}, transparent 55%)` : undefined}
+  >
     <Container width="wide">
       <div class="flex flex-wrap items-end gap-x-6 gap-y-4 py-5">
         <div class="flex min-w-0 flex-1 items-center gap-4">
           {
             team.logoUrl && (
-              <img
-                src={team.logoUrl}
-                alt=""
-                width="64"
-                height="64"
-                class="size-14 shrink-0 sm:size-16"
-              />
+              <span
+                class="grid size-14 shrink-0 place-items-center rounded-xl bg-chalk/10 ring-1 ring-inset ring-chalk/15 sm:size-16"
+                style={color ? `background:${color.suave(0.9)}` : undefined}
+              >
+                <img src={team.logoUrl} alt="" width="44" height="44" class="size-10 sm:size-11" />
+              </span>
             )
           }
           <div class="min-w-0">

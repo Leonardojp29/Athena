@@ -119,6 +119,9 @@ model Team {
   founded        Int?
   isNationalTeam Boolean @default(false) @map("is_national_team")
   logoUrl        String? @map("logo_url")
+  /// Hex sin almohadilla, como los publica el proveedor en las alineaciones.
+  primaryColor   String? @map("primary_color")
+  secondaryColor String? @map("secondary_color")
   venue          Venue?  @relation(fields: [venueId], references: [id])
   venueId        String? @map("venue_id") @db.Uuid
 

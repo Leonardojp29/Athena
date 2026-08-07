@@ -7,6 +7,7 @@ import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
 import PlantillaCompacta from './PlantillaCompacta.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { TeamView } from '../../lib/api';
+import { colorEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
@@ -22,6 +23,14 @@ interface Props {
 const { view, conCuenta = false } = Astro.props;
 const { team, standings, recent, upcoming, squad, scorers } = view;
 const pais = paisEnEspanol(team.country);
+
+/*
+ * El color de la camiseta como acento: un lavado detrás de la cabecera y la plaquita del escudo.
+ * Nunca detrás de un texto —el proveedor manda cremas casi blancos y negros—, así que la legibilidad
+ * no depende de qué color le toque a cada club.
+ */
+const color = colorEquipo(team.primaryColor);
+const segundo = colorEquipo(team.secondaryColor);
 
 /* La forma como la cuenta el hincha: del partido más viejo al último. */
 const FORMA: Record<string, { letra: string; clase: string }> = {
@@ -45,10 +54,25 @@ const bloques = [
   class="overflow-hidden rounded-xl border border-border bg-surface"
   style={`view-transition-name: equipo-${team.slug}`}
 >
-  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3">
+  {
+    color && (
+      <span
+        class="block h-1 w-full"
+        style={`background:linear-gradient(90deg, ${color.base}, ${segundo?.base ?? color.suave(0.35)})`}
+        aria-hidden="true"
+      />
+    )
+  }
+  <header
+    class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3"
+    style={color ? `background-image:linear-gradient(100deg, ${color.suave(0.28)}, transparent 62%)` : undefined}
+  >
     {
       team.logoUrl && (
-        <span class="grid size-11 shrink-0 place-items-center rounded-lg bg-chalk/10">
+        <span
+          class="grid size-11 shrink-0 place-items-center rounded-lg bg-chalk/10 ring-1 ring-inset ring-chalk/15"
+          style={color ? `background:${color.suave(0.9)}` : undefined}
+        >
           <img src={team.logoUrl} alt="" width="30" height="30" />
         </span>
       )

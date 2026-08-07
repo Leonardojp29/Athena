@@ -64,6 +64,20 @@ export class SyncMatchDetailUseCase {
         update: data,
         create: { matchId, teamId, ...data },
       });
+
+      /*
+       * Los colores de la camiseta viajan en este mismo payload y en ningún otro endpoint, así que
+       * es acá o nunca. Solo se escriben si el proveedor los manda: no se borra lo que ya había.
+       */
+      if (lineup.colors.primary !== null || lineup.colors.secondary !== null) {
+        await this.prisma.team.update({
+          where: { id: teamId },
+          data: {
+            ...(lineup.colors.primary !== null ? { primaryColor: lineup.colors.primary } : {}),
+            ...(lineup.colors.secondary !== null ? { secondaryColor: lineup.colors.secondary } : {}),
+          },
+        });
+      }
       lineupsWritten++;
     }
 

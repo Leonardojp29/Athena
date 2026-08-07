@@ -629,6 +629,8 @@ export class ViewsService {
           country: true,
           founded: true,
           logoUrl: true,
+          primaryColor: true,
+          secondaryColor: true,
         },
       }),
       this.prisma.standing.findMany({

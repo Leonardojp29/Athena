@@ -105,7 +105,13 @@ export interface ApiFootballStatistics {
  * fixture 1515157, que hacía estallar el backfill con "undefined is not a map".
  */
 export interface ApiFootballLineup {
-  team: { id: number };
+  team: {
+    id: number;
+    /* `player.primary` es el color de la camiseta y `player.number` el del dorsal, que hace de secundario. */
+    colors?: {
+      player?: { primary?: string | null; number?: string | null } | null;
+    } | null;
+  };
   formation: string | null;
   coach: { id: number | null; name: string | null };
   startXI?: Array<{

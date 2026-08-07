@@ -128,6 +128,8 @@ export interface ProviderLineup {
   teamRef: string;
   formation: string | null;
   coachName: string | null;
+  /** Los colores de la camiseta, en hex sin almohadilla. El proveedor los manda acá y en ningún otro endpoint. */
+  colors: { primary: string | null; secondary: string | null };
   startXi: ProviderLineupPlayer[];
   substitutes: ProviderLineupPlayer[];
 }

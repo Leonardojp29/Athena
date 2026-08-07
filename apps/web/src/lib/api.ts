@@ -316,6 +316,9 @@ export interface TeamView {
     country: string | null;
     founded: number | null;
     logoUrl: string | null;
+    /** Hex sin almohadilla, como los publica el proveedor en las alineaciones. */
+    primaryColor: string | null;
+    secondaryColor: string | null;
   };
   squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
   /** Los goleadores del club en la temporada: quiénes juegan, no solo quiénes están. */
