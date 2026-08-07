@@ -1,0 +1,44 @@
+---
+/*
+ * La bandera viene del proveedor, no se construye a mano: Inglaterra no es "gb" sino "gb-eng",
+ * y adivinar el URL de un CDN ajeno es una suposición que se rompe sin avisar.
+ *
+ * El borde de un píxel importa: sin él, las banderas con blanco al filo —Perú, Japón, Canadá—
+ * se derraman sobre el fondo claro y dejan de leerse como una bandera.
+ */
+interface Props {
+  url?: string | null;
+  code?: string | null;
+  name?: string | null;
+  size?: number;
+  class?: string;
+}
+
+const { url = null, code = null, name = null, size = 18, class: className } = Astro.props;
+const alto = Math.round((size * 2) / 3);
+---
+
+{
+  url ? (
+    <img
+      src={url}
+      alt={name ?? code ?? ''}
+      width={size}
+      height={alto}
+      loading="lazy"
+      class:list={[
+        'shrink-0 rounded-[2px] border border-border/60 object-cover',
+        className,
+      ]}
+      style={`width:${size}px;height:${alto}px`}
+    />
+  ) : (
+    <span
+      class:list={['grid shrink-0 place-items-center rounded-[2px] bg-canvas-subtle', className]}
+      style={`width:${size}px;height:${alto}px`}
+      aria-hidden="true"
+    >
+      {code && <span class="text-[8px] font-bold text-ink-muted">{code.slice(0, 2)}</span>}
+    </span>
+  )
+}

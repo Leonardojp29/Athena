@@ -2,8 +2,9 @@
 import type { LineupPlayer, MatchPlayerStats, TeamSummary } from '../../lib/api';
 
 /*
- * El imán del pizarrón. Es un <button> y no un nodo del SVG a propósito: foco visible,
- * área táctil de 44px y un dorsal que escala si el usuario agranda la tipografía.
+ * El imán del pizarrón: foto, dorsal y apellido. Es un <button> y no un nodo del SVG a
+ * propósito: foco visible, área táctil de 44px y un texto que escala si el usuario agranda la
+ * tipografía.
  *
  * El payload del jugador viaja en data-ficha para que abrir el modal no cueste una llamada;
  * quien no está vinculado a una entidad de Athena no es clickeable y se muestra apagado.
@@ -24,6 +25,9 @@ const { player, team, stats, largo, ancho, fila = 0 } = Astro.props;
 
 const apellido = player.name.split(' ').at(-1) ?? player.name;
 const clickeable = player.playerId !== null;
+const dorsal = player.number ?? stats?.shirtNumber ?? null;
+/* La alineación trae la foto denormalizada; si falta, la de las estadísticas del partido. */
+const foto = player.photoUrl ?? stats?.player.photoUrl ?? null;
 const rating = stats?.rating !== null && stats?.rating !== undefined ? Number(stats.rating) : null;
 const amarillas = stats?.yellowCards ?? 0;
 const rojas = stats?.redCards ?? 0;
@@ -34,8 +38,8 @@ const ficha = clickeable
       playerId: player.playerId,
       slug: player.slug,
       name: player.name,
-      photoUrl: player.photoUrl,
-      number: player.number ?? stats?.shirtNumber ?? null,
+      photoUrl: foto,
+      number: dorsal,
       position: player.position,
       team: { name: team.name, slug: team.slug, logoUrl: team.logoUrl },
       stats,
@@ -53,44 +57,66 @@ const ficha = clickeable
   style={`--largo:${largo}%;--ancho:${ancho}%;--fila:${fila}`}
 >
   {
-    clickeable ? (
-      <button
-        type="button"
-        data-jugador={player.playerId}
-        data-ficha={ficha}
-        class="group grid min-h-11 min-w-11 cursor-pointer place-items-center rounded-full outline-offset-2"
-        aria-label={`${player.name}${player.number !== null ? `, dorsal ${player.number}` : ''} — ver rendimiento`}
-      >
-        <span class="relative grid size-7 place-items-center rounded-full bg-magnet text-2xs font-semibold text-ink shadow-magnet transition-transform group-hover:scale-110 sm:size-8 sm:text-xs">
-          {player.number ?? apellido.slice(0, 2)}
+    (() => {
+      const Etiqueta = clickeable ? 'button' : 'span';
+      return (
+        <Etiqueta
+          type={clickeable ? 'button' : undefined}
+          data-jugador={clickeable ? player.playerId : undefined}
+          data-ficha={ficha}
+          class:list={[
+            'group grid min-h-11 min-w-11 place-items-center rounded-full outline-offset-2',
+            clickeable ? 'cursor-pointer' : 'opacity-70',
+          ]}
+          aria-label={
+            clickeable
+              ? `${player.name}${dorsal !== null ? `, dorsal ${dorsal}` : ''} — ver rendimiento`
+              : undefined
+          }
+          title={clickeable ? undefined : 'Jugador sin ficha en Athena'}
+        >
+          <span class="relative">
+            {foto ? (
+              <img
+                src={foto}
+                alt=""
+                width="34"
+                height="34"
+                loading="lazy"
+                class="size-8 rounded-full border-2 border-magnet bg-magnet object-cover shadow-magnet transition-transform group-hover:scale-110 sm:size-9"
+              />
+            ) : (
+              /* Sin foto, el dorsal ocupa su lugar: nunca un círculo vacío. */
+              <span class="grid size-8 place-items-center rounded-full border-2 border-magnet bg-magnet text-2xs font-semibold text-ink shadow-magnet transition-transform group-hover:scale-110 sm:size-9 sm:text-xs">
+                {dorsal ?? apellido.slice(0, 2)}
+              </span>
+            )}
 
-          {goles > 0 && (
-            <span class="absolute -right-1 -top-1 grid size-3.5 place-items-center rounded-full bg-primary text-[8px] font-bold text-primary-contrast">
-              {goles > 1 ? goles : ''}
-              {goles === 1 && <span class="size-1.5 rounded-full bg-primary-contrast" />}
-            </span>
-          )}
-          {rojas > 0 ? (
-            <span class="absolute -left-1 -top-1 h-3 w-2 rounded-[1px] bg-card-red" />
-          ) : amarillas > 0 ? (
-            <span class="absolute -left-1 -top-1 h-3 w-2 rounded-[1px] bg-card-yellow" />
-          ) : null}
-        </span>
+            {dorsal !== null && foto && (
+              <span class="absolute -bottom-0.5 -left-1 grid size-4 place-items-center rounded-full bg-magnet text-[9px] font-bold text-ink shadow-magnet">
+                {dorsal}
+              </span>
+            )}
 
-        <span class="mt-0.5 max-w-[8ch] truncate rounded bg-board/80 px-1 text-[9px] leading-tight text-chalk sm:max-w-[11ch] sm:text-[10px]">
-          {apellido}
-        </span>
-      </button>
-    ) : (
-      <span class="grid min-h-11 min-w-11 place-items-center" title="Jugador sin ficha en Athena">
-        <span class="grid size-7 place-items-center rounded-full bg-magnet/60 text-2xs font-semibold text-ink/70 sm:size-8">
-          {player.number ?? apellido.slice(0, 2)}
-        </span>
-        <span class="mt-0.5 max-w-[8ch] truncate rounded bg-board/80 px-1 text-[9px] leading-tight text-chalk/70 sm:max-w-[11ch] sm:text-[10px]">
-          {apellido}
-        </span>
-      </span>
-    )
+            {goles > 0 && (
+              <span class="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-contrast">
+                {goles > 1 ? goles : ''}
+                {goles === 1 && <span class="size-1.5 rounded-full bg-primary-contrast" />}
+              </span>
+            )}
+            {rojas > 0 ? (
+              <span class="absolute -right-1 bottom-0 h-3 w-2 rounded-[1px] bg-card-red" />
+            ) : amarillas > 0 ? (
+              <span class="absolute -right-1 bottom-0 h-3 w-2 rounded-[1px] bg-card-yellow" />
+            ) : null}
+          </span>
+
+          <span class="mt-0.5 max-w-[8ch] truncate rounded bg-board/85 px-1 text-[9px] leading-tight text-chalk sm:max-w-[11ch] sm:text-[10px]">
+            {apellido}
+          </span>
+        </Etiqueta>
+      );
+    })()
   }
 
   {

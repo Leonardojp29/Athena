@@ -18,12 +18,19 @@ import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
 import { SyncMatchDetailUseCase } from '../sync/sync-match-detail.usecase.js';
 import { SyncMatchEventsUseCase } from '../sync/sync-match-events.usecase.js';
+import { SyncMatchPlayersUseCase } from '../sync/sync-match-players.usecase.js';
 import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
 import { SyncScheduleService } from './sync-schedule.service.js';
 
 const QUEUE = 'sync';
+
+/* El análisis espera a que aterricen los eventos y las estadísticas que lo respaldan. */
+const INSIGHT_DELAY_MS = 3 * 60_000;
+
+/* El proveedor publica la alineación unos 40 minutos antes del pitazo. */
+const LINEUP_LEAD_MS = 45 * 60_000;
 
 type SyncJob =
   | { name: 'competition'; data: { competitionRef: string } }
@@ -32,6 +39,7 @@ type SyncJob =
   | { name: 'standings'; data: { competitionRef: string; seasonYear: number } }
   | { name: 'match-events'; data: { matchRef: string } }
   | { name: 'match-detail'; data: { matchRef: string } }
+  | { name: 'match-players'; data: { matchRef: string } }
   | { name: 'squad'; data: { teamRef: string } }
   | { name: 'match-insight'; data: { matchId: string } }
   | { name: 'match-preview'; data: { matchId: string } }
@@ -56,6 +64,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly syncStandings: SyncStandingsUseCase,
     private readonly syncMatchEvents: SyncMatchEventsUseCase,
     private readonly syncMatchDetail: SyncMatchDetailUseCase,
+    private readonly syncMatchPlayers: SyncMatchPlayersUseCase,
     private readonly syncSquad: SyncSquadUseCase,
     private readonly matchInsight: GenerateMatchInsightUseCase,
     private readonly embeddings: SyncEmbeddingsUseCase,
@@ -91,10 +100,11 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   async enqueue<T extends SyncJob>(
     name: T['name'],
     data: T['data'],
-    opts?: { attempts?: number },
+    opts?: { attempts?: number; delay?: number },
   ): Promise<void> {
     await this.queue.add(name, data, {
       attempts: opts?.attempts ?? 3,
+      ...(opts?.delay ? { delay: opts.delay } : {}),
       backoff: { type: 'exponential', delay: 5_000 },
       removeOnComplete: 500,
       removeOnFail: 1_000,
@@ -115,6 +125,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return this.syncMatchEvents.execute(job.data.matchRef);
       case 'match-detail':
         return this.syncMatchDetail.execute(job.data.matchRef);
+      case 'match-players':
+        return this.syncMatchPlayers.execute(job.data.matchRef);
       case 'squad':
         return this.syncSquad.execute(job.data.teamRef);
       case 'match-insight':
@@ -155,7 +167,59 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       },
     });
     if (candidates === 0) return 0;
-    return this.syncFixtures.syncLive();
+
+    const escritos = await this.syncFixtures.syncLive();
+    await this.fetchMissingDetail();
+    /*
+     * Y después la reconciliación: sin esto un partido terminado se queda "en juego" para
+     * siempre, porque desaparece del feed en vivo y nadie vuelve a mirarlo. Cuesta un request
+     * por cada veinte colgados y cero cuando no hay ninguno.
+     */
+    await this.syncFixtures.reconcileStale();
+    return escritos;
+  }
+
+  /**
+   * Alineaciones y estadísticas de los partidos que están por empezar o en juego.
+   *
+   * El feed en vivo trae marcador y eventos, nunca la alineación, y el refresco diario solo
+   * mira partidos terminados: por eso un partido de hoy se abría sin cancha. El proveedor
+   * publica la alineación unos 40 minutos antes del pitazo, así que se pide desde ahí.
+   *
+   * Se pregunta una sola vez por partido: en cuanto la alineación existe, deja de pedirse.
+   */
+  private async fetchMissingDetail(): Promise<number> {
+    const sinDetalle = await this.prisma.match.findMany({
+      where: {
+        OR: [
+          { status: { in: ['in_play', 'paused'] } },
+          {
+            status: 'scheduled',
+            kickoffUtc: { lte: new Date(Date.now() + LINEUP_LEAD_MS), gte: new Date() },
+          },
+        ],
+        lineups: { none: {} },
+      },
+      select: { id: true },
+      take: 40,
+    });
+    if (sinDetalle.length === 0) return 0;
+
+    const refs = await this.prisma.externalReference.findMany({
+      where: {
+        provider: 'api-football',
+        entityType: 'match',
+        entityId: { in: sinDetalle.map((m) => m.id) },
+      },
+      select: { providerRef: true },
+    });
+    for (const { providerRef } of refs) {
+      await this.enqueue('match-detail', { matchRef: providerRef });
+    }
+    if (refs.length > 0) {
+      this.logger.log(`${refs.length} partidos en curso o por empezar sin alineación: encolados`);
+    }
+    return refs.length;
   }
 
   private async processOutbox(): Promise<number> {
@@ -164,16 +228,45 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
 
     const handled: string[] = [];
     for (const event of events) {
-      if (event.kind === 'MATCH_FINISHED') {
-        await this.enqueue('match-insight', { matchId: event.subjectId });
-      }
+      if (event.kind === 'MATCH_FINISHED') await this.onMatchFinished(event.subjectId);
       handled.push(event.id);
     }
     await this.outbox.markProcessed(handled);
     return handled.length;
   }
 
+  /**
+   * La cadena derivada de un partido terminado: primero los datos, después el relato.
+   *
+   * Antes esto solo encolaba el análisis, así que un partido recién terminado tenía texto de IA
+   * pero ni alineaciones ni estadísticas: la cancha quedaba vacía hasta el refresco de las 05:00.
+   * El análisis va con retraso a propósito, porque su fact sheet se arma con los eventos y las
+   * estadísticas que encolamos acá arriba.
+   */
+  private async onMatchFinished(matchId: string): Promise<void> {
+    const ref = await this.prisma.externalReference.findUnique({
+      where: {
+        provider_entityType_entityId: {
+          provider: 'api-football',
+          entityType: 'match',
+          entityId: matchId,
+        },
+      },
+      select: { providerRef: true },
+    });
+
+    if (ref) {
+      await this.enqueue('match-events', { matchRef: ref.providerRef });
+      await this.enqueue('match-detail', { matchRef: ref.providerRef });
+      await this.enqueue('match-players', { matchRef: ref.providerRef });
+    }
+    await this.enqueue('match-insight', { matchId }, { delay: INSIGHT_DELAY_MS });
+  }
+
   private async dailyRefresh(): Promise<void> {
+    /* Red de seguridad: si el worker estuvo caído, acá se cierran los que quedaron colgados. */
+    await this.syncFixtures.reconcileStale();
+
     const recentlyFinishedIds = (
       await this.prisma.match.findMany({
         where: { status: 'finished', kickoffUtc: { gte: new Date(Date.now() - 48 * 3600_000) } },
@@ -192,6 +285,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     for (const { providerRef } of recentlyFinished) {
       await this.enqueue('match-events', { matchRef: providerRef });
       await this.enqueue('match-detail', { matchRef: providerRef });
+      await this.enqueue('match-players', { matchRef: providerRef });
     }
 
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {

@@ -7,6 +7,7 @@ import {
 } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
+import { bulkUpdate } from './bulk-upsert.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { VenueService } from './venue.service.js';
 
@@ -33,20 +34,35 @@ export class SyncTeamsUseCase {
     const fresh = teams.filter((t) => !known.has(t.providerRef));
     const existing = teams.filter((t) => known.has(t.providerRef));
 
-    for (const { providerRef, data } of existing) {
-      await this.prisma.team.update({
-        where: { id: known.get(providerRef) },
-        data: {
-          name: data.name,
-          shortName: data.shortName,
-          country: data.country,
-          founded: data.founded,
-          isNationalTeam: data.isNationalTeam,
-          logoUrl: data.logoUrl,
-          venueId: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
-        },
-      });
-    }
+    /*
+     * En un lote y no uno por uno: las copas nacionales traen más de cien clubes cada una y un
+     * UPDATE por equipo contra el pooler hacía que el bootstrap del catálogo tardara horas.
+     */
+    await bulkUpdate(this.prisma, {
+      table: 'teams',
+      columns: [
+        { name: 'id', cast: '::uuid' },
+        { name: 'name', cast: '::text' },
+        { name: 'short_name', cast: '::text' },
+        { name: 'country', cast: '::text' },
+        { name: 'founded', cast: '::int' },
+        { name: 'is_national_team', cast: '::boolean' },
+        { name: 'logo_url', cast: '::text' },
+        { name: 'venue_id', cast: '::uuid' },
+      ],
+      rows: existing.map(({ providerRef, data }) => ({
+        id: known.get(providerRef),
+        name: data.name,
+        short_name: data.shortName,
+        country: data.country,
+        founded: data.founded,
+        is_national_team: data.isNationalTeam,
+        logo_url: data.logoUrl,
+        venue_id: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
+      })),
+      /* Lo que el proveedor no sabe no borra lo que ya había: el estadio y el año de fundación. */
+      coalesce: ['short_name', 'country', 'founded', 'logo_url', 'venue_id'],
+    });
 
     if (fresh.length > 0) {
       const slugs = await this.computeSlugs(fresh);

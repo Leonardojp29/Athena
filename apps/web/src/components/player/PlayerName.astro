@@ -1,0 +1,62 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * Un nombre de jugador nunca va solo: siempre con su foto al lado. Vive en un componente para
+ * que no dependa de que cada vista se acuerde, y para que el hueco sin foto sea el mismo en
+ * todas —un círculo con la silueta, no un rectángulo roto ni un espacio en blanco.
+ */
+interface Props {
+  name: string;
+  slug?: string | null;
+  photoUrl?: string | null;
+  /** Dorsal a la izquierda, cuando el contexto lo tiene. */
+  number?: number | null;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { name, slug = null, photoUrl = null, number = null, size = 'sm', class: className } =
+  Astro.props;
+
+const px = size === 'md' ? 28 : 22;
+const caja = size === 'md' ? 'size-7' : 'size-[22px]';
+---
+
+<span class:list={['flex min-w-0 items-center gap-2', className]}>
+  {
+    number !== null && (
+      <span class="w-5 shrink-0 text-right tabular text-2xs text-ink-muted">{number}</span>
+    )
+  }
+
+  {
+    photoUrl ? (
+      <img
+        src={photoUrl}
+        alt=""
+        width={px}
+        height={px}
+        loading="lazy"
+        class:list={[caja, 'shrink-0 rounded-full bg-canvas-subtle object-cover']}
+      />
+    ) : (
+      <span
+        class:list={[caja, 'grid shrink-0 place-items-center rounded-full bg-canvas-subtle']}
+        aria-hidden="true"
+      >
+        <Icon name="usuario" size={size === 'md' ? 14 : 11} class="text-ink-muted" />
+      </span>
+    )
+  }
+
+  {
+    slug ? (
+      <a href={`/jugadores/${slug}`} class="truncate hover:text-primary-ink hover:underline">
+        {name}
+      </a>
+    ) : (
+      <span class="truncate">{name}</span>
+    )
+  }
+</span>

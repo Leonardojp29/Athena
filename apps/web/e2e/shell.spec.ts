@@ -17,8 +17,39 @@ test.describe('shell del sitio', () => {
 
     await expect(page).toHaveURL(/\/competencias$/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/competencias/i);
-    // el catálogo real tiene doce; con menos, la navegación quedó en el respaldo cableado
-    expect(await page.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(8);
+    // el catálogo real pasa los cuarenta torneos; con menos, la nav cayó al respaldo cableado
+    expect(await page.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(30);
+  });
+
+  /*
+   * El orden es la mitad del pedido: continente, después país, después torneo. Si alguna vez
+   * alguien vuelve a agrupar por liga a secas, esto lo dice antes que una captura.
+   */
+  test('el catálogo se lee continente → país → torneo', async ({ page }) => {
+    await page.goto('/competencias');
+
+    const continentes = page.locator('main h2');
+    const titulos = await continentes.allInnerTexts();
+    expect(titulos.length).toBeGreaterThanOrEqual(4);
+    expect(titulos[0]).toMatch(/sudam[eé]rica/i);
+
+    // dentro del primer continente, países con su bandera y sus torneos
+    const primerPais = page.locator('main section section').first();
+    await expect(primerPais.locator('h3')).not.toBeEmpty();
+    expect(await primerPais.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(0);
+  });
+
+  test('la home agrupa los partidos del día por continente y país', async ({ page }) => {
+    await page.goto('/');
+    const grupos = page.locator('main details > summary h3');
+    expect(await grupos.count()).toBeGreaterThan(0);
+
+    // una sola columna: los continentes se apilan, no se reparten en tres
+    const primero = await grupos.first().boundingBox();
+    const ultimo = await grupos.last().boundingBox();
+    if (primero && ultimo && (await grupos.count()) > 1) {
+      expect(Math.abs(primero.x - ultimo.x)).toBeLessThan(4);
+    }
   });
 
   test('el índice de partidos navega entre días', async ({ page }) => {

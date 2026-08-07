@@ -1,6 +1,7 @@
 ---
 import type { LineupPlayer, TeamLineup, TeamSummary } from '../lib/api';
 import Icon from './Icon.astro';
+import PlayerName from './player/PlayerName.astro';
 
 /*
  * Las listas debajo de la cancha. Cada nombre vinculado lleva a su perfil: la cancha ofrece
@@ -51,24 +52,13 @@ const ordered = [homeTeam, awayTeam]
             <ul class="grid gap-0">
               {lineup.startXi.map((player: LineupPlayer) => (
                 <li>
-                  {player.slug ? (
-                    <a
-                      href={`/jugadores/${player.slug}`}
-                      class="flex items-center gap-2 rounded-md px-1 py-1 text-sm transition-colors hover:bg-canvas-subtle hover:text-primary-ink"
-                    >
-                      <span class="w-6 shrink-0 text-right tabular text-2xs text-ink-muted">
-                        {player.number ?? '–'}
-                      </span>
-                      <span class="truncate">{player.name}</span>
-                    </a>
-                  ) : (
-                    <span class="flex items-center gap-2 px-1 py-1 text-sm">
-                      <span class="w-6 shrink-0 text-right tabular text-2xs text-ink-muted">
-                        {player.number ?? '–'}
-                      </span>
-                      <span class="truncate text-ink-muted">{player.name}</span>
-                    </span>
-                  )}
+                  <PlayerName
+                    name={player.name}
+                    slug={player.slug}
+                    photoUrl={player.photoUrl}
+                    number={player.number}
+                    class="rounded-md px-1 py-1 text-sm transition-colors hover:bg-canvas-subtle"
+                  />
                 </li>
               ))}
             </ul>
@@ -86,24 +76,13 @@ const ordered = [homeTeam, awayTeam]
                 <ul class="mt-1 grid gap-0">
                   {lineup.substitutes.map((player: LineupPlayer) => (
                     <li>
-                      {player.slug ? (
-                        <a
-                          href={`/jugadores/${player.slug}`}
-                          class="flex items-center gap-2 rounded-md px-1 py-0.5 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-                        >
-                          <span class="w-6 shrink-0 text-right tabular">
-                            {player.number ?? '–'}
-                          </span>
-                          <span class="truncate">{player.name}</span>
-                        </a>
-                      ) : (
-                        <span class="flex items-center gap-2 px-1 py-0.5 text-2xs text-ink-muted">
-                          <span class="w-6 shrink-0 text-right tabular">
-                            {player.number ?? '–'}
-                          </span>
-                          <span class="truncate">{player.name}</span>
-                        </span>
-                      )}
+                      <PlayerName
+                        name={player.name}
+                        slug={player.slug}
+                        photoUrl={player.photoUrl}
+                        number={player.number}
+                        class="rounded-md px-1 py-0.5 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle"
+                      />
                     </li>
                   ))}
                 </ul>

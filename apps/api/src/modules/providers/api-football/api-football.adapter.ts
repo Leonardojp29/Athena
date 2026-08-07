@@ -75,6 +75,17 @@ export class ApiFootballAdapter implements FootballDataProvider {
     return rows.map(mapFixture);
   }
 
+  /* El proveedor acepta hasta 20 ids por llamada, separados por guion. */
+  async getMatchesByRefs(matchRefs: string[]): Promise<ProviderRef<ProviderMatch>[]> {
+    const salida: ProviderRef<ProviderMatch>[] = [];
+    for (let i = 0; i < matchRefs.length; i += 20) {
+      const lote = matchRefs.slice(i, i + 20);
+      const rows = await this.client.get<ApiFootballFixture>('/fixtures', { ids: lote.join('-') });
+      salida.push(...rows.map(mapFixture));
+    }
+    return salida;
+  }
+
   async getStandings(competitionRef: string, seasonYear: number): Promise<ProviderStanding[]> {
     const rows = await this.client.get<ApiFootballStandings>('/standings', {
       league: competitionRef,

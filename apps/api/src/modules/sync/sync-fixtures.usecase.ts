@@ -7,6 +7,13 @@ import { ExternalReferenceService } from './external-reference.service.js';
 import { MatchEventWriter } from './match-event.writer.js';
 import { VenueService } from './venue.service.js';
 
+/*
+ * Un partido con alargue y penales dura menos de dos horas y media; a las tres horas de haber
+ * empezado, seguir "en juego" es un síntoma y no un estado. El margen evita reaccionar a un
+ * hueco pasajero del feed en medio del partido.
+ */
+const STALE_AFTER_MS = 3 * 3600_000;
+
 @Injectable()
 export class SyncFixturesUseCase {
   private readonly logger = new Logger(SyncFixturesUseCase.name);
@@ -46,6 +53,44 @@ export class SyncFixturesUseCase {
       }
     }
     return count;
+  }
+
+  /**
+   * Saca de "en juego" los partidos que el proveedor ya no lista como en vivo.
+   *
+   * `live=all` contiene SOLO lo que está en juego: cuando un partido termina desaparece del
+   * feed y nadie vuelve a tocar su fila, así que quedaba clavado en 2H 90' para siempre —con
+   * el marcador de la última vez que apareció— y nunca disparaba MATCH_FINISHED. Eso a su vez
+   * dejaba al partido sin alineaciones, sin estadísticas y sin análisis, porque el refresco
+   * diario busca por `status: finished`.
+   *
+   * Se pregunta el estado real en lugar de adivinarlo: dar por terminado un partido con el
+   * marcador viejo es peor que dejarlo en vivo.
+   */
+  async reconcileStale(): Promise<number> {
+    const limite = new Date(Date.now() - STALE_AFTER_MS);
+    const colgados = await this.prisma.match.findMany({
+      where: { status: { in: ['in_play', 'paused'] }, kickoffUtc: { lt: limite } },
+      select: { id: true },
+    });
+    if (colgados.length === 0) return 0;
+
+    const refs = await this.prisma.externalReference.findMany({
+      where: {
+        provider: this.provider.name,
+        entityType: 'match',
+        entityId: { in: colgados.map((m) => m.id) },
+      },
+      select: { providerRef: true },
+    });
+    if (refs.length === 0) return 0;
+
+    const reales = await this.provider.getMatchesByRefs(refs.map((r) => r.providerRef));
+    const escritos = await this.upsertMany(reales, { quiet: true });
+    this.logger.log(
+      `Reconciliados ${escritos}/${colgados.length} partidos que el proveedor ya no lista en vivo`,
+    );
+    return escritos;
   }
 
   private async upsertMany(

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import EventIcon from './EventIcon';
-import type { MatchEventView, MatchView } from '../lib/api';
+import type { MatchEventView, MatchView, PlayerLink } from '../lib/api';
 import { formatKickoff, isLive, statusLabel } from '../lib/format';
 
 /*
@@ -20,6 +20,52 @@ const ASISTIBLE = new Set(['goal', 'penalty_goal']);
 
 function relatedName(event: MatchEventView): string | null {
   return event.relatedPlayer?.name ?? event.detail?.relatedPlayerName ?? null;
+}
+
+/*
+ * Un nombre de jugador nunca va solo: siempre con su foto. Es la versión React del componente
+ * PlayerName de Astro; el timeline vive en la isla y no puede usar el otro.
+ */
+function NombreJugador({
+  player,
+  fallback,
+  className,
+}: {
+  player: PlayerLink | null;
+  fallback: string;
+  className?: string;
+}) {
+  const nombre = player?.name ?? fallback;
+  const contenido = (
+    <>
+      {player?.photoUrl ? (
+        <img
+          src={player.photoUrl}
+          alt=""
+          width={20}
+          height={20}
+          loading="lazy"
+          className="size-5 shrink-0 rounded-full bg-canvas-subtle object-cover"
+        />
+      ) : (
+        <span className="size-5 shrink-0 rounded-full bg-canvas-subtle" aria-hidden="true" />
+      )}
+      <span className="truncate">{nombre}</span>
+    </>
+  );
+
+  return player?.slug ? (
+    <a
+      href={`/jugadores/${player.slug}`}
+      className={`inline-flex min-w-0 items-center gap-1.5 align-middle hover:text-primary-ink hover:underline ${className ?? ''}`}
+    >
+      {contenido}
+    </a>
+  ) : (
+    <span className={`inline-flex min-w-0 items-center gap-1.5 align-middle ${className ?? ''}`}>
+      {contenido}
+    </span>
+  );
 }
 
 function TeamSide({ match, side }: { match: MatchView; side: 'home' | 'away' }) {
@@ -118,46 +164,18 @@ function Timeline({ match }: { match: MatchView }) {
               {event.extraMinute ? `+${event.extraMinute}` : ''}&apos;
             </span>
             <EventIcon kind={event.kind} detail={`${nombre} ${event.minute}'`} />
-            <span className="min-w-0">
-              {event.player?.slug ? (
-                <a
-                  href={`/jugadores/${event.player.slug}`}
-                  className="font-medium hover:text-primary-ink hover:underline"
-                >
-                  {nombre}
-                </a>
-              ) : (
-                <span className="font-medium">{nombre}</span>
-              )}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
+              <NombreJugador player={event.player} fallback={nombre} className="font-medium" />
               {event.kind === 'substitution' && related && (
-                <span className="text-ink-muted">
-                  {' ← '}
-                  {event.relatedPlayer?.slug ? (
-                    <a
-                      href={`/jugadores/${event.relatedPlayer.slug}`}
-                      className="hover:text-primary-ink hover:underline"
-                    >
-                      {related}
-                    </a>
-                  ) : (
-                    related
-                  )}
+                <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
+                  <span aria-label="sale">←</span>
+                  <NombreJugador player={event.relatedPlayer} fallback={related} />
                 </span>
               )}
               {ASISTIBLE.has(event.kind) && related && (
-                <span className="text-ink-muted">
-                  {' (asiste '}
-                  {event.relatedPlayer?.slug ? (
-                    <a
-                      href={`/jugadores/${event.relatedPlayer.slug}`}
-                      className="hover:text-primary-ink hover:underline"
-                    >
-                      {related}
-                    </a>
-                  ) : (
-                    related
-                  )}
-                  {')'}
+                <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
+                  asiste
+                  <NombreJugador player={event.relatedPlayer} fallback={related} />
                 </span>
               )}
             </span>

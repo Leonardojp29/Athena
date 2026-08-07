@@ -1,5 +1,6 @@
 ---
 import type { MatchPlayerStats, TeamSummary } from '../../lib/api';
+import PlayerName from '../player/PlayerName.astro';
 
 /*
  * Rendimiento individual de los dos equipos. Cada fila abre la misma ficha que los imanes de
@@ -75,12 +76,13 @@ const goles = (s: MatchPlayerStats) =>
                           type="button"
                           data-jugador={s.player.id}
                           data-ficha={ficha(s, team)}
-                          class="flex cursor-pointer items-center gap-2 text-left hover:text-primary-ink"
+                          class="flex w-full cursor-pointer items-center gap-2 text-left hover:text-primary-ink"
                         >
-                          <span class="w-5 shrink-0 tabular text-2xs text-ink-muted">
-                            {s.shirtNumber ?? '–'}
-                          </span>
-                          <span class="truncate">{s.player.name}</span>
+                          <PlayerName
+                            name={s.player.name}
+                            photoUrl={s.player.photoUrl}
+                            number={s.shirtNumber}
+                          />
                           {s.captain && (
                             <span
                               class="rounded bg-border px-1 text-[9px] font-bold"

@@ -19,6 +19,10 @@ export interface ProviderSeason {
 export interface ProviderCompetition {
   name: string;
   country: string | null;
+  /** ISO del país: PE, GB-ENG. Null en los torneos internacionales. */
+  countryCode: string | null;
+  /** URL de la bandera tal como la publica el proveedor: no se construye a mano. */
+  flagUrl: string | null;
   format: CompetitionFormat;
   logoUrl: string | null;
   seasons: ProviderSeason[];
@@ -213,6 +217,11 @@ export interface FootballDataProvider {
   getTeams(competitionRef: string, seasonYear: number): Promise<ProviderRef<ProviderTeam>[]>;
   getSquad(teamRef: string): Promise<ProviderRef<ProviderPlayer>[]>;
   getMatches(competitionRef: string, seasonYear: number): Promise<ProviderRef<ProviderMatch>[]>;
+  /**
+   * Estado real de partidos puntuales. Hace falta porque el feed en vivo solo contiene lo que
+   * está en juego: un partido que termina desaparece de ahí y nadie lo saca de "en juego".
+   */
+  getMatchesByRefs(matchRefs: string[]): Promise<ProviderRef<ProviderMatch>[]>;
   getStandings(competitionRef: string, seasonYear: number): Promise<ProviderStanding[]>;
   getLiveMatches(): Promise<ProviderLiveMatch[]>;
   getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]>;

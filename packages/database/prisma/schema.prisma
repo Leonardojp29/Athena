@@ -39,6 +39,12 @@ model Competition {
   name     String
   slug     String   @unique
   country  String?
+  /// ISO del país, tal como lo publica el proveedor: PE, GB-ENG. Null en los internacionales.
+  countryCode String? @map("country_code")
+  /// La publica el proveedor; no se construye a mano.
+  flagUrl String? @map("flag_url")
+  /// sudamerica | europa | norteamerica | africa | asia | mundial. Lo decide el catálogo.
+  continent String?
   format   String // league | cup
   logoUrl  String?  @map("logo_url")
   seasons  Season[]

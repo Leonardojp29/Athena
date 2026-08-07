@@ -1,0 +1,116 @@
+---
+import type { GeographyContinent } from '../../lib/api';
+import { isLive } from '../../lib/format';
+import ContinentIcon from '../ContinentIcon.astro';
+import CountryFlag from '../CountryFlag.astro';
+import Icon from '../Icon.astro';
+import MatchRow from '../MatchRow.astro';
+import { paisEnEspanol } from '../../lib/paises';
+
+/*
+ * Los partidos del día en UNA columna, agrupados continente → país → torneo.
+ *
+ * Antes eran N tarjetas en tres columnas, una por liga: con sesenta competencias eso obliga a
+ * barrer la página en zigzag buscando su país. En una sola columna el hincha baja y encuentra;
+ * el orden es el mismo del menú, así que no hay que reaprenderlo.
+ */
+interface Props {
+  geography: GeographyContinent[];
+  /** Los continentes que arrancan abiertos; el resto se despliega. */
+  abiertos?: string[];
+}
+
+const { geography, abiertos = ['sudamerica', 'europa', 'mundial'] } = Astro.props;
+
+const contarPartidos = (continente: GeographyContinent) =>
+  continente.countries.reduce(
+    (n, pais) => n + pais.competitions.reduce((m, t) => m + t.matches.length, 0),
+    0,
+  );
+
+const contarVivos = (continente: GeographyContinent) =>
+  continente.countries.reduce(
+    (n, pais) =>
+      n + pais.competitions.reduce((m, t) => m + t.matches.filter((x) => isLive(x.status)).length, 0),
+    0,
+  );
+---
+
+<div class="grid gap-3">
+  {
+    geography.map((continente) => {
+      const total = contarPartidos(continente);
+      const vivos = contarVivos(continente);
+      return (
+        <details open={abiertos.includes(continente.continent) || vivos > 0} class="group">
+          <summary
+            class="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 transition-colors hover:bg-canvas-subtle"
+          >
+            <ContinentIcon name={continente.continent} size={17} class="text-primary-ink" />
+            <h3 class="font-display text-base font-semibold uppercase">{continente.label}</h3>
+            {vivos > 0 && (
+              <span class="flex items-center gap-1 rounded-full bg-live/12 px-2 py-0.5 text-2xs font-medium text-live">
+                <span class="size-1.5 rounded-full bg-live animate-live-pulse" />
+                {vivos}
+              </span>
+            )}
+            <span class="ml-auto tabular text-2xs text-ink-muted">{total}</span>
+            <Icon
+              name="chevron-derecha"
+              size={14}
+              class="text-ink-muted transition-transform group-open:rotate-90"
+            />
+          </summary>
+
+          <div class="mt-2 grid gap-3 sm:pl-3">
+            {continente.countries.map((pais) => (
+              <section class="rounded-lg border border-border bg-surface">
+                <div class="flex items-center gap-2 border-b border-border px-3 py-2">
+                  <CountryFlag
+                    url={pais.flagUrl}
+                    code={pais.code}
+                    name={paisEnEspanol(pais.name)}
+                    size={20}
+                  />
+                  <h4 class="text-sm font-semibold">
+                    {paisEnEspanol(pais.name) ?? 'Internacional'}
+                  </h4>
+                  <span class="ml-auto tabular text-2xs text-ink-muted">
+                    {pais.competitions.reduce((n, t) => n + t.matches.length, 0)}
+                  </span>
+                </div>
+
+                <div class="grid gap-1 p-1">
+                  {pais.competitions.map(({ competition, matches }) => (
+                    <div>
+                      <a
+                        href={`/competencias/${competition.slug}`}
+                        class="flex items-center gap-1.5 rounded px-2 py-1 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+                      >
+                        {competition.logoUrl && (
+                          <img
+                            src={competition.logoUrl}
+                            alt=""
+                            width="14"
+                            height="14"
+                            loading="lazy"
+                          />
+                        )}
+                        <span class="truncate font-medium tracking-label uppercase">
+                          {competition.name}
+                        </span>
+                      </a>
+                      {matches.map((match) => (
+                        <MatchRow match={match} showDate />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </details>
+      );
+    })
+  }
+</div>

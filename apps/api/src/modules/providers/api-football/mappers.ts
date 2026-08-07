@@ -36,6 +36,8 @@ export function mapLeague(raw: ApiFootballLeague): ProviderRef<ProviderCompetiti
     data: {
       name: raw.league.name,
       country: raw.country.name === 'World' ? null : raw.country.name,
+      countryCode: raw.country.name === 'World' ? null : (raw.country.code ?? null),
+      flagUrl: raw.country.name === 'World' ? null : (raw.country.flag ?? null),
       format: raw.league.type === 'Cup' ? 'cup' : 'league',
       logoUrl: raw.league.logo,
       seasons: raw.seasons.map((s) => ({

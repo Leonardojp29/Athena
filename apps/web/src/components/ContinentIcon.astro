@@ -1,0 +1,32 @@
+---
+import { CONTINENT_ICONS, type ContinentIconName } from '../icons/paths.continents';
+
+/*
+ * Vive aparte de Icon.astro para que el registro de continentes no entre en las páginas que
+ * no lo usan, igual que los iconos de eventos.
+ */
+interface Props {
+  name: string;
+  size?: number;
+  class?: string;
+}
+
+const { name, size = 16, class: className } = Astro.props;
+const icon = CONTINENT_ICONS[name as ContinentIconName] ?? CONTINENT_ICONS.mundial;
+const strokeWidth = size >= 24 ? 1.5 : size >= 20 ? 1.75 : 2;
+---
+
+<svg
+  viewBox="0 0 24 24"
+  width={size}
+  height={size}
+  fill="none"
+  stroke="currentColor"
+  stroke-width={strokeWidth}
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+  class:list={['shrink-0', className]}
+  set:html={icon.body}
+/>

@@ -1,65 +1,96 @@
 ---
-import Icon from '../../components/Icon.astro';
 import Base from '../../layouts/Base.astro';
-import { getNavGroups } from '../../lib/nav';
+import ContinentIcon from '../../components/ContinentIcon.astro';
+import CountryFlag from '../../components/CountryFlag.astro';
+import Icon from '../../components/Icon.astro';
+import { getNavTree, todasLasCompetencias } from '../../lib/nav';
 import { paisEnEspanol } from '../../lib/paises';
 
-const groups = await getNavGroups();
-const total = groups.reduce((n, g) => n + g.competitions.length, 0);
+const tree = await getNavTree();
+const total = todasLasCompetencias(tree).length;
+const paises = tree.reduce((n, c) => n + c.countries.filter((p) => p.code !== null).length, 0);
 ---
 
 <Base
   title="Competencias | Athena"
-  description="Las competencias que Athena sigue: tablas, partidos y análisis por liga y copa."
+  description="Todas las competencias que Athena sigue, por continente y país: tablas, calendario y análisis."
   width="wide"
   liveBar={false}
 >
   <header class="pb-6">
     <h1 class="font-display text-3xl font-semibold uppercase">Competencias</h1>
     <p class="mt-1 text-sm text-ink-muted">
-      {total} torneos con tabla, calendario y análisis al día.
+      {total} torneos de {paises} países, con tabla, calendario y análisis al día.
     </p>
   </header>
 
-  <div class="grid gap-8">
+  <div class="grid gap-10">
     {
-      groups.map((group) => (
+      tree.map((continente) => (
         <section>
-          <div class="mb-3 flex items-center gap-3">
-            <h2 class="font-display text-lg font-semibold uppercase">{group.label}</h2>
-            <span class="h-px flex-1 bg-border"></span>
-            <span class="tabular text-2xs text-ink-muted">{group.competitions.length}</span>
+          <div class="mb-4 flex items-center gap-3">
+            <ContinentIcon name={continente.continent} size={20} class="text-primary-ink" />
+            <h2 class="font-display text-xl font-semibold uppercase">{continente.label}</h2>
+            <span class="h-px flex-1 bg-border" />
+            <span class="tabular text-2xs text-ink-muted">
+              {continente.countries.reduce((n, p) => n + p.competitions.length, 0)}
+            </span>
           </div>
 
-          <ul class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            {group.competitions.map((competition) => (
-              <li>
-                <a
-                  href={`/competencias/${competition.slug}`}
-                  class="group flex items-center gap-3 rounded-lg border border-border bg-surface p-3 transition-colors hover:border-border-strong hover:bg-canvas-subtle"
-                >
-                  <span class="flex size-10 shrink-0 items-center justify-center rounded-md bg-canvas-subtle">
-                    {competition.logoUrl ? (
-                      <img src={competition.logoUrl} alt="" width="26" height="26" loading="lazy" />
-                    ) : (
-                      <Icon name="estadio" size={18} class="text-ink-muted" />
-                    )}
-                  </span>
-                  <span class="min-w-0">
-                    <span class="block truncate font-medium">{competition.name}</span>
-                    <span class="block truncate text-2xs text-ink-muted">
-                      {paisEnEspanol(competition.country) ?? 'Internacional'}
-                    </span>
-                  </span>
-                  <Icon
-                    name="chevron-derecha"
-                    size={16}
-                    class="ml-auto shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {continente.countries.map((pais) => (
+              <section class="rounded-lg border border-border bg-surface">
+                <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
+                  <CountryFlag
+                    url={pais.flagUrl}
+                    code={pais.code}
+                    name={paisEnEspanol(pais.name)}
+                    size={22}
                   />
-                </a>
-              </li>
+                  <h3 class="truncate text-sm font-semibold">
+                    {paisEnEspanol(pais.name) ?? 'Internacional'}
+                  </h3>
+                  <span class="ml-auto tabular text-2xs text-ink-muted">
+                    {pais.competitions.length}
+                  </span>
+                </div>
+
+                <ul class="grid gap-0.5 p-1.5">
+                  {pais.competitions.map((competition) => (
+                    <li>
+                      <a
+                        href={`/competencias/${competition.slug}`}
+                        class="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-canvas-subtle"
+                      >
+                        <span class="flex size-7 shrink-0 items-center justify-center rounded bg-canvas-subtle">
+                          {competition.logoUrl ? (
+                            <img
+                              src={competition.logoUrl}
+                              alt=""
+                              width="20"
+                              height="20"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <Icon name="estadio" size={14} class="text-ink-muted" />
+                          )}
+                        </span>
+                        <span class="min-w-0 flex-1 truncate text-sm">{competition.name}</span>
+                        {competition.format === 'cup' && (
+                          <span class="shrink-0 text-2xs text-ink-muted">copa</span>
+                        )}
+                        <Icon
+                          name="chevron-derecha"
+                          size={14}
+                          class="shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
+                        />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         </section>
       ))
     }

@@ -1,10 +1,20 @@
 ---
+import ContinentIcon from '../ContinentIcon.astro';
 import LogoMark from '../brand/LogoMark.astro';
 import Container from './Container.astro';
-import { getNavGroups } from '../../lib/nav';
+import { getNavTree } from '../../lib/nav';
+import { paisEnEspanol } from '../../lib/paises';
 
-const groups = await getNavGroups();
+const tree = await getNavTree();
 const anio = new Date().getFullYear();
+
+/* En el pie no cabe el catálogo entero: un país por continente y sus torneos principales. */
+const columnas = tree.slice(0, 3).map((continente) => ({
+  ...continente,
+  destacadas: continente.countries.flatMap((pais) =>
+    pais.competitions.slice(0, 2).map((c) => ({ ...c, pais: pais.name })),
+  ).slice(0, 6),
+}));
 ---
 
 <footer class="mt-16 w-full border-t border-border bg-canvas-subtle">
@@ -22,17 +32,19 @@ const anio = new Date().getFullYear();
       </div>
 
       {
-        groups.slice(0, 3).map((group) => (
-          <nav aria-label={group.label}>
-            <p class="mb-2 text-2xs font-semibold tracking-label text-ink-muted uppercase">
-              {group.label}
+        columnas.map((continente) => (
+          <nav aria-label={continente.label}>
+            <p class="mb-2 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+              <ContinentIcon name={continente.continent} size={12} />
+              {continente.label}
             </p>
             <ul class="grid gap-1">
-              {group.competitions.slice(0, 6).map((competition) => (
+              {continente.destacadas.map((competition) => (
                 <li>
                   <a
                     href={`/competencias/${competition.slug}`}
                     class="text-sm text-ink-muted transition-colors hover:text-ink"
+                    title={paisEnEspanol(competition.pais) ?? undefined}
                   >
                     {competition.name}
                   </a>

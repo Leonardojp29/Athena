@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { bulkUpdatePlayers, bulkUpsert } from './bulk-upsert.js';
+import { bulkUpdate, bulkUpdatePlayers, bulkUpsert } from './bulk-upsert.js';
 import type { PrismaService } from '../../shared/prisma.service.js';
 
 /*
@@ -172,8 +172,38 @@ describe('bulkUpdatePlayers', () => {
     expect(sql).toContain('UPDATE "players"');
     // el nombre corto sí gana; el resto solo si trae valor
     expect(sql).toContain('name = v.name,');
-    expect(sql).toContain('full_name = COALESCE(v.full_name, p.full_name)');
-    expect(sql).toContain('birth_date = COALESCE(v.birth_date, p.birth_date)');
+    expect(sql).toContain('full_name = COALESCE(v.full_name, t.full_name)');
+    expect(sql).toContain('birth_date = COALESCE(v.birth_date, t.birth_date)');
+  });
+
+  it('sin coalesce sobrescribe, con coalesce protege', async () => {
+    const { prisma, llamadas } = fakePrisma([]);
+    await bulkUpdate(prisma, {
+      table: 'teams',
+      columns: [
+        { name: 'id', cast: '::uuid' },
+        { name: 'name', cast: '::text' },
+        { name: 'founded', cast: '::int' },
+      ],
+      rows: [{ id: 't1', name: 'Alianza Lima', founded: null }],
+      coalesce: ['founded'],
+    });
+
+    const { sql } = llamadas[0] as { sql: string };
+    expect(sql).toContain('name = v.name');
+    expect(sql).toContain('founded = COALESCE(v.founded, t.founded)');
+    expect(sql).toContain('updated_at = now()');
+  });
+
+  it('rechaza un identificador inventado en las columnas', async () => {
+    const { prisma } = fakePrisma([]);
+    await expect(
+      bulkUpdate(prisma, {
+        table: 'teams',
+        columns: [{ name: 'id; DROP TABLE teams; --', cast: '::uuid' }],
+        rows: [{ id: 'x' }],
+      }),
+    ).rejects.toThrow(/Identificador inválido/);
   });
 
   it('no emite nada sin cambios', async () => {

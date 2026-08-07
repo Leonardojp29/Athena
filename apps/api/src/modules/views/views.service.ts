@@ -1,6 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../shared/prisma.service.js';
-import { regionOf, type Region } from './regions.js';
+import {
+  CONTINENT_LABEL,
+  CONTINENT_ORDER,
+  competitionRank,
+  countryRank,
+  type Continent,
+} from './regions.js';
 
 const teamSummary = {
   select: { id: true, name: true, shortName: true, slug: true, logoUrl: true },
@@ -61,7 +67,19 @@ const matchCard = {
   season: {
     select: {
       year: true,
-      competition: { select: { id: true, name: true, slug: true, logoUrl: true } },
+      competition: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logoUrl: true,
+          country: true,
+          countryCode: true,
+          flagUrl: true,
+          continent: true,
+          format: true,
+        },
+      },
     },
   },
 } as const;
@@ -74,17 +92,63 @@ const DAY_MS = 86_400_000;
 export class ViewsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Alimenta la navegación: la lista de competencias no puede seguir cableada en el header. */
+  /**
+   * El catálogo entero, ya ordenado continente → país → torneos.
+   *
+   * Se arma en el API y no en la web porque el orden es una decisión de producto —Perú primero,
+   * la liga antes que sus copas— y así el header, el índice y el buscador leen exactamente lo
+   * mismo. Antes la web recibía una lista plana y agrupaba con un mapa de países propio.
+   */
   async competitions() {
     const rows = await this.prisma.competition.findMany({
       where: { isActive: true },
-      orderBy: [{ country: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, slug: true, country: true, format: true, logoUrl: true },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        country: true,
+        countryCode: true,
+        flagUrl: true,
+        continent: true,
+        format: true,
+        logoUrl: true,
+      },
     });
-    return rows.map((row) => ({
-      ...row,
-      region: regionOf(row.country, row.format) satisfies Region,
-    }));
+
+    const porContinente = new Map<Continent, Map<string, typeof rows>>();
+    for (const row of rows) {
+      const continente = (row.continent ?? 'mundial') as Continent;
+      /* Los torneos internacionales no tienen país: se agrupan bajo una clave vacía. */
+      const clave = row.countryCode ?? '';
+      const paises = porContinente.get(continente) ?? new Map<string, typeof rows>();
+      paises.set(clave, [...(paises.get(clave) ?? []), row]);
+      porContinente.set(continente, paises);
+    }
+
+    return CONTINENT_ORDER.filter((c) => porContinente.has(c)).map((continent) => {
+      const paises = porContinente.get(continent) as Map<string, typeof rows>;
+      return {
+        continent,
+        label: CONTINENT_LABEL[continent],
+        countries: [...paises.entries()]
+          .map(([code, competitions]) => ({
+            code: code === '' ? null : code,
+            /*
+             * Sin código no hay país, y el nombre tiene que ser null: heredar el `country` de
+             * la primera fila hacía que el grupo internacional se llamara "Germany".
+             */
+            name: code === '' ? null : (competitions[0]?.country ?? null),
+            flagUrl: code === '' ? null : (competitions[0]?.flagUrl ?? null),
+            competitions: [...competitions].sort(
+              (a, b) =>
+                competitionRank(a.format, a.name) - competitionRank(b.format, b.name) ||
+                a.name.localeCompare(b.name, 'es'),
+            ),
+          }))
+          .sort((a, b) => countryRank(a.code) - countryRank(b.code)),
+      };
+    });
   }
 
   async home() {
@@ -107,6 +171,7 @@ export class ViewsService {
     return {
       live: matches.filter((m) => m.status === 'in_play' || m.status === 'paused').length,
       sections: groupByCompetition(matches),
+      geography: groupByGeography(matches),
     };
   }
 
@@ -128,6 +193,7 @@ export class ViewsService {
       total: matches.length,
       live: matches.filter((m) => m.status === 'in_play' || m.status === 'paused').length,
       sections: groupByCompetition(matches),
+      geography: groupByGeography(matches),
     };
   }
 
@@ -558,4 +624,73 @@ function groupSquadByLine<T extends SquadRow>(rows: T[]): Array<{ line: string; 
       return line === 'other' ? !pos || !LINE_ORDER.includes(pos as never) : pos === line;
     }),
   })).filter((group) => group.players.length > 0);
+}
+
+type ConGeografia = {
+  season: {
+    competition: {
+      id: string;
+      name: string;
+      slug: string;
+      logoUrl: string | null;
+      country: string | null;
+      countryCode: string | null;
+      flagUrl: string | null;
+      continent: string | null;
+      format: string;
+    };
+  };
+};
+
+/**
+ * Los partidos de un día ordenados continente → país → torneo.
+ *
+ * Es la forma en que la home los muestra: una sola columna donde el hincha baja y encuentra su
+ * país, en lugar de N columnas por liga donde tiene que buscar. El mismo orden que la
+ * navegación, para que nadie tenga que reaprenderlo.
+ */
+function groupByGeography<T extends ConGeografia>(matches: T[]) {
+  const porContinente = new Map<Continent, Map<string, Map<string, T[]>>>();
+
+  for (const match of matches) {
+    const c = match.season.competition;
+    const continente = (c.continent ?? 'mundial') as Continent;
+    const pais = c.countryCode ?? '';
+
+    const paises = porContinente.get(continente) ?? new Map<string, Map<string, T[]>>();
+    const torneos = paises.get(pais) ?? new Map<string, T[]>();
+    torneos.set(c.id, [...(torneos.get(c.id) ?? []), match]);
+    paises.set(pais, torneos);
+    porContinente.set(continente, paises);
+  }
+
+  return CONTINENT_ORDER.filter((c) => porContinente.has(c)).map((continent) => {
+    const paises = porContinente.get(continent) as Map<string, Map<string, T[]>>;
+    return {
+      continent,
+      label: CONTINENT_LABEL[continent],
+      countries: [...paises.entries()]
+        .map(([code, torneos]) => {
+          const primera = [...torneos.values()][0]?.[0]?.season.competition;
+          /* Igual que arriba: sin código, ni nombre ni bandera. */
+          return {
+            code: code === '' ? null : code,
+            name: code === '' ? null : (primera?.country ?? null),
+            flagUrl: code === '' ? null : (primera?.flagUrl ?? null),
+            competitions: [...torneos.values()]
+              .map((lista) => ({
+                competition: (lista[0] as T).season.competition,
+                matches: lista,
+              }))
+              .sort(
+                (a, b) =>
+                  competitionRank(a.competition.format, a.competition.name) -
+                    competitionRank(b.competition.format, b.competition.name) ||
+                  a.competition.name.localeCompare(b.competition.name, 'es'),
+              ),
+          };
+        })
+        .sort((a, b) => countryRank(a.code) - countryRank(b.code)),
+    };
+  });
 }

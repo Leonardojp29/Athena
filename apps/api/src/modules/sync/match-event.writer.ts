@@ -36,7 +36,16 @@ export class MatchEventWriter {
         teamId: teams.get(e.teamRef) as string,
         playerId: e.playerRef ? (players.get(e.playerRef) ?? null) : null,
         relatedPlayerId: e.relatedPlayerRef ? (players.get(e.relatedPlayerRef) ?? null) : null,
-        detail: (e.detail ?? undefined) as Prisma.InputJsonValue | undefined,
+        /*
+         * Los refs del proveedor se guardan en el detalle. Sin ellos, un evento escrito antes
+         * de que el jugador existiera queda sin vincular para siempre, y volver a vincularlo
+         * cuesta un request por partido en lugar de cero.
+         */
+        detail: {
+          ...(e.detail ?? {}),
+          playerRef: e.playerRef,
+          relatedPlayerRef: e.relatedPlayerRef,
+        } as Prisma.InputJsonValue,
       }));
 
     await this.prisma.$transaction([

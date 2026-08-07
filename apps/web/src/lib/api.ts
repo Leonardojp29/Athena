@@ -54,7 +54,17 @@ export interface MatchCard {
   awayTeam: TeamSummary;
   season: {
     year: number;
-    competition: { id: string; name: string; slug: string; logoUrl: string | null };
+    competition: {
+      id: string;
+      name: string;
+      slug: string;
+      logoUrl: string | null;
+      country: string | null;
+      countryCode: string | null;
+      flagUrl: string | null;
+      continent: string | null;
+      format: string;
+    };
   };
 }
 
@@ -77,9 +87,24 @@ export interface MatchSection {
   matches: MatchCard[];
 }
 
+/* El mismo árbol que la navegación: continente → país → torneo → partidos. */
+export interface GeographyCountry {
+  code: string | null;
+  name: string | null;
+  flagUrl: string | null;
+  competitions: MatchSection[];
+}
+
+export interface GeographyContinent {
+  continent: string;
+  label: string;
+  countries: GeographyCountry[];
+}
+
 export interface HomeView {
   live: number;
   sections: MatchSection[];
+  geography: GeographyContinent[];
 }
 
 export interface MatchDayView {
@@ -87,6 +112,7 @@ export interface MatchDayView {
   total: number;
   live: number;
   sections: MatchSection[];
+  geography: GeographyContinent[];
 }
 
 export interface CompetitionView {

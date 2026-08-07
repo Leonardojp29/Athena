@@ -1,6 +1,6 @@
 ---
 import Icon from '../../components/Icon.astro';
-import MatchRow from '../../components/MatchRow.astro';
+import MatchGeography from '../../components/home/MatchGeography.astro';
 import Base from '../../layouts/Base.astro';
 import { api, type MatchDayView } from '../../lib/api';
 import { formatDateLong } from '../../lib/format';
@@ -111,27 +111,7 @@ const titulo = formatDateLong(`${fecha}T12:00:00-05:00`);
         )}
       </div>
     ) : (
-      <div class="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-        {dia.sections.map((section) => (
-          <section class="rounded-lg border border-border bg-surface">
-            <a
-              href={`/competencias/${section.competition.slug}`}
-              class="flex items-center gap-2 border-b border-border px-4 py-3 transition-colors hover:bg-canvas-subtle"
-            >
-              {section.competition.logoUrl && (
-                <img src={section.competition.logoUrl} alt="" width="20" height="20" loading="lazy" />
-              )}
-              <h2 class="text-sm font-semibold">{section.competition.name}</h2>
-              <span class="ml-auto tabular text-2xs text-ink-muted">{section.matches.length}</span>
-            </a>
-            <div class="p-1">
-              {section.matches.map((match) => (
-                <MatchRow match={match} />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      <MatchGeography geography={dia.geography} />
     )
   }
 </Base>

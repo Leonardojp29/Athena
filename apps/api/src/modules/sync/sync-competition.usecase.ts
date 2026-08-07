@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { slugify, type FootballDataProvider } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
+import { CONFIGURED_COMPETITIONS } from './competitions.config.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 
 @Injectable()
@@ -21,6 +22,18 @@ export class SyncCompetitionUseCase {
     const { data } = result;
     const existingId = await this.refs.resolve(this.provider.name, 'competition', competitionRef);
 
+    /*
+     * El continente lo decide el catálogo y no el proveedor: es una decisión de producto —dónde
+     * queremos que aparezca cada torneo— y no un dato del fútbol. El código de país sí es del
+     * proveedor, y el catálogo lo cubre para las copas internacionales, que no tienen país.
+     */
+    const catalogo = CONFIGURED_COMPETITIONS.find((c) => c.providerRef === competitionRef);
+    const geo = {
+      countryCode: data.countryCode ?? catalogo?.countryCode ?? null,
+      flagUrl: data.flagUrl,
+      continent: catalogo?.continent ?? null,
+    };
+
     const competition = existingId
       ? await this.prisma.competition.update({
           where: { id: existingId },
@@ -29,6 +42,7 @@ export class SyncCompetitionUseCase {
             country: data.country,
             format: data.format,
             logoUrl: data.logoUrl,
+            ...geo,
           },
         })
       : await this.prisma.competition.create({
@@ -39,6 +53,7 @@ export class SyncCompetitionUseCase {
             format: data.format,
             logoUrl: data.logoUrl,
             isActive: true,
+            ...geo,
           },
         });
 
