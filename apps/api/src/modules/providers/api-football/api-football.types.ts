@@ -95,14 +95,20 @@ export interface ApiFootballStandings {
 
 export interface ApiFootballStatistics {
   team: { id: number };
-  statistics: Array<{ type: string; value: string | number | null }>;
+  /* Mismo caso que las alineaciones: en algunos partidos la clave no viene. */
+  statistics?: Array<{ type: string; value: string | number | null }>;
 }
 
+/*
+ * `startXI` y `substitutes` **faltan**, no vienen vacíos, en los partidos sin alineación
+ * publicada: el proveedor devuelve solo equipo, técnico y formación. Verificado contra el
+ * fixture 1515157, que hacía estallar el backfill con "undefined is not a map".
+ */
 export interface ApiFootballLineup {
   team: { id: number };
   formation: string | null;
   coach: { id: number | null; name: string | null };
-  startXI: Array<{
+  startXI?: Array<{
     player: {
       id: number | null;
       name: string;
@@ -111,7 +117,7 @@ export interface ApiFootballLineup {
       grid: string | null;
     };
   }>;
-  substitutes: Array<{
+  substitutes?: Array<{
     player: {
       id: number | null;
       name: string;

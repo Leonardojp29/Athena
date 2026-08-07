@@ -145,7 +145,7 @@ function statNumber(value: string | number | null | undefined): number | null {
 }
 
 export function mapStatistics(raw: ApiFootballStatistics): ProviderMatchStatistics {
-  const byType = new Map(raw.statistics.map((item) => [item.type, item.value]));
+  const byType = new Map((raw.statistics ?? []).map((item) => [item.type, item.value]));
   const get = (type: string): number | null => statNumber(byType.get(type));
 
   return {
@@ -177,7 +177,8 @@ const LINEUP_POSITION: Record<string, string> = {
 };
 
 export function mapLineup(raw: ApiFootballLineup): ProviderLineup {
-  const mapPlayer = (entry: ApiFootballLineup['startXI'][number]): ProviderLineupPlayer => ({
+  type Entrada = NonNullable<ApiFootballLineup['startXI']>[number];
+  const mapPlayer = (entry: Entrada): ProviderLineupPlayer => ({
     playerRef: entry.player.id === null ? null : String(entry.player.id),
     name: entry.player.name,
     number: entry.player.number,
@@ -189,8 +190,8 @@ export function mapLineup(raw: ApiFootballLineup): ProviderLineup {
     teamRef: String(raw.team.id),
     formation: raw.formation,
     coachName: raw.coach?.name ?? null,
-    startXi: raw.startXI.map(mapPlayer),
-    substitutes: raw.substitutes.map(mapPlayer),
+    startXi: (raw.startXI ?? []).map(mapPlayer),
+    substitutes: (raw.substitutes ?? []).map(mapPlayer),
   };
 }
 

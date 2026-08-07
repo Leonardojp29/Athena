@@ -1,7 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { mapEvents, mapFixture, mapLeague, mapStandings, mapTeam } from './mappers.js';
+import {
+  mapEvents,
+  mapFixture,
+  mapLeague,
+  mapLineup,
+  mapStandings,
+  mapStatistics,
+  mapTeam,
+} from './mappers.js';
 import { mapMatchStatus } from './status-map.js';
 
 const fixture = <T>(name: string): T[] =>
@@ -73,6 +81,35 @@ describe('mapEvents', () => {
         'var',
       ]).toContain(event.kind);
     }
+  });
+});
+
+describe('mapLineup', () => {
+  /*
+   * Verificado contra el fixture 1515157: en los partidos sin alineación publicada el proveedor
+   * devuelve equipo, técnico y formación, y las claves de los jugadores no existen. Con `.map()`
+   * a secas el backfill perdía el partido entero por un TypeError.
+   */
+  it('sobrevive a una alineación sin jugadores', () => {
+    const lineup = mapLineup({
+      team: { id: 1234 },
+      formation: null,
+      coach: { id: 9, name: 'Sin datos' },
+    });
+
+    expect(lineup.startXi).toEqual([]);
+    expect(lineup.substitutes).toEqual([]);
+    expect(lineup.coachName).toBe('Sin datos');
+  });
+});
+
+describe('mapStatistics', () => {
+  it('sobrevive a un partido sin bloque de estadísticas', () => {
+    const stats = mapStatistics({ team: { id: 1234 } });
+
+    expect(stats.teamRef).toBe('1234');
+    expect(stats.possessionPercent).toBeNull();
+    expect(stats.raw).toEqual({});
   });
 });
 
