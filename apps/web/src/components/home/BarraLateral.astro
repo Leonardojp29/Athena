@@ -42,11 +42,6 @@ const partidosPorPais = new Map(
     ]),
   ),
 );
-const partidosPorLiga = new Map(
-  geography.flatMap((c) =>
-    c.countries.flatMap((p) => p.competitions.map((t) => [t.competition.slug, t.matches.length])),
-  ),
-);
 const totalHoy = [...partidosPorPais.values()].reduce((a, b) => a + b, 0);
 
 const enJuegoPorPais = new Map(
@@ -155,7 +150,12 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                       {vivos}
                     </span>
                   ) : hoy > 0 ? (
-                    <span class="tabular text-2xs text-primary-ink">{hoy}</span>
+                    /*
+                     * Cerrado, el número es la única forma de ver que hoy se juega. Abierto, es la
+                     * suma de lo que ya está a la vista y se repetía tres veces en el mismo bloque:
+                     * el del país, el de la liga y el del enlace. Queda el del enlace.
+                     */
+                    <span class="tabular text-2xs text-primary-ink group-open/pais:hidden">{hoy}</span>
                   ) : null}
                   <Icon
                     name="chevron-derecha"
@@ -180,11 +180,7 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                         <EscudoTorneo url={competition.logoUrl} size={13} />
                         <span class="truncate">{nombreTorneo(competition.name)}</span>
                       </a>
-                      {(partidosPorLiga.get(competition.slug) ?? 0) > 0 && (
-                        <span class="shrink-0 tabular text-[10px] text-primary-ink">
-                          {partidosPorLiga.get(competition.slug)}
-                        </span>
-                      )}
+
                       <BotonFavorito
                         tipo="liga"
                         id={competition.id}

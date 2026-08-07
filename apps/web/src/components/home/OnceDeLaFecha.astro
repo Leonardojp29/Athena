@@ -1,0 +1,130 @@
+---
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import type { OnceDeLaFecha } from '../../lib/api';
+import { nombreFase } from '../../lib/paises';
+
+/*
+ * El once de la fecha de una competencia.
+ *
+ * Cuando alguien abre una liga, "lo mejor del día" de todo el mundo no le dice nada: quiere lo de
+ * su liga. Y lo más futbolero que se puede armar con lo que hay —notas por jugador y su puesto— es
+ * el equipo ideal de la última jornada: un arquero, cuatro defensores, cuatro volantes y dos
+ * delanteros, cada uno el mejor calificado de su puesto.
+ *
+ * Se arma en el orden en que se lee una alineación, de atrás hacia adelante.
+ */
+interface Props {
+  once: OnceDeLaFecha;
+  logoUrl?: string | null;
+  nombreLiga: string;
+}
+
+const { once, logoUrl = null, nombreLiga } = Astro.props;
+
+const LINEA: Record<string, string> = {
+  G: 'Arquero',
+  D: 'Defensa',
+  M: 'Mediocampo',
+  F: 'Ataque',
+};
+
+/* Agrupado por puesto, en el orden del campo. */
+const lineas = ['G', 'D', 'M', 'F']
+  .map((puesto) => ({
+    puesto,
+    etiqueta: LINEA[puesto] ?? puesto,
+    jugadores: once.players.filter((j) => j.position === puesto),
+  }))
+  .filter((linea) => linea.jugadores.length > 0);
+
+const jornada = (() => {
+  if (!once.round) return null;
+  const corte = once.round.lastIndexOf(' - ');
+  if (corte === -1) return nombreFase(once.round);
+  const cola = once.round.slice(corte + 3).trim();
+  return /^\d+$/.test(cola)
+    ? `${nombreFase(once.round.slice(0, corte))} · fecha ${cola}`
+    : nombreFase(once.round);
+})();
+
+const nota = (valor: string | null) => (valor === null ? null : Number(valor).toFixed(1));
+---
+
+<section class="overflow-hidden rounded-xl border border-border bg-surface">
+  <header class="flex items-center gap-2 border-b border-border p-3">
+    <EscudoTorneo url={logoUrl} size={16} />
+    <div class="min-w-0">
+      <h2 class="truncate font-display text-sm font-semibold uppercase leading-none">
+        El once de la fecha
+      </h2>
+      <p class="mt-0.5 truncate text-2xs text-ink-muted">
+        {nombreLiga}
+        {jornada && ` · ${jornada}`}
+      </p>
+    </div>
+    <Icon name="formacion" size={14} class="ml-auto shrink-0 text-primary-ink" />
+  </header>
+
+  <div class="grid gap-2 p-3">
+    {
+      lineas.map((linea) => (
+        <div>
+          <p class="mb-1 text-[10px] font-semibold tracking-label text-ink-muted uppercase">
+            {linea.etiqueta}
+          </p>
+          <ul class="grid gap-0.5">
+            {linea.jugadores.map((jugador) => (
+              <li>
+                <a
+                  href={`/?jugador=${jugador.player_slug}`}
+                  class="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
+                >
+                  {jugador.photo_url ? (
+                    <img
+                      src={jugador.photo_url}
+                      alt=""
+                      width="24"
+                      height="24"
+                      loading="lazy"
+                      class="size-6 shrink-0 rounded-full bg-canvas-subtle object-cover"
+                    />
+                  ) : (
+                    <span class="grid size-6 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                      <Icon name="usuario" size={12} class="text-ink-muted" />
+                    </span>
+                  )}
+
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm">{jugador.player_name}</span>
+                    <span class="flex min-w-0 items-center gap-1 text-2xs text-ink-muted">
+                      {jugador.team_logo && (
+                        <img src={jugador.team_logo} alt="" width="10" height="10" loading="lazy" />
+                      )}
+                      <span class="truncate">{jugador.team_short ?? jugador.team_name}</span>
+                      {(jugador.goals ?? 0) > 0 && (
+                        <span class="shrink-0 text-primary-ink">
+                          {jugador.goals} {jugador.goals === 1 ? 'gol' : 'goles'}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+
+                  {nota(jugador.rating) && (
+                    <span class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
+                      {nota(jugador.rating)}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
+
+  <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
+    El mejor calificado de cada puesto en la jornada, según la nota del proveedor de datos.
+  </p>
+</section>

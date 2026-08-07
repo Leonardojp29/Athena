@@ -14,8 +14,9 @@ interface Props {
   /** Qué columna manda: la otra queda como dato secundario. */
   metrica: 'goals' | 'assists';
   filas?: number;
-  /** A dónde lleva un equipo; la home lo abre en su propio contenedor. */
+  /** A dónde llevan el equipo y el jugador; la home los abre en su propio contenedor. */
   hrefEquipo?: (slug: string) => string;
+  hrefJugador?: (slug: string) => string;
 }
 
 const {
@@ -24,6 +25,7 @@ const {
   metrica,
   filas = 6,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
+  hrefJugador = (slug: string) => `/jugadores/${slug}`,
 } = Astro.props;
 
 const lista: SeasonLeader[] = lideres.slice(0, filas);
@@ -55,7 +57,7 @@ const ETIQUETA: Record<'goals' | 'assists', string> = { goals: 'G', assists: 'A'
 
             <span class="min-w-0 flex-1">
               <a
-                href={`/jugadores/${lider.player.slug}`}
+                href={hrefJugador(lider.player.slug)}
                 class="block truncate text-sm transition-colors hover:text-primary-ink"
               >
                 {lider.player.name}

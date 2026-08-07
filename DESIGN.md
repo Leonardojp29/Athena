@@ -303,6 +303,25 @@ pico calados por `fill-rule="evenodd"`.
 - Las pestañas del partido son **enlaces reales** con `?vista=`: cada panel es indexable,
   compartible y cuesta 0 KB.
 
+### El once de la fecha
+
+Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada: quien abre la Liga 1 quiere lo
+de la Liga 1. El riel cambia de contenido según dónde estés, y lo más futbolero que se puede armar
+con lo que hay —notas por jugador y su puesto— es **el equipo ideal de la última jornada**: un
+arquero, cuatro defensores, cuatro volantes y dos delanteros, cada uno el mejor calificado de su
+puesto, en el orden en que se lee una alineación.
+
+Dos decisiones de dato: se prefiere la última jornada con **tres o más partidos** jugados —la fecha
+en curso arranca con uno y un once salido de ahí sería el once de ese partido—, y el pie dice que la
+nota es del proveedor, no de Athena.
+
+### Vistas dentro de la home
+
+Liga, equipo y jugador tienen su versión simplificada en la home (`?liga=`, `?equipo=`, `?jugador=`),
+con el mismo esqueleto: cabecera sobre la pizarra con el favorito y la salida a la vista completa,
+cifras, y listas compactas. Se llega desde cualquier parte —una tabla, un goleador, el once, lo mejor
+del día— y **nunca se sale de la página**: la barra lateral y el día siguen ahí.
+
 ### Escudos de competencia
 
 Los logos del proveedor son PNG pensados para fondo blanco y **muchos son negros macizos** —Copa de

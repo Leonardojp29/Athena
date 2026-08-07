@@ -14,9 +14,11 @@ import Icon from '../Icon.astro';
  */
 interface Props {
   top: TopPerformers;
+  /** A dónde lleva un jugador; en la home se abre en su propio contenedor. */
+  hrefJugador?: (slug: string) => string;
 }
 
-const { top } = Astro.props;
+const { top, hrefJugador = (slug: string) => `/jugadores/${slug}` } = Astro.props;
 const [primero, ...resto] = top.players;
 
 /* Decir de qué día es en lugar de dejar el hueco: a media mañana nada de hoy terminó. */
@@ -42,7 +44,7 @@ const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
 
       <!-- El primero grande: el podio no se lee si los tres pesan igual. -->
       <a
-        href={`/jugadores/${primero.player.slug}`}
+        href={hrefJugador(primero.player.slug)}
         class="group block border-b border-border p-3 transition-colors hover:bg-canvas-subtle"
       >
         <div class="flex items-start gap-3">
@@ -112,7 +114,7 @@ const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
         {resto.map((p, i) => (
           <li class="border-b border-border/50 last:border-0">
             <a
-              href={`/jugadores/${p.player.slug}`}
+              href={hrefJugador(p.player.slug)}
               class="flex items-center gap-2.5 px-3 py-2 transition-colors hover:bg-canvas-subtle"
             >
               <span class="w-3 shrink-0 tabular text-2xs text-ink-muted">{i + 2}</span>

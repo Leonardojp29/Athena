@@ -224,6 +224,32 @@ export interface CompetitionView {
   /** Goleadores y asistidores de la temporada, ya ordenados. */
   scorers: SeasonLeader[];
   assisters: SeasonLeader[];
+  /** El equipo ideal de la última jornada con notas; null si todavía no alcanza para armarlo. */
+  once: OnceDeLaFecha | null;
+}
+
+/** Una fila del once: viene de SQL, así que las claves son las de la base. */
+export interface JugadorDelOnce {
+  position: string;
+  rating: string | null;
+  goals: number | null;
+  assists: number | null;
+  minutes_played: number | null;
+  player_id: string;
+  player_name: string;
+  player_slug: string;
+  photo_url: string | null;
+  team_name: string;
+  team_short: string | null;
+  team_slug: string;
+  team_logo: string | null;
+  match_id: string;
+  round: string;
+}
+
+export interface OnceDeLaFecha {
+  round: string | null;
+  players: JugadorDelOnce[];
 }
 
 export interface SeasonLeader {

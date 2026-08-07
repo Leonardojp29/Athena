@@ -13,6 +13,15 @@ export interface PlayerSeed {
 /* Tamaño de lote de las transacciones: el pooler cobra caro cada ida y vuelta. */
 const LOTE = 100;
 
+/** P2002: el índice único se quejó. Es el choque de dos obreros creando al mismo jugador. */
+function esChoqueDeUnicidad(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    (error as { code?: string }).code === 'P2002'
+  );
+}
+
 /** "J. Mosqueira", "Á. Di María": inicial con punto, que es como vienen las alineaciones. */
 const ABREVIADO = /(?:^|\s)\p{L}\.(?:\s|$)/u;
 
@@ -49,10 +58,24 @@ export class PlayerResolverService {
   ) {}
 
   /**
-   * Devuelve el id de Athena para cada providerRef, creando los que falten y
-   * actualizando los que ya existen con lo que el proveedor sepa ahora.
+   * Devuelve el id de Athena para cada providerRef, creando los que falten y actualizando los que
+   * ya existen con lo que el proveedor sepa ahora.
+   *
+   * Con varios obreros en paralelo, dos partidos distintos pueden traer al mismo jugador nuevo y
+   * los dos intentan crearlo: el segundo se choca con el slug único y perdía el partido entero.
+   * El reintento resuelve de nuevo, y en la segunda pasada el jugador ya existe.
    */
   async resolveMany(seeds: PlayerSeed[]): Promise<Map<string, string>> {
+    try {
+      return await this.resolverUnaVez(seeds);
+    } catch (error) {
+      if (!esChoqueDeUnicidad(error)) throw error;
+      this.logger.warn('Otro proceso creó el mismo jugador; resolviendo de nuevo');
+      return this.resolverUnaVez(seeds);
+    }
+  }
+
+  private async resolverUnaVez(seeds: PlayerSeed[]): Promise<Map<string, string>> {
     if (seeds.length === 0) return new Map();
 
     const unicos = [...new Map(seeds.map((s) => [s.providerRef, s])).values()];

@@ -122,6 +122,42 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * Un jugador también se abre dentro de la home: se llega desde los goleadores de una liga y desde
+   * lo mejor del día, y en los dos casos salir de la página para ver una ficha es de más.
+   */
+  test('un goleador se abre dentro de la home', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'la barra lateral no se muestra en móvil');
+    await page.goto('/?liga=primera-division');
+
+    const jugador = page.locator('main a[href^="/?jugador="]').first();
+    test.skip((await jugador.count()) === 0, 'esta liga todavía no tiene goleadores cargados');
+    const slug = (await jugador.getAttribute('href'))!.replace('/?jugador=', '');
+    await jugador.click();
+
+    await expect(page).toHaveURL(new RegExp(`\\?jugador=${slug}$`));
+    await expect(page.getByRole('link', { name: /ver el perfil completo/i })).toHaveAttribute(
+      'href',
+      `/jugadores/${slug}`,
+    );
+    await expect(page.locator('main nav[aria-label="Navegación de la home"]')).toBeVisible();
+  });
+
+  /*
+   * Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada. El riel pasa a mostrar el
+   * once ideal de la última jornada de esa liga.
+   */
+  test('en una liga el riel muestra el once de esa liga', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'el riel no se muestra en móvil');
+    await page.goto('/?liga=primera-division');
+
+    const once = page.getByRole('heading', { name: /el once de la fecha/i });
+    test.skip((await once.count()) === 0, 'esta liga todavía no tiene notas para armar el once');
+    await expect(once).toBeVisible();
+    /* Y deja de mostrar lo mejor del día global. */
+    await expect(page.getByRole('heading', { name: /lo mejor de/i })).toHaveCount(0);
+  });
+
+  /*
    * Abrir un equipo o una liga es una navegación de verdad: la página se rearma en el servidor. Sin
    * recordar el árbol, los países que habías desplegado se cerraban y el scroll volvía arriba, como
    * si hubieras entrado de nuevo. De una vista a otra solo tiene que cambiar el contenedor.

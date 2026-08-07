@@ -9,6 +9,7 @@ import CountryFlag from '../../components/CountryFlag.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import SelectorFase from '../../components/SelectorFase.astro';
 import StandingsTable from '../../components/StandingsTable.astro';
+import OnceDeLaFecha from '../../components/home/OnceDeLaFecha.astro';
 import TablaLideres from '../../components/TablaLideres.astro';
 import { api, ApiError, type CompetitionView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
@@ -29,7 +30,7 @@ try {
 }
 const session = await pedidoSesion;
 
-const { competition, season, standingGroups, recent, upcoming, scorers, assisters } = view;
+const { competition, season, standingGroups, recent, upcoming, scorers, assisters, once } = view;
 const seasonLabel =
   competition.format === 'league' &&
   competition.country !== null &&
@@ -57,6 +58,10 @@ const jornada = (() => {
 })();
 
 const pais = paisEnEspanol(competition.country);
+
+/* Sin goleadores —una copa que nunca pasó por /players— la grilla vuelve a dos columnas: la del
+   medio vacía dejaba un hueco de 400px en la mitad de la página. */
+const hayLideres = scorers.length > 0 || assisters.length > 0;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -125,7 +130,10 @@ const jsonLd = {
   -->
   <Container width="wide" class="py-5">
     <div
-      class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] 2xl:grid-cols-[minmax(0,1fr)_25rem_23rem]"
+      class:list={[
+        'grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]',
+        hayLideres ? '2xl:grid-cols-[minmax(0,1fr)_25rem_23rem]' : '',
+      ]}
     >
       <div class="grid gap-4 lg:col-start-1 lg:row-start-1">
         {
@@ -162,7 +170,7 @@ const jsonLd = {
       </div>
 
       {
-        (scorers.length > 0 || assisters.length > 0) && (
+        hayLideres && (
           <section class="rounded-xl border border-border bg-surface lg:col-start-1 lg:row-start-2 2xl:col-start-2 2xl:row-start-1">
             <header class="flex items-center gap-2 border-b border-border p-3">
               <h2 class="font-display text-base font-semibold uppercase">Los que deciden</h2>
@@ -180,25 +188,33 @@ const jsonLd = {
         Los partidos van con los equipos apilados: en un riel de 23rem, enfrentados, los nombres se
         cortaban en "Sport Huanc…" y "Club Deporti…".
       -->
-      <div class="grid gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 2xl:col-start-3 2xl:row-span-1">
+      <div
+        class:list={[
+          'grid gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1',
+          hayLideres ? '2xl:col-start-3 2xl:row-span-1' : '',
+        ]}
+      >
         <section class="rounded-xl border border-border bg-surface p-3">
-          {
-            upcoming.length > 0 ? (
-              <ListaPartidosCompacta titulo="Próximos partidos" icono="reloj" partidos={upcoming} />
-            ) : (
-              <p class="text-sm text-ink-muted">Sin partidos programados por ahora.</p>
-            )
-          }
+          <ListaPartidosCompacta
+            titulo="Próximos partidos"
+            icono="reloj"
+            partidos={upcoming}
+            vacio="Sin partidos programados por ahora."
+          />
         </section>
         <section class="rounded-xl border border-border bg-surface p-3">
-          {
-            recent.length > 0 ? (
-              <ListaPartidosCompacta titulo="Últimos resultados" icono="cancha" partidos={recent} />
-            ) : (
-              <p class="text-sm text-ink-muted">Aún no hay resultados esta temporada.</p>
-            )
-          }
+          <ListaPartidosCompacta
+            titulo="Últimos resultados"
+            icono="cancha"
+            partidos={recent}
+            vacio="Aún no hay resultados esta temporada."
+          />
         </section>
+        {
+          once && (
+            <OnceDeLaFecha once={once} logoUrl={competition.logoUrl} nombreLiga={competition.name} />
+          )
+        }
         <AvisoFavoritos />
       </div>
     </div>

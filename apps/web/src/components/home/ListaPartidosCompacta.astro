@@ -14,9 +14,11 @@ interface Props {
   partidos: MatchCard[];
   /** Resalta a un equipo: en la vista de equipo importa saber de qué lado juega. */
   destacado?: string | null;
+  /** Qué decir cuando no hay ninguno; el título se muestra igual. */
+  vacio?: string;
 }
 
-const { titulo, icono, partidos, destacado = null } = Astro.props;
+const { titulo, icono, partidos, destacado = null, vacio = 'Sin partidos por ahora.' } = Astro.props;
 
 const marcador = (match: MatchCard, local: boolean): string => {
   const gol = local ? match.homeScore : match.awayScore;
@@ -34,6 +36,7 @@ const diaCorto = (iso: string): string =>
     <Icon name={icono} size={12} />
     {titulo}
   </h3>
+  {partidos.length === 0 && <p class="px-1.5 text-sm text-ink-muted">{vacio}</p>}
   <ul class="grid gap-0.5">
     {
       partidos.map((match) => (

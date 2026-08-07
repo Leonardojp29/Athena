@@ -294,7 +294,7 @@ export class ViewsService {
       isCurrent: true,
     };
 
-    const [competition, season, standings, recent, upcoming, scorers, assisters] =
+    const [competition, season, standings, recent, upcoming, scorers, assisters, once] =
       await Promise.all([
       this.prisma.competition.findUnique({
         where: { slug },
@@ -369,6 +369,7 @@ export class ViewsService {
         take: 10,
         select: goleador,
       }),
+      this.onceDeLaFecha(slug),
     ]);
     if (!competition) throw new NotFoundException('Competencia no encontrada');
     if (!season) throw new NotFoundException('Sin temporada activa');
@@ -401,7 +402,60 @@ export class ViewsService {
       upcoming,
       scorers,
       assisters,
+      once,
     };
+  }
+
+  /**
+   * El once de la fecha de una competencia: los mejores por puesto en la última jornada que ya
+   * tiene notas. Va en SQL porque es un ranking por partición —el mejor arquero, los cuatro
+   * mejores defensores— y eso en Prisma serían cinco consultas y un ordenamiento en memoria.
+   */
+  private async onceDeLaFecha(slug: string): Promise<OnceDeLaFecha | null> {
+    const filas = await this.prisma.$queryRaw<FilaOnce[]>`
+      WITH jornadas AS (
+        SELECT m.round, count(DISTINCT m.id) AS partidos, max(m.kickoff_utc) AS ultima
+        FROM matches m
+        JOIN seasons se ON se.id = m.season_id
+        JOIN competitions c ON c.id = se.competition_id
+        WHERE c.slug = ${slug} AND se.is_current AND m.status = 'finished'
+          AND EXISTS (SELECT 1 FROM match_player_statistics s WHERE s.match_id = m.id AND s.rating IS NOT NULL)
+        GROUP BY m.round
+      ),
+      -- La fecha en curso arranca con un partido jugado y un once salido de ahí sería el once de
+      -- ese partido. Se prefiere la última jornada con tres o más, y si ninguna llega, la última.
+      jornada AS (
+        SELECT round FROM jornadas ORDER BY (partidos >= 3) DESC, ultima DESC LIMIT 1
+      ),
+      notas AS (
+        SELECT ps.position, ps.rating, ps.goals, ps.assists, ps.minutes_played,
+               p.id AS player_id, p.name AS player_name, p.slug AS player_slug, p.photo_url,
+               t.name AS team_name, t.short_name AS team_short, t.slug AS team_slug, t.logo_url AS team_logo,
+               m.id AS match_id, j.round,
+               row_number() OVER (PARTITION BY ps.position ORDER BY ps.rating DESC, ps.minutes_played DESC) AS puesto
+        FROM match_player_statistics ps
+        JOIN matches m ON m.id = ps.match_id
+        JOIN jornada j ON j.round = m.round
+        JOIN seasons se ON se.id = m.season_id
+        JOIN competitions c ON c.id = se.competition_id
+        JOIN players p ON p.id = ps.player_id
+        JOIN teams t ON t.id = ps.team_id
+        WHERE c.slug = ${slug} AND se.is_current AND ps.rating IS NOT NULL AND ps.position IS NOT NULL
+      )
+      -- Columnas explícitas y rating como texto: row_number() devuelve bigint y con SELECT *
+      -- viajaba hasta el JSON, que no sabe serializarlo y tiraba la vista entera con un 500.
+      SELECT position, rating::text AS rating, goals, assists, minutes_played,
+             player_id, player_name, player_slug, photo_url,
+             team_name, team_short, team_slug, team_logo, match_id, round
+      FROM notas
+      WHERE (position = 'G' AND puesto <= 1)
+         OR (position = 'D' AND puesto <= 4)
+         OR (position = 'M' AND puesto <= 4)
+         OR (position = 'F' AND puesto <= 2)
+      ORDER BY array_position(ARRAY['G','D','M','F'], position), rating DESC`;
+
+    if (filas.length < 6) return null;
+    return { round: filas[0]?.round ?? null, players: filas };
   }
 
   /*
@@ -772,6 +826,29 @@ export class ViewsService {
     ]);
     return { competitions, teams, players };
   }
+}
+
+export interface FilaOnce {
+  position: string;
+  rating: string | null;
+  goals: number | null;
+  assists: number | null;
+  minutes_played: number | null;
+  player_id: string;
+  player_name: string;
+  player_slug: string;
+  photo_url: string | null;
+  team_name: string;
+  team_short: string | null;
+  team_slug: string;
+  team_logo: string | null;
+  match_id: string;
+  round: string;
+}
+
+export interface OnceDeLaFecha {
+  round: string | null;
+  players: FilaOnce[];
 }
 
 export interface TeamOfPlayer {

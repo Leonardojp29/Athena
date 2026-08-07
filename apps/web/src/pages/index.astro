@@ -7,7 +7,9 @@ import Icon from '../components/Icon.astro';
 import MatchGeography from '../components/home/MatchGeography.astro';
 import MatchRow from '../components/MatchRow.astro';
 import MejoresDelDia from '../components/home/MejoresDelDia.astro';
+import OnceDeLaFecha from '../components/home/OnceDeLaFecha.astro';
 import VistaEquipo from '../components/home/VistaEquipo.astro';
+import VistaJugador from '../components/home/VistaJugador.astro';
 import VistaLiga from '../components/home/VistaLiga.astro';
 import {
   api,
@@ -15,6 +17,7 @@ import {
   type CompetitionView,
   type HomeView,
   type PersonalFeed,
+  type PlayerView,
   type TeamView,
   type TopPerformers,
 } from '../lib/api';
@@ -54,20 +57,23 @@ const paisPedido = Astro.url.searchParams.get('pais');
 const codigos = new Set(
   home.geography.flatMap((c) => c.countries.map((p) => p.code ?? 'internacional')),
 );
-const pais =
-  !liga && !Astro.url.searchParams.get('equipo') && paisPedido && codigos.has(paisPedido)
-    ? paisPedido
-    : null;
+const abierto =
+  Astro.url.searchParams.has('equipo') || Astro.url.searchParams.has('jugador');
+const pais = !liga && !abierto && paisPedido && codigos.has(paisPedido) ? paisPedido : null;
 
+const SLUG = /^[a-z0-9-]{2,80}$/;
 const equipoPedido = Astro.url.searchParams.get('equipo');
-const equipo = !liga && equipoPedido && /^[a-z0-9-]{2,80}$/.test(equipoPedido) ? equipoPedido : null;
+const equipo = !liga && equipoPedido && SLUG.test(equipoPedido) ? equipoPedido : null;
+const jugadorPedido = Astro.url.searchParams.get('jugador');
+const jugador = !liga && !equipo && jugadorPedido && SLUG.test(jugadorPedido) ? jugadorPedido : null;
 
 /*
- * La liga o el equipo elegidos se abren en el mismo contenedor. Si el pedido falla se cae a la
- * lista del día: un slug viejo compartido por ahí no puede dejar la home en blanco.
+ * La liga, el equipo o el jugador elegidos se abren en el mismo contenedor. Si el pedido falla se
+ * cae a la lista del día: un slug viejo compartido por ahí no puede dejar la home en blanco.
  */
 let vistaLiga: CompetitionView | null = null;
 let vistaEquipo: TeamView | null = null;
+let vistaJugador: PlayerView | null = null;
 if (liga) {
   try {
     vistaLiga = await api<CompetitionView>(`/views/competition/${liga}`);
@@ -81,6 +87,13 @@ if (liga) {
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
     vistaEquipo = null;
+  }
+} else if (jugador) {
+  try {
+    vistaJugador = await api<PlayerView>(`/views/player/${jugador}`);
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    vistaJugador = null;
   }
 }
 
@@ -172,6 +185,8 @@ const destacado = feed?.insights[0]
             />
           ) : vistaEquipo ? (
             <VistaEquipo view={vistaEquipo} conCuenta={session !== null} />
+          ) : vistaJugador ? (
+            <VistaJugador view={vistaJugador} conCuenta={session !== null} />
           ) : (
             <>
               <div class="mb-3 flex items-center gap-3">
@@ -220,8 +235,22 @@ const destacado = feed?.insights[0]
         }
       </div>
 
+      <!--
+        Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada: se reemplaza por el
+        once ideal de la última jornada de esa liga.
+      -->
       <aside class="order-3 grid gap-4 lg:order-none xl:sticky xl:top-20 xl:self-start">
-        <MejoresDelDia top={mejores} />
+        {
+          vistaLiga?.once ? (
+            <OnceDeLaFecha
+              once={vistaLiga.once}
+              logoUrl={vistaLiga.competition.logoUrl}
+              nombreLiga={vistaLiga.competition.name}
+            />
+          ) : (
+            <MejoresDelDia top={mejores} hrefJugador={(slug) => `/?jugador=${slug}`} />
+          )
+        }
 
         {
           session === null && (

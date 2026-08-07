@@ -1,0 +1,199 @@
+---
+import BotonFavorito from '../BotonFavorito.astro';
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import type { PlayerView } from '../../lib/api';
+import { POSITION_LABEL } from '../../lib/api';
+import { formatDate } from '../../lib/format';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+
+/*
+ * El jugador abierto dentro de la home, como la liga y el equipo. Se llega desde los goleadores,
+ * desde el once de la fecha y desde lo mejor del día: tocar un nombre no debería costar salir de
+ * la página.
+ */
+interface Props {
+  view: PlayerView;
+  conCuenta?: boolean;
+}
+
+const { view, conCuenta = false } = Astro.props;
+const { player, teams, seasons, totals, recentPerformances, shirtNumber } = view;
+
+const posicion = player.position ? POSITION_LABEL[player.position] : null;
+const club = teams[0] ?? null;
+
+/* La temporada en curso es la primera: el API las ordena por año descendente. */
+const actual = seasons[0] ?? null;
+
+const cifras = [
+  { valor: totals?.appearances ?? 0, etiqueta: 'partidos' },
+  { valor: totals?.goals ?? 0, etiqueta: 'goles' },
+  { valor: totals?.assists ?? 0, etiqueta: 'asistencias' },
+  {
+    valor: totals?.minutesPlayed ? Math.round(totals.minutesPlayed / 90) : 0,
+    etiqueta: 'partidos completos',
+  },
+];
+
+const nota = (valor: string | null) => (valor === null ? null : Number(valor).toFixed(1));
+---
+
+<section
+  class="overflow-hidden rounded-xl border border-border bg-surface"
+  style={`view-transition-name: jugador-${player.slug}`}
+>
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3">
+    {
+      player.photoUrl ? (
+        <img
+          src={player.photoUrl}
+          alt=""
+          width="44"
+          height="44"
+          class="size-11 shrink-0 rounded-full bg-chalk/10 object-cover"
+        />
+      ) : (
+        <span class="grid size-11 shrink-0 place-items-center rounded-full bg-chalk/10">
+          <Icon name="usuario" size={22} class="text-chalk-dim" />
+        </span>
+      )
+    }
+
+    <div class="min-w-0 flex-1 basis-40">
+      <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
+        {player.name}
+      </h2>
+      <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-2xs text-chalk-dim">
+        {shirtNumber !== null && <span class="font-medium text-chalk">#{shirtNumber}</span>}
+        {posicion && <span>{posicion}</span>}
+        {
+          club && (
+            <>
+              <span class="text-chalk/30">·</span>
+              <a href={`/?equipo=${club.slug}`} class="truncate hover:text-chalk hover:underline">
+                {club.name}
+              </a>
+            </>
+          )
+        }
+        {
+          player.nationality && (
+            <>
+              <span class="text-chalk/30">·</span>
+              <span class="truncate">{paisEnEspanol(player.nationality)}</span>
+            </>
+          )
+        }
+      </p>
+    </div>
+
+    <div class="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+      <BotonFavorito
+        tipo="jugador"
+        id={player.id}
+        slug={player.slug}
+        nombre={player.name}
+        logoUrl={player.photoUrl}
+        pais={paisEnEspanol(player.nationality)}
+        variante="boton"
+        conCuenta={conCuenta}
+        onBoard
+      />
+      <a
+        href={`/jugadores/${player.slug}`}
+        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
+      >
+        Ver el perfil completo
+        <Icon name="chevron-derecha" size={12} />
+      </a>
+    </div>
+  </header>
+
+  <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border p-3">
+    {
+      cifras.map((cifra) => (
+        <div>
+          <p class="font-display text-xl font-semibold leading-none tabular">{cifra.valor}</p>
+          <p class="mt-1 text-2xs tracking-label text-ink-muted uppercase">{cifra.etiqueta}</p>
+        </div>
+      ))
+    }
+    {
+      actual && (
+        <p class="ml-auto flex items-center gap-1.5 text-2xs text-ink-muted">
+          <EscudoTorneo url={actual.season.competition.logoUrl} size={13} />
+          <a
+            href={`/?liga=${actual.season.competition.slug}`}
+            class="truncate hover:text-primary-ink hover:underline"
+          >
+            {nombreTorneo(actual.season.competition.name)} {actual.season.year}
+          </a>
+        </p>
+      )
+    }
+  </div>
+
+  {
+    recentPerformances.length > 0 && (
+      <div class="p-3">
+        <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+          <Icon name="cancha" size={12} />
+          Sus últimos partidos
+        </h3>
+        <ul class="grid gap-0.5">
+          {recentPerformances.slice(0, 5).map((actuacion) => (
+            <li>
+              <a
+                href={`/partidos/${actuacion.match.id}`}
+                class="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
+              >
+                <span class="w-14 shrink-0 text-2xs text-ink-muted tabular">
+                  {formatDate(actuacion.match.kickoffUtc)}
+                </span>
+                <span class="min-w-0 flex-1 truncate text-sm">
+                  {actuacion.match.homeTeam.shortName ?? actuacion.match.homeTeam.name}
+                  <span class="mx-1 font-display font-semibold tabular">
+                    {actuacion.match.homeScore ?? '–'}–{actuacion.match.awayScore ?? '–'}
+                  </span>
+                  {actuacion.match.awayTeam.shortName ?? actuacion.match.awayTeam.name}
+                </span>
+                <span class="flex shrink-0 items-center gap-1.5 text-2xs text-ink-muted">
+                  {(actuacion.goals ?? 0) > 0 && (
+                    <span class="text-primary-ink">
+                      {actuacion.goals} {actuacion.goals === 1 ? 'gol' : 'goles'}
+                    </span>
+                  )}
+                  {actuacion.minutesPlayed !== null && <span class="tabular">{actuacion.minutesPlayed}'</span>}
+                  {nota(actuacion.rating) && (
+                    <span class="rounded bg-primary/15 px-1.5 py-0.5 font-display font-semibold tabular text-primary-ink">
+                      {nota(actuacion.rating)}
+                    </span>
+                  )}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  {
+    seasons.length > 0 && (
+      <div class="flex flex-wrap gap-x-4 gap-y-1 border-t border-border px-3 py-2 text-2xs">
+        {seasons.slice(0, 4).map((temporada) => (
+          <span class="flex items-center gap-1.5 text-ink-muted">
+            <EscudoTorneo url={temporada.season.competition.logoUrl} size={12} />
+            <span class="truncate">
+              {nombreTorneo(temporada.season.competition.name)} {temporada.season.year}
+            </span>
+            <span class="font-medium tabular text-ink">
+              {temporada.goals ?? 0}G {temporada.assists ?? 0}A
+            </span>
+          </span>
+        ))}
+      </div>
+    )
+  }
+</section>
