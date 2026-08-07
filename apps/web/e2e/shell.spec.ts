@@ -122,6 +122,21 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * La vista simplificada del equipo tiene que traer a los futbolistas: sin ellos mostraba cómo va
+   * y sus partidos, que es la mitad de por qué alguien entra a un club.
+   */
+  test('el equipo abierto en la home muestra su plantilla', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'la barra lateral no se muestra en móvil');
+    await page.goto('/?equipo=universitario');
+
+    const tarjeta = page.locator('[style*="view-transition-name: equipo"]');
+    await expect(tarjeta.getByRole('heading', { name: /plantilla/i })).toBeVisible();
+    /* Once o más: una plantilla con tres nombres no es una plantilla. */
+    expect(await tarjeta.locator('a[href^="/?jugador="]').count()).toBeGreaterThan(10);
+    await expect(tarjeta.getByRole('heading', { name: /goleadores del equipo/i })).toBeVisible();
+  });
+
+  /*
    * Un jugador también se abre dentro de la home: se llega desde los goleadores de una liga y desde
    * lo mejor del día, y en los dos casos salir de la página para ver una ficha es de más.
    */
