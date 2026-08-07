@@ -4,7 +4,7 @@ import ContinentIcon from '../../components/ContinentIcon.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
 import Icon from '../../components/Icon.astro';
 import { getNavTree, todasLasCompetencias } from '../../lib/nav';
-import { paisEnEspanol } from '../../lib/paises';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 const tree = await getNavTree();
 const total = todasLasCompetencias(tree).length;
@@ -75,7 +75,7 @@ const paises = tree.reduce((n, c) => n + c.countries.filter((p) => p.code !== nu
                             <Icon name="estadio" size={14} class="text-ink-muted" />
                           )}
                         </span>
-                        <span class="min-w-0 flex-1 truncate text-sm">{competition.name}</span>
+                        <span class="min-w-0 flex-1 truncate text-sm">{nombreTorneo(competition.name)}</span>
                         {competition.format === 'cup' && (
                           <span class="shrink-0 text-2xs text-ink-muted">copa</span>
                         )}

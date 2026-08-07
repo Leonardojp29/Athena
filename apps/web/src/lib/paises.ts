@@ -76,3 +76,17 @@ export function paisEnEspanol(pais: string | null | undefined): string | null {
   if (!pais) return null;
   return NOMBRE[pais] ?? pais;
 }
+
+/*
+ * El proveedor capitaliza cada palabra: "Copa De La Liga", "Copa Do Brasil". En español los
+ * conectores van en minúscula. La lista es corta y explícita a propósito: una regla general
+ * sobre palabras de dos letras destrozaría nombres propios.
+ */
+const CONECTORES = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'do', 'da', 'dos', 'y']);
+
+export function nombreTorneo(nombre: string): string {
+  return nombre
+    .split(' ')
+    .map((palabra, i) => (i > 0 && CONECTORES.has(palabra.toLowerCase()) ? palabra.toLowerCase() : palabra))
+    .join(' ');
+}

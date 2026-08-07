@@ -5,7 +5,7 @@ import ContinentIcon from '../ContinentIcon.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
 import MatchRow from '../MatchRow.astro';
-import { paisEnEspanol } from '../../lib/paises';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
  * Los partidos del día en UNA columna, agrupados continente → país → torneo.
@@ -97,7 +97,7 @@ const contarVivos = (continente: GeographyContinent) =>
                           />
                         )}
                         <span class="truncate font-medium tracking-label uppercase">
-                          {competition.name}
+                          {nombreTorneo(competition.name)}
                         </span>
                       </a>
                       {matches.map((match) => (

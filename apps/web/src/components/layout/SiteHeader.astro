@@ -6,7 +6,7 @@ import Logo from '../brand/Logo.astro';
 import Container from './Container.astro';
 import { getHomeView } from '../../lib/live';
 import { destacadas, getNavTree } from '../../lib/nav';
-import { paisEnEspanol } from '../../lib/paises';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 interface Props {
   session: { user: { email: string | null } } | null;
@@ -46,7 +46,7 @@ const actual = Astro.url.pathname;
                   : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
               ]}
             >
-              {competition.name}
+              {nombreTorneo(competition.name)}
             </a>
           ))
         }
@@ -63,8 +63,12 @@ const actual = Astro.url.pathname;
             <Icon name="chevron-abajo" size={14} class="transition-transform group-open:rotate-180" />
           </summary>
 
+          <!--
+            Anclado al viewport y no al botón: con seis continentes el panel mide 64rem y
+            colgado del summary se salía por la derecha, cortando "Internacional".
+          -->
           <div
-            class="absolute left-0 top-full z-40 mt-1 max-h-[min(34rem,calc(100dvh-6rem))] w-[min(58rem,calc(100vw-3rem))] overflow-y-auto rounded-xl bg-surface-raised p-4 shadow-panel"
+            class="fixed left-1/2 top-16 z-40 mt-1 max-h-[min(34rem,calc(100dvh-6rem))] w-[min(64rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-xl bg-surface-raised p-4 shadow-panel"
           >
             <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {
@@ -94,7 +98,7 @@ const actual = Astro.url.pathname;
                                   href={`/competencias/${competition.slug}`}
                                   class="block truncate rounded px-1.5 py-0.5 text-sm leading-snug text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
                                 >
-                                  {competition.name}
+                                  {nombreTorneo(competition.name)}
                                 </a>
                               </li>
                             ))}
@@ -243,7 +247,7 @@ const actual = Astro.url.pathname;
                                 href={`/competencias/${competition.slug}`}
                                 class="block truncate rounded-md px-1.5 py-1.5 text-sm text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
                               >
-                                {competition.name}
+                                {nombreTorneo(competition.name)}
                               </a>
                             </li>
                           ))}
