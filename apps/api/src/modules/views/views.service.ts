@@ -175,6 +175,66 @@ export class ViewsService {
     };
   }
 
+  /**
+   * Los mejores del día por nota, con su partido.
+   *
+   * Es el dato que Athena tiene y nadie más muestra para estas ligas: el rendimiento
+   * individual ya está en la base, así que "quién jugó mejor hoy" cuesta una consulta y no una
+   * llamada al proveedor.
+   */
+  async topPerformers(date: string, limite = 6) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Fecha inválida');
+
+    /*
+     * A media mañana ningún partido del día terminó todavía y el podio quedaría vacío. Se cae
+     * al día anterior y se devuelve la fecha usada, para que la interfaz pueda decir de cuándo
+     * es lo que muestra en lugar de dejar un hueco.
+     */
+    for (const offset of [0, -1, -2]) {
+      const dia = new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() + offset * DAY_MS);
+      const iso = dia.toISOString().slice(0, 10);
+      const players = await this.performersOn(iso, limite);
+      if (players.length > 0) return { date: iso, esDeHoy: offset === 0, players };
+    }
+    return { date, esDeHoy: true, players: [] };
+  }
+
+  private async performersOn(date: string, limite: number) {
+    const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
+
+    return this.prisma.matchPlayerStatistics.findMany({
+      where: {
+        rating: { not: null },
+        minutesPlayed: { gte: 45 },
+        match: {
+          status: 'finished',
+          kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) },
+        },
+      },
+      orderBy: [{ rating: 'desc' }, { minutesPlayed: 'desc' }],
+      take: limite,
+      select: {
+        rating: true,
+        minutesPlayed: true,
+        goals: true,
+        assists: true,
+        penaltyScored: true,
+        player: playerLink,
+        team: teamSummary,
+        match: {
+          select: {
+            id: true,
+            homeScore: true,
+            awayScore: true,
+            homeTeam: teamSummary,
+            awayTeam: teamSummary,
+            season: { select: { competition: { select: { name: true, slug: true } } } },
+          },
+        },
+      },
+    });
+  }
+
   /** El índice de partidos: un día calendario de Lima, agrupado por competencia. */
   async matchesOnDate(date: string) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Fecha inválida');

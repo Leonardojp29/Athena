@@ -5,7 +5,7 @@ import Icon from '../Icon.astro';
 import Logo from '../brand/Logo.astro';
 import Container from './Container.astro';
 import { getHomeView } from '../../lib/live';
-import { destacadas, getNavTree } from '../../lib/nav';
+import { getNavTree } from '../../lib/nav';
 import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 interface Props {
@@ -15,8 +15,6 @@ interface Props {
 const { session } = Astro.props;
 const [tree, home] = await Promise.all([getNavTree(), getHomeView()]);
 const liveCount = home?.live ?? 0;
-const rapidas = destacadas(tree);
-const actual = Astro.url.pathname;
 ---
 
 <header class="sticky top-0 z-30 w-full border-b border-border bg-surface/72 backdrop-blur-xl">
@@ -33,94 +31,22 @@ const actual = Astro.url.pathname;
         <Logo size={28} />
       </a>
 
-      <nav class="hidden items-center gap-1 md:flex" aria-label="Navegación principal">
-        {
-          rapidas.map((competition) => (
-            <a
-              href={`/competencias/${competition.slug}`}
-              aria-current={actual === `/competencias/${competition.slug}` ? 'page' : undefined}
-              class:list={[
-                'rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors',
-                actual === `/competencias/${competition.slug}`
-                  ? 'bg-canvas-subtle text-ink'
-                  : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
-              ]}
-            >
-              {nombreTorneo(competition.name)}
-            </a>
-          ))
-        }
-
-        <!--
-          El menú se lee continente → país → torneos, el mismo orden que el índice y la home:
-          con sesenta competencias, una lista plana obliga a buscar en lugar de encontrar.
-        -->
-        <details class="group relative" data-menu>
-          <summary
-            class="flex cursor-pointer list-none items-center gap-1 rounded-md px-2.5 py-1.5 text-sm text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-          >
-            Competencias
-            <Icon name="chevron-abajo" size={14} class="transition-transform group-open:rotate-180" />
-          </summary>
-
-          <!--
-            Anclado al viewport y no al botón: con seis continentes el panel mide 64rem y
-            colgado del summary se salía por la derecha, cortando "Internacional".
-          -->
-          <div
-            class="fixed left-1/2 top-16 z-40 mt-1 max-h-[min(34rem,calc(100dvh-6rem))] w-[min(64rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-xl bg-surface-raised p-4 shadow-panel"
-          >
-            <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {
-                tree.map((continente) => (
-                  <div>
-                    <p class="mb-2 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-primary-ink uppercase">
-                      <ContinentIcon name={continente.continent} size={13} />
-                      {continente.label}
-                    </p>
-
-                    <div class="grid gap-2.5">
-                      {continente.countries.map((pais) => (
-                        <div>
-                          <p class="mb-0.5 flex items-center gap-1.5 text-2xs text-ink-muted">
-                            <CountryFlag
-                              url={pais.flagUrl}
-                              code={pais.code}
-                              name={paisEnEspanol(pais.name)}
-                              size={15}
-                            />
-                            {paisEnEspanol(pais.name) ?? 'Internacional'}
-                          </p>
-                          <ul class="grid gap-px">
-                            {pais.competitions.map((competition) => (
-                              <li>
-                                <a
-                                  href={`/competencias/${competition.slug}`}
-                                  class="block truncate rounded px-1.5 py-0.5 text-sm leading-snug text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-                                >
-                                  {nombreTorneo(competition.name)}
-                                </a>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-
-            <a
-              href="/competencias"
-              class="mt-4 flex items-center gap-1.5 border-t border-border pt-3 text-sm text-primary-ink hover:underline"
-            >
-              Ver todas las competencias
-              <Icon name="chevron-derecha" size={14} />
-            </a>
-          </div>
-        </details>
-      </nav>
+      <!--
+        El buscador va con el logo y no en el grupo de acciones: sin la navegación en el header,
+        la mitad izquierda quedaba vacía y eso se lee como inacabado, no como limpio.
+      -->
+      <form method="get" action="/buscar" class="hidden items-center sm:flex">
+        <label class="relative flex items-center">
+          <Icon name="buscar" size={15} class="absolute left-2.5 text-ink-muted" />
+          <input
+            type="search"
+            name="q"
+            placeholder="Buscar equipo, jugador o torneo…"
+            aria-label="Buscar equipos, jugadores o competencias"
+            class="w-56 rounded-md border border-border bg-canvas-subtle py-1.5 pl-8 pr-2 text-sm outline-none transition-all focus:border-primary-ink focus:w-72"
+          />
+        </label>
+      </form>
 
       <div class="ml-auto flex items-center gap-2 sm:gap-3">
         {
@@ -142,19 +68,6 @@ const actual = Astro.url.pathname;
         >
           <Icon name="buscar" size={18} />
         </a>
-
-        <form method="get" action="/buscar" class="hidden items-center sm:flex">
-          <label class="relative flex items-center">
-            <Icon name="buscar" size={15} class="absolute left-2.5 text-ink-muted" />
-            <input
-              type="search"
-              name="q"
-              placeholder="Buscar…"
-              aria-label="Buscar equipos, jugadores o competencias"
-              class="w-40 rounded-md border border-border bg-canvas-subtle py-1.5 pl-8 pr-2 text-sm outline-none transition-all focus:border-primary-ink focus:w-56"
-            />
-          </label>
-        </form>
 
         <button
           id="theme-toggle"
@@ -186,13 +99,14 @@ const actual = Astro.url.pathname;
           )
         }
 
-        <details class="group md:hidden" data-menu>
+        <details class="group" data-menu>
           <summary
             class="flex cursor-pointer list-none items-center rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-            aria-label="Abrir menú"
+            aria-label="Abrir el catálogo de competencias"
           >
             <Icon name="menu" size={20} class="group-open:hidden" />
             <Icon name="cerrar" size={20} class="hidden group-open:block" />
+            <span class="ml-1.5 hidden text-sm sm:inline">Competencias</span>
           </summary>
           <div
             class="fixed inset-x-0 top-16 z-40 h-[calc(100dvh-4rem)] overflow-y-auto border-t border-border bg-surface px-4 pb-8 pt-4"

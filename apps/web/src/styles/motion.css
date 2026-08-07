@@ -158,3 +158,62 @@
     background-color: var(--a-color-primary);
   }
 }
+
+/*
+ * El marcador gira cuando cambia. Es la animación de fútbol por excelencia y la más difícil de
+ * hacer bien: si se anima el número entero, el ojo pierde el resultado. Se rota solo la cifra
+ * que cambió, en el eje X, con la nueva entrando desde abajo.
+ */
+@keyframes score-flip {
+  0% {
+    transform: rotateX(-90deg) translateY(0.35em);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotateX(0) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Un gol pinta la fila una vez: el hincha que estaba mirando otra cosa lo ve de reojo. */
+@keyframes goal-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+  25% {
+    box-shadow: inset 0 0 0 2px var(--a-color-primary);
+  }
+}
+
+/*
+ * Entrada escalonada de los grupos de país. `--orden` lo pone la página; sin él el retraso es
+ * cero y la animación sigue funcionando, solo que toda junta.
+ */
+@keyframes group-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-grupo] {
+  animation: group-enter var(--a-motion-base) var(--a-ease-out-expo) both;
+  animation-delay: calc(var(--orden, 0) * 40ms);
+}
+
+/*
+ * Al filtrar por país la lista se transforma en lugar de cortarse: el nombre de transición lo
+ * pone cada grupo, así que el navegador reconoce qué bloque es el mismo antes y después.
+ */
+::view-transition-group(*) {
+  animation-duration: var(--a-motion-base);
+  animation-timing-function: var(--a-ease-out-expo);
+}

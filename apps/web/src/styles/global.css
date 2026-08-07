@@ -97,6 +97,8 @@
   --animate-shimmer: shimmer 1.4s linear infinite;
   --animate-bar-fill: bar-fill var(--a-motion-slow) var(--a-ease-out-expo) both;
   --animate-goal-flash: goal-flash 900ms var(--a-ease) 1;
+  --animate-score-flip: score-flip var(--a-motion-slow) var(--a-ease-out-expo) both;
+  --animate-goal-pulse: goal-pulse 1.2s var(--a-ease) 1;
 }
 
 @layer base {

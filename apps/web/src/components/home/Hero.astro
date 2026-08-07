@@ -16,17 +16,33 @@ interface Props {
 
 const { live, total, destacado } = Astro.props;
 const enJuego = live.filter((m) => isLive(m.status)).slice(0, 4);
+
+/*
+ * Sin partidos en juego el hero se compacta en una fila. Antes mantenía dos columnas con la
+ * derecha vacía, y media pizarra en blanco no es respirar: es un hueco.
+ */
+const partido = enJuego.length > 0 || destacado !== null;
 ---
 
 <section class="w-full border-b border-board-edge bg-board">
   <Container width="wide">
-    <div class="grid gap-8 py-8 lg:grid-cols-2 lg:items-center lg:py-10">
-      <div class="max-w-[46ch]">
-        <h1 class="font-display text-4xl font-semibold uppercase leading-[0.95] text-chalk sm:text-5xl">
+    <div
+      class:list={[
+        'grid gap-6 py-5',
+        partido ? 'lg:grid-cols-2 lg:items-center lg:py-6' : 'lg:py-4',
+      ]}
+    >
+      <div class:list={[partido ? 'max-w-[46ch]' : 'flex flex-wrap items-baseline gap-x-4']}>
+        <h1
+          class:list={[
+            'font-display font-semibold uppercase leading-[0.95] text-chalk',
+            partido ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl',
+          ]}
+        >
           Los partidos de hoy,
           <span class="text-primary">explicados</span>
         </h1>
-        <p class="mt-3 text-sm text-chalk-dim">
+        <p class:list={['text-sm text-chalk-dim', partido ? 'mt-2' : 'max-w-[52ch]']}>
           {total > 0 ? `${total} partidos hoy. ` : ''}Marcadores, alineaciones sobre la cancha y
           análisis con la evidencia a la vista. Todo dato lleva su origen.
         </p>

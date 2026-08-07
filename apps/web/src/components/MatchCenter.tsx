@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import EventIcon from './EventIcon';
 import type { MatchEventView, MatchView, PlayerLink } from '../lib/api';
@@ -81,13 +82,38 @@ function TeamSide({ match, side }: { match: MatchView; side: 'home' | 'away' }) 
           alt=""
           width={72}
           height={72}
-          className="size-12 transition-transform group-hover:scale-105 sm:size-16 lg:size-18"
+          className="size-10 transition-transform group-hover:scale-105 sm:size-12"
         />
       )}
-      <span className="font-display text-sm font-semibold uppercase leading-tight text-chalk group-hover:text-primary sm:text-lg lg:text-xl">
+      <span className="font-display text-sm font-semibold uppercase leading-tight text-chalk group-hover:text-primary sm:text-base lg:text-lg">
         {team.name}
       </span>
     </a>
+  );
+}
+
+/**
+ * Gira solo la cifra que cambió.
+ *
+ * Animar el marcador entero hace que el ojo pierda el resultado justo cuando más importa; girar
+ * el dígito que se movió es lo que hace un tablero de verdad. La clave de React fuerza el
+ * remonte, que es lo que dispara la animación sin tocar clases a mano.
+ */
+function Cifra({ valor }: { valor: number }) {
+  const [clave, setClave] = useState(0);
+  const anterior = useRef(valor);
+
+  useEffect(() => {
+    if (anterior.current !== valor) {
+      anterior.current = valor;
+      setClave((k) => k + 1);
+    }
+  }, [valor]);
+
+  return (
+    <span key={clave} className="inline-block animate-score-flip" style={{ willChange: 'transform' }}>
+      {valor}
+    </span>
   );
 }
 
@@ -96,21 +122,25 @@ function Scoreboard({ match }: { match: MatchView }) {
   const hasScore = match.homeScore !== null && match.awayScore !== null;
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-6 sm:gap-8 sm:py-8">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-3 sm:gap-8 sm:py-3.5">
       <TeamSide match={match} side="home" />
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-1.5">
         {hasScore ? (
           <span
             className="font-display font-semibold tabular leading-none text-chalk"
             /* el mismo nombre que la fila del listado: el marcador se transforma, no se corta */
-            style={{ fontSize: 'var(--a-text-score)', viewTransitionName: `marcador-${match.id}` }}
+            /* Más chico que el token de marcador: el hero completo tiene que entrar en 1080p. */
+            style={{
+              fontSize: 'clamp(2.25rem, 4vw, 3.25rem)',
+              viewTransitionName: `marcador-${match.id}`,
+            }}
             data-marcador
           >
-            {match.homeScore} – {match.awayScore}
+            <Cifra valor={match.homeScore as number} /> – <Cifra valor={match.awayScore as number} />
           </span>
         ) : (
-          <span className="font-display text-3xl font-semibold tabular text-chalk sm:text-4xl">
+          <span className="font-display text-2xl font-semibold tabular text-chalk sm:text-3xl">
             {formatKickoff(match.kickoffUtc)}
           </span>
         )}

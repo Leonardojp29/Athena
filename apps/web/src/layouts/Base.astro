@@ -83,7 +83,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <SiteHeader session={session} />
     {chrome === 'full' && liveBar && <LiveBar />}
 
-    <main id="contenido" class="flex-1 pb-10">
+    <main id="contenido" class="flex-1 pb-5">
       {
         width === 'bleed' ? (
           <slot />

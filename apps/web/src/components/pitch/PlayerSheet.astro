@@ -26,13 +26,17 @@ import Icon from '../Icon.astro';
     </div>
 
     <div class="flex shrink-0 items-center gap-1">
+      <!--
+        Con etiqueta y no solo una flecha: una flecha diagonal no le dice a nadie que lleva al
+        perfil del jugador. El icono queda como refuerzo, no como única pista.
+      -->
       <a
         data-ficha-perfil
         href="/"
-        class="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-        aria-label="Ver el perfil completo"
+        class="hidden items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs text-ink-muted transition-colors hover:border-primary-ink hover:text-ink sm:flex"
       >
-        <Icon name="flecha-externa" size={16} />
+        Ver perfil
+        <Icon name="flecha-externa" size={12} />
       </a>
       <button
         type="button"
@@ -59,7 +63,7 @@ import Icon from '../Icon.astro';
       href="/"
       class="flex items-center gap-1.5 text-sm text-primary-ink hover:underline"
     >
-      Ver todas sus temporadas
+      Ver su perfil completo: todas sus temporadas y últimos partidos
       <Icon name="chevron-derecha" size={14} />
     </a>
   </footer>

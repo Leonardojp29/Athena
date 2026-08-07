@@ -4,7 +4,7 @@ import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
 import InsightCard from '../../components/InsightCard.astro';
 import MatchCenter from '../../components/MatchCenter';
-import MatchLineups from '../../components/MatchLineups.astro';
+import Suplentes from '../../components/match/Suplentes.astro';
 import MatchStatistics from '../../components/MatchStatistics.astro';
 import MatchTabs, { type Tab } from '../../components/match/MatchTabs.astro';
 import PlayerStatsTable from '../../components/match/PlayerStatsTable.astro';
@@ -107,63 +107,51 @@ const jsonLd = {
     </Container>
   </section>
 
-  <Container width="wide" class="pt-4">
+  <Container width="wide" class="pt-3">
     <h1 class="sr-only">{title}</h1>
     <MatchTabs tabs={TABS} active={vista} baseUrl={baseUrl} />
 
-    <div class="mt-5 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div class="grid gap-6">
+    <!--
+      En la vista de alineaciones la cancha define su propio ancho (la altura la limita), así
+      que la columna se ajusta a ella y el par se centra. Con `1fr` quedaba un hueco muerto de
+      200px a la izquierda de la cancha.
+    -->
+    <div
+      class:list={[
+        'mt-4 grid items-start gap-4',
+        vista === 'alineaciones'
+          ? 'lg:grid-cols-[auto_20rem] lg:justify-center'
+          : 'lg:grid-cols-[minmax(0,1fr)_20rem]',
+      ]}
+    >
+      <div class="grid min-w-0 gap-4">
         {
           vista === 'resumen' && (
-            <>
-              {hayAlineaciones && (
-                <section>
-                  <h2 class="mb-3 font-display text-lg font-semibold uppercase">En la cancha</h2>
-                  <PitchLineups
-                    lineups={match.lineups}
-                    playerStatistics={match.playerStatistics}
-                    homeTeam={match.homeTeam}
-                    awayTeam={match.awayTeam}
-                  />
-                </section>
+            <section>
+              <h2 class="mb-2 font-display text-base font-semibold uppercase">Minuto a minuto</h2>
+              {live ? (
+                <MatchCenter client:load initial={match} live part="timeline" />
+              ) : (
+                <MatchCenter initial={match} live={false} part="timeline" />
               )}
-
-              <section>
-                <h2 class="mb-3 font-display text-lg font-semibold uppercase">Minuto a minuto</h2>
-                {live ? (
-                  <MatchCenter client:load initial={match} live part="timeline" />
-                ) : (
-                  <MatchCenter initial={match} live={false} part="timeline" />
-                )}
-              </section>
-            </>
+            </section>
           )
         }
 
         {
           vista === 'alineaciones' && (
-            <>
-              <section>
-                <h2 class="mb-3 font-display text-lg font-semibold uppercase">En la cancha</h2>
-                <PitchLineups
-                  lineups={match.lineups}
-                  playerStatistics={match.playerStatistics}
-                  homeTeam={match.homeTeam}
-                  awayTeam={match.awayTeam}
-                />
-              </section>
-              <MatchLineups
-                lineups={match.lineups}
-                homeTeam={match.homeTeam}
-                awayTeam={match.awayTeam}
-              />
-            </>
+            <PitchLineups
+              lineups={match.lineups}
+              playerStatistics={match.playerStatistics}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+            />
           )
         }
 
         {
           vista === 'estadisticas' && (
-            <>
+            <div class="grid gap-4 2xl:grid-cols-[22rem_minmax(0,1fr)] 2xl:items-start">
               <MatchStatistics
                 statistics={match.statistics}
                 homeTeam={match.homeTeam}
@@ -171,7 +159,7 @@ const jsonLd = {
               />
               {match.playerStatistics.length > 0 ? (
                 <section>
-                  <h2 class="mb-3 font-display text-lg font-semibold uppercase">
+                  <h2 class="mb-2 font-display text-base font-semibold uppercase">
                     Rendimiento individual
                   </h2>
                   <PlayerStatsTable
@@ -185,7 +173,7 @@ const jsonLd = {
                   Todavía no tenemos el rendimiento individual de este partido.
                 </p>
               )}
-            </>
+            </div>
           )
         }
 
@@ -200,7 +188,17 @@ const jsonLd = {
       </div>
 
       <!-- El riel: el análisis es la tesis del producto, no puede vivir al final de la página. -->
-      <aside class="grid gap-4 lg:sticky lg:top-20">
+      <aside class="grid gap-3 lg:sticky lg:top-20">
+        {
+          /* El banco vive en el riel: debajo de la cancha empujaba la vista fuera de pantalla. */
+          vista === 'alineaciones' && (
+            <Suplentes
+              lineups={match.lineups}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+            />
+          )
+        }
         {
           analisis ? (
             <section class="rounded-lg border border-data/25 bg-surface p-4">

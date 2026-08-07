@@ -1,0 +1,63 @@
+---
+import type { TeamLineup, TeamSummary } from '../../lib/api';
+import Icon from '../Icon.astro';
+import PlayerName from '../player/PlayerName.astro';
+
+/*
+ * Los DT y el banco, en una tira compacta debajo de la cancha.
+ *
+ * Antes acá había dos listas con los once de cada equipo, y eran seiscientos píxeles diciendo
+ * lo que la cancha ya dice mejor: con foto, dorsal, posición y nota. Lo único que la cancha no
+ * muestra es el técnico y los suplentes, así que es lo único que queda.
+ */
+interface Props {
+  lineups: TeamLineup[];
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+}
+
+const { lineups, homeTeam, awayTeam } = Astro.props;
+const lados = [homeTeam, awayTeam]
+  .map((team) => ({ team, lineup: lineups.find((l) => l.teamId === team.id) }))
+  .filter((e): e is { team: TeamSummary; lineup: TeamLineup } => e.lineup !== undefined);
+---
+
+{
+  lados.length > 0 && (
+    <div class="grid gap-2">
+      {lados.map(({ team, lineup }) => (
+        <details class="group rounded-lg border border-border bg-surface">
+          <summary class="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
+            {team.logoUrl && <img src={team.logoUrl} alt="" width="16" height="16" loading="lazy" />}
+            <span class="truncate text-2xs font-medium">{team.shortName ?? team.name}</span>
+            {lineup.coachName && (
+              <span class="truncate text-2xs text-ink-muted">· DT {lineup.coachName}</span>
+            )}
+            <span class="ml-auto shrink-0 text-2xs text-ink-muted">
+              {lineup.substitutes.length} en el banco
+            </span>
+            <Icon
+              name="chevron-derecha"
+              size={12}
+              class="shrink-0 text-ink-muted transition-transform group-open:rotate-90"
+            />
+          </summary>
+
+          <ul class="grid gap-0 border-t border-border px-1.5 py-1">
+            {lineup.substitutes.map((player) => (
+              <li>
+                <PlayerName
+                  name={player.name}
+                  slug={player.slug}
+                  photoUrl={player.photoUrl}
+                  number={player.number}
+                  class="rounded px-1 py-0.5 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle"
+                />
+              </li>
+            ))}
+          </ul>
+        </details>
+      ))}
+    </div>
+  )
+}

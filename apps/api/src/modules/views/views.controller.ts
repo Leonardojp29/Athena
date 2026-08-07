@@ -23,6 +23,12 @@ export class ViewsController {
     return this.views.matchesOnDate(fecha ?? limaToday());
   }
 
+  @Get('top-performers')
+  @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
+  topPerformers(@Query('fecha') fecha: string) {
+    return this.views.topPerformers(fecha ?? limaToday());
+  }
+
   @Get('competition/:slug')
   @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
   competition(@Param('slug') slug: string) {

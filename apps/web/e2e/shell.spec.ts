@@ -3,17 +3,14 @@ import { expect, test } from '@playwright/test';
 const RUTAS = ['/', '/partidos', '/competencias', '/competencias/primera-division'];
 
 test.describe('shell del sitio', () => {
-  test('la navegación se arma de datos y llega al catálogo completo', async ({ page, isMobile }) => {
+  /*
+   * El header quedó con el logo, el buscador y un solo acceso al catálogo: el cajón. Es el mismo
+   * en todas las medidas, así que la prueba también.
+   */
+  test('el cajón del header lleva al catálogo completo', async ({ page }) => {
     await page.goto('/');
-
-    const header = page.locator('header');
-    if (isMobile) {
-      await page.getByLabel('Abrir menú').click();
-      await header.getByRole('link', { name: 'Competencias', exact: true }).click();
-    } else {
-      await header.locator('nav details[data-menu] summary').click();
-      await page.getByRole('link', { name: /ver todas las competencias/i }).click();
-    }
+    await page.getByLabel('Abrir el catálogo de competencias').click();
+    await page.locator('header').getByRole('link', { name: 'Competencias', exact: true }).click();
 
     await expect(page).toHaveURL(/\/competencias$/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/competencias/i);
@@ -52,6 +49,25 @@ test.describe('shell del sitio', () => {
     }
   });
 
+  /*
+   * El filtro por país va por URL: si alguien lo convierte en estado hidratado, el enlace deja
+   * de ser compartible y el botón atrás deja de funcionar.
+   */
+  test('filtrar por país es una URL compartible', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'el filtro lateral no se muestra en móvil');
+    await page.goto('/');
+
+    const peru = page.locator('main nav[aria-label="Filtrar por país"] a[href="/?pais=PE"]');
+    test.skip((await peru.count()) === 0, 'hoy no hay partidos en Perú');
+
+    await peru.first().click();
+    await expect(page).toHaveURL(/\?pais=PE/);
+    await expect(page.getByRole('heading', { level: 2, name: /hoy en per/i })).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test('el índice de partidos navega entre días', async ({ page }) => {
     await page.goto('/partidos');
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/partidos/i);
@@ -87,11 +103,15 @@ test.describe('shell del sitio', () => {
     await expect(page).toHaveURL(/\/partidos\/[0-9a-f-]{36}/, { timeout: 20_000 });
   });
 
-  test('el pie enlaza competencias en todas las páginas', async ({ page }) => {
+  /*
+   * El pie pasó a una línea cuando el catálogo se mudó al cajón: repetir seis ligas ahí era
+   * ruido con costo. Lo que no puede faltar son las dos salidas.
+   */
+  test('el pie deja salidas al catálogo y al calendario', async ({ page }) => {
     await page.goto('/');
     const footer = page.locator('footer');
-    await expect(footer.getByRole('link', { name: 'Partidos' })).toBeVisible();
-    expect(await footer.locator('a[href^="/competencias/"]').count()).toBeGreaterThan(2);
+    await expect(footer.getByRole('link', { name: 'Competencias' })).toBeVisible();
+    await expect(footer.getByRole('link', { name: 'Calendario' })).toBeVisible();
   });
 });
 

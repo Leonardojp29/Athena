@@ -55,8 +55,13 @@ const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' 
         </span>
       </div>
 
+      <!--
+        La altura manda, no el ancho: a 1920×1080 una cancha que se estira a 1100px de ancho
+        mide 712 de alto y empuja el minuto a minuto fuera de la pantalla. Fijando la altura, la
+        cancha entra completa y los jugadores quedan proporcionalmente más grandes.
+      -->
       <div
-        class="relative aspect-[680/1000] w-full overflow-hidden rounded-lg border border-board-edge sm:aspect-[1050/680]"
+        class="relative mx-auto aspect-[680/1000] w-full overflow-hidden rounded-lg border border-board-edge sm:aspect-[1050/680] sm:h-[min(51vh,32rem)] sm:max-w-full sm:w-auto"
         data-cancha
       >
         <Pitch />

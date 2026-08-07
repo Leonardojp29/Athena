@@ -1,70 +1,35 @@
 ---
-import ContinentIcon from '../ContinentIcon.astro';
 import LogoMark from '../brand/LogoMark.astro';
 import Container from './Container.astro';
-import { getNavTree } from '../../lib/nav';
-import { paisEnEspanol } from '../../lib/paises';
 
-const tree = await getNavTree();
+/*
+ * Un pie de una línea.
+ *
+ * Tenía tres columnas con enlaces a competencias y medía 324px: en una vista que tiene que
+ * entrar en una pantalla de 1080, eso solo garantiza scroll. Y desde que el catálogo completo
+ * vive en el cajón del header, repetir seis ligas acá era ruido con costo.
+ */
 const anio = new Date().getFullYear();
-
-/* En el pie no cabe el catálogo entero: un país por continente y sus torneos principales. */
-const columnas = tree.slice(0, 3).map((continente) => ({
-  ...continente,
-  destacadas: continente.countries.flatMap((pais) =>
-    pais.competitions.slice(0, 2).map((c) => ({ ...c, pais: pais.name })),
-  ).slice(0, 6),
-}));
 ---
 
-<footer class="mt-16 w-full border-t border-border bg-canvas-subtle">
+<footer class="mt-10 w-full border-t border-border bg-canvas-subtle">
   <Container width="wide">
-    <div class="grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-[1.2fr_repeat(3,1fr)]">
-      <div class="max-w-[38ch]">
-        <div class="flex items-center gap-2 text-ink">
-          <LogoMark size={26} detail="compact" />
-          <span class="font-display text-lg font-semibold tracking-tight uppercase">Athena</span>
-        </div>
-        <p class="mt-3 text-sm text-ink-muted">
-          Inteligencia futbolística: cada cifra viene con su origen y cada análisis con la evidencia
-          que lo sostiene.
-        </p>
-      </div>
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 py-4 text-2xs text-ink-muted">
+      <span class="flex items-center gap-1.5 text-ink">
+        <LogoMark size={18} detail="compact" />
+        <span class="font-display font-semibold tracking-tight uppercase">Athena</span>
+      </span>
 
-      {
-        columnas.map((continente) => (
-          <nav aria-label={continente.label}>
-            <p class="mb-2 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
-              <ContinentIcon name={continente.continent} size={12} />
-              {continente.label}
-            </p>
-            <ul class="grid gap-1">
-              {continente.destacadas.map((competition) => (
-                <li>
-                  <a
-                    href={`/competencias/${competition.slug}`}
-                    class="text-sm text-ink-muted transition-colors hover:text-ink"
-                    title={paisEnEspanol(competition.pais) ?? undefined}
-                  >
-                    {competition.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ))
-      }
-    </div>
+      <span class="hidden sm:inline">
+        Cada cifra viene con su origen y cada análisis con la evidencia que lo sostiene.
+      </span>
 
-    <div
-      class="flex flex-wrap items-center justify-between gap-3 border-t border-border py-5 text-2xs text-ink-muted"
-    >
-      <span>© {anio} Athena</span>
-      <div class="flex flex-wrap items-center gap-4">
+      <span class="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1">
         <a href="/competencias" class="transition-colors hover:text-ink">Competencias</a>
-        <a href="/partidos" class="transition-colors hover:text-ink">Partidos</a>
+        <a href="/partidos" class="transition-colors hover:text-ink">Calendario</a>
         <span>Datos por API-Football</span>
-      </div>
+        <span>© {anio}</span>
+      </span>
     </div>
   </Container>
 </footer>

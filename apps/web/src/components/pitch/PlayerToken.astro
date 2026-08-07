@@ -80,26 +80,26 @@ const ficha = clickeable
               <img
                 src={foto}
                 alt=""
-                width="34"
-                height="34"
+                width="44"
+                height="44"
                 loading="lazy"
-                class="size-8 rounded-full border-2 border-magnet bg-magnet object-cover shadow-magnet transition-transform group-hover:scale-110 sm:size-9"
+                class="size-9 rounded-full border-2 border-magnet bg-magnet object-cover shadow-magnet transition-transform group-hover:scale-110 sm:size-11"
               />
             ) : (
               /* Sin foto, el dorsal ocupa su lugar: nunca un círculo vacío. */
-              <span class="grid size-8 place-items-center rounded-full border-2 border-magnet bg-magnet text-2xs font-semibold text-ink shadow-magnet transition-transform group-hover:scale-110 sm:size-9 sm:text-xs">
+              <span class="grid size-9 place-items-center rounded-full border-2 border-magnet bg-magnet text-2xs font-semibold text-ink shadow-magnet transition-transform group-hover:scale-110 sm:size-11 sm:text-sm">
                 {dorsal ?? apellido.slice(0, 2)}
               </span>
             )}
 
             {dorsal !== null && foto && (
-              <span class="absolute -bottom-0.5 -left-1 grid size-4 place-items-center rounded-full bg-magnet text-[9px] font-bold text-ink shadow-magnet">
+              <span class="absolute -bottom-0.5 -left-1.5 grid size-4.5 place-items-center rounded-full bg-magnet text-[10px] font-bold text-ink shadow-magnet sm:size-5 sm:text-[11px]">
                 {dorsal}
               </span>
             )}
 
             {goles > 0 && (
-              <span class="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-primary text-[9px] font-bold text-primary-contrast">
+              <span class="absolute -right-1 -top-1 grid size-4.5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-contrast sm:size-5">
                 {goles > 1 ? goles : ''}
                 {goles === 1 && <span class="size-1.5 rounded-full bg-primary-contrast" />}
               </span>
@@ -111,7 +111,7 @@ const ficha = clickeable
             ) : null}
           </span>
 
-          <span class="mt-0.5 max-w-[8ch] truncate rounded bg-board/85 px-1 text-[9px] leading-tight text-chalk sm:max-w-[11ch] sm:text-[10px]">
+          <span class="mt-1 max-w-[9ch] truncate rounded bg-board/85 px-1.5 text-[10px] font-medium leading-tight text-chalk sm:max-w-[12ch] sm:text-xs">
             {apellido}
           </span>
         </Etiqueta>
@@ -123,7 +123,7 @@ const ficha = clickeable
     rating !== null && (
       <span
         class:list={[
-          'mt-0.5 rounded px-1 text-[9px] font-semibold tabular sm:text-[10px]',
+          'mt-0.5 rounded px-1.5 text-[10px] font-semibold tabular sm:text-xs',
           rating >= 7.5
             ? 'bg-primary text-primary-contrast'
             : rating >= 6.5

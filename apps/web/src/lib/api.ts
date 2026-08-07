@@ -115,6 +115,32 @@ export interface MatchDayView {
   geography: GeographyContinent[];
 }
 
+/** El mejor rendimiento de un día: sale de nuestra base, no del proveedor. */
+export interface TopPerformer {
+  rating: string | null;
+  minutesPlayed: number | null;
+  goals: number | null;
+  assists: number | null;
+  penaltyScored: number | null;
+  player: PlayerLink;
+  team: TeamSummary;
+  match: {
+    id: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    homeTeam: TeamSummary;
+    awayTeam: TeamSummary;
+    season: { competition: { name: string; slug: string } };
+  };
+}
+
+/** El podio y de qué día es: a media mañana todavía no terminó ningún partido de hoy. */
+export interface TopPerformers {
+  date: string;
+  esDeHoy: boolean;
+  players: TopPerformer[];
+}
+
 export interface CompetitionView {
   competition: {
     id: string;

@@ -1,13 +1,16 @@
 ---
 import Base from '../layouts/Base.astro';
 import Container from '../components/layout/Container.astro';
+import FiltroPaises from '../components/home/FiltroPaises.astro';
 import Hero from '../components/home/Hero.astro';
 import Icon from '../components/Icon.astro';
 import MatchGeography from '../components/home/MatchGeography.astro';
 import MatchRow from '../components/MatchRow.astro';
-import { api, type HomeView, type PersonalFeed } from '../lib/api';
+import MejoresDelDia from '../components/home/MejoresDelDia.astro';
+import { api, type HomeView, type PersonalFeed, type TopPerformers } from '../lib/api';
 import { getHomeView } from '../lib/live';
 import { getSession } from '../lib/supabase';
+import { paisEnEspanol } from '../lib/paises';
 
 const session = await getSession(Astro);
 
@@ -23,6 +26,41 @@ if (session?.accessToken) {
 
 const home =
   (await getHomeView()) ?? ({ live: 0, sections: [], geography: [] } satisfies HomeView);
+
+/* El podio del día es contenido propio: si falla, la home no se cae por eso. */
+let mejores: TopPerformers = { date: '', esDeHoy: true, players: [] };
+try {
+  mejores = await api<TopPerformers>('/views/top-performers');
+} catch {
+  mejores = { date: '', esDeHoy: true, players: [] };
+}
+
+/*
+ * El filtro es un parámetro y no un estado hidratado: la URL es compartible, el botón atrás
+ * funciona y `@view-transition` anima el cambio sin una línea de JavaScript.
+ */
+const paisPedido = Astro.url.searchParams.get('pais');
+const codigos = new Set(
+  home.geography.flatMap((c) => c.countries.map((p) => p.code ?? 'internacional')),
+);
+const pais = paisPedido && codigos.has(paisPedido) ? paisPedido : null;
+
+const geografia = pais
+  ? home.geography
+      .map((c) => ({
+        ...c,
+        countries: c.countries.filter((p) => (p.code ?? 'internacional') === pais),
+      }))
+      .filter((c) => c.countries.length > 0)
+  : home.geography;
+
+const nombrePais = pais
+  ? (paisEnEspanol(
+      home.geography.flatMap((c) => c.countries).find((p) => (p.code ?? 'internacional') === pais)
+        ?.name ?? null,
+    ) ?? 'Internacional')
+  : null;
+
 const todos = home.sections.flatMap((s) => s.matches);
 const showFeed =
   feed?.hasFavorites &&
@@ -31,85 +69,112 @@ const showFeed =
 const destacado = feed?.insights[0]
   ? { titular: feed.insights[0].titular, matchId: feed.insights[0].matchId }
   : null;
-
-const BLOQUES = showFeed && feed
-  ? [
-      { titulo: 'En juego', matches: feed.live, fecha: false },
-      { titulo: 'Próximos de tus equipos', matches: feed.upcoming, fecha: true },
-      { titulo: 'Últimos resultados', matches: feed.recent, fecha: true },
-    ].filter((b) => b.matches.length > 0)
-  : [];
 ---
 
 <Base
   title="Athena — Partidos de hoy y marcadores en vivo"
-  description="Sigue los partidos de hoy en las principales ligas de Europa y Sudamérica: marcadores en vivo, alineaciones sobre la cancha, tablas y análisis con evidencia."
+  description="Sigue los partidos de hoy en las principales ligas del mundo: marcadores en vivo, alineaciones sobre la cancha, tablas y análisis con evidencia."
   width="bleed"
   liveBar={false}
 >
   <Hero live={todos} total={todos.length} destacado={destacado} />
 
-  <Container width="wide" class="py-6">
-    {
-      BLOQUES.length > 0 && (
-        <section class="mb-8">
-          <div class="mb-3 flex items-center gap-3">
-            <h2 class="font-display text-xl font-semibold uppercase">Lo que sigues</h2>
-            <span class="h-px flex-1 bg-border" />
-          </div>
+  <Container width="wide" class="py-5">
+    <!--
+      Tres columnas: el filtro a la izquierda, los partidos en el centro con medida propia y el
+      podio del día a la derecha. La columna del centro no ocupa todo el ancho a propósito: una
+      fila de partido de 1400px separa los dos equipos con medio metro de vacío en el medio.
+    -->
+    <div
+      class="grid gap-5 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,44rem)_22rem] xl:justify-center"
+    >
+      <aside class="lg:sticky lg:top-20 lg:self-start">
+        <h2 class="mb-2 px-1 font-display text-sm font-semibold uppercase tracking-tight">
+          Países
+        </h2>
+        <div class="max-h-[calc(100dvh-9rem)] overflow-y-auto pr-1 [scrollbar-width:thin]">
+          <FiltroPaises geography={home.geography} activo={pais} base="/" />
+        </div>
+      </aside>
 
-          <div class="grid items-start gap-4 lg:grid-cols-3">
-            {BLOQUES.map((bloque) => (
-              <section class="rounded-lg border border-border bg-surface p-3">
-                <h3 class="mb-1.5 px-1 text-2xs font-semibold tracking-label text-ink-muted uppercase">
-                  {bloque.titulo}
-                </h3>
-                <div class="divide-y divide-border/40">
-                  {bloque.matches.map((match) => (
-                    <MatchRow match={match} showDate={bloque.fecha} />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-        </section>
-      )
-    }
+      <div class="min-w-0">
+        {
+          showFeed && feed && (
+            <section class="mb-5">
+              <h2 class="mb-2 font-display text-base font-semibold uppercase">Lo que sigues</h2>
+              <div class="rounded-lg border border-border bg-surface p-1">
+                {[...feed.live, ...feed.upcoming, ...feed.recent].slice(0, 5).map((match) => (
+                  <MatchRow match={match} showDate />
+                ))}
+              </div>
+            </section>
+          )
+        }
 
-    {
-      session && !feed?.hasFavorites && (
-        <p class="mb-6 flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-ink-muted">
-          <Icon name="estrella" size={15} class="shrink-0 text-primary-ink" />
-          Sigue equipos y competencias desde sus páginas para armar tu propio inicio.
-        </p>
-      )
-    }
-
-    <div class="mb-3 flex items-center gap-3">
-      <h2 class="font-display text-xl font-semibold uppercase">
-        {BLOQUES.length > 0 ? 'Todos los partidos de hoy' : 'Hoy por país'}
-      </h2>
-      <span class="h-px flex-1 bg-border"></span>
-      <a href="/partidos" class="flex shrink-0 items-center gap-1 text-sm text-primary-ink hover:underline">
-        Ver el calendario
-        <Icon name="chevron-derecha" size={14} />
-      </a>
-    </div>
-
-    {
-      home.geography.length === 0 ? (
-        <div class="rounded-lg border border-border bg-surface p-8 text-center">
-          <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
-          <p class="mt-3 text-sm text-ink-muted">
-            No hay partidos programados en las próximas horas.
-          </p>
-          <a href="/competencias" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
-            Explorar las competencias
+        <div class="mb-3 flex items-center gap-3">
+          <h2 class="font-display text-base font-semibold uppercase">
+            {nombrePais ? `Hoy en ${nombrePais}` : 'Hoy por país'}
+          </h2>
+          {
+            pais && (
+              <a href="/" class="text-2xs text-primary-ink hover:underline">
+                quitar filtro
+              </a>
+            )
+          }
+          <span class="h-px flex-1 bg-border"></span>
+          <a
+            href="/partidos"
+            class="flex shrink-0 items-center gap-1 text-2xs text-primary-ink hover:underline"
+          >
+            Calendario
+            <Icon name="chevron-derecha" size={12} />
           </a>
         </div>
-      ) : (
-        <MatchGeography geography={home.geography} />
-      )
-    }
+
+        {
+          geografia.length === 0 ? (
+            <div class="rounded-lg border border-border bg-surface p-8 text-center">
+              <Icon name="cancha" size={30} class="mx-auto text-ink-muted" />
+              <p class="mt-3 text-sm text-ink-muted">
+                {pais
+                  ? 'Sin partidos hoy en este país.'
+                  : 'No hay partidos programados en las próximas horas.'}
+              </p>
+              <a
+                href={pais ? '/' : '/competencias'}
+                class="mt-3 inline-block text-sm text-primary-ink hover:underline"
+              >
+                {pais ? 'Ver todos los países' : 'Explorar las competencias'}
+              </a>
+            </div>
+          ) : (
+            <MatchGeography geography={geografia} filtrado={pais !== null} />
+          )
+        }
+      </div>
+
+      <aside class="grid gap-4 xl:sticky xl:top-20 xl:self-start">
+        <MejoresDelDia top={mejores} />
+
+        {
+          session === null && (
+            <section class="rounded-lg border border-primary/25 bg-surface p-3">
+              <p class="text-sm font-medium">Armá tu propio inicio</p>
+              <p class="mt-1 text-2xs text-ink-muted">
+                Seguí equipos y competencias y sus partidos aparecen arriba, con el análisis de
+                cada uno.
+              </p>
+              <a
+                href="/entrar"
+                class="mt-2.5 flex items-center justify-center gap-1 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
+              >
+                Entrar
+              </a>
+            </section>
+          )
+        }
+      </aside>
+    </div>
   </Container>
 </Base>

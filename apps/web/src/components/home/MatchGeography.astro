@@ -18,9 +18,11 @@ interface Props {
   geography: GeographyContinent[];
   /** Los continentes que arrancan abiertos; el resto se despliega. */
   abiertos?: string[];
+  /** Con un país elegido no hay nada que colapsar: se abre todo. */
+  filtrado?: boolean;
 }
 
-const { geography, abiertos = ['sudamerica', 'europa', 'mundial'] } = Astro.props;
+const { geography, abiertos = ['sudamerica'], filtrado = false } = Astro.props;
 
 const contarPartidos = (continente: GeographyContinent) =>
   continente.countries.reduce(
@@ -42,7 +44,11 @@ const contarVivos = (continente: GeographyContinent) =>
       const total = contarPartidos(continente);
       const vivos = contarVivos(continente);
       return (
-        <details open={abiertos.includes(continente.continent) || vivos > 0} class="group">
+        <details
+          open={filtrado || abiertos.includes(continente.continent) || vivos > 0}
+          class="group"
+          style={`view-transition-name: continente-${continente.continent}`}
+        >
           <summary
             class="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 transition-colors hover:bg-canvas-subtle"
           >
@@ -63,8 +69,12 @@ const contarVivos = (continente: GeographyContinent) =>
           </summary>
 
           <div class="mt-2 grid gap-3 sm:pl-3">
-            {continente.countries.map((pais) => (
-              <section class="rounded-lg border border-border bg-surface">
+            {continente.countries.map((pais, orden) => (
+              <section
+                data-grupo
+                class="rounded-lg border border-border bg-surface"
+                style={`--orden:${orden}`}
+              >
                 <div class="flex items-center gap-2 border-b border-border px-3 py-2">
                   <CountryFlag
                     url={pais.flagUrl}

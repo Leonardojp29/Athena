@@ -52,9 +52,14 @@ const goles = (s: MatchPlayerStats) =>
             {team.name}
           </h3>
 
-          <div class="overflow-x-auto rounded-lg border border-border">
+          <!--
+            La tabla scrollea dentro de sí y no arrastra la página: son 22 jugadores por equipo,
+            y esta es la única vista donde el dato no cabe en una pantalla de 1080. Mejor que la
+            vista entre y la tabla se recorra, que empujar el resto fuera del alto visible.
+          -->
+          <div class="max-h-[min(49vh,29rem)] overflow-auto rounded-lg border border-border">
             <table class="w-full min-w-[30rem] text-sm">
-              <thead>
+              <thead class="sticky top-0 z-10">
                 <tr class="border-b border-border bg-canvas-subtle text-2xs text-ink-muted uppercase tracking-label">
                   <th scope="col" class="px-2 py-2 text-left font-semibold">Jugador</th>
                   <th scope="col" class="px-2 py-2 text-right font-semibold">Min</th>
