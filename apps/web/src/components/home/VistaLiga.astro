@@ -1,213 +1,156 @@
 ---
-import type { CompetitionView, MatchCard, StandingRow } from '../../lib/api';
+import BotonFavorito from '../BotonFavorito.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
-import { formatKickoff, isLive } from '../../lib/format';
-import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
+import SelectorFase from '../SelectorFase.astro';
+import StandingsTable from '../StandingsTable.astro';
+import type { CompetitionView } from '../../lib/api';
+import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
  * La liga abierta dentro de la home, sin salir de la página.
  *
- * Es un resumen y no la página completa: la tabla recortada a los primeros puestos, lo que viene y
- * los últimos resultados. Quien quiera todo tiene el botón que lleva a la competencia. La idea es
- * poder mirar la Liga 1 sin perder de vista el resto del día.
+ * Es un resumen, no la página completa: la tabla de la fase en juego —con scroll propio, así que
+ * entran los dieciocho equipos sin estirar la tarjeta— y las dos columnas de partidos abajo.
+ * Quien quiera todo tiene el botón que lleva a la competencia. La idea es poder mirar la Liga 1
+ * sin perder de vista el resto del día.
  */
 interface Props {
   view: CompetitionView;
   /** La bandera sale del catálogo: la vista de competencia solo trae el nombre del país. */
   banderaUrl?: string | null;
-  /** Cuántas filas de la tabla se muestran acá. */
-  filas?: number;
+  /** Etiqueta de la fase pedida por la URL; si no viene, se abre la que está en juego. */
+  fase?: string | null;
+  conCuenta?: boolean;
 }
 
-const { view, banderaUrl = null, filas = 8 } = Astro.props;
+const { view, banderaUrl = null, fase = null, conCuenta = false } = Astro.props;
 const { competition, season, standingGroups, recent, upcoming } = view;
 
-/* Con grupos (una copa) se muestra el primero; en una liga hay un solo grupo. */
-const grupo = standingGroups[0];
-const tabla = grupo?.rows.slice(0, filas) ?? [];
-const hayMas = (grupo?.rows.length ?? 0) > filas;
-
-const pais = paisEnEspanol(competition.country);
-
 /*
- * En el riel angosto los equipos van uno encima del otro y no enfrentados: en 22rem un nombre al
- * lado del otro se corta en "Comerciante…", y un nombre cortado no identifica a nadie.
+ * El API manda la fase en juego primero, así que el grupo por defecto es el primero y no hay que
+ * volver a decidirlo acá. Antes se abría el Apertura —cerrado en mayo— mientras se jugaba el
+ * Clausura, y la tabla mostraba una foto de otro torneo.
  */
-const marcador = (match: MatchCard, local: boolean): string => {
-  const gol = local ? match.homeScore : match.awayScore;
-  return gol === null ? '' : String(gol);
-};
+const grupo = standingGroups.find((g) => g.label === fase) ?? standingGroups[0];
+const pais = paisEnEspanol(competition.country);
+const nombre = nombreTorneo(competition.name);
 
-const diferencia = (row: StandingRow): string => {
-  const dg = row.goalsFor - row.goalsAgainst;
-  return dg > 0 ? `+${dg}` : String(dg);
-};
+/* "Clausura - 4" → "Clausura · fecha 4": decir en qué fecha va evita la confusión de raíz. */
+const jornada = (() => {
+  if (!view.round) return null;
+  const corte = view.round.lastIndexOf(' - ');
+  if (corte === -1) return nombreFase(view.round);
+  const cola = view.round.slice(corte + 3).trim();
+  const cabeza = nombreFase(view.round.slice(0, corte));
+  return /^\d+$/.test(cola) ? `${cabeza} · fecha ${cola}` : nombreFase(view.round);
+})();
 
-/* "vie 7 ago." no cabe en la columna de la hora; el día y el mes corto sí y alcanzan para ubicarse. */
-const diaCorto = (iso: string): string =>
-  new Intl.DateTimeFormat('es-PE', {
-    timeZone: 'America/Lima',
-    weekday: 'short',
-    day: 'numeric',
-  })
-    .format(new Date(iso))
-    .replace('.', '');
+const bloques = [
+  { titulo: 'Próximos', partidos: upcoming.slice(0, 3), icono: 'reloj' as const },
+  { titulo: 'Últimos resultados', partidos: recent.slice(0, 3), icono: 'cancha' as const },
+].filter((bloque) => bloque.partidos.length > 0);
+
 ---
 
 <section
-  class="rounded-lg border border-border bg-surface"
+  class="overflow-hidden rounded-xl border border-border bg-surface"
   style={`view-transition-name: liga-${competition.slug}`}
 >
-  <header class="flex items-center gap-3 border-b border-border p-3">
+  <!--
+    La cabecera va sobre la pizarra: separa la liga abierta del resto de la página de un golpe de
+    vista, y le da al escudo un fondo parejo sin importar de qué color venga.
+  -->
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3">
     {
       competition.logoUrl && (
-        <span class="grid size-10 shrink-0 place-items-center rounded-md bg-canvas-subtle">
-          <img src={competition.logoUrl} alt="" width="26" height="26" />
+        <span class="grid size-11 shrink-0 place-items-center rounded-lg bg-chalk/10">
+          <img src={competition.logoUrl} alt="" width="28" height="28" />
         </span>
       )
     }
     <div class="min-w-0 flex-1">
-      <h2 class="truncate font-display text-lg font-semibold uppercase leading-tight">
-        {nombreTorneo(competition.name)}
+      <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
+        {nombre}
       </h2>
-      <p class="flex items-center gap-1.5 text-2xs text-ink-muted">
+      <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-2xs text-chalk-dim">
         <CountryFlag url={banderaUrl} name={pais} size={14} />
-        {pais ?? 'Internacional'} · Temporada {season.year}
+        {pais ?? 'Internacional'}
+        <span class="text-chalk/30">·</span>
+        {season.year}
+        {
+          jornada && (
+            <>
+              <span class="text-chalk/30">·</span>
+              <span class="font-medium text-chalk">{jornada}</span>
+            </>
+          )
+        }
       </p>
     </div>
 
-    <a
-      href={`/competencias/${competition.slug}`}
-      class="flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
-    >
-      Ver la liga completa
-      <Icon name="chevron-derecha" size={12} />
-    </a>
+    <div class="flex shrink-0 items-center gap-2">
+      <BotonFavorito
+        tipo="liga"
+        id={competition.id}
+        slug={competition.slug}
+        nombre={nombre}
+        logoUrl={competition.logoUrl}
+        pais={pais}
+        banderaUrl={banderaUrl}
+        variante="boton"
+        conCuenta={conCuenta}
+        onBoard
+      />
+      <a
+        href={`/competencias/${competition.slug}`}
+        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
+      >
+        Ver la liga completa
+        <Icon name="chevron-derecha" size={12} />
+      </a>
+    </div>
   </header>
 
-  <div class="grid gap-4 p-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]">
-    {
-      tabla.length > 0 && (
-        <div class="min-w-0">
-          <h3 class="mb-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
-            Tabla{grupo?.label ? ` · ${grupo.label}` : ''}
+  {
+    grupo && (
+      <div class="border-b border-border p-3">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h3 class="text-2xs font-semibold tracking-label text-ink-muted uppercase">
+            Tabla{standingGroups.length === 1 && grupo.label ? ` · ${nombreFase(grupo.label)}` : ''}
           </h3>
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="border-b border-border text-2xs text-ink-muted">
-                <th scope="col" class="w-6 py-1 text-left font-semibold">#</th>
-                <th scope="col" class="py-1 text-left font-semibold">Equipo</th>
-                <th scope="col" class="w-8 py-1 text-center font-semibold">PJ</th>
-                <th scope="col" class="w-9 py-1 text-center font-semibold">DG</th>
-                <th scope="col" class="w-8 py-1 text-center font-semibold">Pts</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tabla.map((row) => (
-                <tr class="border-b border-border/40 last:border-0">
-                  <td class="py-1 tabular text-2xs text-ink-muted">{row.position}</td>
-                  <td class="py-1">
-                    <a
-                      href={`/equipos/${row.team.slug}`}
-                      class="flex items-center gap-1.5 transition-colors hover:text-primary-ink"
-                    >
-                      {row.team.logoUrl && (
-                        <img src={row.team.logoUrl} alt="" width="16" height="16" loading="lazy" />
-                      )}
-                      <span class="truncate">{row.team.name}</span>
-                    </a>
-                  </td>
-                  <td class="py-1 text-center tabular text-2xs text-ink-muted">{row.played}</td>
-                  <td class="py-1 text-center tabular text-2xs text-ink-muted">
-                    {diferencia(row)}
-                  </td>
-                  <td class="py-1 text-center font-semibold tabular">{row.points}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {hayMas && (
-            <a
-              href={`/competencias/${competition.slug}`}
-              class="mt-1.5 inline-block text-2xs text-primary-ink hover:underline"
-            >
-              Ver la tabla completa
-            </a>
-          )}
+          <SelectorFase
+            grupos={standingGroups}
+            activo={grupo.label}
+            href={(label) => `/?liga=${competition.slug}&tabla=${encodeURIComponent(label)}`}
+          />
         </div>
-      )
-    }
 
-    <div class="grid min-w-0 gap-3">
-      {
-        [
-          { titulo: 'Próximos', partidos: upcoming.slice(0, 4) },
-          { titulo: 'Últimos resultados', partidos: recent.slice(0, 4) },
-        ]
-          .filter((bloque) => bloque.partidos.length > 0)
-          .map((bloque) => (
-            <div>
-              <h3 class="mb-1 text-2xs font-semibold tracking-label text-ink-muted uppercase">
-                {bloque.titulo}
-              </h3>
-              <ul class="grid gap-0.5">
-                {bloque.partidos.map((match) => (
-                  <li>
-                    <a
-                      href={`/partidos/${match.id}`}
-                      class="grid grid-cols-[2.9rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
-                    >
-                      <span
-                        class:list={[
-                          'grid text-2xs leading-tight tabular',
-                          isLive(match.status) ? 'text-live' : 'text-ink-muted',
-                        ]}
-                      >
-                        {isLive(match.status) ? (
-                          <span class="font-medium">{match.elapsedMinutes ?? 0}'</span>
-                        ) : (
-                          <span class="font-medium text-ink">{formatKickoff(match.kickoffUtc)}</span>
-                        )}
-                        <span class="truncate">{diaCorto(match.kickoffUtc)}</span>
-                      </span>
+        <StandingsTable
+          rows={grupo.rows}
+          maxAlto="15.5rem"
+          hrefEquipo={(slug) => `/?equipo=${slug}`}
+        />
+      </div>
+    )
+  }
 
-                      <span class="grid min-w-0 gap-0.5">
-                        {[match.homeTeam, match.awayTeam].map((team) => (
-                          <span class="flex min-w-0 items-center gap-1.5">
-                            {team.logoUrl && (
-                              <img
-                                src={team.logoUrl}
-                                alt=""
-                                width="15"
-                                height="15"
-                                loading="lazy"
-                                class="shrink-0"
-                              />
-                            )}
-                            <span class="truncate text-sm">{team.name}</span>
-                          </span>
-                        ))}
-                      </span>
-
-                      <span class="grid gap-0.5 text-right font-display text-sm font-semibold tabular">
-                        <span>{marcador(match, true)}</span>
-                        <span>{marcador(match, false)}</span>
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-      }
-      {
-        upcoming.length === 0 && recent.length === 0 && (
-          <p class="text-sm text-ink-muted">
-            Todavía no hay partidos sincronizados de esta competencia.
-          </p>
-        )
-      }
-    </div>
-  </div>
+  {
+    bloques.length > 0 ? (
+      <div class="grid gap-x-4 gap-y-3 p-3 sm:grid-cols-2">
+        {bloques.map((bloque) => (
+          <ListaPartidosCompacta
+            titulo={bloque.titulo}
+            icono={bloque.icono}
+            partidos={bloque.partidos}
+          />
+        ))}
+      </div>
+    ) : (
+      <p class="p-3 text-sm text-ink-muted">
+        Todavía no hay partidos sincronizados de esta competencia.
+      </p>
+    )
+  }
 </section>

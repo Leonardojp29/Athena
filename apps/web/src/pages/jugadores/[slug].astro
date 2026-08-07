@@ -2,10 +2,10 @@
 import Base from '../../layouts/Base.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
-import FavoriteButton from '../../components/FavoriteButton.astro';
+import BotonFavorito from '../../components/BotonFavorito.astro';
 import RecentPerformances from '../../components/player/RecentPerformances.astro';
 import SeasonTable from '../../components/player/SeasonTable.astro';
-import { api, type FavoriteEntity, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
+import { api, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
 import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
@@ -42,15 +42,6 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 const session = await pedidoSesion;
-let following = false;
-if (session?.accessToken) {
-  try {
-    const favorites = await api<FavoriteEntity[]>('/me/favorites', session.accessToken);
-    following = favorites.some((f) => f.entityType === 'player' && f.entityId === player.id);
-  } catch {
-    following = false;
-  }
-}
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -93,12 +84,15 @@ const jsonLd = {
     </div>
 
     <div class="ml-auto shrink-0">
-      <FavoriteButton
-        entityType="player"
-        entityId={player.id}
-        following={following}
-        signedIn={session !== null}
-        label="jugador"
+      <BotonFavorito
+        tipo="jugador"
+        id={player.id}
+        slug={player.slug}
+        nombre={player.name}
+        logoUrl={player.photoUrl}
+        pais={paisEnEspanol(player.nationality)}
+        variante="boton"
+        conCuenta={session !== null}
         onBoard
       />
     </div>

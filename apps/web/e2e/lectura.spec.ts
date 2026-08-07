@@ -51,9 +51,21 @@ test.describe('recorrido de lectura', () => {
 });
 
 test.describe('sesión y favoritos', () => {
-  test('sin sesión, seguir un equipo invita a entrar', async ({ page }) => {
+  /*
+   * Seguir a un equipo ya no exige una cuenta: se guarda en el navegador y el aviso dice dónde
+   * quedó, con la invitación a crear cuenta. Antes el botón decía "Entrar para seguir" y quien no
+   * tenía cuenta no podía marcar nada.
+   */
+  test('sin sesión, seguir un equipo guarda en el navegador y lo avisa', async ({ page }) => {
     await page.goto('/equipos/alianza-lima');
-    await expect(page.getByRole('link', { name: /entrar para seguir/i })).toBeVisible();
+
+    const seguir = page.getByRole('button', { name: /seguir/i }).first();
+    await expect(seguir).toHaveAttribute('aria-pressed', 'false');
+
+    await seguir.click();
+    await expect(seguir).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText(/en este navegador/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /crear cuenta/i })).toBeVisible();
   });
 
   test('la página de login pide correo y contraseña', async ({ page }) => {

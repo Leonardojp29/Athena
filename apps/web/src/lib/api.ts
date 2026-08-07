@@ -205,11 +205,20 @@ export interface CompetitionView {
     name: string;
     slug: string;
     country: string | null;
+    countryCode: string | null;
+    flagUrl: string | null;
     format: string;
     logoUrl: string | null;
   };
   season: { year: number };
-  standingGroups: Array<{ label: string; rows: StandingRow[] }>;
+  /** Jornada en curso, tal como la nombra el proveedor: "Clausura - 4". */
+  round: string | null;
+  /**
+   * Las tablas de la temporada, con la fase en juego primero. `current` es falso en todas cuando
+   * los grupos son simultáneos —una copa, las conferencias de la MLS—: ahí no hay nada que
+   * priorizar y se muestran juntas.
+   */
+  standingGroups: Array<{ label: string; rows: StandingRow[]; current: boolean }>;
   recent: MatchCard[];
   upcoming: MatchCard[];
 }
@@ -231,8 +240,10 @@ export interface TeamView {
     logoUrl: string | null;
   };
   squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
+  /** Con la fase en juego primero: un equipo puede tener el Apertura cerrado y el Clausura en curso. */
   standings: Array<
     Omit<StandingRow, 'team'> & {
+      current: boolean;
       season: { year: number; competition: { name: string; slug: string; logoUrl: string | null } };
     }
   >;

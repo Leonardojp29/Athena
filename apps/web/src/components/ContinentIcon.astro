@@ -1,5 +1,5 @@
 ---
-import { CONTINENT_ICONS, type ContinentIconName } from '../icons/paths.continents';
+import { ARO_GLOBO, CONTINENT_ICONS, type ContinentIconName } from '../icons/paths.continents';
 
 /*
  * Vive aparte de Icon.astro para que el registro de continentes no entre en las páginas que
@@ -14,6 +14,9 @@ interface Props {
 const { name, size = 16, class: className } = Astro.props;
 const icon = CONTINENT_ICONS[name as ContinentIconName] ?? CONTINENT_ICONS.mundial;
 const strokeWidth = size >= 24 ? 1.5 : size >= 20 ? 1.75 : 2;
+
+/* El aro solo desde 20px: en la barra lateral, a 14, le come el aire a la silueta. */
+const cuerpo = size >= 20 && name !== 'mundial' ? ARO_GLOBO + icon.body : icon.body;
 ---
 
 <svg
@@ -28,5 +31,5 @@ const strokeWidth = size >= 24 ? 1.5 : size >= 20 ? 1.75 : 2;
   aria-hidden="true"
   focusable="false"
   class:list={['shrink-0', className]}
-  set:html={icon.body}
+  set:html={cuerpo}
 />

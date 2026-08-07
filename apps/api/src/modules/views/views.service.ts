@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { gruposVigentes } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
   CONTINENT_LABEL,
@@ -286,7 +287,16 @@ export class ViewsService {
     const [competition, season, standings, recent, upcoming] = await Promise.all([
       this.prisma.competition.findUnique({
         where: { slug },
-        select: { id: true, name: true, slug: true, country: true, format: true, logoUrl: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          country: true,
+          countryCode: true,
+          flagUrl: true,
+          format: true,
+          logoUrl: true,
+        },
       }),
       this.prisma.season.findFirst({
         where: temporadaVigente,
@@ -339,10 +349,24 @@ export class ViewsService {
       groups.get(row.groupLabel)?.push(row);
     }
 
+    /*
+     * Cuál tabla está en juego lo dice el calendario, no la tabla: la jornada del próximo partido
+     * —o del último jugado si la temporada terminó— nombra la fase. Sin esto la Liga 1 abría en el
+     * Apertura, cerrado en mayo, mientras se jugaba el Clausura.
+     */
+    const jornada = upcoming[0]?.round ?? recent[0]?.round ?? null;
+    const vigentes = new Set(gruposVigentes(jornada, [...groups.keys()]));
+
+    const standingGroups = [...groups.entries()]
+      .map(([label, rows]) => ({ label, rows, current: vigentes.has(label) }))
+      .sort((a, b) => Number(b.current) - Number(a.current));
+
     return {
       competition,
       season: { year: season.year },
-      standingGroups: [...groups.entries()].map(([label, rows]) => ({ label, rows })),
+      /* La jornada viaja para que la interfaz pueda decir "Clausura · fecha 4" sin recalcularla. */
+      round: jornada,
+      standingGroups,
       recent,
       upcoming,
     };
@@ -424,12 +448,42 @@ export class ViewsService {
     ]);
     if (!team) throw new NotFoundException('Equipo no encontrado');
 
+    /*
+     * Un equipo puede tener dos tablas del mismo torneo —el Apertura cerrado y el Clausura en
+     * juego— y la que interesa es la de ahora. La fase la dice el calendario del propio equipo:
+     * la jornada de su próximo partido en esa competencia, o del último que jugó.
+     */
+    const jornadaPorTorneo = new Map<string, string | null>();
+    for (const match of [...upcoming, ...recent]) {
+      const clave = match.season.competition.slug;
+      if (!jornadaPorTorneo.has(clave)) jornadaPorTorneo.set(clave, match.round);
+    }
+
+    const etiquetasPorTorneo = new Map<string, string[]>();
+    for (const fila of standings) {
+      const clave = fila.season.competition.slug;
+      etiquetasPorTorneo.set(clave, [...(etiquetasPorTorneo.get(clave) ?? []), fila.groupLabel]);
+    }
+
+    const vigentes = new Set(
+      [...etiquetasPorTorneo.entries()].flatMap(([clave, etiquetas]) =>
+        gruposVigentes(jornadaPorTorneo.get(clave) ?? null, etiquetas).map((label) => `${clave}:${label}`),
+      ),
+    );
+
+    const tablas = standings
+      .map((fila) => ({
+        ...fila,
+        current: vigentes.has(`${fila.season.competition.slug}:${fila.groupLabel}`),
+      }))
+      .sort((a, b) => Number(b.current) - Number(a.current) || b.played - a.played);
+
     const squadYear = squad[0]?.year ?? null;
     const currentSquad = squad.filter((row) => row.year === squadYear);
 
     return {
       team,
-      standings,
+      standings: tablas,
       recent,
       upcoming,
       squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },

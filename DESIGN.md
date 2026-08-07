@@ -285,7 +285,11 @@ pico calados por `fill-rule="evenodd"`.
 - Header pegajoso y translúcido, altura 4rem, y **nada de navegación colgando de él**: logo,
   buscador y sesión. El catálogo vive en la barra lateral de la home, que es donde alguien lo
   busca.
-- **Barra lateral de la home:** Hoy · Favoritos · Competencias. El árbol continente → país →
+- **Barra lateral de la home:** Hoy · Favoritos · Competencias. Cada liga con su escudo; "ver los
+  partidos de hoy" va **al final y en gris**, porque es una salida y no el contenido —arriba y en
+  lima competía con las ligas, que es lo que la gente viene a buscar—.
+- **Los favoritos se agrupan por país**, con bandera y escudo, y aceptan ligas y equipos. Una lista
+  plana con una liga peruana y un equipo argentino no dice de dónde es cada cosa. El árbol continente → país →
   liga son `<details>` anidados, así que abrir y cerrar no cuesta JavaScript, y se abre solo por
   donde está la selección. Una liga se abre **en el mismo contenedor** (`?liga=`) con un resumen
   —tabla recortada, lo que viene, últimos resultados— y un botón a la vista completa: mirar la
@@ -296,13 +300,53 @@ pico calados por `fill-rule="evenodd"`.
 - Las pestañas del partido son **enlaces reales** con `?vista=`: cada panel es indexable,
   compartible y cuesta 0 KB.
 
-### Tablero de cifras (hero de la home)
+### Fases de una temporada
 
-El recuento del día no va dentro de una frase. Como párrafo, "14 partidos hoy" caía media línea
-por debajo del título y se leía como un pie de foto perdido; como marcador —cifra condensada de
-`text-3xl` arriba, etiqueta `tracking-label` en versalitas abajo, separadas por una línea de
-`chalk/15`— es lo primero que el ojo encuentra y suena a estadio. Los partidos en juego usan
-`live-board` con su punto que late; la fecha cierra la fila a la derecha.
+Una temporada puede tener varias tablas y no todas significan lo mismo: **fases en secuencia**
+(Apertura y Clausura; en Uruguay, además Intermedio, Anual y Promedios), **grupos simultáneos** (los
+ocho de la Libertadores) y **conferencias simultáneas** (Este y Oeste de la MLS).
+
+La que se abre es **la que se está jugando**, y eso no se decide mirando la tabla sino el calendario:
+la jornada del próximo partido nombra la fase (`Clausura - 4`). Cuando la jornada no nombra ninguna
+tabla —`Group Stage - 6`, `Regular Season - 18`— es la señal de que los grupos son simultáneos y no
+hay nada que priorizar. Vive en `packages/domain/src/standings.ts`, testeado contra las competencias
+reales.
+
+El control es un **segmentado de enlaces** (`?tabla=`), no un selector hidratado: la fase queda en la
+URL, el enlace es compartible y la página sigue costando 0 KB. La fase en juego lleva un punto verde.
+La cabecera dice siempre en qué fecha va —"Clausura · fecha 4"—, porque la confusión original fue
+justamente esa: la etiqueta "Apertura" en gris chico no alcanzaba para darse cuenta de que la tabla
+era de otro torneo.
+
+### Los partidos en un riel angosto
+
+Enfrentados —local a la izquierda, visitante a la derecha— dos nombres y un marcador necesitan 40rem.
+En menos, el proveedor gana: "Sport Huanc…", "Club Deporti…". Por debajo de esa medida los equipos
+van **uno encima del otro** con la hora a la izquierda y el marcador a la derecha
+(`ListaPartidosCompacta`), que es la misma forma que usan las tarjetas de la pizarra. Es la solución
+al mismo problema en cuatro lugares: la vista de liga, la de equipo, la competencia y el hero.
+
+### Hero de la home
+
+Tres niveles y nada más: el título condensado a `text-5xl`, una línea en lima que dice qué hace
+distinta a esta web ("Y por qué terminó así cada uno") y una línea gris con la fecha, el recuento y
+los que están en juego.
+
+**Las cifras grandes se probaron y se descartaron.** "24 partidos · 11 competencias" en versalitas y
+`text-3xl` era un dato sobre la base de datos, no sobre el fútbol: a nadie le cambia el día saber
+cuántos torneos hay cargados. Ese espacio lo ocupa ahora **lo que pasa a esta hora** —los partidos en
+juego, y si no hay ninguno, los que arrancan en un rato—, que es información que caduca y por eso
+vale.
+
+### Iconos de continente
+
+La silueta del continente, como se ve en un mapamundi. Antes eran globos con el meridiano corrido y
+el problema fue evidente en cuanto se pusieron uno debajo del otro: **seis círculos casi idénticos no
+distinguen nada**. Cada contorno está simplificado a la docena de vértices que sobreviven a 14px —el
+ancho del norte y el pico del sur en Sudamérica, el Cuerno en África, las penínsulas de Europa, la
+India en Asia— y normalizado para llenar la misma caja, así que ninguno parece más importante que
+otro. El aro del globo aparece recién desde 20px; abajo le come el aire a la silueta. Internacional
+no es un continente: ahí el globo entero sí es el dibujo.
 
 ### Cargando
 

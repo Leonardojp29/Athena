@@ -70,6 +70,58 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * La tabla tiene que abrir en la fase que se está jugando. La Liga 1 abría en el Apertura
+   * —cerrado en mayo— mientras se jugaba el Clausura, y quien miraba creía estar viendo el torneo
+   * en curso. El dato de verdad es la jornada del próximo partido, así que el test la compara con
+   * la fase abierta en lugar de cablear "Clausura", que el año que viene sería mentira.
+   */
+  test('la tabla abre en la fase que se está jugando', async ({ page, request }) => {
+    const vista = await (
+      await request.get('http://localhost:3001/v1/views/competition/primera-division')
+    ).json();
+    const fases: Array<{ label: string; current: boolean }> = vista.standingGroups;
+    test.skip(fases.length < 2, 'esta competencia no tiene fases para elegir');
+
+    const enJuego = fases.find((f) => f.current);
+    expect(enJuego, 'ninguna fase quedó marcada como en juego').toBeTruthy();
+
+    for (const ruta of ['/competencias/primera-division', '/?liga=primera-division']) {
+      await page.goto(ruta);
+      const control = page.locator('main [role="group"][aria-label="Fase de la temporada"]');
+      await expect(control).toBeVisible();
+
+      const abierta = control.locator('a[aria-current="true"]');
+      await expect(abierta).toHaveCount(1);
+      /* La fase abierta es la que está en juego, no la primera que devolvió la base. */
+      await expect(abierta).toHaveAttribute(
+        'href',
+        new RegExp(encodeURIComponent(enJuego!.label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      );
+    }
+  });
+
+  /*
+   * Un equipo se abre en el mismo contenedor que la liga: desde una tabla de posiciones, tocar un
+   * equipo mandaba a otra página y perdías de vista el día entero.
+   */
+  test('un equipo de la tabla se abre dentro de la home', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'la barra lateral no se muestra en móvil');
+    await page.goto('/?liga=primera-division');
+
+    const equipo = page.locator('main a[href^="/?equipo="]').first();
+    const slug = (await equipo.getAttribute('href'))!.replace('/?equipo=', '');
+    await equipo.click();
+
+    await expect(page).toHaveURL(new RegExp(`\\?equipo=${slug}$`));
+    await expect(page.getByRole('link', { name: /ver el equipo completo/i })).toHaveAttribute(
+      'href',
+      `/equipos/${slug}`,
+    );
+    /* Sigue siendo la home: la barra lateral y el día no se fueron a ninguna parte. */
+    await expect(page.locator('main nav[aria-label="Navegación de la home"]')).toBeVisible();
+  });
+
+  /*
    * Los favoritos viven en el navegador y eso hay que decirlo: un favorito que desaparece al
    * cambiar de dispositivo, sin haberlo avisado, se siente como un bug.
    */

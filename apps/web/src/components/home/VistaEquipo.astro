@@ -1,0 +1,185 @@
+---
+import BotonFavorito from '../BotonFavorito.astro';
+import CountryFlag from '../CountryFlag.astro';
+import Icon from '../Icon.astro';
+import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
+import type { TeamView } from '../../lib/api';
+import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
+
+/*
+ * El equipo abierto dentro de la home, igual que la liga: cómo va en cada torneo, lo que viene y
+ * lo último, sin cambiar de página. Desde una tabla de posiciones, tocar un equipo abría otra
+ * pantalla y perdías el día entero de vista.
+ */
+interface Props {
+  view: TeamView;
+  conCuenta?: boolean;
+}
+
+const { view, conCuenta = false } = Astro.props;
+const { team, standings, recent, upcoming } = view;
+const pais = paisEnEspanol(team.country);
+
+/* La forma como la cuenta el hincha: del partido más viejo al último. */
+const FORMA: Record<string, { letra: string; clase: string }> = {
+  W: { letra: 'V', clase: 'bg-primary text-primary-contrast' },
+  D: { letra: 'E', clase: 'bg-border-strong text-ink' },
+  L: { letra: 'D', clase: 'bg-card-red/85 text-chalk' },
+};
+const ultimos = (form: string | null) =>
+  form === null ? [] : [...form.slice(0, 5)].reverse().flatMap((c) => FORMA[c] ?? []);
+
+/* El API manda la fase en juego primero: la primera fila es "cómo va hoy". */
+const principal = standings[0] ?? null;
+
+const bloques = [
+  { titulo: 'Próximos', icono: 'reloj' as const, partidos: upcoming.slice(0, 3) },
+  { titulo: 'Últimos resultados', icono: 'cancha' as const, partidos: recent.slice(0, 3) },
+].filter((bloque) => bloque.partidos.length > 0);
+---
+
+<section
+  class="overflow-hidden rounded-xl border border-border bg-surface"
+  style={`view-transition-name: equipo-${team.slug}`}
+>
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3">
+    {
+      team.logoUrl && (
+        <span class="grid size-11 shrink-0 place-items-center rounded-lg bg-chalk/10">
+          <img src={team.logoUrl} alt="" width="30" height="30" />
+        </span>
+      )
+    }
+    <div class="min-w-0 flex-1">
+      <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
+        {team.name}
+      </h2>
+      <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-2xs text-chalk-dim">
+        <CountryFlag name={pais} size={14} />
+        {pais ?? 'Internacional'}
+        {
+          team.founded !== null && (
+            <>
+              <span class="text-chalk/30">·</span>
+              desde {team.founded}
+            </>
+          )
+        }
+      </p>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2">
+      <BotonFavorito
+        tipo="equipo"
+        id={team.id}
+        slug={team.slug}
+        nombre={team.name}
+        logoUrl={team.logoUrl}
+        pais={pais}
+        variante="boton"
+        conCuenta={conCuenta}
+        onBoard
+      />
+      <a
+        href={`/equipos/${team.slug}`}
+        class="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
+      >
+        Ver el equipo completo
+        <Icon name="chevron-derecha" size={12} />
+      </a>
+    </div>
+  </header>
+
+  {
+    principal && (
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border p-3">
+        <div>
+          <p class="font-display text-2xl font-semibold leading-none tabular">{`${principal.position}º`}</p>
+          <p class="mt-1 flex items-center gap-1 text-2xs text-ink-muted">
+            {principal.season.competition.logoUrl && (
+              <img src={principal.season.competition.logoUrl} alt="" width="12" height="12" />
+            )}
+            <a
+              href={`/?liga=${principal.season.competition.slug}`}
+              class="truncate hover:text-primary-ink hover:underline"
+            >
+              {nombreTorneo(principal.season.competition.name)}
+              {principal.groupLabel ? ` · ${nombreFase(principal.groupLabel)}` : ''}
+            </a>
+          </p>
+        </div>
+
+        {[
+          { valor: principal.points, etiqueta: 'puntos' },
+          { valor: principal.played, etiqueta: 'jugados' },
+          { valor: `${principal.won}-${principal.drawn}-${principal.lost}`, etiqueta: 'G-E-P' },
+          { valor: principal.goalsFor - principal.goalsAgainst, etiqueta: 'diferencia' },
+        ].map((cifra) => (
+          <div>
+            <p class="font-display text-lg font-semibold leading-none tabular">{cifra.valor}</p>
+            <p class="mt-1 text-2xs tracking-label text-ink-muted uppercase">{cifra.etiqueta}</p>
+          </div>
+        ))}
+
+        {ultimos(principal.form).length > 0 && (
+          <div>
+            <span class="flex gap-0.5">
+              {ultimos(principal.form).map((r) => (
+                <span
+                  class:list={[
+                    'grid size-4 place-items-center rounded-[2px] text-[9px] font-bold',
+                    r.clase,
+                  ]}
+                >
+                  {r.letra}
+                </span>
+              ))}
+            </span>
+            <p class="mt-1 text-2xs tracking-label text-ink-muted uppercase">forma</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  {
+    standings.length > 1 && (
+      <div class="flex flex-wrap gap-x-4 gap-y-1 border-b border-border px-3 py-2 text-2xs">
+        {standings
+          .filter((fila) => fila !== principal)
+          .map((fila) => (
+            <a
+              href={`/?liga=${fila.season.competition.slug}`}
+              class="flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink"
+            >
+              {fila.season.competition.logoUrl && (
+                <img src={fila.season.competition.logoUrl} alt="" width="12" height="12" />
+              )}
+              <span class="truncate">
+                {nombreTorneo(fila.season.competition.name)}
+                {fila.groupLabel ? ` · ${nombreFase(fila.groupLabel)}` : ''}
+              </span>
+              <span class="font-medium tabular text-ink">{fila.position}º</span>
+            </a>
+          ))}
+      </div>
+    )
+  }
+
+  {
+    bloques.length > 0 ? (
+      <div class="grid gap-x-4 gap-y-3 p-3 sm:grid-cols-2">
+        {bloques.map((bloque) => (
+          <ListaPartidosCompacta
+            titulo={bloque.titulo}
+            icono={bloque.icono}
+            partidos={bloque.partidos}
+            destacado={team.slug}
+          />
+        ))}
+      </div>
+    ) : (
+      <p class="p-3 text-sm text-ink-muted">Todavía no hay partidos sincronizados de este equipo.</p>
+    )
+  }
+</section>

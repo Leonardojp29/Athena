@@ -1,0 +1,24 @@
+---
+/*
+ * Aparece la primera vez que alguien marca un favorito, y nunca más. Lo destapa el script del
+ * botón buscando `[data-favoritos-aviso]`, así que va una sola vez por página y donde se vea.
+ */
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<p
+  data-favoritos-aviso
+  hidden
+  class:list={[
+    'rounded-lg border border-data/30 bg-data/8 p-2.5 text-[11px] leading-snug text-ink-muted',
+    className,
+  ]}
+>
+  Guardado <strong class="font-medium text-ink">en este navegador</strong>. Si entrás con una
+  cuenta, tus favoritos te siguen a cualquier dispositivo.
+  <a href="/entrar" class="text-primary-ink hover:underline">Crear cuenta</a>
+</p>

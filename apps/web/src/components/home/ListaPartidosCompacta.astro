@@ -1,0 +1,86 @@
+---
+import Icon from '../Icon.astro';
+import type { MatchCard } from '../../lib/api';
+import { formatKickoff, isLive } from '../../lib/format';
+
+/*
+ * Los partidos en un riel angosto: hora y día a la izquierda, los dos equipos uno encima del otro
+ * y el marcador a la derecha. Enfrentados —local a la izquierda, visitante a la derecha— los
+ * nombres se cortaban en "Comerciante…", y un nombre cortado no identifica a nadie.
+ */
+interface Props {
+  titulo: string;
+  icono: 'reloj' | 'cancha';
+  partidos: MatchCard[];
+  /** Resalta a un equipo: en la vista de equipo importa saber de qué lado juega. */
+  destacado?: string | null;
+}
+
+const { titulo, icono, partidos, destacado = null } = Astro.props;
+
+const marcador = (match: MatchCard, local: boolean): string => {
+  const gol = local ? match.homeScore : match.awayScore;
+  return gol === null ? '' : String(gol);
+};
+
+const diaCorto = (iso: string): string =>
+  new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', weekday: 'short', day: 'numeric' })
+    .format(new Date(iso))
+    .replace('.', '');
+---
+
+<div class="min-w-0">
+  <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+    <Icon name={icono} size={12} />
+    {titulo}
+  </h3>
+  <ul class="grid gap-0.5">
+    {
+      partidos.map((match) => (
+        <li>
+          <a
+            href={`/partidos/${match.id}`}
+            class="grid grid-cols-[2.9rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
+          >
+            <span
+              class:list={[
+                'grid text-2xs leading-tight tabular',
+                isLive(match.status) ? 'text-live' : 'text-ink-muted',
+              ]}
+            >
+              {isLive(match.status) ? (
+                <span class="font-medium">{match.elapsedMinutes ?? 0}'</span>
+              ) : (
+                <span class="font-medium text-ink">{formatKickoff(match.kickoffUtc)}</span>
+              )}
+              <span class="truncate">{diaCorto(match.kickoffUtc)}</span>
+            </span>
+
+            <span class="grid min-w-0 gap-0.5">
+              {[match.homeTeam, match.awayTeam].map((team) => (
+                <span class="flex min-w-0 items-center gap-1.5">
+                  {team.logoUrl && (
+                    <img src={team.logoUrl} alt="" width="15" height="15" loading="lazy" class="shrink-0" />
+                  )}
+                  <span
+                    class:list={[
+                      'truncate text-sm',
+                      team.slug === destacado ? 'font-medium text-ink' : '',
+                    ]}
+                  >
+                    {team.name}
+                  </span>
+                </span>
+              ))}
+            </span>
+
+            <span class="grid gap-0.5 text-right font-display text-sm font-semibold tabular">
+              <span>{marcador(match, true)}</span>
+              <span>{marcador(match, false)}</span>
+            </span>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</div>

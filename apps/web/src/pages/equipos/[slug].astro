@@ -1,13 +1,15 @@
 ---
 import Base from '../../layouts/Base.astro';
+import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
+import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
-import FavoriteButton from '../../components/FavoriteButton.astro';
-import MatchRow from '../../components/MatchRow.astro';
+import CountryFlag from '../../components/CountryFlag.astro';
+import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import SquadGrid from '../../components/team/SquadGrid.astro';
-import { api, type FavoriteEntity, ApiError, type SearchHit, type TeamView } from '../../lib/api';
+import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
-import { paisEnEspanol } from '../../lib/paises';
+import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
 
@@ -33,15 +35,19 @@ try {
 const { team, standings, recent, upcoming, squad } = view;
 const similar = await pedidoSimilar;
 const session = await pedidoSesion;
-let following = false;
-if (session?.accessToken) {
-  try {
-    const favorites = await api<FavoriteEntity[]>('/me/favorites', session.accessToken);
-    following = favorites.some((f) => f.entityType === 'team' && f.entityId === team.id);
-  } catch {
-    following = false;
-  }
-}
+
+const pais = paisEnEspanol(team.country);
+
+/* El API manda la fase en juego primero: la primera fila es "cómo va hoy". */
+const principal = standings[0] ?? null;
+
+const FORMA: Record<string, { letra: string; clase: string; titulo: string }> = {
+  W: { letra: 'V', clase: 'bg-primary text-primary-contrast', titulo: 'Victoria' },
+  D: { letra: 'E', clase: 'bg-border-strong text-ink', titulo: 'Empate' },
+  L: { letra: 'D', clase: 'bg-card-red/85 text-chalk', titulo: 'Derrota' },
+};
+const ultimos = (form: string | null) =>
+  form === null ? [] : [...form.slice(0, 5)].reverse().flatMap((c) => FORMA[c] ?? []);
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -61,100 +67,225 @@ const jsonLd = {
   width="bleed"
   liveBar={false}
 >
+  <!--
+    La cabecera carga el resumen: escudo, nombre y cómo va. Antes las cifras estaban dentro de una
+    tarjeta más abajo, y había que buscar en qué puesto va el equipo que fuiste a ver.
+  -->
   <section class="w-full border-b border-board-edge bg-board">
     <Container width="wide">
-      <div class="flex items-center gap-4 py-6">
-        {team.logoUrl && (
-          <img src={team.logoUrl} alt="" width="64" height="64" class="size-14 shrink-0 sm:size-16" />
-        )}
-        <div class="min-w-0">
-          <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
-            {team.name}
-          </h1>
-          <p class="text-sm text-chalk-dim">
-            {[paisEnEspanol(team.country), team.founded ? `Fundado en ${team.founded}` : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
+      <div class="flex flex-wrap items-end gap-x-6 gap-y-4 py-5">
+        <div class="flex min-w-0 flex-1 items-center gap-4">
+          {
+            team.logoUrl && (
+              <img
+                src={team.logoUrl}
+                alt=""
+                width="64"
+                height="64"
+                class="size-14 shrink-0 sm:size-16"
+              />
+            )
+          }
+          <div class="min-w-0">
+            <h1 class="font-display text-3xl font-semibold uppercase leading-none text-chalk sm:text-4xl">
+              {team.name}
+            </h1>
+            <p class="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-chalk-dim">
+              <span class="flex items-center gap-1.5">
+                <CountryFlag name={pais} size={16} />
+                {pais ?? 'Internacional'}
+              </span>
+              {
+                team.founded !== null && (
+                  <>
+                    <span class="text-chalk/25">·</span>
+                    <span>Fundado en {team.founded}</span>
+                  </>
+                )
+              }
+            </p>
+          </div>
         </div>
 
-        <div class="ml-auto shrink-0">
-          <FavoriteButton
-            entityType="team"
-            entityId={team.id}
-            following={following}
-            signedIn={session !== null}
-            label="equipo"
-            onBoard
-          />
-        </div>
+        {
+          principal && (
+            <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
+              <div>
+                <p class="font-display text-3xl font-semibold leading-none tabular text-chalk">
+                  {`${principal.position}º`}
+                </p>
+                <p class="mt-1 truncate text-2xs tracking-label text-chalk-dim uppercase">
+                  {nombreTorneo(principal.season.competition.name)}
+                  {principal.groupLabel ? ` · ${nombreFase(principal.groupLabel)}` : ''}
+                </p>
+              </div>
+              {[
+                { valor: principal.points, etiqueta: 'puntos' },
+                { valor: principal.played, etiqueta: 'jugados' },
+                { valor: `${principal.won}-${principal.drawn}-${principal.lost}`, etiqueta: 'G-E-P' },
+                {
+                  valor: principal.goalsFor - principal.goalsAgainst,
+                  etiqueta: 'diferencia',
+                },
+              ].map((cifra) => (
+                <div>
+                  <p class="font-display text-xl font-semibold leading-none tabular text-chalk">
+                    {cifra.valor}
+                  </p>
+                  <p class="mt-1 text-2xs tracking-label text-chalk-dim uppercase">
+                    {cifra.etiqueta}
+                  </p>
+                </div>
+              ))}
+              {ultimos(principal.form).length > 0 && (
+                <div>
+                  <span class="flex gap-0.5">
+                    {ultimos(principal.form).map((r) => (
+                      <span
+                        class:list={[
+                          'grid size-4 place-items-center rounded-[2px] text-[9px] font-bold',
+                          r.clase,
+                        ]}
+                        title={r.titulo}
+                      >
+                        {r.letra}
+                      </span>
+                    ))}
+                  </span>
+                  <p class="mt-1 text-2xs tracking-label text-chalk-dim uppercase">forma</p>
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        <BotonFavorito
+          tipo="equipo"
+          id={team.id}
+          slug={team.slug}
+          nombre={team.name}
+          logoUrl={team.logoUrl}
+          pais={pais}
+          variante="boton"
+          conCuenta={session !== null}
+          onBoard
+          class="shrink-0"
+        />
       </div>
     </Container>
   </section>
 
-  <Container width="wide" class="py-6">
+  <Container width="wide" class="py-5">
+    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div class="grid gap-4">
+        <!--
+          Los partidos van en dos columnas angostas con los equipos apilados. A media pantalla, una
+          fila de partido se estiraba mil píxeles para poner dos nombres y un marcador.
+        -->
+        <section class="grid gap-x-5 gap-y-4 rounded-xl border border-border bg-surface p-3 sm:grid-cols-2">
+          {
+            upcoming.length > 0 ? (
+              <ListaPartidosCompacta
+                titulo="Próximos partidos"
+                icono="reloj"
+                partidos={upcoming.slice(0, 6)}
+                destacado={team.slug}
+              />
+            ) : (
+              <p class="text-sm text-ink-muted">Sin partidos programados.</p>
+            )
+          }
+          {
+            recent.length > 0 ? (
+              <ListaPartidosCompacta
+                titulo="Últimos resultados"
+                icono="cancha"
+                partidos={recent.slice(0, 6)}
+                destacado={team.slug}
+              />
+            ) : (
+              <p class="text-sm text-ink-muted">Aún no hay resultados registrados.</p>
+            )
+          }
+        </section>
 
-  <div class="grid lg:grid-cols-2 gap-4 items-start">
-    <div class="grid gap-4">
-      {standings.length > 0 && (
-        <Card title="Temporada actual">
-          <div class="grid gap-3">
-            {standings.map((row) => (
-              <a href={`/competencias/${row.season.competition.slug}`} class="flex items-center justify-between gap-2 hover:bg-canvas-subtle rounded-md px-2 py-1.5 transition-colors">
-                <span class="flex items-center gap-2 text-sm">
-                  {row.season.competition.logoUrl && <img src={row.season.competition.logoUrl} alt="" width="18" height="18" loading="lazy" />}
-                  {row.season.competition.name}{row.groupLabel ? ` · ${row.groupLabel}` : ''}
-                </span>
-                <span class="text-sm tabular">
-                  <span class="font-semibold">{row.position}°</span>
-                  <span class="text-ink-muted"> · {row.points} pts · {row.played} PJ</span>
-                </span>
-              </a>
-            ))}
-          </div>
-        </Card>
-      )}
+        <SquadGrid squad={squad} />
+      </div>
 
-      <Card title="Próximos partidos">
-        {upcoming.length > 0 ? (
-          <div class="divide-y divide-border/40">
-            {upcoming.map((match) => <MatchRow match={match} showDate />)}
-          </div>
-        ) : (
-          <p class="text-sm text-ink-muted">Sin partidos programados.</p>
-        )}
-      </Card>
+      <div class="grid gap-4">
+        {
+          standings.length > 0 && (
+            <Card title="Torneos de la temporada">
+              <ul class="grid gap-0.5">
+                {standings.map((row) => (
+                  <li>
+                    <a
+                      href={`/competencias/${row.season.competition.slug}`}
+                      class="flex items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
+                    >
+                      {row.season.competition.logoUrl && (
+                        <img
+                          src={row.season.competition.logoUrl}
+                          alt=""
+                          width="18"
+                          height="18"
+                          loading="lazy"
+                          class="shrink-0"
+                        />
+                      )}
+                      <span class="min-w-0 flex-1">
+                        <span class="block truncate text-sm">
+                          {nombreTorneo(row.season.competition.name)}
+                        </span>
+                        {row.groupLabel && (
+                          <span class="block truncate text-2xs text-ink-muted">
+                            {nombreFase(row.groupLabel)}
+                          </span>
+                        )}
+                      </span>
+                      <span class="shrink-0 text-right">
+                        <span class="block font-display text-base font-semibold leading-none tabular">
+                          {row.position}º
+                        </span>
+                        <span class="block text-2xs text-ink-muted tabular">{row.points} pts</span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )
+        }
 
-      {similar.length > 0 && (
-        <Card title="Equipos con perfil parecido">
-          <ul class="grid gap-2">
-            {similar.map((hit) => (
-              <li>
-                <a href={`/equipos/${hit.slug}`} class="flex items-center gap-2 text-sm hover:text-primary-ink transition-colors">
-                  {hit.imageUrl && <img src={hit.imageUrl} alt="" width="20" height="20" loading="lazy" />}
-                  <span class="truncate">{hit.name}</span>
-                  {hit.subtitle && <span class="ml-auto shrink-0 text-2xs text-ink-muted">{paisEnEspanol(hit.subtitle)}</span>}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+        {
+          similar.length > 0 && (
+            <Card title="Equipos con perfil parecido">
+              <ul class="grid gap-0.5">
+                {similar.map((hit) => (
+                  <li>
+                    <a
+                      href={`/equipos/${hit.slug}`}
+                      class="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-sm transition-colors hover:bg-canvas-subtle"
+                    >
+                      {hit.imageUrl && (
+                        <img src={hit.imageUrl} alt="" width="20" height="20" loading="lazy" />
+                      )}
+                      <span class="truncate">{hit.name}</span>
+                      {hit.subtitle && (
+                        <span class="ml-auto shrink-0 text-2xs text-ink-muted">
+                          {paisEnEspanol(hit.subtitle)}
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )
+        }
+
+        <AvisoFavoritos />
+      </div>
     </div>
-
-    <div class="grid gap-4">
-      <Card title="Últimos resultados">
-        {recent.length > 0 ? (
-          <div class="divide-y divide-border/40">
-            {recent.map((match) => <MatchRow match={match} showDate />)}
-          </div>
-        ) : (
-          <p class="text-sm text-ink-muted">Aún no hay resultados registrados.</p>
-        )}
-      </Card>
-
-      <SquadGrid squad={squad} />
-    </div>
-  </div>
   </Container>
 </Base>

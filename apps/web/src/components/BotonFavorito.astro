@@ -1,0 +1,126 @@
+---
+import Icon from './Icon.astro';
+import type { TipoFavorito } from '../lib/favoritos';
+
+/*
+ * El botón de favorito, en dos tamaños: la estrella suelta de la barra lateral y el botón con
+ * texto de las cabeceras.
+ *
+ * Guarda en el navegador siempre, así que marcar algo no exige una cuenta; si hay sesión además
+ * lo sincroniza con ella. El estado inicial lo pinta el servidor solo para quien entró —el
+ * navegador no lo conoce hasta que corre el script— y después el script reconcilia todo.
+ */
+interface Props {
+  tipo: TipoFavorito;
+  id: string;
+  slug: string;
+  nombre: string;
+  logoUrl?: string | null;
+  /** Ya en español: la barra lateral agrupa por país sin volver a traducir. */
+  pais?: string | null;
+  banderaUrl?: string | null;
+  variante?: 'estrella' | 'boton';
+  /** Cierto si la cuenta ya lo tiene: evita el parpadeo para quien entró. */
+  siguiendo?: boolean;
+  conCuenta?: boolean;
+  /** Sobre la pizarra oscura el botón de superficie queda casi invisible. */
+  onBoard?: boolean;
+  class?: string;
+}
+
+const {
+  tipo,
+  id,
+  slug,
+  nombre,
+  logoUrl = null,
+  pais = null,
+  banderaUrl = null,
+  variante = 'estrella',
+  siguiendo = false,
+  conCuenta = false,
+  onBoard = false,
+  class: className,
+} = Astro.props;
+
+const payload = JSON.stringify({ tipo, id, slug, nombre, logoUrl, pais, banderaUrl });
+const etiqueta = variante === 'boton' ? `Seguir ${nombre}` : `Marcar ${nombre} como favorito`;
+
+const CLASES = {
+  estrella:
+    'cursor-pointer rounded p-0.5 text-border-strong transition-all hover:text-primary-ink aria-pressed:text-primary-ink',
+  boton: onBoard
+    ? 'flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-chalk/30 px-2.5 py-1.5 text-2xs font-medium text-chalk transition-colors hover:border-primary hover:text-primary aria-pressed:border-primary aria-pressed:bg-primary/20 aria-pressed:text-primary'
+    : 'flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-2.5 py-1.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-ink aria-pressed:border-primary-ink aria-pressed:bg-primary/12 aria-pressed:text-primary-ink',
+};
+---
+
+<button
+  type="button"
+  data-favorito={`${tipo}:${slug}`}
+  data-favorito-payload={payload}
+  data-favorito-nombre={nombre}
+  data-con-cuenta={conCuenta ? 'si' : undefined}
+  aria-pressed={siguiendo ? 'true' : 'false'}
+  aria-label={etiqueta}
+  title={etiqueta}
+  class:list={[CLASES[variante], className]}
+>
+  <Icon name="estrella" size={variante === 'boton' ? 13 : 12} />
+  {variante === 'boton' && <span data-favorito-texto>{siguiendo ? 'Siguiendo' : 'Seguir'}</span>}
+</button>
+
+<script>
+  import {
+    alternarFavorito,
+    claveFavorito,
+    EVENTO_FAVORITOS,
+    leerFavoritos,
+    primeraVez,
+    type Favorito,
+  } from '../lib/favoritos';
+
+  /*
+   * Un solo listener delegado para todos los botones de la página: la barra lateral tiene uno por
+   * liga y la cabecera otro para la misma liga, y los dos tienen que reflejar el mismo estado.
+   */
+  function sincronizar(): void {
+    const marcados = new Set(leerFavoritos().map((f) => claveFavorito(f.tipo, f.slug)));
+    for (const boton of document.querySelectorAll<HTMLButtonElement>('[data-favorito]')) {
+      const activo = marcados.has(boton.dataset.favorito ?? '');
+      boton.setAttribute('aria-pressed', String(activo));
+      const texto = boton.querySelector('[data-favorito-texto]');
+      if (texto) texto.textContent = activo ? 'Siguiendo' : 'Seguir';
+    }
+  }
+
+  document.addEventListener('click', (evento) => {
+    const boton = (evento.target as HTMLElement | null)?.closest<HTMLButtonElement>('[data-favorito]');
+    if (!boton) return;
+
+    let favorito: Favorito;
+    try {
+      favorito = JSON.parse(boton.dataset.favoritoPayload ?? '') as Favorito;
+    } catch {
+      return;
+    }
+
+    const marcado = alternarFavorito(favorito);
+    if (marcado && primeraVez()) {
+      document.querySelector<HTMLElement>('[data-favoritos-aviso]')?.removeAttribute('hidden');
+    }
+
+    /* Con sesión, además viaja a la cuenta. Si falla, el favorito del navegador ya quedó. */
+    if (boton.dataset.conCuenta && favorito.id) {
+      const entityType = favorito.tipo === 'liga' ? 'competition' : favorito.tipo === 'equipo' ? 'team' : 'player';
+      void fetch('/api/favoritos', {
+        method: marcado ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entityType, entityId: favorito.id }),
+      }).catch(() => undefined);
+    }
+  });
+
+  window.addEventListener(EVENTO_FAVORITOS, sincronizar);
+  sincronizar();
+</script>

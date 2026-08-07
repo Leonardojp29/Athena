@@ -5,9 +5,22 @@ interface Props {
   rows: StandingRow[];
   label?: string;
   highlightTeamId?: string;
+  /**
+   * Alto máximo del cuerpo, p. ej. "16rem". Con esto la tabla scrollea por dentro y el encabezado
+   * queda fijo: dieciocho equipos completos sin que la tarjeta se estire hasta el pie.
+   */
+  maxAlto?: string;
+  /** A dónde lleva un equipo. La home lo abre en su propio contenedor, no en otra página. */
+  hrefEquipo?: (slug: string) => string;
 }
 
-const { rows, label = '', highlightTeamId } = Astro.props;
+const {
+  rows,
+  label = '',
+  highlightTeamId,
+  maxAlto,
+  hrefEquipo = (slug: string) => `/equipos/${slug}`,
+} = Astro.props;
 
 /*
  * El proveedor manda la forma en inglés ("WWDLW") y el más reciente primero. Se traduce y se
@@ -29,10 +42,10 @@ const diferencia = (row: StandingRow) => {
 };
 ---
 
-<div class="overflow-x-auto">
-  {label && <h3 class="mb-2 text-sm font-semibold text-ink-muted">{label}</h3>}
+{label && <h3 class="mb-2 text-sm font-semibold text-ink-muted">{label}</h3>}
+<div class="overflow-auto" style={maxAlto ? `max-height:${maxAlto}` : undefined}>
   <table class="w-full text-sm">
-    <thead>
+    <thead class="sticky top-0 z-10 bg-surface">
       <tr class="border-b border-border text-2xs text-ink-muted uppercase tracking-label">
         <th scope="col" class="w-8 py-2 pr-2 text-left font-semibold">#</th>
         <th scope="col" class="py-2 text-left font-semibold">Equipo</th>
@@ -57,7 +70,7 @@ const diferencia = (row: StandingRow) => {
             <td class="py-2 pr-2 tabular text-ink-muted">{row.position}</td>
             <td class="py-2">
               <a
-                href={`/equipos/${row.team.slug}`}
+                href={hrefEquipo(row.team.slug)}
                 class="flex items-center gap-2 transition-colors hover:text-primary-ink hover:underline"
               >
                 {row.team.logoUrl && (
