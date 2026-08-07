@@ -1,0 +1,50 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * Mientras el partido está en juego, la página se rehace sola.
+ *
+ * El marcador y el minuto a minuto los refresca la isla, pero la cancha, las notas y las
+ * estadísticas las dibuja el servidor: sin esto, los números se quedaban en el minuto en que
+ * abriste la página —justo cuando la gente está mirando el partido—. La vista en vivo se cachea
+ * quince segundos, así que recargar cada minuto trae datos nuevos y cuesta una consulta a Redis.
+ *
+ * Nunca recarga con la ficha abierta ni con la pestaña de fondo: sería robarle el foco a alguien
+ * que está leyendo. Y se avisa, porque una página que se mueve sola sin decirlo se siente rota.
+ */
+interface Props {
+  segundos?: number;
+}
+
+const { segundos = 60 } = Astro.props;
+---
+
+<p
+  data-refresco={segundos}
+  class="flex items-center gap-1.5 text-2xs text-ink-muted"
+>
+  <span class="size-1.5 shrink-0 rounded-full bg-live animate-live-pulse"></span>
+  Se actualiza solo mientras el partido está en juego
+  <Icon name="reloj" size={11} class="shrink-0" />
+</p>
+
+<script>
+  const marca = document.querySelector<HTMLElement>('[data-refresco]');
+  if (marca) {
+    const cada = Math.max(15, Number(marca.dataset.refresco ?? '60')) * 1000;
+    let temporizador: number | undefined;
+
+    const programar = (): void => {
+      clearTimeout(temporizador);
+      temporizador = window.setTimeout(() => {
+        const fichaAbierta = document.querySelector('dialog[open]') !== null;
+        if (document.visibilityState === 'visible' && !fichaAbierta) location.reload();
+        else programar();
+      }, cada);
+    };
+
+    programar();
+    /* Al volver a la pestaña, el reloj arranca de nuevo en lugar de recargar de golpe. */
+    document.addEventListener('visibilitychange', programar);
+  }
+</script>

@@ -331,6 +331,36 @@ export interface TeamView {
   upcoming: MatchCard[];
 }
 
+/** El historial entre los dos equipos: el resumen de siempre y los últimos cruces. */
+export interface CruceHistorial {
+  id: string;
+  kickoff_utc: string;
+  home_score: number | null;
+  away_score: number | null;
+  home_name: string;
+  home_short: string | null;
+  home_slug: string;
+  home_logo: string | null;
+  away_name: string;
+  away_short: string | null;
+  away_slug: string;
+  away_logo: string | null;
+  competition_name: string;
+  competition_slug: string;
+}
+
+export interface Historial {
+  resumen: {
+    jugados: number;
+    gano_local: number;
+    empates: number;
+    gano_visita: number;
+    goles_local: number;
+    goles_visita: number;
+  } | null;
+  ultimos: CruceHistorial[];
+}
+
 export interface MatchEventView {
   id: string;
   kind: string;
@@ -490,6 +520,7 @@ export type MatchView = MatchCard & {
   statistics: TeamStatistics[];
   lineups: TeamLineup[];
   playerStatistics: MatchPlayerStats[];
+  historial: Historial;
 };
 
 /** Filas de la comparación de estadísticas, en el orden en que se muestran. */

@@ -443,6 +443,78 @@ export class ViewsService {
   }
 
   /**
+   * El historial entre los dos equipos de un partido.
+   *
+   * Va en SQL y con el id del partido como única entrada, así que entra en la misma tanda paralela
+   * que el resto de la vista: pedir el partido primero para conocer a los dos equipos costaría un
+   * viaje entero a Supabase. El resumen se cuenta sobre toda la historia y la lista sobre los
+   * últimos cruces, que son dos preguntas distintas.
+   */
+  private async historial(matchId: string): Promise<Historial> {
+    /*
+     * Una sola consulta para los cruces y el resumen. Eran dos y, dentro del lote que Prisma arma
+     * con el resto de la vista, la segunda perdía de vista su propio FROM y respondía 42P01 —cada
+     * una por separado funcionaba—. Las funciones de ventana se evalúan antes del LIMIT, así que
+     * `OVER ()` cuenta toda la historia aunque solo se devuelvan los últimos ocho cruces.
+     */
+    const filas = await this.prisma.$queryRaw<FilaHistorial[]>`
+      WITH actual AS (
+        SELECT home_team_id, away_team_id FROM matches WHERE id = ${matchId}::uuid
+      ),
+      cruces AS (
+        SELECT m.id, m.kickoff_utc, m.home_score, m.away_score,
+               m.home_team_id, m.away_team_id, a.home_team_id AS local_actual,
+               a.away_team_id AS visita_actual, m.season_id
+        FROM matches m
+        CROSS JOIN actual a
+        WHERE m.id <> ${matchId}::uuid AND m.status = 'finished'
+          AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL
+          AND ((m.home_team_id = a.home_team_id AND m.away_team_id = a.away_team_id)
+            OR (m.home_team_id = a.away_team_id AND m.away_team_id = a.home_team_id))
+      )
+      SELECT c.id, c.kickoff_utc, c.home_score, c.away_score,
+             hl.name AS home_name, hl.short_name AS home_short, hl.slug AS home_slug,
+             hl.logo_url AS home_logo,
+             aw.name AS away_name, aw.short_name AS away_short, aw.slug AS away_slug,
+             aw.logo_url AS away_logo,
+             co.name AS competition_name, co.slug AS competition_slug,
+             count(*) OVER ()::int AS jugados,
+             sum(CASE WHEN (c.home_team_id = c.local_actual AND c.home_score > c.away_score)
+                        OR (c.away_team_id = c.local_actual AND c.away_score > c.home_score)
+                      THEN 1 ELSE 0 END) OVER ()::int AS gano_local,
+             sum(CASE WHEN c.home_score = c.away_score THEN 1 ELSE 0 END) OVER ()::int AS empates,
+             sum(CASE WHEN (c.home_team_id = c.visita_actual AND c.home_score > c.away_score)
+                        OR (c.away_team_id = c.visita_actual AND c.away_score > c.home_score)
+                      THEN 1 ELSE 0 END) OVER ()::int AS gano_visita,
+             sum(CASE WHEN c.home_team_id = c.local_actual THEN c.home_score ELSE c.away_score END)
+               OVER ()::int AS goles_local,
+             sum(CASE WHEN c.home_team_id = c.visita_actual THEN c.home_score ELSE c.away_score END)
+               OVER ()::int AS goles_visita
+      FROM cruces c
+      JOIN teams hl ON hl.id = c.home_team_id
+      JOIN teams aw ON aw.id = c.away_team_id
+      JOIN seasons se ON se.id = c.season_id
+      JOIN competitions co ON co.id = se.competition_id
+      ORDER BY c.kickoff_utc DESC
+      LIMIT 8`;
+
+    const primera = filas[0];
+    return {
+      resumen: primera
+        ? {
+            jugados: primera.jugados,
+            gano_local: primera.gano_local,
+            empates: primera.empates,
+            gano_visita: primera.gano_visita,
+            goles_local: primera.goles_local,
+            goles_visita: primera.goles_visita,
+          }
+        : null,
+      ultimos: filas,
+    };
+  }
+
+  /**
    * Los goleadores de un continente en la temporada en curso.
    *
    * Suma lo que cada futbolista hizo en todas las competencias de esa región —liga, copa nacional
@@ -681,7 +753,7 @@ export class ViewsService {
    * enterarse de algo que las otras cuatro toleran: un id que no existe devuelve listas vacías.
    */
   async match(id: string) {
-    const [match, insights, statistics, lineups, playerStatistics] = await Promise.all([
+    const [match, insights, statistics, lineups, playerStatistics, historial] = await Promise.all([
       this.prisma.match.findUnique({
         relationLoadStrategy: JOIN,
         where: { id },
@@ -755,6 +827,7 @@ export class ViewsService {
         orderBy: [{ isStarter: 'desc' }, { minutesPlayed: 'desc' }],
         select: { ...matchPlayerStats, player: playerLink },
       }),
+      this.historial(id),
     ]);
     if (!match) throw new NotFoundException('Partido no encontrado');
 
@@ -775,6 +848,7 @@ export class ViewsService {
       statistics,
       lineups,
       playerStatistics,
+      historial,
     };
   }
 
@@ -935,6 +1009,39 @@ function puntaje(fila: {
 }): number {
   const nota = fila.rating === null ? 0 : Number(fila.rating.toString());
   return (fila.goals ?? 0) * 2 + (fila.assists ?? 0) + nota / 10;
+}
+
+export interface ResumenHistorial {
+  jugados: number;
+  gano_local: number;
+  empates: number;
+  gano_visita: number;
+  goles_local: number;
+  goles_visita: number;
+}
+
+export interface FilaHistorial extends CruceHistorial, ResumenHistorial {}
+
+export interface CruceHistorial {
+  id: string;
+  kickoff_utc: Date;
+  home_score: number | null;
+  away_score: number | null;
+  home_name: string;
+  home_short: string | null;
+  home_slug: string;
+  home_logo: string | null;
+  away_name: string;
+  away_short: string | null;
+  away_slug: string;
+  away_logo: string | null;
+  competition_name: string;
+  competition_slug: string;
+}
+
+export interface Historial {
+  resumen: ResumenHistorial | null;
+  ultimos: CruceHistorial[];
 }
 
 export interface Goleador {

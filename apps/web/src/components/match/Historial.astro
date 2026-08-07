@@ -1,0 +1,133 @@
+---
+import Icon from '../Icon.astro';
+import type { CruceHistorial, Historial, TeamSummary } from '../../lib/api';
+import { formatDate } from '../../lib/format';
+
+/*
+ * El historial entre los dos equipos.
+ *
+ * Es lo primero que se busca antes de un partido y lo teníamos sin mostrar: con 9 478 partidos en
+ * la base, los cruces anteriores son una consulta. La barra de arriba es el resumen de siempre y
+ * abajo van los últimos ocho, con el resultado del que ganó marcado.
+ */
+interface Props {
+  historial: Historial;
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+}
+
+const { historial, homeTeam, awayTeam } = Astro.props;
+const { resumen, ultimos } = historial;
+
+/* Sin cruces previos no hay nada que contar y una barra en cero es ruido. */
+const hay = resumen !== null && resumen.jugados > 0;
+const total = resumen?.jugados ?? 0;
+const parte = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100));
+
+/** Quién ganó ese cruce, mirado desde el equipo local de hoy. */
+const ganador = (c: CruceHistorial): 'local' | 'visita' | 'empate' => {
+  if (c.home_score === null || c.away_score === null) return 'empate';
+  if (c.home_score === c.away_score) return 'empate';
+  const ganoElDeCasa = c.home_score > c.away_score;
+  const eraElLocalDeHoy = c.home_slug === homeTeam.slug;
+  return ganoElDeCasa === eraElLocalDeHoy ? 'local' : 'visita';
+};
+
+const COLOR = {
+  local: 'bg-primary',
+  empate: 'bg-border-strong',
+  visita: 'bg-data',
+} as const;
+---
+
+{
+  hay && resumen && (
+    <section class="rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-3 flex items-center gap-1.5 text-2xs font-medium tracking-label text-ink-muted uppercase">
+        <Icon name="cancha" size={13} />
+        {`Historial · ${total} ${total === 1 ? 'partido' : 'partidos'}`}
+      </h2>
+
+      <!-- Tres cifras y una barra: quién ganó más, de un golpe de vista. -->
+      <div class="flex items-end justify-between gap-3 text-center">
+        <div class="min-w-0">
+          <p class="font-display text-2xl font-semibold leading-none tabular text-primary-ink">
+            {resumen.gano_local}
+          </p>
+          <p class="mt-1 truncate text-2xs text-ink-muted">
+            {homeTeam.shortName ?? homeTeam.name}
+          </p>
+        </div>
+        <div>
+          <p class="font-display text-lg font-semibold leading-none tabular text-ink-muted">
+            {resumen.empates}
+          </p>
+          <p class="mt-1 text-2xs text-ink-muted">empates</p>
+        </div>
+        <div class="min-w-0">
+          <p class="font-display text-2xl font-semibold leading-none tabular text-data-ink">
+            {resumen.gano_visita}
+          </p>
+          <p class="mt-1 truncate text-2xs text-ink-muted">
+            {awayTeam.shortName ?? awayTeam.name}
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-2 flex h-1.5 overflow-hidden rounded-full bg-canvas-subtle">
+        <span class="bg-primary" style={`width:${parte(resumen.gano_local)}%`} />
+        <span class="bg-border-strong" style={`width:${parte(resumen.empates)}%`} />
+        <span class="bg-data" style={`width:${parte(resumen.gano_visita)}%`} />
+      </div>
+
+      <p class="mt-2 text-center text-2xs text-ink-muted tabular">
+        {resumen.goles_local}–{resumen.goles_visita} en goles
+      </p>
+
+      <!--
+        Los cruces van plegados. Desplegados sumaban 150px al riel y las cuatro vistas del partido
+        dejaban de caber en 1080p, que es el invariante que se pidió desde el principio.
+      -->
+      {
+        ultimos.length > 0 && (
+          <details class="group/cruces mt-3 border-t border-border pt-2">
+            <summary class="flex cursor-pointer list-none items-center gap-1 text-2xs text-primary-ink hover:underline">
+              Ver los últimos cruces
+              <Icon
+                name="chevron-derecha"
+                size={11}
+                class="transition-transform group-open/cruces:rotate-90"
+              />
+            </summary>
+            <ul class="mt-1.5 grid gap-0.5">
+            {ultimos.slice(0, 5).map((cruce) => (
+              <li>
+                <a
+                  href={`/partidos/${cruce.id}`}
+                  class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
+                >
+                  <span
+                    class:list={['size-1.5 shrink-0 rounded-full', COLOR[ganador(cruce)]]}
+                    aria-hidden="true"
+                  />
+                  <span class="min-w-0 truncate text-2xs">
+                    <span class="text-ink-muted">{formatDate(cruce.kickoff_utc)}</span>
+                    <span class="ml-1.5">{cruce.home_short ?? cruce.home_name}</span>
+                    <span class="mx-1 font-display font-semibold tabular">
+                      {cruce.home_score}–{cruce.away_score}
+                    </span>
+                    <span>{cruce.away_short ?? cruce.away_name}</span>
+                  </span>
+                  <span class="shrink-0 truncate text-[10px] text-ink-muted">
+                    {cruce.competition_name}
+                  </span>
+                </a>
+              </li>
+            ))}
+            </ul>
+          </details>
+        )
+      }
+    </section>
+  )
+}

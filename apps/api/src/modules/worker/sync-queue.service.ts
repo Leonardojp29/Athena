@@ -32,6 +32,18 @@ const INSIGHT_DELAY_MS = 3 * 60_000;
 /* El proveedor publica la alineación unos 40 minutos antes del pitazo. */
 const LINEUP_LEAD_MS = 45 * 60_000;
 
+/*
+ * Cada cuánto se vuelven a pedir las notas de un partido en juego, y cuántos partidos por vuelta.
+ *
+ * Las notas y las estadísticas por jugador solo se pedían al terminar, así que durante el partido
+ * la cancha mostraba a los once sin un número: justo cuando la gente está mirando. Cinco minutos es
+ * el ritmo al que el proveedor las mueve, y el tope de quince partidos por vuelta acota el sábado
+ * más cargado a un costo conocido: un request por partido cada cinco minutos.
+ */
+const LIVE_PLAYERS_STALE_MS = 5 * 60_000;
+const LIVE_PLAYERS_MAX = 15;
+const LIVE_PLAYERS_ON = process.env.SYNC_LIVE_PLAYER_STATS !== 'false';
+
 type SyncJob =
   | { name: 'competition'; data: { competitionRef: string } }
   | { name: 'teams'; data: { competitionRef: string; seasonYear: number } }
@@ -170,6 +182,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
 
     const escritos = await this.syncFixtures.syncLive();
     await this.fetchMissingDetail();
+    await this.refreshLivePlayers();
     /*
      * Y después la reconciliación: sin esto un partido terminado se queda "en juego" para
      * siempre, porque desaparece del feed en vivo y nadie vuelve a mirarlo. Cuesta un request
@@ -177,6 +190,50 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
      */
     await this.syncFixtures.reconcileStale();
     return escritos;
+  }
+
+  /**
+   * Las notas por jugador de los partidos en juego.
+   *
+   * Se pide solo lo que está viejo: un partido cuya nota más reciente tiene menos de cinco minutos
+   * no se vuelve a pedir. Así el costo no depende del ritmo del tick —que corre cada minuto— sino
+   * de cuántos partidos hay en cancha, y un partido de dos horas cuesta veinticuatro requests.
+   */
+  private async refreshLivePlayers(): Promise<number> {
+    if (!LIVE_PLAYERS_ON) return 0;
+
+    const enJuego = await this.prisma.match.findMany({
+      where: { status: { in: ['in_play', 'paused'] } },
+      select: {
+        id: true,
+        playerStatistics: { select: { updatedAt: true }, orderBy: { updatedAt: 'desc' }, take: 1 },
+      },
+      take: 60,
+    });
+
+    const limite = new Date(Date.now() - LIVE_PLAYERS_STALE_MS);
+    const pendientes = enJuego
+      .filter((m) => {
+        const ultima = m.playerStatistics[0]?.updatedAt;
+        return ultima === undefined || ultima < limite;
+      })
+      .slice(0, LIVE_PLAYERS_MAX);
+    if (pendientes.length === 0) return 0;
+
+    const refs = await this.prisma.externalReference.findMany({
+      where: {
+        provider: 'api-football',
+        entityType: 'match',
+        entityId: { in: pendientes.map((m) => m.id) },
+      },
+      select: { providerRef: true },
+    });
+
+    for (const { providerRef } of refs) {
+      await this.enqueue('match-players', { matchRef: providerRef });
+    }
+    logJson('info', 'live_players_encolados', { partidos: refs.length });
+    return refs.length;
   }
 
   /**
