@@ -1,13 +1,23 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('recorrido de lectura', () => {
-  test('la home lista partidos y permite entrar a una competencia', async ({ page }) => {
+  /*
+   * Desde la home, una liga se abre en su propio contenedor y de ahí se llega a la página completa.
+   * Antes el nombre de la liga en los partidos del día iba directo a su ruta, que es justo lo que
+   * hacía perder de vista el resto del día.
+   */
+  test('la home lista partidos y llega a una competencia en dos pasos', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/partidos/i);
 
-    const firstCompetition = page.locator('main a[href^="/competencias/"]').first();
-    await expect(firstCompetition).toBeVisible();
-    await firstCompetition.click();
+    const liga = page.locator('main a[href^="/?liga="]').first();
+    await expect(liga).toBeVisible();
+    await liga.click();
+    await expect(page).toHaveURL(/\?liga=/);
+
+    const completa = page.getByRole('link', { name: /ver la liga completa/i });
+    await expect(completa).toBeVisible();
+    await completa.click();
 
     await expect(page).toHaveURL(/\/competencias\//);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
