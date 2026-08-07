@@ -23,7 +23,13 @@ interface Props {
 
 const { player, team, stats, largo, ancho, fila = 0 } = Astro.props;
 
-const apellido = player.name.split(' ').at(-1) ?? player.name;
+/*
+ * El nombre bueno es el de la entidad, no el de la alineación: el proveedor manda "D. Romero"
+ * dentro del `startXI` y "Diego Romero" en /players, y el snapshot guarda el primero. Sin esto
+ * la ficha abría con la inicial mientras el perfil mostraba el nombre entero.
+ */
+const nombre = stats?.player.name ?? player.name;
+const apellido = nombre.split(' ').at(-1) ?? nombre;
 const clickeable = player.playerId !== null;
 const dorsal = player.number ?? stats?.shirtNumber ?? null;
 /* La alineación trae la foto denormalizada; si falta, la de las estadísticas del partido. */
@@ -36,8 +42,8 @@ const goles = (stats?.goals ?? 0) + (stats?.penaltyScored ?? 0);
 const ficha = clickeable
   ? JSON.stringify({
       playerId: player.playerId,
-      slug: player.slug,
-      name: player.name,
+      slug: player.slug ?? stats?.player.slug ?? null,
+      name: nombre,
       photoUrl: foto,
       number: dorsal,
       position: player.position,

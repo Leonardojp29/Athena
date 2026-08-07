@@ -77,6 +77,42 @@ test.describe('cancha interactiva', () => {
     await expect(ficha.getByRole('heading', { level: 2 })).not.toBeEmpty();
   });
 
+  /*
+   * El eje transversal es lo único de la cancha que no se puede verificar leyendo el dominio: la
+   * geometría dice "x a lo ancho" y es el CSS el que decide si eso es arriba o a la izquierda.
+   * Con los ejes cruzados la cancha se transpone entera y el lateral izquierdo aparece por
+   * derecha —lo que pasó de verdad—. La orientación de la columna 1 la cubre pitch.test.ts.
+   */
+  test('a lo ancho es la vertical de la pantalla y a lo largo la horizontal', async ({
+    page,
+    isMobile,
+  }) => {
+    test.skip(isMobile, 'en vertical los ejes están intercambiados a propósito');
+    const id = await partidoConAlineacion(page);
+    test.skip(id === null, 'ningún partido del día tiene alineación sincronizada');
+
+    await page.goto(`/partidos/${id}?vista=alineaciones`);
+    const cancha = page.locator('[data-cancha]');
+    await expect(cancha).toBeVisible();
+
+    const fichas = await cancha.locator('[data-iman]').evaluateAll((els) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        const estilo = el.getAttribute('style') ?? '';
+        const leer = (nombre: string) => Number(new RegExp(`--${nombre}:([\\d.]+)%`).exec(estilo)?.[1]);
+        return { ancho: leer('ancho'), largo: leer('largo'), x: r.x, y: r.y };
+      }),
+    );
+    expect(fichas).toHaveLength(22);
+    expect(fichas.every((f) => Number.isFinite(f.ancho) && Number.isFinite(f.largo))).toBe(true);
+
+    /* Más ancho, más abajo; más largo, más a la derecha. Si se cruzan, la cancha está transpuesta. */
+    const porAncho = [...fichas].sort((a, b) => a.ancho - b.ancho);
+    expect(porAncho[0]!.y).toBeLessThan(porAncho.at(-1)!.y);
+    const porLargo = [...fichas].sort((a, b) => a.largo - b.largo);
+    expect(porLargo[0]!.x).toBeLessThan(porLargo.at(-1)!.x);
+  });
+
   test('la ficha se cierra con Escape y el foco vuelve al jugador', async ({ page }) => {
     const id = await partidoConAlineacion(page);
     test.skip(id === null, 'ningún partido del día tiene alineación sincronizada');

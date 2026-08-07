@@ -95,6 +95,19 @@ describe('layout', () => {
     expect(placed.filter((p) => p.row === 3)).toHaveLength(1);
   });
 
+  /*
+   * La orientación es lo único de este archivo que no se puede deducir leyendo el código: hay
+   * que mirar un partido real. Verificado con el fixture 1549430 (Cienciano 2-0 Universitario),
+   * donde `2:1` era Inga, lateral izquierdo, y `2:4` Polo por derecha.
+   */
+  it('pone la columna 1 en la banda izquierda del equipo', () => {
+    const defensa = (layout(conGrid(GRID_4_3_3)) ?? [])
+      .filter((p) => p.row === 1)
+      .sort((a, b) => a.x - b.x);
+    expect(defensa[0]?.player.grid).toBe('2:1');
+    expect(defensa.at(-1)?.player.grid).toBe('2:4');
+  });
+
   it('espeja el eje transversal sin mover las filas', () => {
     const normal = layout(conGrid(GRID_4_3_3)) ?? [];
     const espejado = layout(conGrid(GRID_4_3_3), { mirrored: true }) ?? [];

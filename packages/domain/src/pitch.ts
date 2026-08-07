@@ -13,10 +13,16 @@ export const PITCH_LENGTH_M = 105;
 export const PITCH_WIDTH_M = 68;
 
 /**
- * El proveedor no documenta si la columna 1 es la banda izquierda o la derecha. Queda
- * detrás de esta constante: si se ve espejado, se cambia acá y en ningún otro lado.
+ * La columna 1 del proveedor es la banda **izquierda** del equipo, mirando hacia el arco
+ * rival. No está documentado: se verificó contra el Cienciano 2-0 Universitario del 2 de
+ * agosto de 2026 (fixture 1549430), donde Universitario formó con `2:1` Inga y `2:2`
+ * Di Benedetto —lateral izquierdo y central izquierdo— y `2:4` Polo por derecha.
+ *
+ * Con esto, en la cancha vertical el equipo ataca hacia arriba y su izquierda queda a la
+ * izquierda; en la horizontal ataca hacia la derecha y su izquierda queda arriba. El equipo
+ * visitante es la misma figura rotada 180°, que es lo que hace `mirrored`.
  */
-const COL_ONE_IS_LEFT = false;
+const COL_ONE_IS_LEFT = true;
 
 /*
  * Márgenes a lo largo: el arquero no pisa la línea de gol y la línea más adelantada se queda
