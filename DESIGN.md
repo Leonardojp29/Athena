@@ -398,6 +398,44 @@ después de las posiciones.
 Las columnas numéricas llevan ancho fijo y se agrupan a la derecha: repartidas por todo el ancho, la
 fila se leía como un formulario.
 
+### La copa internacional
+
+Una copa no se lee como una liga. Lo que trae a alguien a la página de la Libertadores es **quién
+juega con quién y cómo sigue**, y eso no lo contesta una tabla: lo contesta el cuadro.
+
+**El cuadro** va a todo lo ancho y arriba, con las rondas en columnas de la más lejana a la final y
+desplazamiento horizontal propio: una copa africana tiene seis rondas y apiladas la página se vuelve
+un scroll donde se pierde el sentido de avance. Cada llave muestra la ida, la vuelta, el global y
+quién pasó.
+
+**Quién pasó se deduce de la ronda siguiente, no del resultado.** Si el equipo aparece más adelante,
+avanzó. Es la única forma honesta de resolver una llave que se definió por penales, dato que el
+proveedor no publica en el partido. Cuando el global quedó igualado, el pie de la llave dice quién
+pasó en lugar de inventar una tanda.
+
+**No hay líneas que unan una llave con la siguiente.** El cuadro real tiene fases previas, grupos y
+equipos que entran más tarde: cualquier línea prometería un árbol perfecto que no existe. Lo que sí
+se dice es cuántos equipos deja cada ronda, cuál se está jugando y quién sigue vivo.
+
+**Colores propios por torneo** (`lib/coloresCompetencia.ts`): doce paletas curadas a mano —el
+proveedor solo manda el logo— con un color de cabecera y un acento. Se usan en el lavado de la
+cabecera, el rótulo de la ronda en juego, la marca del que pasó y la nota del jugador del torneo;
+nunca detrás de un texto largo. Una liga no entra: la paleta devuelve null y la página se ve como
+siempre. La cabecera lleva además el apodo del torneo —"La Gloria Eterna"— como antetítulo.
+
+**Los ocho grupos se muestran juntos y compactos** (posición, equipo, PJ y puntos). Con el
+segmentado de fases se veía un grupo de cuatro equipos estirado en mil píxeles y el resto de la
+columna vacío; una copa se quiere leer entera de un golpe.
+
+**El once del torneo, no el de la fecha.** En una copa el once que importa es el de toda la
+temporada, con su jugador del torneo destacado: responde "quién fue este torneo" y de paso evita dos
+canchas en el mismo riel. La cancha es el mismo componente en los dos casos
+(`components/pitch/CanchaOnce.astro`), porque son dos preguntas distintas sobre las mismas
+posiciones.
+
+**El archivo** son enlaces `?temporada=`, y solo se ofrecen los años que tienen partidos en la base:
+un año vacío es una promesa que la página no puede cumplir.
+
 ### Fases de una temporada
 
 Una temporada puede tener varias tablas y no todas significan lo mismo: **fases en secuencia**
