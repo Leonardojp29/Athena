@@ -1,16 +1,13 @@
 import 'reflect-metadata';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import type { FootballDataProvider } from '@athena/domain';
 import { ApiBudgetService } from '../shared/api-budget.service.js';
 import { PrismaService } from '../shared/prisma.service.js';
 import { SharedModule } from '../shared/shared.module.js';
-import { FOOTBALL_DATA_PROVIDER } from '../modules/providers/provider.tokens.js';
-import { ApiFootballModule } from '../modules/providers/api-football/api-football.module.js';
-import { ExternalReferenceService } from '../modules/sync/external-reference.service.js';
+import { SyncMatchDetailUseCase } from '../modules/sync/sync-match-detail.usecase.js';
 import { SyncModule } from '../modules/sync/sync.module.js';
 
-@Module({ imports: [SharedModule, SyncModule, ApiFootballModule] })
+@Module({ imports: [SharedModule, SyncModule] })
 class ColoresModule {}
 
 /**
@@ -25,9 +22,8 @@ async function main(): Promise<void> {
     logger: ['warn', 'error'],
   });
   const prisma = app.get(PrismaService);
-  const refs = app.get(ExternalReferenceService);
   const budget = app.get(ApiBudgetService);
-  const provider = app.get<FootballDataProvider>(FOOTBALL_DATA_PROVIDER);
+  const detalle = app.get(SyncMatchDetailUseCase);
 
   const limite = Number(process.env.BACKFILL_LIMIT ?? 1200);
 
@@ -70,27 +66,7 @@ async function main(): Promise<void> {
     const ref = porId.get(matchId);
     if (!ref) continue;
     try {
-      const lineups = await provider.getMatchLineups(ref);
-      const teamIds = await refs.resolveMany(
-        'api-football',
-        'team',
-        lineups.map((l) => l.teamRef),
-      );
-      for (const lineup of lineups) {
-        const teamId = teamIds.get(lineup.teamRef);
-        if (!teamId) continue;
-        if (lineup.colors.primary === null && lineup.colors.secondary === null) continue;
-        await prisma.team.update({
-          where: { id: teamId },
-          data: {
-            ...(lineup.colors.primary !== null ? { primaryColor: lineup.colors.primary } : {}),
-            ...(lineup.colors.secondary !== null
-              ? { secondaryColor: lineup.colors.secondary }
-              : {}),
-          },
-        });
-        escritos++;
-      }
+      escritos += await detalle.refreshColors(ref);
     } catch (error) {
       fallos++;
       console.error(`  ✗ ${ref}: ${String(error).slice(0, 120)}`);

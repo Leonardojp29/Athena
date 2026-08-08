@@ -246,6 +246,70 @@ export interface CompetitionView {
   assisters: SeasonLeader[];
   /** El equipo ideal de la última jornada con notas; null si todavía no alcanza para armarlo. */
   once: OnceDeLaFecha | null;
+  /** Las llaves de la copa, de la ronda más lejana a la final. Vacío en una liga. */
+  bracket: RondaDeCuadro[];
+  /** El once y el mejor de toda la temporada; null cuando no hay notas suficientes. */
+  onceDelTorneo: OnceDelTorneo | null;
+  /** Los años con partidos en la base, del más nuevo al más viejo: el archivo. */
+  seasons: number[];
+}
+
+export interface EquipoDeCuadro {
+  id: string;
+  name: string;
+  shortName: string | null;
+  slug: string;
+  logoUrl: string | null;
+}
+
+export interface PartidoDeCuadro {
+  id: string;
+  kickoffUtc: string;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  round: string | null;
+  homeTeam: EquipoDeCuadro;
+  awayTeam: EquipoDeCuadro;
+}
+
+export interface LlaveDeCuadro {
+  homeTeam: EquipoDeCuadro;
+  awayTeam: EquipoDeCuadro;
+  /** Ida y vuelta en orden de fecha; una sola cuando la llave es a partido único. */
+  legs: PartidoDeCuadro[];
+  /** El global de lo jugado, con el local del primer partido primero. */
+  aggregate: { local: number; visita: number } | null;
+  /** Se deduce de las rondas siguientes, así que resuelve también las llaves definidas por penales. */
+  advancedTeamId: string | null;
+}
+
+export interface RondaDeCuadro {
+  round: string;
+  label: string;
+  ties: LlaveDeCuadro[];
+}
+
+/** Una fila del once del torneo: viene de SQL con los puestos que usa el proveedor. */
+export interface JugadorDelOnceDelTorneo {
+  position: string;
+  rating: string | null;
+  goals: number | null;
+  assists: number | null;
+  appearances: number | null;
+  player_id: string;
+  player_name: string;
+  player_slug: string;
+  photo_url: string | null;
+  team_name: string;
+  team_short: string | null;
+  team_slug: string;
+  team_logo: string | null;
+}
+
+export interface OnceDelTorneo {
+  players: JugadorDelOnceDelTorneo[];
+  best: JugadorDelOnceDelTorneo | null;
 }
 
 /** Una fila del once: viene de SQL, así que las claves son las de la base. */

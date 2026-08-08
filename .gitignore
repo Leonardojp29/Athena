@@ -36,3 +36,4 @@ skills-lock.json
 # playwright
 apps/web/test-results/
 apps/web/playwright-report/
+*.tmp.mjs

@@ -55,16 +55,12 @@ const [uno, dos, candidatos] = await Promise.all([
 const nombreDe = (vista: PlayerView | TeamView | null): string | null =>
   vista === null ? null : 'player' in vista ? vista.player.name : vista.team.name;
 
-const otroTipo = tipo === 'equipo' ? 'jugador' : 'equipo';
 const titulo =
   uno && dos
     ? `${nombreDe(uno)} vs ${nombreDe(dos)}`
     : tipo === 'equipo'
       ? 'Comparar equipos'
       : 'Comparar jugadores';
-
-/* Mantener `a` al cambiar de tipo no sirve: un jugador no se compara con un equipo. */
-const enlaceOtroTipo = `/comparar?tipo=${otroTipo}`;
 ---
 
 <Base

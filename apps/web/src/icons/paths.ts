@@ -80,6 +80,14 @@ const REGISTRO = {
   formacion: {
     body: '<circle cx="6" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="16.5" r="1.6" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
   },
+  // La copa: la marca de los torneos con final, del campeón y del jugador del torneo
+  trofeo: {
+    body: '<path d="M8 4.5h8v4.2a4 4 0 0 1-8 0z"/><path d="M8 5.5H5.2v1.8A3.2 3.2 0 0 0 8.4 10.5M16 5.5h2.8v1.8a3.2 3.2 0 0 1-3.2 3.2"/><path d="M12 12.7v3.3"/><path d="M8.5 19.5h7"/><path d="M10 16h4l.8 3.5h-5.6z"/>',
+  },
+  // Las llaves de una copa: dos ramas que confluyen
+  cuadro: {
+    body: '<path d="M3.5 6.5h4.2v5h4.6M3.5 17.5h4.2v-6"/><path d="M20.5 6.5h-4.2v5h-4.3M20.5 17.5h-4.2v-6"/>',
+  },
 } as const satisfies Record<string, IconDef>;
 
 /* El registro se declara con `satisfies` para tipar las claves, y se expone con el tipo

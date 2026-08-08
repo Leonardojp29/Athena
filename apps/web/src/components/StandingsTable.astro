@@ -12,6 +12,11 @@ interface Props {
   maxAlto?: string;
   /** A dónde lleva un equipo. La home lo abre en su propio contenedor, no en otra página. */
   hrefEquipo?: (slug: string) => string;
+  /**
+   * Solo posición, equipo, jugados y puntos. Para los ocho grupos de una copa, donde importa quién
+   * clasifica y no la diferencia de gol: las nueve columnas obligaban a mostrar un grupo por vez.
+   */
+  compacto?: boolean;
 }
 
 const {
@@ -20,6 +25,7 @@ const {
   highlightTeamId,
   maxAlto,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
+  compacto = false,
 } = Astro.props;
 
 /*
@@ -50,11 +56,15 @@ const diferencia = (row: StandingRow) => {
         <th scope="col" class="w-8 py-2 pr-2 text-left font-semibold">#</th>
         <th scope="col" class="py-2 text-left font-semibold">Equipo</th>
         <th scope="col" class="w-11 py-2 text-center font-semibold">PJ</th>
-        <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">G</th>
-        <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">E</th>
-        <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">P</th>
-        <th scope="col" class="hidden w-11 py-2 text-center font-semibold md:table-cell">DG</th>
-        <th scope="col" class="hidden w-28 py-2 text-left font-semibold lg:table-cell">Forma</th>
+        {!compacto && (
+          <>
+            <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">G</th>
+            <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">E</th>
+            <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">P</th>
+            <th scope="col" class="hidden w-11 py-2 text-center font-semibold md:table-cell">DG</th>
+            <th scope="col" class="hidden w-28 py-2 text-left font-semibold lg:table-cell">Forma</th>
+          </>
+        )}
         <th scope="col" class="w-12 py-2 text-center font-semibold">Pts</th>
       </tr>
     </thead>
@@ -80,25 +90,29 @@ const diferencia = (row: StandingRow) => {
               </a>
             </td>
             <td class="py-2 text-center tabular">{row.played}</td>
-            <td class="hidden py-2 text-center tabular sm:table-cell">{row.won}</td>
-            <td class="hidden py-2 text-center tabular sm:table-cell">{row.drawn}</td>
-            <td class="hidden py-2 text-center tabular sm:table-cell">{row.lost}</td>
-            <td class="hidden py-2 text-center tabular md:table-cell">{diferencia(row)}</td>
-            <td class="hidden py-2 lg:table-cell">
-              <span class="flex gap-0.5">
-                {ultimos(row.form).map((r) => (
-                  <span
-                    class:list={[
-                      'grid size-4 place-items-center rounded-[2px] text-[9px] font-bold',
-                      r.clase,
-                    ]}
-                    title={r.titulo}
-                  >
-                    {r.letra}
+            {!compacto && (
+              <>
+                <td class="hidden py-2 text-center tabular sm:table-cell">{row.won}</td>
+                <td class="hidden py-2 text-center tabular sm:table-cell">{row.drawn}</td>
+                <td class="hidden py-2 text-center tabular sm:table-cell">{row.lost}</td>
+                <td class="hidden py-2 text-center tabular md:table-cell">{diferencia(row)}</td>
+                <td class="hidden py-2 lg:table-cell">
+                  <span class="flex gap-0.5">
+                    {ultimos(row.form).map((r) => (
+                      <span
+                        class:list={[
+                          'grid size-4 place-items-center rounded-[2px] text-[9px] font-bold',
+                          r.clase,
+                        ]}
+                        title={r.titulo}
+                      >
+                        {r.letra}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </span>
-            </td>
+                </td>
+              </>
+            )}
             <td class="py-2 text-center font-semibold tabular">{row.points}</td>
           </tr>
         ))

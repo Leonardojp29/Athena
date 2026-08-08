@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { gruposVigentes } from '@athena/domain';
+import { gruposVigentes, ordenarRondas } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
   CONTINENT_LABEL,
@@ -324,14 +324,25 @@ export class ViewsService {
    * Todo cuelga del slug y de "la temporada vigente", así que nada tiene que esperar a nada: pedir
    * la competencia, después su temporada y después la tabla eran tres viajes en fila.
    */
-  async competition(slug: string) {
-    const temporadaVigente = {
-      competition: { slug },
-      isCurrent: true,
-    };
+  async competition(slug: string, year: number | null = null) {
+    /* Con año, el archivo de esa temporada; sin año, la vigente. El resto de la vista no cambia. */
+    const temporadaVigente = year
+      ? { competition: { slug }, year }
+      : { competition: { slug }, isCurrent: true };
 
-    const [competition, season, standings, recent, upcoming, scorers, assisters, once] =
-      await Promise.all([
+    const [
+      competition,
+      season,
+      standings,
+      recent,
+      upcoming,
+      scorers,
+      assisters,
+      once,
+      todos,
+      onceDelTorneo,
+      seasons,
+    ] = await Promise.all([
       this.prisma.competition.findUnique({
         where: { slug },
         select: {
@@ -406,6 +417,25 @@ export class ViewsService {
         select: goleador,
       }),
       this.onceDeLaFecha(slug),
+      /* Todos los partidos de la temporada: con 142 en una copa, es una consulta y arma el cuadro. */
+      this.prisma.match.findMany({
+        relationLoadStrategy: JOIN,
+        where: { season: temporadaVigente },
+        orderBy: { kickoffUtc: 'asc' },
+        select: {
+          id: true,
+          kickoffUtc: true,
+          status: true,
+          homeScore: true,
+          awayScore: true,
+          round: true,
+          homeTeam: teamSummary,
+          awayTeam: teamSummary,
+        },
+      }),
+      this.onceDelTorneo(slug, year),
+      /* Las temporadas con datos: ofrecer una vacía es prometer de más. */
+      this.temporadasCon(slug),
     ]);
     if (!competition) throw new NotFoundException('Competencia no encontrada');
     if (!season) throw new NotFoundException('Sin temporada activa');
@@ -439,6 +469,10 @@ export class ViewsService {
       scorers,
       assisters,
       once,
+      /* El cuadro solo existe si la competencia tiene llaves; una liga devuelve una lista vacía. */
+      bracket: this.cuadroDe(todos),
+      onceDelTorneo,
+      seasons,
     };
   }
 
@@ -512,6 +546,143 @@ export class ViewsService {
         : null,
       ultimos: filas,
     };
+  }
+
+  /** Las temporadas de una competencia que tienen partidos. */
+  private async temporadasCon(slug: string): Promise<number[]> {
+    const filas = await this.prisma.$queryRaw<Array<{ year: number }>>`
+      SELECT se.year
+      FROM seasons se
+      JOIN competitions c ON c.id = se.competition_id
+      WHERE c.slug = ${slug} AND EXISTS (SELECT 1 FROM matches m WHERE m.season_id = se.id)
+      ORDER BY se.year DESC`;
+    return filas.map((f) => f.year);
+  }
+
+  /**
+   * El once del torneo y su mejor jugador: los mejores por puesto en toda la temporada.
+   *
+   * Pide un mínimo de partidos para entrar —sin eso, un suplente con una gran actuación le gana el
+   * puesto a quien la jugó entera— y usa la nota acumulada de la temporada, que es la que el
+   * proveedor calcula sobre todos sus partidos.
+   *
+   * Resuelve la temporada en SQL en lugar de recibir el año ya buscado: así entra en la misma tanda
+   * paralela que el resto de la vista y no cuesta un viaje extra a Supabase.
+   */
+  private async onceDelTorneo(slug: string, year: number | null): Promise<OnceDelTorneo | null> {
+    const filas = await this.prisma.$queryRaw<FilaOnceTorneo[]>`
+      WITH notas AS (
+        SELECT p.position, s.rating, s.goals, s.assists, s.appearances,
+               p.id AS player_id, p.name AS player_name, p.slug AS player_slug, p.photo_url,
+               t.name AS team_name, t.short_name AS team_short, t.slug AS team_slug,
+               t.logo_url AS team_logo,
+               row_number() OVER (
+                 PARTITION BY p.position ORDER BY s.rating DESC NULLS LAST, s.appearances DESC
+               ) AS puesto
+        FROM player_season_statistics s
+        JOIN seasons se ON se.id = s.season_id
+        JOIN competitions c ON c.id = se.competition_id
+        JOIN players p ON p.id = s.player_id
+        JOIN teams t ON t.id = s.team_id
+        WHERE c.slug = ${slug}
+          AND CASE WHEN ${year}::int IS NULL THEN se.is_current ELSE se.year = ${year}::int END
+          AND s.rating IS NOT NULL AND p.position IS NOT NULL
+          AND s.appearances >= 3
+      )
+      SELECT position, rating::text AS rating, goals, assists, appearances,
+             player_id, player_name, player_slug, photo_url,
+             team_name, team_short, team_slug, team_logo
+      FROM notas
+      WHERE (position = 'goalkeeper' AND puesto <= 1)
+         OR (position = 'defender' AND puesto <= 4)
+         OR (position = 'midfielder' AND puesto <= 4)
+         OR (position = 'attacker' AND puesto <= 2)
+      ORDER BY array_position(ARRAY['goalkeeper','defender','midfielder','attacker'], position),
+               rating DESC`;
+
+    if (filas.length < 6) return null;
+
+    /* El mejor del torneo es el de mejor nota entre los once, no el goleador: eso ya se muestra aparte. */
+    const mejor = [...filas].sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0))[0] ?? null;
+    return { players: filas, best: mejor };
+  }
+
+  /**
+   * El cuadro de una copa: las llaves de cada ronda con sus partidos, el global y quién pasó.
+   *
+   * Quién pasó no se deduce del resultado sino de la ronda siguiente: si el equipo aparece más
+   * adelante, avanzó. Es la única forma honesta de resolver una llave que se definió por penales,
+   * dato que el proveedor no publica en el partido.
+   */
+  private cuadroDe(partidos: PartidoDeCuadro[]): RondaDeCuadro[] {
+    const rondas = ordenarRondas([...new Set(partidos.map((m) => m.round ?? ''))].filter(Boolean));
+
+    /* Para cada ronda, los equipos que juegan alguna posterior: esos son los que pasaron. */
+    const equiposPorRango = rondas.map((ronda) => ({
+      rank: ronda.rank,
+      equipos: new Set(
+        partidos
+          .filter((m) => (m.round ?? '') === ronda.round)
+          .flatMap((m) => [m.homeTeam.id, m.awayTeam.id]),
+      ),
+    }));
+
+    return rondas
+      .filter((ronda) => ronda.eliminatoria)
+      .map((ronda) => {
+        const suyos = partidos.filter((m) => (m.round ?? '') === ronda.round);
+        const masAdelante = new Set(
+          equiposPorRango.filter((r) => r.rank > ronda.rank).flatMap((r) => [...r.equipos]),
+        );
+
+        /* Ida y vuelta son el mismo cruce: la clave es el par de equipos, sin importar el orden. */
+        const llaves = new Map<string, PartidoDeCuadro[]>();
+        for (const partido of suyos) {
+          const clave = [partido.homeTeam.id, partido.awayTeam.id].sort().join('|');
+          llaves.set(clave, [...(llaves.get(clave) ?? []), partido]);
+        }
+
+        return {
+          round: ronda.round,
+          label: ronda.label,
+          ties: [...llaves.values()]
+            .map((legs) => {
+              const ordenados = [...legs].sort((a, b) =>
+                a.kickoffUtc.getTime() - b.kickoffUtc.getTime(),
+              );
+              const primero = ordenados[0] as PartidoDeCuadro;
+              const local = primero.homeTeam;
+              const visita = primero.awayTeam;
+
+              const jugados = ordenados.filter(
+                (m) => m.status === 'finished' && m.homeScore !== null && m.awayScore !== null,
+              );
+              const global = jugados.reduce(
+                (acc, m) => ({
+                  local: acc.local + (m.homeTeam.id === local.id ? (m.homeScore ?? 0) : (m.awayScore ?? 0)),
+                  visita: acc.visita + (m.homeTeam.id === visita.id ? (m.homeScore ?? 0) : (m.awayScore ?? 0)),
+                }),
+                { local: 0, visita: 0 },
+              );
+
+              const paso = masAdelante.has(local.id)
+                ? local.id
+                : masAdelante.has(visita.id)
+                  ? visita.id
+                  : null;
+
+              return {
+                homeTeam: local,
+                awayTeam: visita,
+                legs: ordenados,
+                aggregate: jugados.length > 0 ? global : null,
+                advancedTeamId: paso,
+              };
+            })
+            .sort((a, b) => a.legs[0]!.kickoffUtc.getTime() - b.legs[0]!.kickoffUtc.getTime()),
+        };
+      })
+      .filter((ronda) => ronda.ties.length > 0);
   }
 
   /**
@@ -1044,6 +1215,51 @@ export interface CruceHistorial {
 export interface Historial {
   resumen: ResumenHistorial | null;
   ultimos: CruceHistorial[];
+}
+
+/* Lo mínimo que necesita un cuadro: quién, cuándo y cómo terminó. */
+export interface FilaOnceTorneo {
+  position: string;
+  rating: string | null;
+  goals: number | null;
+  assists: number | null;
+  appearances: number | null;
+  player_id: string;
+  player_name: string;
+  player_slug: string;
+  photo_url: string | null;
+  team_name: string;
+  team_short: string | null;
+  team_slug: string;
+  team_logo: string | null;
+}
+
+export interface OnceDelTorneo {
+  players: FilaOnceTorneo[];
+  best: FilaOnceTorneo | null;
+}
+
+export interface PartidoDeCuadro {
+  id: string;
+  kickoffUtc: Date;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  round: string | null;
+  homeTeam: { id: string; name: string; shortName: string | null; slug: string; logoUrl: string | null };
+  awayTeam: { id: string; name: string; shortName: string | null; slug: string; logoUrl: string | null };
+}
+
+export interface RondaDeCuadro {
+  round: string;
+  label: string;
+  ties: Array<{
+    homeTeam: PartidoDeCuadro['homeTeam'];
+    awayTeam: PartidoDeCuadro['awayTeam'];
+    legs: PartidoDeCuadro[];
+    aggregate: { local: number; visita: number } | null;
+    advancedTeamId: string | null;
+  }>;
 }
 
 export interface Goleador {

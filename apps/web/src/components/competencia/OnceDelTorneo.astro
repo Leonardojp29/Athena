@@ -1,0 +1,125 @@
+---
+import Icon from '../Icon.astro';
+import CanchaOnce from '../pitch/CanchaOnce.astro';
+import ListaDelOnce from '../pitch/ListaDelOnce.astro';
+import type { JugadorDelOnceDelTorneo, OnceDelTorneo } from '../../lib/api';
+import type { PaletaCompetencia } from '../../lib/coloresCompetencia';
+import { formacionDe, notaDe, type FichaOnce } from '../../lib/once';
+
+/*
+ * El once del torneo y su mejor jugador.
+ *
+ * El once de la fecha responde "qué pasó el fin de semana"; esto responde "quién fue el torneo", que
+ * es la pregunta que sobrevive a la temporada. Sale de la nota acumulada del proveedor con un mínimo
+ * de partidos jugados, así que no lo gana un suplente con una gran tarde.
+ */
+interface Props {
+  once: OnceDelTorneo;
+  paleta: PaletaCompetencia | null;
+  temporada: string;
+}
+
+const { once, paleta, temporada } = Astro.props;
+
+const acento = paleta?.acento.base ?? 'var(--color-primary-ink)';
+const halo = paleta?.acento.suave(0.12) ?? 'color-mix(in oklab, var(--color-primary) 12%, transparent)';
+
+/* El proveedor nombra los puestos completos; la cancha ordena por la inicial. */
+const PUESTO: Record<string, string> = {
+  goalkeeper: 'G',
+  defender: 'D',
+  midfielder: 'M',
+  attacker: 'F',
+};
+
+const aFicha = (j: JugadorDelOnceDelTorneo): FichaOnce => ({
+  puesto: PUESTO[j.position] ?? j.position,
+  nombre: j.player_name,
+  href: `/jugadores/${j.player_slug}`,
+  fotoUrl: j.photo_url,
+  equipo: j.team_short ?? j.team_name,
+  nota: j.rating,
+  goles: j.goals,
+});
+
+const jugadores = once.players.map(aFicha);
+const formacion = formacionDe(jugadores);
+const mejor = once.best;
+---
+
+<section class="overflow-hidden rounded-xl border border-border bg-surface">
+  <header class="flex items-center gap-2 border-b border-border p-3">
+    <span style={`color:${acento}`}><Icon name="trofeo" size={16} /></span>
+    <div class="min-w-0">
+      <h2 class="truncate font-display text-sm font-semibold uppercase leading-none">
+        El once del torneo
+      </h2>
+      <p class="mt-0.5 text-2xs text-ink-muted">Temporada {temporada}</p>
+    </div>
+    {
+      formacion && (
+        <span class="ml-auto shrink-0 rounded bg-canvas-subtle px-1.5 py-0.5 font-display text-2xs font-semibold tabular">
+          {formacion}
+        </span>
+      )
+    }
+  </header>
+
+  {
+    mejor && (
+      <a
+        href={`/jugadores/${mejor.player_slug}`}
+        class="flex items-center gap-3 border-b border-border p-3 transition-colors hover:bg-canvas-subtle"
+        style={`background:${halo}`}
+      >
+        {mejor.photo_url ? (
+          <img
+            src={mejor.photo_url}
+            alt=""
+            width="52"
+            height="52"
+            loading="lazy"
+            class="size-13 shrink-0 rounded-full bg-canvas-subtle object-cover"
+            style={`box-shadow:0 0 0 2px ${acento}`}
+          />
+        ) : (
+          <span class="grid size-13 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+            <Icon name="usuario" size={22} class="text-ink-muted" />
+          </span>
+        )}
+        <span class="min-w-0 flex-1">
+          <span
+            class="block text-[10px] font-semibold uppercase tracking-label"
+            style={`color:${acento}`}
+          >
+            Jugador del torneo
+          </span>
+          <span class="mt-0.5 block truncate font-display text-base font-semibold leading-tight">
+            {mejor.player_name}
+          </span>
+          <span class="block truncate text-2xs text-ink-muted">
+            {mejor.team_name}
+            {mejor.appearances !== null && ` · ${mejor.appearances} partidos`}
+            {(mejor.goals ?? 0) > 0 && ` · ${mejor.goals} goles`}
+          </span>
+        </span>
+        {notaDe(mejor.rating) && (
+          <span
+            class="shrink-0 rounded-lg px-2 py-1 font-display text-lg font-bold tabular leading-none"
+            style={`background:${acento};color:${paleta?.acento.esOscuro ? '#fff' : '#0b0b0e'}`}
+          >
+            {notaDe(mejor.rating)}
+          </span>
+        )}
+      </a>
+    )
+  }
+
+  <div class={formacion ? 'p-2' : 'p-3'}>
+    {formacion ? <CanchaOnce jugadores={jugadores} /> : <ListaDelOnce jugadores={jugadores} />}
+  </div>
+
+  <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
+    El mejor calificado de cada puesto en toda la temporada, con al menos tres partidos jugados.
+  </p>
+</section>

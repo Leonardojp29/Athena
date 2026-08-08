@@ -1,21 +1,17 @@
 ---
-import { layout } from '@athena/domain';
 import EscudoTorneo from '../EscudoTorneo.astro';
-import Icon from '../Icon.astro';
-import PitchMarks from '../pitch/PitchMarks.astro';
+import CanchaOnce from '../pitch/CanchaOnce.astro';
+import ListaDelOnce from '../pitch/ListaDelOnce.astro';
 import type { JugadorDelOnce, OnceDeLaFecha } from '../../lib/api';
+import { formacionDe, LINEA, type FichaOnce } from '../../lib/once';
 import { nombreFase } from '../../lib/paises';
 
 /*
  * El once de la fecha de una competencia, sobre la cancha.
  *
- * Cuando alguien abre una liga, "lo mejor del día" de todo el mundo no le dice nada: quiere lo de
- * su liga. Y lo más futbolero que se puede armar con lo que hay —notas por jugador y su puesto— es
- * el equipo ideal de la última jornada, dibujado como se dibuja una alineación.
- *
- * Vertical y no horizontal: vive en un riel de 24rem, donde una cancha a lo ancho deja fichas de
- * 60px. La geometría es la misma función del dominio que usa el partido, así que las distancias
- * entre líneas son las de una cancha de verdad y no una lista disfrazada.
+ * Cuando alguien abre una liga, "lo mejor del día" de todo el mundo no le dice nada: quiere lo de su
+ * liga. Y lo más futbolero que se arma con lo que hay —notas por jugador y su puesto— es el equipo
+ * ideal de la última jornada, dibujado como se dibuja una alineación.
  */
 interface Props {
   once: OnceDeLaFecha;
@@ -25,43 +21,9 @@ interface Props {
 
 const { once, logoUrl = null, nombreLiga } = Astro.props;
 
-const PUESTOS = ['G', 'D', 'M', 'F'] as const;
-const porPuesto = new Map(PUESTOS.map((p) => [p, once.players.filter((j) => j.position === p)]));
-
 /*
- * La formación sale de lo que hay: si la jornada dio cuatro defensores, cuatro volantes y dos
- * delanteros, es un 4-4-2. `layout` exige que la suma dé once, así que si no cierra —una fecha con
- * pocas notas— se cae a la lista, que es lo que ya funcionaba.
- */
-const ordenados: JugadorDelOnce[] = PUESTOS.flatMap((p) => porPuesto.get(p) ?? []);
-const formacion = PUESTOS.slice(1)
-  .map((p) => porPuesto.get(p)?.length ?? 0)
-  .join('-');
-
-const ubicados =
-  (porPuesto.get('G')?.length ?? 0) === 1 && ordenados.length === 11
-    ? layout(
-        ordenados.map((j) => ({ ...j, grid: null })),
-        { formation: formacion },
-      )
-    : null;
-
-const jornada = (() => {
-  if (!once.round) return null;
-  const corte = once.round.lastIndexOf(' - ');
-  if (corte === -1) return nombreFase(once.round);
-  const cola = once.round.slice(corte + 3).trim();
-  return /^\d+$/.test(cola)
-    ? `${nombreFase(once.round.slice(0, corte))} · fecha ${cola}`
-    : nombreFase(once.round);
-})();
-
-const nota = (valor: string | null) => (valor === null ? null : Number(valor).toFixed(1));
-const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
-
-/*
- * El mismo payload que la cancha del partido: así el clic abre la ficha con las estadísticas de
- * ese encuentro —por el que fue elegido figura— sin salir de la página ni pedir nada al servidor.
+ * El mismo payload que la cancha del partido: el clic abre la ficha con las estadísticas del
+ * encuentro por el que fue elegido figura, sin salir de la página ni pedir nada al servidor.
  */
 const ficha = (j: JugadorDelOnce): string =>
   JSON.stringify({
@@ -99,12 +61,29 @@ const ficha = (j: JugadorDelOnce): string =>
     },
   });
 
-const LINEA: Record<string, string> = {
-  G: 'Arquero',
-  D: 'Defensa',
-  M: 'Mediocampo',
-  F: 'Ataque',
-};
+const jugadores: FichaOnce[] = once.players.map((j) => ({
+  puesto: j.position,
+  nombre: j.player_name,
+  href: `/?jugador=${j.player_slug}`,
+  fotoUrl: j.photo_url,
+  equipo: j.team_short ?? j.team_name,
+  nota: j.rating,
+  dorsal: j.shirt_number,
+  goles: j.goals,
+  ficha: ficha(j),
+}));
+
+const formacion = formacionDe(jugadores);
+
+const jornada = (() => {
+  if (!once.round) return null;
+  const corte = once.round.lastIndexOf(' - ');
+  if (corte === -1) return nombreFase(once.round);
+  const cola = once.round.slice(corte + 3).trim();
+  return /^\d+$/.test(cola)
+    ? `${nombreFase(once.round.slice(0, corte))} · fecha ${cola}`
+    : nombreFase(once.round);
+})();
 ---
 
 <section class="overflow-hidden rounded-xl border border-border bg-surface">
@@ -120,7 +99,7 @@ const LINEA: Record<string, string> = {
       </p>
     </div>
     {
-      ubicados && (
+      formacion && (
         <span class="ml-auto shrink-0 rounded bg-canvas-subtle px-1.5 py-0.5 font-display text-2xs font-semibold tabular">
           {formacion}
         </span>
@@ -128,133 +107,9 @@ const LINEA: Record<string, string> = {
     }
   </header>
 
-  {
-    ubicados ? (
-      <div class="p-2">
-        <!--
-          El arco propio abajo y el ataque arriba, como se mira una alineación en la tele. `largo`
-          crece hacia el arco rival, así que se dibuja desde abajo con `bottom`.
-        -->
-        <div class="relative mx-auto aspect-[680/1000] w-full max-w-[21rem] overflow-hidden rounded-lg border border-board-edge">
-          <svg
-            viewBox="0 0 680 1050"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-            focusable="false"
-            class="absolute inset-0 h-full w-full"
-          >
-            <g transform="translate(680, 0) rotate(90)">
-              <PitchMarks />
-            </g>
-          </svg>
-
-          <div class="absolute inset-0">
-            {ubicados.map((puesto) => (
-              <button
-                type="button"
-                data-iman
-                data-ficha={ficha(puesto.player)}
-                class="absolute flex w-[5.75rem] -translate-x-1/2 translate-y-1/2 cursor-pointer flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                style={`left:${puesto.x}%;bottom:${puesto.y}%`}
-                title={`${puesto.player.player_name} · ${puesto.player.team_name}`}
-              >
-                <span class="relative">
-                  {puesto.player.photo_url ? (
-                    <img
-                      src={puesto.player.photo_url}
-                      alt=""
-                      width="46"
-                      height="46"
-                      loading="lazy"
-                      class="size-[46px] rounded-full border-2 border-chalk/50 bg-board object-cover"
-                    />
-                  ) : (
-                    <span class="grid size-[46px] place-items-center rounded-full border-2 border-chalk/50 bg-board">
-                      <Icon name="usuario" size={20} class="text-chalk-dim" />
-                    </span>
-                  )}
-                  {typeof puesto.player.shirt_number === 'number' && (
-                    <span class="absolute -left-1.5 -top-1 grid size-4 place-items-center rounded-full bg-board text-[10px] font-bold tabular text-chalk ring-1 ring-chalk/40">
-                      {puesto.player.shirt_number}
-                    </span>
-                  )}
-                  {(puesto.player.goals ?? 0) > 0 && (
-                    <span class="absolute -right-1.5 -top-1 grid size-4 place-items-center rounded-full bg-chalk text-[10px] font-bold text-board">
-                      {puesto.player.goals}
-                    </span>
-                  )}
-                  {nota(puesto.player.rating) && (
-                    <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-primary px-1.5 font-display text-[11px] font-bold tabular text-primary-contrast">
-                      {nota(puesto.player.rating)}
-                    </span>
-                  )}
-                </span>
-                <!--
-                  Las dos etiquetas en una sola plaquita: el nombre del equipo, suelto sobre el
-                  césped, quedaba por debajo del contraste mínimo a 9px.
-                -->
-                <span class="mt-1.5 grid max-w-full rounded bg-board/85 px-1 py-0.5 leading-tight">
-                  <span class="truncate text-[11px] font-medium text-chalk">
-                    {apellido(puesto.player.player_name)}
-                  </span>
-                  <span class="truncate text-[10px] leading-none text-chalk/70">
-                    {puesto.player.team_short ?? puesto.player.team_name}
-                  </span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    ) : (
-      /* Sin once completo, la lista por puesto: media cancha con seis fichas no es una alineación. */
-      <div class="grid gap-2 p-3">
-        {PUESTOS.filter((p) => (porPuesto.get(p)?.length ?? 0) > 0).map((p) => (
-          <div>
-            <p class="mb-1 text-[10px] font-semibold tracking-label text-ink-muted uppercase">
-              {LINEA[p]}
-            </p>
-            <ul class="grid gap-0.5">
-              {(porPuesto.get(p) ?? []).map((jugador) => (
-                <li>
-                  <a
-                    href={`/?jugador=${jugador.player_slug}`}
-                    class="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
-                  >
-                    {jugador.photo_url ? (
-                      <img
-                        src={jugador.photo_url}
-                        alt=""
-                        width="24"
-                        height="24"
-                        loading="lazy"
-                        class="size-6 shrink-0 rounded-full bg-canvas-subtle object-cover"
-                      />
-                    ) : (
-                      <span class="grid size-6 shrink-0 place-items-center rounded-full bg-canvas-subtle">
-                        <Icon name="usuario" size={12} class="text-ink-muted" />
-                      </span>
-                    )}
-                    <span class="min-w-0 flex-1">
-                      <span class="block truncate text-sm">{jugador.player_name}</span>
-                      <span class="block truncate text-2xs text-ink-muted">
-                        {jugador.team_short ?? jugador.team_name}
-                      </span>
-                    </span>
-                    {nota(jugador.rating) && (
-                      <span class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
-                        {nota(jugador.rating)}
-                      </span>
-                    )}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  <div class={formacion ? 'p-2' : 'p-3'}>
+    {formacion ? <CanchaOnce jugadores={jugadores} /> : <ListaDelOnce jugadores={jugadores} />}
+  </div>
 
   <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
     El mejor calificado de cada puesto en la jornada, según la nota del proveedor de datos.

@@ -62,9 +62,11 @@ export class ViewsController {
 
   @Get('competition/:slug')
   @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
-  competition(@Param('slug') slug: string) {
-    return this.cache.wrap(`competition:${slug}`, TTL.competition, () =>
-      this.views.competition(slug),
+  competition(@Param('slug') slug: string, @Query('temporada') temporada?: string) {
+    /* El archivo de una copa es la misma vista con otro año; sin `temporada`, la vigente. */
+    const year = /^\d{4}$/.test(temporada ?? '') ? Number(temporada) : null;
+    return this.cache.wrap(`competition:${slug}:${year ?? 'actual'}`, TTL.competition, () =>
+      this.views.competition(slug, year),
     );
   }
 

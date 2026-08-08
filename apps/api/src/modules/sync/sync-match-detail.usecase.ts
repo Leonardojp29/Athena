@@ -21,6 +21,37 @@ export class SyncMatchDetailUseCase {
     @Inject(FOOTBALL_DATA_PROVIDER) private readonly provider: FootballDataProvider,
   ) {}
 
+  /**
+   * Solo los colores de camiseta, con un pedido en lugar de dos.
+   *
+   * Existe para rellenar lo viejo: los colores viajan en las alineaciones y nunca se habían
+   * guardado. `execute` pide además las estadísticas, que para esto no hacen falta.
+   */
+  async refreshColors(matchProviderRef: string): Promise<number> {
+    const lineups = await this.provider.getMatchLineups(matchProviderRef);
+    const teams = await this.refs.resolveMany(
+      this.provider.name,
+      'team',
+      lineups.map((l) => l.teamRef),
+    );
+
+    let escritos = 0;
+    for (const lineup of lineups) {
+      const teamId = teams.get(lineup.teamRef);
+      if (!teamId) continue;
+      if (lineup.colors.primary === null && lineup.colors.secondary === null) continue;
+      await this.prisma.team.update({
+        where: { id: teamId },
+        data: {
+          ...(lineup.colors.primary !== null ? { primaryColor: lineup.colors.primary } : {}),
+          ...(lineup.colors.secondary !== null ? { secondaryColor: lineup.colors.secondary } : {}),
+        },
+      });
+      escritos++;
+    }
+    return escritos;
+  }
+
   async execute(matchProviderRef: string): Promise<{ statistics: number; lineups: number }> {
     const matchId = await this.refs.resolve(this.provider.name, 'match', matchProviderRef);
     if (!matchId) throw new Error(`Match not synced: ${matchProviderRef}`);

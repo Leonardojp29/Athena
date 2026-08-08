@@ -6,19 +6,29 @@ import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
+import Cuadro from '../../components/competencia/Cuadro.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
+import OnceDelTorneo from '../../components/competencia/OnceDelTorneo.astro';
 import SelectorFase from '../../components/SelectorFase.astro';
+import SelectorTemporada from '../../components/competencia/SelectorTemporada.astro';
 import StandingsTable from '../../components/StandingsTable.astro';
 import OnceDeLaFecha from '../../components/home/OnceDeLaFecha.astro';
 import TablaLideres from '../../components/TablaLideres.astro';
 import { api, ApiError, type CompetitionView } from '../../lib/api';
+import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { getSession } from '../../lib/supabase';
 import { nombreFase, paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
 
+/* El archivo pide la misma vista con otro año; sin el parámetro, la temporada vigente. */
+const anioPedido = Astro.url.searchParams.get('temporada');
+const temporadaPedida = /^\d{4}$/.test(anioPedido ?? '') ? anioPedido : null;
+
 /* Los dos pedidos arrancan juntos: la sesión no depende de la competencia. */
-const pedidoVista = api<CompetitionView>(`/views/competition/${slug}`);
+const pedidoVista = api<CompetitionView>(
+  `/views/competition/${slug}${temporadaPedida ? `?temporada=${temporadaPedida}` : ''}`,
+);
 const pedidoSesion = getSession(Astro);
 
 let view: CompetitionView;
@@ -30,13 +40,40 @@ try {
 }
 const session = await pedidoSesion;
 
-const { competition, season, standingGroups, recent, upcoming, scorers, assisters, once } = view;
-const seasonLabel =
+const {
+  competition,
+  season,
+  standingGroups,
+  recent,
+  upcoming,
+  scorers,
+  assisters,
+  once,
+  bracket,
+  onceDelTorneo,
+  seasons,
+} = view;
+
+const etiquetaTemporada = (year: number) =>
   competition.format === 'league' &&
   competition.country !== null &&
   !['Peru', 'Brazil', 'Argentina'].includes(competition.country)
-    ? `${season.year}-${String(season.year + 1).slice(2)}`
-    : String(season.year);
+    ? `${year}-${String(year + 1).slice(2)}`
+    : String(year);
+const seasonLabel = etiquetaTemporada(season.year);
+
+/*
+ * La copa internacional tiene identidad propia —y la Libertadores no se ve como una fecha de liga—,
+ * así que la cabecera toma sus colores y el cuadro los usa como acento. Una liga no entra acá: la
+ * paleta devuelve null y la página se ve como siempre.
+ */
+const paleta = paletaCompetencia(competition.slug);
+const cabecera = paleta
+  ? [
+      `radial-gradient(120% 140% at 88% -20%, ${paleta.acento.suave(0.32)}, transparent 60%)`,
+      `linear-gradient(100deg, ${paleta.base.base} 0%, ${paleta.base.suave(0.55)} 55%, transparent 85%)`,
+    ].join(',')
+  : null;
 
 /*
  * La fase en juego viene primera del API y es la que se abre. Antes se mostraban todas las tablas
@@ -45,9 +82,20 @@ const seasonLabel =
  */
 const fasePedida = Astro.url.searchParams.get('tabla');
 const grupo = standingGroups.find((g) => g.label === fasePedida) ?? standingGroups[0];
+const enlaceFase = (label: string) => {
+  const params = new URLSearchParams({ tabla: label });
+  if (temporadaPedida) params.set('temporada', temporadaPedida);
+  return `/competencias/${competition.slug}?${params}`;
+};
 
-/* "Clausura - 4" → "Clausura · fecha 4". */
+/*
+ * "Clausura - 4" → "Clausura · fecha 4", y "Round of 16" → "Octavos": la ronda de una copa ya viene
+ * traducida en el cuadro, así que la cabecera reusa esa etiqueta en lugar de mostrar el inglés del
+ * proveedor.
+ */
 const jornada = (() => {
+  const enCuadro = bracket.find((r) => r.round === view.round);
+  if (enCuadro) return enCuadro.label;
   if (!view.round) return null;
   const corte = view.round.lastIndexOf(' - ');
   if (corte === -1) return nombreFase(view.round);
@@ -62,6 +110,20 @@ const pais = paisEnEspanol(competition.country);
 /* Sin goleadores —una copa que nunca pasó por /players— la grilla vuelve a dos columnas: la del
    medio vacía dejaba un hueco de 400px en la mitad de la página. */
 const hayLideres = scorers.length > 0 || assisters.length > 0;
+
+/*
+ * En una copa el once que importa es el del torneo, no el de la última fecha: responde "quién fue
+ * este torneo" y además evita dos canchas en el mismo riel, que era exactamente lo que sobraba.
+ */
+const onceDelTorneoVisible = bracket.length > 0 ? onceDelTorneo : null;
+
+/*
+ * Los ocho grupos de una copa se muestran juntos y compactos. Con el selector de fases se veía un
+ * grupo de cuatro equipos estirado en mil píxeles y el resto de la columna vacía; así se lee la
+ * fase entera de un golpe, que es lo que se quiere saber en una copa.
+ */
+const gruposJuntos = bracket.length > 0 && standingGroups.length > 2;
+const onceDeLaFechaVisible = onceDelTorneoVisible ? null : once;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -80,11 +142,21 @@ const jsonLd = {
   width="bleed"
   liveBar={false}
 >
-  <section class="w-full border-b border-board-edge bg-board">
+  <section class="w-full border-b border-board-edge bg-board" style={cabecera ? `background-image:${cabecera}` : undefined}>
     <Container width="wide">
       <div class="flex flex-wrap items-center gap-x-4 gap-y-3 py-6">
         <EscudoTorneo url={competition.logoUrl} size={38} class="!rounded-lg !p-2" />
         <div class="min-w-0 flex-1">
+          {
+            paleta && (
+              <p
+                class="mb-1 text-[10px] font-semibold uppercase tracking-label"
+                style={`color:${paleta.acento.base}`}
+              >
+                {paleta.tono}
+              </p>
+            )
+          }
           <h1 class="font-display text-3xl font-semibold uppercase leading-none text-chalk sm:text-4xl">
             {competition.name}
           </h1>
@@ -120,6 +192,16 @@ const jsonLd = {
           class="shrink-0"
         />
       </div>
+
+      <!-- El archivo, pegado a la cabecera: es una propiedad de la competencia, no de la tabla. -->
+      <SelectorTemporada
+        temporadas={seasons}
+        activa={season.year}
+        slug={competition.slug}
+        etiqueta={etiquetaTemporada}
+        onBoard
+        class="-mt-1 pb-4"
+      />
     </Container>
   </section>
 
@@ -129,6 +211,15 @@ const jsonLd = {
     medio entre el nombre del equipo y las cifras.
   -->
   <Container width="wide" class="py-5">
+    <!-- El cuadro va a todo lo ancho y arriba: en una copa es lo que se viene a ver. -->
+    {
+      bracket.length > 0 && (
+        <div class="mb-4">
+          <Cuadro rondas={bracket} paleta={paleta} rondaActual={view.round} />
+        </div>
+      )
+    }
+
     <div
       class:list={[
         'grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]',
@@ -137,36 +228,50 @@ const jsonLd = {
     >
       <div class="grid gap-4 lg:col-start-1 lg:row-start-1">
         {
-          grupo ? (
+          gruposJuntos ? (
+            <section class="rounded-xl border border-border bg-surface">
+              <header class="flex flex-wrap items-center gap-2 border-b border-border p-3">
+                <h2 class="font-display text-base font-semibold uppercase">Fase de grupos</h2>
+                <span class="text-2xs text-ink-muted">{standingGroups.length} grupos</span>
+              </header>
+              <div class="grid gap-x-6 gap-y-5 p-3 sm:grid-cols-2">
+                {standingGroups.map((g) => (
+                  <div>
+                    <p class="mb-1 font-display text-sm font-semibold uppercase leading-none">
+                      {nombreFase(g.label)}
+                    </p>
+                    <StandingsTable rows={g.rows} compacto />
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : grupo ? (
             <section class="rounded-xl border border-border bg-surface">
               <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
                 <h2 class="font-display text-base font-semibold uppercase">
-                  Tabla de posiciones
+                  {bracket.length > 0 ? 'Fase de grupos' : 'Tabla de posiciones'}
                   {standingGroups.length === 1 && grupo.label && (
                     <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
                       {nombreFase(grupo.label)}
                     </span>
                   )}
                 </h2>
-                <SelectorFase
-                  grupos={standingGroups}
-                  activo={grupo.label}
-                  href={(label) => `/competencias/${competition.slug}?tabla=${encodeURIComponent(label)}`}
-                />
+                <SelectorFase grupos={standingGroups} activo={grupo.label} href={enlaceFase} />
               </header>
               <div class="p-3">
                 <StandingsTable rows={grupo.rows} />
               </div>
             </section>
           ) : (
-            <Card>
-              <p class="text-sm text-ink-muted">
-                La tabla estará disponible cuando arranque la competencia.
-              </p>
-            </Card>
+            bracket.length === 0 && (
+              <Card>
+                <p class="text-sm text-ink-muted">
+                  La tabla estará disponible cuando arranque la competencia.
+                </p>
+              </Card>
+            )
           )
         }
-
       </div>
 
       {
@@ -194,6 +299,15 @@ const jsonLd = {
           hayLideres ? '2xl:col-start-3 2xl:row-span-1' : '',
         ]}
       >
+        {
+          onceDelTorneoVisible && (
+            <OnceDelTorneo
+              once={onceDelTorneoVisible}
+              paleta={paleta}
+              temporada={seasonLabel}
+            />
+          )
+        }
         <section class="rounded-xl border border-border bg-surface p-3">
           <ListaPartidosCompacta
             titulo="Próximos partidos"
@@ -211,8 +325,12 @@ const jsonLd = {
           />
         </section>
         {
-          once && (
-            <OnceDeLaFecha once={once} logoUrl={competition.logoUrl} nombreLiga={competition.name} />
+          onceDeLaFechaVisible && (
+            <OnceDeLaFecha
+              once={onceDeLaFechaVisible}
+              logoUrl={competition.logoUrl}
+              nombreLiga={competition.name}
+            />
           )
         }
         <AvisoFavoritos />

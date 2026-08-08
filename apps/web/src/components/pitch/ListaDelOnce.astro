@@ -1,0 +1,57 @@
+---
+import Icon from '../Icon.astro';
+import { LINEA, notaDe, porPuesto, PUESTOS, type FichaOnce } from '../../lib/once';
+
+/* El respaldo de la cancha: cuando el once no cierra, la lista por puesto. */
+interface Props {
+  jugadores: FichaOnce[];
+}
+
+const grupos = porPuesto(Astro.props.jugadores);
+---
+
+<div class="grid gap-2">
+  {
+    PUESTOS.filter((p) => (grupos.get(p)?.length ?? 0) > 0).map((p) => (
+      <div>
+        <p class="mb-1 text-[10px] font-semibold uppercase tracking-label text-ink-muted">
+          {LINEA[p]}
+        </p>
+        <ul class="grid gap-0.5">
+          {(grupos.get(p) ?? []).map((j) => (
+            <li>
+              <a
+                href={j.href}
+                class="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
+              >
+                {j.fotoUrl ? (
+                  <img
+                    src={j.fotoUrl}
+                    alt=""
+                    width="24"
+                    height="24"
+                    loading="lazy"
+                    class="size-6 shrink-0 rounded-full bg-canvas-subtle object-cover"
+                  />
+                ) : (
+                  <span class="grid size-6 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                    <Icon name="usuario" size={12} class="text-ink-muted" />
+                  </span>
+                )}
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm">{j.nombre}</span>
+                  <span class="block truncate text-2xs text-ink-muted">{j.equipo}</span>
+                </span>
+                {notaDe(j.nota) && (
+                  <span class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
+                    {notaDe(j.nota)}
+                  </span>
+                )}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))
+  }
+</div>

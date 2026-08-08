@@ -1,0 +1,57 @@
+---
+/*
+ * El archivo de una competencia: las temporadas con datos, la vigente primero.
+ *
+ * Son enlaces con `?temporada=`, así que el año elegido queda en la URL y la página sigue costando
+ * 0 KB. Solo se ofrecen las temporadas que tienen partidos en la base: un año vacío es una promesa
+ * que la página no puede cumplir.
+ */
+interface Props {
+  temporadas: number[];
+  /** El año abierto. */
+  activa: number;
+  slug: string;
+  /** Cómo se rotula cada año; las ligas europeas se escriben 2025-26. */
+  etiqueta: (year: number) => string;
+  /** Sobre la cabecera de color, los enlaces van en tinta clara. */
+  onBoard?: boolean;
+  class?: string;
+}
+
+const { temporadas, activa, slug, etiqueta, onBoard = false, class: className } = Astro.props;
+
+/* Cinco años son suficientes: más atrás el proveedor deja de traer alineaciones y notas. */
+const visibles = temporadas.slice(0, 6);
+---
+
+{
+  visibles.length > 1 && (
+    <div
+      class:list={['flex flex-wrap items-center gap-1', className]}
+      role="group"
+      aria-label="Temporada"
+    >
+      {visibles.map((year) => {
+        const abierta = year === activa;
+        return (
+          <a
+            href={year === temporadas[0] ? `/competencias/${slug}` : `/competencias/${slug}?temporada=${year}`}
+            aria-current={abierta ? 'true' : undefined}
+            class:list={[
+              'rounded-md px-2 py-1 font-display text-2xs font-semibold tabular transition-colors',
+              abierta
+                ? onBoard
+                  ? 'bg-chalk text-board'
+                  : 'bg-ink text-canvas'
+                : onBoard
+                  ? 'bg-chalk/10 text-chalk-dim hover:bg-chalk/20 hover:text-chalk'
+                  : 'bg-canvas-subtle text-ink-muted hover:text-ink',
+            ]}
+          >
+            {etiqueta(year)}
+          </a>
+        );
+      })}
+    </div>
+  )
+}

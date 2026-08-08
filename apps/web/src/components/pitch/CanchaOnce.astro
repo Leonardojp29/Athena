@@ -1,0 +1,104 @@
+---
+import { layout } from '@athena/domain';
+import Icon from '../Icon.astro';
+import PitchMarks from './PitchMarks.astro';
+import { apellidoDe, formacionDe, notaDe, porPuesto, PUESTOS, type FichaOnce } from '../../lib/once';
+
+/*
+ * Once fichas sobre una cancha vertical, con la misma geometría del dominio que usa el partido.
+ *
+ * Vertical porque vive en un riel angosto; con tope de ancho porque en una columna de mil píxeles
+ * una cancha vertical se vuelve un mural de metro y medio. Quien llama ya verificó con `formacionDe`
+ * que el once cierra.
+ */
+interface Props {
+  jugadores: FichaOnce[];
+}
+
+const { jugadores } = Astro.props;
+
+const grupos = porPuesto(jugadores);
+const ordenados = PUESTOS.flatMap((p) => grupos.get(p) ?? []);
+const formacion = formacionDe(jugadores);
+
+const ubicados =
+  (formacion
+    ? layout(
+        ordenados.map((j) => ({ ...j, grid: null })),
+        { formation: formacion },
+      )
+    : null) ?? [];
+---
+
+<div
+  class="relative mx-auto aspect-[680/1000] w-full max-w-[21rem] overflow-hidden rounded-lg border border-board-edge"
+>
+  <svg
+    viewBox="0 0 680 1050"
+    preserveAspectRatio="none"
+    aria-hidden="true"
+    focusable="false"
+    class="absolute inset-0 h-full w-full"
+  >
+    <g transform="translate(680, 0) rotate(90)">
+      <PitchMarks />
+    </g>
+  </svg>
+
+  <!-- El arco propio abajo y el ataque arriba: `largo` crece hacia el arco rival, así que se posiciona con `bottom`. -->
+  <div class="absolute inset-0">
+    {
+      ubicados.map(({ player: j, x, y }) => {
+        const Ficha = j.ficha ? 'button' : 'a';
+        return (
+          <Ficha
+            type={j.ficha ? 'button' : undefined}
+            href={j.ficha ? undefined : j.href}
+            data-iman={j.ficha ? true : undefined}
+            data-ficha={j.ficha ?? undefined}
+            class="absolute flex w-[5.75rem] -translate-x-1/2 translate-y-1/2 cursor-pointer flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            style={`left:${x}%;bottom:${y}%`}
+            title={`${j.nombre} · ${j.equipo}`}
+          >
+            <span class="relative">
+              {j.fotoUrl ? (
+                <img
+                  src={j.fotoUrl}
+                  alt=""
+                  width="46"
+                  height="46"
+                  loading="lazy"
+                  class="size-[46px] rounded-full border-2 border-chalk/50 bg-board object-cover"
+                />
+              ) : (
+                <span class="grid size-[46px] place-items-center rounded-full border-2 border-chalk/50 bg-board">
+                  <Icon name="usuario" size={20} class="text-chalk-dim" />
+                </span>
+              )}
+              {typeof j.dorsal === 'number' && (
+                <span class="absolute -left-1.5 -top-1 grid size-4 place-items-center rounded-full bg-board text-[10px] font-bold tabular text-chalk ring-1 ring-chalk/40">
+                  {j.dorsal}
+                </span>
+              )}
+              {(j.goles ?? 0) > 0 && (
+                <span class="absolute -right-1.5 -top-1 grid size-4 place-items-center rounded-full bg-chalk text-[10px] font-bold text-board">
+                  {j.goles}
+                </span>
+              )}
+              {notaDe(j.nota) && (
+                <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-primary px-1.5 font-display text-[11px] font-bold tabular text-primary-contrast">
+                  {notaDe(j.nota)}
+                </span>
+              )}
+            </span>
+            <!-- Los dos rótulos en una plaquita: el nombre del equipo suelto sobre el césped no llega al contraste mínimo. -->
+            <span class="mt-1.5 grid max-w-full rounded bg-board/85 px-1 py-0.5 leading-tight">
+              <span class="truncate text-[11px] font-medium text-chalk">{apellidoDe(j.nombre)}</span>
+              <span class="truncate text-[10px] leading-none text-chalk/70">{j.equipo}</span>
+            </span>
+          </Ficha>
+        );
+      })
+    }
+  </div>
+</div>

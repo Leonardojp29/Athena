@@ -35,6 +35,29 @@ test.describe('recorrido de lectura', () => {
     if (teamName) await expect(page.getByRole('heading', { level: 1 })).toContainText(teamName);
   });
 
+  /*
+   * Una copa no se lee como una liga: lo que se viene a ver es el cuadro —quién juega con quién y
+   * quién pasó— y el once del torneo. Antes la página mostraba un grupo de cuatro equipos estirado
+   * en toda la pantalla y la ronda en el inglés del proveedor.
+   */
+  test('una copa muestra su cuadro, su once del torneo y las rondas en español', async ({
+    page,
+  }) => {
+    await page.goto('/competencias/conmebol-libertadores');
+
+    await expect(page.getByRole('heading', { name: /camino al título/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /el once del torneo/i })).toBeVisible();
+    await expect(page.locator('main')).not.toContainText(/Round of|Quarter-finals|Semi-finals/i);
+
+    /* Cada llave lleva a los dos equipos y a sus partidos. */
+    const cuadro = page.locator('section', { has: page.getByRole('heading', { name: /camino al título/i }) });
+    expect(await cuadro.locator('a[href^="/equipos/"]').count()).toBeGreaterThan(4);
+    expect(await cuadro.locator('a[href^="/partidos/"]').count()).toBeGreaterThan(4);
+
+    /* Las llaves cerradas dicen el global; sin eso el cuadro sería una lista de resultados. */
+    await expect(cuadro.getByText(/Global/).first()).toBeVisible();
+  });
+
   test('un partido muestra su marcador', async ({ page }) => {
     await page.goto('/competencias/primera-division');
     await page.locator('a[href^="/partidos/"]').first().click();
