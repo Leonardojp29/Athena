@@ -13,8 +13,8 @@ interface Props {
   /** A dónde lleva un equipo. La home lo abre en su propio contenedor, no en otra página. */
   hrefEquipo?: (slug: string) => string;
   /**
-   * Solo posición, equipo, jugados y puntos. Para los ocho grupos de una copa, donde importa quién
-   * clasifica y no la diferencia de gol: las nueve columnas obligaban a mostrar un grupo por vez.
+   * Solo posición, equipo, jugados, diferencia y puntos. Para el riel de la home y los ocho grupos
+   * de una copa: nueve columnas obligaban a mostrar una tabla por vez, o a 1200px de ancho.
    */
   compacto?: boolean;
 }
@@ -61,9 +61,19 @@ const diferencia = (row: StandingRow) => {
             <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">G</th>
             <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">E</th>
             <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">P</th>
-            <th scope="col" class="hidden w-11 py-2 text-center font-semibold md:table-cell">DG</th>
-            <th scope="col" class="hidden w-28 py-2 text-left font-semibold lg:table-cell">Forma</th>
           </>
+        )}
+        <th
+          scope="col"
+          class:list={[
+            'w-11 py-2 text-center font-semibold',
+            compacto ? '' : 'hidden md:table-cell',
+          ]}
+        >
+          DG
+        </th>
+        {!compacto && (
+          <th scope="col" class="hidden w-28 py-2 text-left font-semibold lg:table-cell">Forma</th>
         )}
         <th scope="col" class="w-12 py-2 text-center font-semibold">Pts</th>
       </tr>
@@ -95,7 +105,18 @@ const diferencia = (row: StandingRow) => {
                 <td class="hidden py-2 text-center tabular sm:table-cell">{row.won}</td>
                 <td class="hidden py-2 text-center tabular sm:table-cell">{row.drawn}</td>
                 <td class="hidden py-2 text-center tabular sm:table-cell">{row.lost}</td>
-                <td class="hidden py-2 text-center tabular md:table-cell">{diferencia(row)}</td>
+              </>
+            )}
+            <td
+              class:list={[
+                'py-2 text-center tabular',
+                compacto ? '' : 'hidden md:table-cell',
+              ]}
+            >
+              {diferencia(row)}
+            </td>
+            {!compacto && (
+              <>
                 <td class="hidden py-2 lg:table-cell">
                   <span class="flex gap-0.5">
                     {ultimos(row.form).map((r) => (

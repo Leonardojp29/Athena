@@ -2,13 +2,16 @@
   "name": "athena",
   "private": true,
   "version": "0.1.0",
-  "description": "Athena \u2014 Football Intelligence Platform",
+  "description": "Athena — Football Intelligence Platform",
   "packageManager": "pnpm@11.20.0",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev": "turbo dev",
+    "start": "./infra/dev-stack.sh",
+    "stop": "./infra/dev-stack.sh --stop",
+    "estado": "./infra/dev-stack.sh --status",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",

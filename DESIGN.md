@@ -398,6 +398,29 @@ después de las posiciones.
 Las columnas numéricas llevan ancho fijo y se agrupan a la derecha: repartidas por todo el ancho, la
 fila se leía como un formulario.
 
+### La home con una liga abierta
+
+El centro cuenta **qué pasa** y el riel derecho guarda **cómo va**. Al revés —como estaba— para
+llegar a la fecha de hoy había que pasar por dieciocho filas y nueve columnas de tabla.
+
+En el centro: **próximos partidos**, **últimos resultados** y **los que deciden**, en ese orden. Los
+partidos van en una sola columna con la fila ancha del sitio (`MatchRow`), con tope de 42rem: a 830px
+los nombres quedaban flotando lejos del marcador. Ocho de cada bloque entran en el alto que antes
+ocupaban tres apilados en media columna.
+
+La **fila de partido es responsive**: enfrentados desde `sm`, apilados debajo. En un teléfono,
+"Sporting Cristal" contra "Sport Huancayo" a los costados del marcador dejaba "Sporting Cri…" y
+"Sport Huanc…". Es la misma grilla con distinta colocación y no dos bloques: duplicar el DOM
+duplicaría también los enlaces, y los recorridos de lectura eligen "el primero" de cada tipo.
+
+En el riel: **la tabla** —variante compacta de cinco columnas, con scroll propio para los dieciocho
+equipos y un pie que lleva a la completa— y debajo **el once de la fecha**. Entre 1024 y 1279px el
+riel ocupa las dos columnas y reparte sus tarjetas en dos, porque ahí caía en una columna de 16rem y
+la cancha se dibujaba de 256px.
+
+En móvil el orden es contenido → tabla y once → catálogo: el árbol de navegación se leía en medio de
+la lectura.
+
 ### La copa internacional
 
 Una copa no se lee como una liga. Lo que trae a alguien a la página de la Libertadores es **quién

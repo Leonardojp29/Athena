@@ -9,6 +9,7 @@ import MatchRow from '../components/MatchRow.astro';
 import LideresDelMundo from '../components/home/LideresDelMundo.astro';
 import OnceDeLaFecha from '../components/home/OnceDeLaFecha.astro';
 import PlayerSheet from '../components/pitch/PlayerSheet.astro';
+import TablaDelRiel from '../components/home/TablaDelRiel.astro';
 import VistaEquipo from '../components/home/VistaEquipo.astro';
 import VistaJugador from '../components/home/VistaJugador.astro';
 import VistaLiga from '../components/home/VistaLiga.astro';
@@ -66,10 +67,13 @@ const ligaPedida = Astro.url.searchParams.get('liga');
 const ligasValidas = new Set(todasLasCompetencias(catalogo).map((c) => c.slug));
 const liga = ligaPedida && ligasValidas.has(ligaPedida) ? ligaPedida : null;
 
+/*
+ * El país se valida contra el catálogo, no contra los partidos de hoy: un país sin partidos hoy
+ * existe igual y la página tiene qué decirle —"sin partidos hoy en este país"—. Validando contra la
+ * geografía del día, el enlace de la barra lateral caía en la lista completa sin explicar nada.
+ */
 const paisPedido = Astro.url.searchParams.get('pais');
-const codigos = new Set(
-  home.geography.flatMap((c) => c.countries.map((p) => p.code ?? 'internacional')),
-);
+const codigos = new Set(catalogo.flatMap((c) => c.countries.map((p) => p.code ?? 'internacional')));
 const abierto =
   Astro.url.searchParams.has('equipo') || Astro.url.searchParams.has('jugador');
 const pais = !liga && !abierto && paisPedido && codigos.has(paisPedido) ? paisPedido : null;
@@ -130,8 +134,8 @@ const geografia = pais
 
 const nombrePais = pais
   ? (paisEnEspanol(
-      home.geography.flatMap((c) => c.countries).find((p) => (p.code ?? 'internacional') === pais)
-        ?.name ?? null,
+      catalogo.flatMap((c) => c.countries).find((p) => (p.code ?? 'internacional') === pais)?.name ??
+        null,
     ) ?? 'Internacional')
   : null;
 
@@ -160,9 +164,10 @@ const destacado = feed?.insights[0]
       <!--
         En móvil los partidos van primero: nadie baja ocho países para llegar a lo que vino a ver.
       -->
+      <!-- En móvil el catálogo va último: primero lo que se vino a ver, después dónde ir. -->
       <aside
         data-riel
-        class="order-2 lg:order-none lg:sticky lg:top-16 lg:max-h-[calc(100dvh-5rem)] lg:self-start lg:overflow-y-auto lg:pr-1"
+        class="order-3 lg:order-none lg:sticky lg:top-16 lg:max-h-[calc(100dvh-5rem)] lg:self-start lg:overflow-y-auto lg:pr-1"
       >
         <BarraLateral
           catalogo={catalogo}
@@ -193,7 +198,6 @@ const destacado = feed?.insights[0]
             <VistaLiga
               view={vistaLiga}
               banderaUrl={paisDeLaLiga?.flagUrl ?? null}
-              fase={fase}
               conCuenta={session !== null}
             />
           ) : vistaEquipo ? (
@@ -250,10 +254,17 @@ const destacado = feed?.insights[0]
       </div>
 
       <!--
-        Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada: se reemplaza por el
-        once ideal de la última jornada de esa liga.
+        El riel guarda el "cómo va": con una liga abierta, su tabla y debajo el once de la fecha.
+        "Lo mejor del día" de todo el mundo no dice nada cuando estás dentro de una liga, así que
+        se reemplaza, no se suma.
+
+        Entre 1024 y 1279px el riel cae en la primera columna de la segunda fila —16rem— y la cancha
+        del once se dibujaba de 256px: ahí ocupa las dos columnas y reparte sus tarjetas en dos.
       -->
-      <aside class="order-3 grid gap-4 lg:order-none xl:sticky xl:top-20 xl:self-start">
+      <aside
+        class="order-2 grid gap-4 lg:order-none lg:col-span-2 lg:grid-cols-2 lg:items-start xl:sticky xl:top-20 xl:col-span-1 xl:grid-cols-1 xl:self-start"
+      >
+        {vistaLiga && <TablaDelRiel view={vistaLiga} fase={fase} />}
         {
           vistaLiga?.once ? (
             <OnceDeLaFecha
@@ -262,11 +273,13 @@ const destacado = feed?.insights[0]
               nombreLiga={vistaLiga.competition.name}
             />
           ) : (
-            <LideresDelMundo
-              top={mejores}
-              href={(continente: string) => `/?region=${continente}`}
-              hrefJugador={(slug: string) => `/?jugador=${slug}`}
-            />
+            !vistaLiga && (
+              <LideresDelMundo
+                top={mejores}
+                href={(continente: string) => `/?region=${continente}`}
+                hrefJugador={(slug: string) => `/?jugador=${slug}`}
+              />
+            )
           )
         }
 

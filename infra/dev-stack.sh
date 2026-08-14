@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
-# Levanta el stack local completo: Redis, API, worker y web (builds de dist/).
-# Uso: ./infra/dev-stack.sh [--stop]
+# El stack local completo: Redis (Docker), API, worker y web.
+#
+# Corre los builds de dist/, no los servidores de desarrollo: es lo mismo que se despliega y no
+# ocupa dos terminales vigilando recargas. Después de cambiar código hay que reconstruir.
+#
+# Uso:
+#   pnpm start    (o ./infra/dev-stack.sh)          levanta todo
+#   pnpm stop     (o ./infra/dev-stack.sh --stop)   baja API, worker y web
+#   pnpm estado   (o ./infra/dev-stack.sh --status) dice qué está arriba
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOGS="$ROOT/.logs"
+
+WEB_URL="http://localhost:4321"
+API_URL="http://localhost:3001"
 
 stop_stack() {
   # patrones sin ruta: los procesos pueden haberse lanzado con ruta relativa o absoluta
@@ -13,11 +23,42 @@ stop_stack() {
   sleep 1
 }
 
-if [[ "${1:-}" == "--stop" ]]; then
-  stop_stack
-  echo "Stack detenido (Redis sigue en Docker; usa 'docker compose -f infra/docker-compose.yml down' si quieres pararlo)"
-  exit 0
-fi
+estado() {
+  local nombre=$1 url=$2
+  if curl -sf "$url" >/dev/null 2>&1; then
+    echo "  ✓ $nombre  $url"
+  else
+    echo "  ✗ $nombre  $url (no responde)"
+  fi
+}
+
+case "${1:-}" in
+  --stop)
+    stop_stack
+    echo "Stack detenido. Redis sigue en Docker; para pararlo: docker compose -f infra/docker-compose.yml down"
+    exit 0
+    ;;
+  --status)
+    echo "Athena:"
+    estado "web    " "$WEB_URL"
+    estado "api    " "$API_URL/v1/health"
+    if docker compose -f "$ROOT/infra/docker-compose.yml" ps --status running 2>/dev/null | grep -q redis; then
+      echo "  ✓ redis   localhost:6379"
+    else
+      echo "  ✗ redis   localhost:6379 (contenedor parado)"
+    fi
+    pgrep -f "dist/main.worker.js" >/dev/null && echo "  ✓ worker  (sync y colas)" || echo "  ✗ worker  (sync y colas)"
+    exit 0
+    ;;
+esac
+
+# Sin builds no hay nada que servir, y el error de node no lo explica.
+for artefacto in "$ROOT/apps/api/dist/main.api.js" "$ROOT/apps/web/dist/server/entry.mjs"; do
+  if [[ ! -f "$artefacto" ]]; then
+    echo "Falta $artefacto. Corré primero: pnpm build" >&2
+    exit 1
+  fi
+done
 
 mkdir -p "$LOGS"
 stop_stack
@@ -40,8 +81,9 @@ wait_for() {
 }
 
 failed=0
-wait_for http://localhost:3001/v1/health "API" "$LOGS/api.log" || failed=1
-wait_for http://localhost:4321/ "Web" "$LOGS/web.log" || failed=1
+wait_for "$API_URL/v1/health" "API" "$LOGS/api.log" || failed=1
+wait_for "$WEB_URL/" "Web" "$LOGS/web.log" || failed=1
 [[ $failed -eq 1 ]] && exit 1
 
-echo "Stack listo → web http://localhost:4321 · api http://localhost:3001 (docs en /docs) · logs en .logs/"
+echo "Stack listo → entrá por $WEB_URL"
+echo "  api $API_URL (documentación en /docs) · redis 6379 · logs en .logs/"

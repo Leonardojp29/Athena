@@ -7,7 +7,7 @@ import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
 import PlantillaCompacta from './PlantillaCompacta.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { TeamView } from '../../lib/api';
-import { colorEquipo } from '../../lib/color';
+import { temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
@@ -25,12 +25,13 @@ const { team, standings, recent, upcoming, squad, scorers } = view;
 const pais = paisEnEspanol(team.country);
 
 /*
- * El color de la camiseta como acento: un lavado detrás de la cabecera y la plaquita del escudo.
- * Nunca detrás de un texto —el proveedor manda cremas casi blancos y negros—, así que la legibilidad
- * no depende de qué color le toque a cada club.
+ * La camiseta como superficie de la cabecera, con la tinta elegida por luminancia. El lavado
+ * tímido no funcionaba: el azul casi negro de Alianza al 28% sobre la pizarra era invisible.
  */
-const color = colorEquipo(team.primaryColor);
-const segundo = colorEquipo(team.secondaryColor);
+const tema = temaEquipo(team.primaryColor, team.secondaryColor);
+const varsCabecera = tema
+  ? `background-image:${tema.fondo};--tinta:${tema.tinta};--tinta-suave:${tema.tintaSuave};--tinta-tenue:${tema.tintaTenue};--linea:${tema.linea};--chip:${tema.chip}`
+  : '--tinta:var(--color-chalk);--tinta-suave:var(--color-chalk-dim);--tinta-tenue:color-mix(in oklab, var(--color-chalk) 30%, transparent);--linea:color-mix(in oklab, var(--color-chalk) 16%, transparent);--chip:color-mix(in oklab, var(--color-chalk) 10%, transparent)';
 
 /* La forma como la cuenta el hincha: del partido más viejo al último. */
 const FORMA: Record<string, { letra: string; clase: string }> = {
@@ -54,40 +55,42 @@ const bloques = [
   class="overflow-hidden rounded-xl border border-border bg-surface"
   style={`view-transition-name: equipo-${team.slug}`}
 >
-  {
-    color && (
-      <span
-        class="block h-1 w-full"
-        style={`background:linear-gradient(90deg, ${color.base}, ${segundo?.base ?? color.suave(0.35)})`}
-        aria-hidden="true"
-      />
-    )
-  }
+  {tema && <span class="block h-1 w-full" style={`background:${tema.franja}`} aria-hidden="true" />}
   <header
-    class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3"
-    style={color ? `background-image:linear-gradient(100deg, ${color.suave(0.28)}, transparent 62%)` : undefined}
+    class="relative flex flex-wrap items-center gap-x-3 gap-y-2 overflow-hidden border-b border-board-edge bg-board p-3"
+    style={varsCabecera}
   >
     {
       team.logoUrl && (
-        <span
-          class="grid size-11 shrink-0 place-items-center rounded-lg bg-chalk/10 ring-1 ring-inset ring-chalk/15"
-          style={color ? `background:${color.suave(0.9)}` : undefined}
-        >
-          <img src={team.logoUrl} alt="" width="30" height="30" />
+        <img
+          src={team.logoUrl}
+          alt=""
+          width="120"
+          height="120"
+          aria-hidden="true"
+          class="pointer-events-none absolute -top-4 right-2 size-28 opacity-10"
+          style="mask-image:linear-gradient(115deg, transparent 20%, black 85%)"
+        />
+      )
+    }
+    {
+      team.logoUrl && (
+        <span class="grid size-14 shrink-0 place-items-center rounded-xl bg-chalk shadow-card">
+          <img src={team.logoUrl} alt="" width="40" height="40" class="size-10" />
         </span>
       )
     }
-    <div class="min-w-0 flex-1 basis-40">
-      <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
+    <div class="relative min-w-0 flex-1 basis-40">
+      <h2 class="truncate font-display text-2xl font-semibold uppercase leading-none text-(--tinta)">
         {team.name}
       </h2>
-      <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-2xs text-chalk-dim">
+      <p class="mt-1 flex flex-wrap items-center gap-x-1.5 text-2xs text-(--tinta-suave)">
         <CountryFlag name={pais} size={14} />
         {pais ?? 'Internacional'}
         {
           team.founded !== null && (
             <>
-              <span class="text-chalk/30">·</span>
+              <span class="text-(--tinta-tenue)">·</span>
               desde {team.founded}
             </>
           )
@@ -96,7 +99,7 @@ const bloques = [
     </div>
 
     <!-- En móvil los botones se van a su propia línea: en la misma, el título se comía a "PRI…". -->
-    <div class="flex w-full shrink-0 items-center gap-2 sm:w-auto">
+    <div class="relative flex w-full shrink-0 items-center gap-2 sm:w-auto">
       <BotonFavorito
         tipo="equipo"
         id={team.id}
@@ -107,6 +110,7 @@ const bloques = [
         variante="boton"
         conCuenta={conCuenta}
         onBoard
+        class="!border-(--linea) !text-(--tinta) hover:!border-(--tinta-suave) aria-pressed:!border-(--tinta) aria-pressed:!bg-(--chip) aria-pressed:!text-(--tinta)"
       />
       <a
         href={`/equipos/${team.slug}`}
@@ -120,7 +124,10 @@ const bloques = [
 
   {
     principal && (
-      <div class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border p-3">
+      <div
+        class="flex flex-wrap items-center gap-x-6 gap-y-3 border-b border-border p-3"
+        style={tema ? `background:linear-gradient(180deg, ${tema.lavado(0.08)}, ${tema.lavado(0.02)})` : undefined}
+      >
         <div>
           <p class="font-display text-2xl font-semibold leading-none tabular">{`${principal.position}º`}</p>
           <p class="mt-1 flex items-center gap-1 text-2xs text-ink-muted">

@@ -185,6 +185,39 @@ test.describe('shell del sitio', () => {
    * Dentro de una liga, "lo mejor del día" de todo el mundo no dice nada. El riel pasa a mostrar el
    * once ideal de la última jornada de esa liga.
    */
+  /*
+   * El centro cuenta qué pasa y el riel cómo va: para llegar a la fecha de hoy había que pasar por
+   * dieciocho filas de tabla, así que los partidos van primero y la tabla se mudó al riel.
+   */
+  test('en una liga, el centro arranca en los partidos y la tabla vive en el riel', async ({
+    page,
+    isMobile,
+  }) => {
+    await page.goto('/?liga=primera-division');
+
+    const liga = page.locator('section', { has: page.getByRole('link', { name: /ver la liga completa/i }) });
+    await expect(liga.getByRole('heading', { name: /próximos partidos|últimos resultados/i }).first()).toBeVisible();
+    /* La tabla ya no está en el centro: si vuelve, este bloque deja de tener sentido. */
+    await expect(liga.locator('table')).toHaveCount(0);
+
+    /* Y el orden dentro de la tarjeta: los partidos antes de los goleadores. */
+    const partidos = await liga.getByRole('heading', { name: /próximos partidos/i }).first().boundingBox();
+    const deciden = await liga.getByRole('heading', { name: /los que deciden/i }).boundingBox();
+    expect(partidos!.y).toBeLessThan(deciden!.y);
+
+    /* En móvil el riel va debajo y no tiene columna propia, pero la tabla sigue siendo suya. */
+    const riel = page.locator('main aside').last();
+    await expect(riel.getByRole('heading', { name: /tabla de posiciones/i })).toBeVisible();
+    await expect(riel.locator('table')).toHaveCount(1);
+
+    if (!isMobile) {
+      /* En escritorio, el riel está al costado: su tabla arranca a la derecha del centro. */
+      const centro = await liga.boundingBox();
+      const tabla = await riel.locator('table').boundingBox();
+      expect(tabla!.x).toBeGreaterThan(centro!.x + centro!.width - 4);
+    }
+  });
+
   test('en una liga el riel muestra el once de esa liga', async ({ page, isMobile }) => {
     test.skip(isMobile, 'el riel no se muestra en móvil');
     await page.goto('/?liga=primera-division');

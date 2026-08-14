@@ -3,44 +3,40 @@ import EscudoTorneo from '../EscudoTorneo.astro';
 import BotonFavorito from '../BotonFavorito.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
-import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
-import SelectorFase from '../SelectorFase.astro';
-import StandingsTable from '../StandingsTable.astro';
+import MatchRow from '../MatchRow.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { CompetitionView } from '../../lib/api';
+import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
  * La liga abierta dentro de la home, sin salir de la página.
  *
- * Es un resumen, no la página completa: la tabla de la fase en juego —con scroll propio, así que
- * entran los dieciocho equipos sin estirar la tarjeta— y las dos columnas de partidos abajo.
- * Quien quiera todo tiene el botón que lleva a la competencia. La idea es poder mirar la Liga 1
- * sin perder de vista el resto del día.
+ * Cuenta **qué pasa**: lo que se juega, lo que se jugó y quiénes deciden. La tabla —el "cómo va"—
+ * vive en el riel derecho, porque para llegar a la fecha de hoy había que pasar por dieciocho filas
+ * y nueve columnas. Quien quiera todo tiene el botón que lleva a la competencia.
+ *
+ * Los partidos van en una sola columna a todo el ancho con la fila ancha del sitio: los nombres se
+ * juntan alrededor del marcador en el centro en lugar de estirarse hasta los bordes, y entran ocho
+ * de cada lado en el alto que antes ocupaban tres.
  */
 interface Props {
   view: CompetitionView;
   /** La bandera sale del catálogo: la vista de competencia solo trae el nombre del país. */
   banderaUrl?: string | null;
-  /** Etiqueta de la fase pedida por la URL; si no viene, se abre la que está en juego. */
-  fase?: string | null;
   conCuenta?: boolean;
 }
 
-const { view, banderaUrl = null, fase = null, conCuenta = false } = Astro.props;
-const { competition, season, standingGroups, recent, upcoming, scorers, assisters } = view;
+const { view, banderaUrl = null, conCuenta = false } = Astro.props;
+const { competition, season, recent, upcoming, scorers, assisters } = view;
 
-/*
- * El API manda la fase en juego primero, así que el grupo por defecto es el primero y no hay que
- * volver a decidirlo acá. Antes se abría el Apertura —cerrado en mayo— mientras se jugaba el
- * Clausura, y la tabla mostraba una foto de otro torneo.
- */
-const grupo = standingGroups.find((g) => g.label === fase) ?? standingGroups[0];
 const pais = paisEnEspanol(competition.country);
 const nombre = nombreTorneo(competition.name);
 
-/* "Clausura - 4" → "Clausura · fecha 4": decir en qué fecha va evita la confusión de raíz. */
+/* "Clausura - 4" → "Clausura · fecha 4"; en una copa, la ronda ya viene traducida en el cuadro. */
 const jornada = (() => {
+  const enCuadro = view.bracket.find((r) => r.round === view.round);
+  if (enCuadro) return enCuadro.label;
   if (!view.round) return null;
   const corte = view.round.lastIndexOf(' - ');
   if (corte === -1) return nombreFase(view.round);
@@ -50,9 +46,18 @@ const jornada = (() => {
 })();
 
 const bloques = [
-  { titulo: 'Próximos', partidos: upcoming.slice(0, 3), icono: 'reloj' as const },
-  { titulo: 'Últimos resultados', partidos: recent.slice(0, 3), icono: 'cancha' as const },
+  { titulo: 'Próximos partidos', partidos: upcoming.slice(0, 8), icono: 'reloj' as const },
+  { titulo: 'Últimos resultados', partidos: recent.slice(0, 8), icono: 'cancha' as const },
 ].filter((bloque) => bloque.partidos.length > 0);
+
+/* Una copa internacional trae sus colores también acá: abrirla en la home ya se siente distinta. */
+const paleta = paletaCompetencia(competition.slug);
+const cabecera = paleta
+  ? [
+      `radial-gradient(110% 190% at 100% -40%, ${paleta.acento.suave(0.35)}, transparent 55%)`,
+      `linear-gradient(115deg, color-mix(in oklab, ${paleta.base.base} 68%, #06060a) 0%, ${paleta.base.base} 82%)`,
+    ].join(',')
+  : null;
 
 ---
 
@@ -64,9 +69,39 @@ const bloques = [
     La cabecera va sobre la pizarra: separa la liga abierta del resto de la página de un golpe de
     vista, y le da al escudo un fondo parejo sin importar de qué color venga.
   -->
-  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-board-edge bg-board p-3">
-    <EscudoTorneo url={competition.logoUrl} size={30} class="!rounded-lg !p-1.5" />
-    <div class="min-w-0 flex-1 basis-40">
+  <header
+    class="relative flex flex-wrap items-center gap-x-3 gap-y-2 overflow-hidden border-b border-board-edge bg-board p-3"
+    style={cabecera ? `background-image:${cabecera}` : undefined}
+  >
+    {
+      paleta && competition.logoUrl && (
+        <img
+          src={competition.logoUrl}
+          alt=""
+          width="120"
+          height="120"
+          aria-hidden="true"
+          class="pointer-events-none absolute -top-5 right-2 size-28 opacity-15"
+          style="mask-image:linear-gradient(115deg, transparent 20%, black 85%);filter:saturate(0) brightness(3)"
+        />
+      )
+    }
+    <EscudoTorneo
+      url={competition.logoUrl}
+      size={paleta ? 38 : 30}
+      class:list={['!rounded-lg', paleta ? '!p-2 shadow-card' : '!p-1.5']}
+    />
+    <div class="relative min-w-0 flex-1 basis-40">
+      {
+        paleta && (
+          <p
+            class="mb-0.5 text-[9px] font-semibold uppercase tracking-label"
+            style={`color:${paleta.acento.base}`}
+          >
+            {paleta.tono}
+          </p>
+        )
+      }
       <h2 class="truncate font-display text-xl font-semibold uppercase leading-none text-chalk">
         {nombre}
       </h2>
@@ -111,66 +146,58 @@ const bloques = [
   </header>
 
   {
-    grupo && (
-      <div class="border-b border-border p-3">
-        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <h3 class="text-2xs font-semibold tracking-label text-ink-muted uppercase">
-            Tabla{standingGroups.length === 1 && grupo.label ? ` · ${nombreFase(grupo.label)}` : ''}
+    bloques.length > 0 ? (
+      bloques.map((bloque) => (
+        <div class="border-b border-border p-3 last:border-0">
+          <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+            <Icon name={bloque.icono} size={12} />
+            {bloque.titulo}
+            <span class="tabular">({bloque.partidos.length})</span>
           </h3>
-          <SelectorFase
-            grupos={standingGroups}
-            activo={grupo.label}
-            href={(label) => `/?liga=${competition.slug}&tabla=${encodeURIComponent(label)}`}
-          />
+          <!-- Con tope de ancho: a 830px los nombres quedaban flotando lejos del marcador. -->
+          <ul class="mx-auto grid max-w-[42rem]">
+            {bloque.partidos.map((match) => (
+              <li>
+                <MatchRow match={match} showDate hrefEquipo={(slug) => `/?equipo=${slug}`} />
+              </li>
+            ))}
+          </ul>
         </div>
-
-        <StandingsTable
-          rows={grupo.rows}
-          maxAlto="15.5rem"
-          hrefEquipo={(slug) => `/?equipo=${slug}`}
-        />
-      </div>
+      ))
+    ) : (
+      <p class="border-b border-border p-3 text-sm text-ink-muted last:border-0">
+        Todavía no hay partidos sincronizados de esta competencia.
+      </p>
     )
   }
 
   {
     (scorers.length > 0 || assisters.length > 0) && (
-      <div class="grid gap-x-5 gap-y-3 border-b border-border p-3 sm:grid-cols-2">
-        <TablaLideres
-          titulo="Goleadores"
-          lideres={scorers}
-          metrica="goals"
-          filas={3}
-          hrefEquipo={(slug) => `/?equipo=${slug}`}
-          hrefJugador={(slug) => `/?jugador=${slug}`}
-        />
-        <TablaLideres
-          titulo="Asistencias"
-          lideres={assisters}
-          metrica="assists"
-          filas={3}
-          hrefEquipo={(slug) => `/?equipo=${slug}`}
-          hrefJugador={(slug) => `/?jugador=${slug}`}
-        />
-      </div>
-    )
-  }
-
-  {
-    bloques.length > 0 ? (
-      <div class="grid gap-x-4 gap-y-3 p-3 sm:grid-cols-2">
-        {bloques.map((bloque) => (
-          <ListaPartidosCompacta
-            titulo={bloque.titulo}
-            icono={bloque.icono}
-            partidos={bloque.partidos}
+      <div class="p-3">
+        <h3 class="mb-1.5 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+          <Icon name="destello" size={12} />
+          Los que deciden
+          <span class="font-normal normal-case tracking-normal">temporada {season.year}</span>
+        </h3>
+        <div class="grid gap-x-5 gap-y-3 sm:grid-cols-2">
+          <TablaLideres
+            titulo="Goleadores"
+            lideres={scorers}
+            metrica="goals"
+            filas={5}
+            hrefEquipo={(slug) => `/?equipo=${slug}`}
+            hrefJugador={(slug) => `/?jugador=${slug}`}
           />
-        ))}
+          <TablaLideres
+            titulo="Asistencias"
+            lideres={assisters}
+            metrica="assists"
+            filas={5}
+            hrefEquipo={(slug) => `/?equipo=${slug}`}
+            hrefJugador={(slug) => `/?jugador=${slug}`}
+          />
+        </div>
       </div>
-    ) : (
-      <p class="p-3 text-sm text-ink-muted">
-        Todavía no hay partidos sincronizados de esta competencia.
-      </p>
     )
   }
 </section>

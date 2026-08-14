@@ -1,0 +1,73 @@
+---
+import Icon from '../Icon.astro';
+import SelectorFase from '../SelectorFase.astro';
+import StandingsTable from '../StandingsTable.astro';
+import type { CompetitionView } from '../../lib/api';
+import { nombreFase } from '../../lib/paises';
+
+/*
+ * La tabla de la liga abierta, en el riel derecho de la home.
+ *
+ * Vivía arriba del todo en el centro y había que pasar por dieciocho filas para llegar a la fecha de
+ * hoy. Acá cumple mejor su papel: es el "cómo va" que se mira de reojo mientras se leen los partidos.
+ *
+ * En 24rem no entran nueve columnas, así que va la variante compacta —posición, equipo, jugados,
+ * diferencia y puntos— con scroll propio: los dieciocho equipos completos sin estirar el riel hasta
+ * el pie de la página. La tabla con G-E-P y forma sigue en la página de la competencia.
+ */
+interface Props {
+  view: CompetitionView;
+  /** Etiqueta de la fase pedida por la URL; si no viene, se abre la que está en juego. */
+  fase?: string | null;
+}
+
+const { view, fase = null } = Astro.props;
+const { competition, standingGroups } = view;
+
+/*
+ * El API manda la fase en juego primero, así que el grupo por defecto es el primero y no hay que
+ * volver a decidirlo acá. Antes se abría el Apertura —cerrado en mayo— mientras se jugaba el
+ * Clausura, y la tabla mostraba una foto de otro torneo.
+ */
+const grupo = standingGroups.find((g) => g.label === fase) ?? standingGroups[0];
+---
+
+{
+  grupo && (
+    <section class="overflow-hidden rounded-xl border border-border bg-surface">
+      <header class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-border p-3">
+        <h2 class="font-display text-sm font-semibold uppercase leading-none">
+          Tabla de posiciones
+          <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
+            {standingGroups.length === 1 && grupo.label
+              ? `${nombreFase(grupo.label)} · ${grupo.rows.length} equipos`
+              : `${grupo.rows.length} equipos`}
+          </span>
+        </h2>
+        <SelectorFase
+          grupos={standingGroups}
+          activo={grupo.label}
+          href={(label) => `/?liga=${competition.slug}&tabla=${encodeURIComponent(label)}`}
+        />
+      </header>
+
+      <div class="p-2">
+        <StandingsTable
+          rows={grupo.rows}
+          compacto
+          maxAlto="26rem"
+          hrefEquipo={(slug) => `/?equipo=${slug}`}
+        />
+      </div>
+
+      <!-- El pie dice que hay más tabla de la que se ve y da la salida a la completa. -->
+      <a
+        href={`/competencias/${competition.slug}`}
+        class="flex items-center justify-between gap-2 border-t border-border px-3 py-2 text-2xs text-ink-muted transition-colors hover:text-primary-ink"
+      >
+        Tabla completa, con G-E-P y forma
+        <Icon name="chevron-derecha" size={12} />
+      </a>
+    </section>
+  )
+}

@@ -68,10 +68,15 @@ const seasonLabel = etiquetaTemporada(season.year);
  * paleta devuelve null y la página se ve como siempre.
  */
 const paleta = paletaCompetencia(competition.slug);
+/*
+ * A color pleno, no como lavado que se funde con la pizarra: la mitad derecha desvanecida hacía
+ * que la Libertadores pareciera una liga con el título pintado. El degradado se oscurece hacia la
+ * izquierda, que es donde apoya el texto.
+ */
 const cabecera = paleta
   ? [
-      `radial-gradient(120% 140% at 88% -20%, ${paleta.acento.suave(0.32)}, transparent 60%)`,
-      `linear-gradient(100deg, ${paleta.base.base} 0%, ${paleta.base.suave(0.55)} 55%, transparent 85%)`,
+      `radial-gradient(110% 190% at 100% -40%, ${paleta.acento.suave(0.38)}, transparent 55%)`,
+      `linear-gradient(115deg, color-mix(in oklab, ${paleta.base.base} 68%, #06060a) 0%, ${paleta.base.base} 82%)`,
     ].join(',')
   : null;
 
@@ -142,10 +147,31 @@ const jsonLd = {
   width="bleed"
   liveBar={false}
 >
-  <section class="w-full border-b border-board-edge bg-board" style={cabecera ? `background-image:${cabecera}` : undefined}>
-    <Container width="wide">
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-3 py-6">
-        <EscudoTorneo url={competition.logoUrl} size={38} class="!rounded-lg !p-2" />
+  <section
+    class="relative w-full overflow-hidden border-b border-board-edge bg-board"
+    style={cabecera ? `background-image:${cabecera}` : undefined}
+  >
+    <!-- El trofeo gigante de fondo: se sabe en qué copa se está sin leer el título. -->
+    {
+      paleta && competition.logoUrl && (
+        <img
+          src={competition.logoUrl}
+          alt=""
+          width="280"
+          height="280"
+          aria-hidden="true"
+          class="pointer-events-none absolute -top-14 right-6 hidden size-72 opacity-15 md:block"
+          style="mask-image:linear-gradient(115deg, transparent 25%, black 85%);filter:saturate(0) brightness(3)"
+        />
+      )
+    }
+    <Container width="wide" class="relative">
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-3 py-6">
+        <EscudoTorneo
+          url={competition.logoUrl}
+          size={paleta ? 56 : 38}
+          class={paleta ? '!rounded-xl !p-2.5 shadow-card' : '!rounded-lg !p-2'}
+        />
         <div class="min-w-0 flex-1">
           {
             paleta && (
@@ -157,7 +183,12 @@ const jsonLd = {
               </p>
             )
           }
-          <h1 class="font-display text-3xl font-semibold uppercase leading-none text-chalk sm:text-4xl">
+          <h1
+            class:list={[
+              'font-display font-semibold uppercase leading-none text-chalk',
+              paleta ? 'text-3xl sm:text-5xl' : 'text-3xl sm:text-4xl',
+            ]}
+          >
             {competition.name}
           </h1>
           <p class="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-chalk-dim">
@@ -208,8 +239,13 @@ const jsonLd = {
   <!--
     Tres zonas, y en pantallas anchas las tres en fila: tabla, los que deciden y los partidos. En
     una sola columna la tabla se estiraba hasta 1200px para poner nueve números, con un hueco en el
-    medio entre el nombre del equipo y las cifras.
+    medio entre el nombre del equipo y las cifras. En una copa, el color del torneo baja con la
+    página como lavado: la identidad no se queda en la cabecera.
   -->
+  <div
+    class="w-full"
+    style={paleta ? `background:linear-gradient(180deg, ${paleta.base.suave(0.1)}, transparent 44rem)` : undefined}
+  >
   <Container width="wide" class="py-5">
     <!-- El cuadro va a todo lo ancho y arriba: en una copa es lo que se viene a ver. -->
     {
@@ -337,4 +373,5 @@ const jsonLd = {
       </div>
     </div>
   </Container>
+  </div>
 </Base>

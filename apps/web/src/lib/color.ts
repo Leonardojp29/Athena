@@ -38,3 +38,57 @@ export function colorEquipo(hex: string | null | undefined): ColorEquipo | null 
     esOscuro: luminancia < 0.4,
   };
 }
+
+/*
+ * El tema de una entidad: la camiseta como superficie, no como lavado.
+ *
+ * El acento tímido fracasó en la práctica: el azul casi negro de Alianza al 30% sobre la pizarra
+ * oscura era invisible, y lo mismo el blanco de River. Lo que hace que una página "sea" del club es
+ * que la cabecera tenga su color de verdad —aunque sea negro o blanco— con la tinta elegida por
+ * luminancia y el secundario como resplandor.
+ *
+ * El texto se apoya en el extremo oscurecido del degradado (mezcla con casi-negro en los colores
+ * oscuros, con blanco en los claros), que es lo que mantiene el contraste cuando el color cae en la
+ * franja media donde ni la tinta clara ni la oscura alcanzan sobre el color puro.
+ */
+export interface TemaEquipo {
+  fondo: string;
+  tinta: string;
+  tintaSuave: string;
+  tintaTenue: string;
+  /** Hairline y chips sobre el fondo, derivados de la tinta: gris sobre color se ve sucio. */
+  linea: string;
+  chip: string;
+  /** La franja de identidad: primario → secundario. */
+  franja: string;
+  /** El primario translúcido, para lavar el cuerpo de la página. */
+  lavado: (alfa: number) => string;
+  esOscuro: boolean;
+}
+
+export function temaEquipo(
+  primario: string | null | undefined,
+  secundario?: string | null,
+): TemaEquipo | null {
+  const base = colorEquipo(primario);
+  if (!base) return null;
+  const sec = colorEquipo(secundario);
+
+  const tintaRgb = base.esOscuro ? '245 247 245' : '16 17 21';
+  const profundo = base.esOscuro
+    ? `color-mix(in oklab, ${base.base} 66%, #07070b)`
+    : `color-mix(in oklab, ${base.base} 72%, #ffffff)`;
+  const halo = sec ? sec.suave(base.esOscuro ? 0.38 : 0.5) : base.suave(0.25);
+
+  return {
+    fondo: `radial-gradient(110% 180% at 100% -40%, ${halo}, transparent 55%), linear-gradient(115deg, ${profundo} 0%, ${base.base} 82%)`,
+    tinta: `rgb(${tintaRgb})`,
+    tintaSuave: `rgb(${tintaRgb} / 0.78)`,
+    tintaTenue: `rgb(${tintaRgb} / 0.4)`,
+    linea: `rgb(${tintaRgb} / 0.16)`,
+    chip: `rgb(${tintaRgb} / 0.1)`,
+    franja: `linear-gradient(90deg, ${base.base}, ${sec?.base ?? base.suave(0.35)})`,
+    lavado: base.suave,
+    esOscuro: base.esOscuro,
+  };
+}

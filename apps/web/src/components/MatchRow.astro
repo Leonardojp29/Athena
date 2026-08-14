@@ -6,6 +6,11 @@ import { formatDate, formatKickoff, isLive, statusLabel } from '../lib/format';
  * Una fila de partido. El enlace estirado cubre toda la fila y los escudos van encima: anidar
  * un <a> dentro de otro es HTML inválido, y esta es la forma de que todo sea clickeable sin
  * romper el documento.
+ *
+ * Enfrentados a partir de `sm` y apilados debajo: en un teléfono, "Sporting Cristal" contra
+ * "Sport Huancayo" a los costados del marcador dejaba "Sporting Cri…" y "Sport Huanc…", y un nombre
+ * cortado no identifica a nadie. Apilados, cada uno tiene los 280px de la fila entera. Es la misma
+ * grilla con distinta colocación, no dos bloques: duplicar el DOM duplicaría también los enlaces.
  */
 interface Props {
   match: MatchCard;
@@ -26,41 +31,50 @@ const live = isLive(match.status);
 const finished = match.status === 'finished';
 const hasScore = match.homeScore !== null && match.awayScore !== null;
 
+/* Con la fecha pedida, un partido terminado la muestra: el marcador ya dice que terminó. */
 const estado = live && match.elapsedMinutes !== null
   ? `${match.elapsedMinutes}'`
-  : finished
-    ? 'Final'
-    : showDate
-      ? formatDate(match.kickoffUtc)
+  : showDate
+    ? formatDate(match.kickoffUtc)
+    : finished
+      ? 'Final'
       : statusLabel(match.status);
 ---
 
-<div class="group relative grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle">
+<div class="group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle sm:grid-cols-[1fr_auto_1fr]">
   <a
     href={`/partidos/${match.id}`}
     class="absolute inset-0 rounded-md"
     aria-label={`${match.homeTeam.name} contra ${match.awayTeam.name}`}
   ></a>
 
-  <span class="flex min-w-0 items-center justify-end gap-2 text-right">
+  <!-- El escudo va primero en el documento y `order` lo manda al lado interno en escritorio. -->
+  <span class="col-start-1 row-start-1 flex min-w-0 items-center gap-2 sm:justify-end sm:text-right">
+    {
+      match.homeTeam.logoUrl && (
+        <img
+          src={match.homeTeam.logoUrl}
+          alt=""
+          width="20"
+          height="20"
+          loading="lazy"
+          class="shrink-0 sm:order-2"
+        />
+      )
+    }
     <a
       href={hrefEquipo(match.homeTeam.slug)}
-      class="relative truncate text-sm hover:text-primary-ink hover:underline"
+      class="relative truncate text-sm hover:text-primary-ink hover:underline sm:order-1"
     >
       {match.homeTeam.name}
     </a>
-    {
-      match.homeTeam.logoUrl && (
-        <img src={match.homeTeam.logoUrl} alt="" width="20" height="20" loading="lazy" class="shrink-0" />
-      )
-    }
   </span>
 
   <!--
     Sin pointer-events-none el marcador se come el clic: `view-transition-name` lo promueve a
     su propia capa, y esa capa pinta encima del enlace estirado.
   -->
-  <span class="pointer-events-none flex min-w-16 flex-col items-center">
+  <span class="pointer-events-none col-start-2 row-span-2 row-start-1 flex min-w-16 flex-col items-center sm:row-span-1">
     {
       hasScore ? (
         <span
@@ -79,7 +93,7 @@ const estado = live && match.elapsedMinutes !== null
     <span class:list={['text-2xs', live ? 'font-medium text-live' : 'text-ink-muted']}>{estado}</span>
   </span>
 
-  <span class="flex min-w-0 items-center gap-2">
+  <span class="col-start-1 row-start-2 flex min-w-0 items-center gap-2 sm:col-start-3 sm:row-start-1">
     {
       match.awayTeam.logoUrl && (
         <img src={match.awayTeam.logoUrl} alt="" width="20" height="20" loading="lazy" class="shrink-0" />
