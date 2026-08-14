@@ -49,7 +49,7 @@ const hayCuadro = cuadro.length > 0;
  * —cómo llegó cada uno— o adelante. La que arranca visible es la del calendario.
  */
 const rondaInicial = (() => {
-  const enJuego = cuadro.findIndex((r) => r.round === view.round);
+  const enJuego = cuadro.findIndex((r) => r.enJuego);
   if (enJuego !== -1) return enJuego;
   /* Sin coincidencia, la última con algo jugado: es donde está el torneo. */
   const jugada = cuadro.map((r) => r.ties.some((t) => t.aggregate !== null)).lastIndexOf(true);
@@ -130,6 +130,8 @@ const golesDe = (leg: LlaveDeCuadro['legs'][number], teamId: string): number | n
          * apilar todas las rondas hacía un riel de tres pantallas.
          */
         <div data-rondas>
+          {/* Con una sola ronda no hay a dónde ir: las flechas serían dos botones muertos. */}
+          {cuadro.length > 1 && (
           <div class="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
             <button
               type="button"
@@ -160,12 +162,13 @@ const golesDe = (leg: LlaveDeCuadro['legs'][number], teamId: string): number | n
               <Icon name="chevron-derecha" size={14} />
             </button>
           </div>
+          )}
 
           {cuadro.map((ronda, i) => (
             <div data-ronda-panel hidden={i !== rondaInicial} class="p-2">
               <p class="mb-1 flex items-center gap-1.5 px-1 text-2xs font-semibold uppercase tracking-label text-ink-muted">
                 {ronda.label}
-                {ronda.round === view.round && (
+                {ronda.enJuego && (
                   <span class="flex items-center gap-1 font-medium normal-case tracking-normal text-primary-ink">
                     <span class="size-1.5 rounded-full bg-live" />
                     en juego

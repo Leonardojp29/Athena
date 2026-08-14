@@ -8,10 +8,9 @@ import Container from '../../components/layout/Container.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
 import BloqueGrupos from '../../components/competencia/BloqueGrupos.astro';
 import Cuadro from '../../components/competencia/Cuadro.astro';
-import Icon from '../../components/Icon.astro';
 import PartidoEnLaCopa from '../../components/competencia/PartidoEnLaCopa.astro';
+import PartidosPorRonda from '../../components/competencia/PartidosPorRonda.astro';
 import PlayerSheet from '../../components/pitch/PlayerSheet.astro';
-import MatchRow from '../../components/MatchRow.astro';
 import OnceDelTorneo from '../../components/competencia/OnceDelTorneo.astro';
 import SelectorFase from '../../components/SelectorFase.astro';
 import SelectorTemporada from '../../components/competencia/SelectorTemporada.astro';
@@ -61,18 +60,21 @@ const {
   competition,
   season,
   standingGroups,
-  recent,
-  upcoming,
   scorers,
   assisters,
   once,
   etapas,
+  estado,
+  porRonda,
   onceDelTorneo,
   seasons,
 } = view;
 
-/* Una copa trae etapas; una liga, solo su tabla. */
-const esCopa = etapas.length > 0;
+/*
+ * Lo dice el formato y no los datos: una liga con liguilla también trae etapas —su cuadro final— y
+ * seguía necesitando su tabla de posiciones, que es lo que se viene a ver.
+ */
+const esCopa = competition.format !== 'league';
 
 const TITULO_ETAPA: Record<string, string> = {
   final: 'Camino al título',
@@ -134,7 +136,12 @@ const enlaceFase = (label: string) => {
  * vocabulario del proveedor es cosa del dominio y no de cada vista. Para una liga, que no pasa por
  * las reglas de copa, queda el nombre de la fase.
  */
-const jornada = view.roundLabel ?? etiquetaDeRonda(view.round);
+const jornada =
+  estado === 'terminado'
+    ? 'Torneo terminado'
+    : estado === 'por-empezar'
+      ? 'Por empezar'
+      : (view.roundLabel ?? etiquetaDeRonda(view.round));
 
 const pais = paisEnEspanol(competition.country);
 
@@ -273,163 +280,138 @@ const jsonLd = {
     style={paleta ? `background:linear-gradient(180deg, ${paleta.base.suave(0.1)}, transparent 44rem)` : undefined}
   >
   <Container width="wide" class="py-5">
-    <!--
-      Dos columnas: a la izquierda lo que pasa en la cancha —lo que viene y el camino del torneo—, a
-      la derecha quiénes lo deciden. La segunda mide 40rem porque adentro van dos tarjetas lado a
-      lado, y así a la primera le quedan los mil doscientos píxeles que necesita el cuadro para
-      mostrar cuatro rondas sin desplazarse.
-    -->
-    <div class="grid items-start gap-4 2xl:grid-cols-[minmax(0,1fr)_40rem]">
-      <div class="grid min-w-0 gap-4">
-        <!--
-          Con un partido abierto, la primera columna es ese partido: mostrarlo arriba del cuadro
-          dejaría la página con dos temas a la vez y el doble de alto.
-        -->
-        {partido && <PartidoEnLaCopa match={partido} volver={`/competencias/${competition.slug}`} />}
-
-        <!-- Lo primero es lo que se juega: la fecha que viene, a todo el ancho de la columna. -->
-        {
-          !partido && upcoming.length > 0 && (
-            <section class="rounded-xl border border-border bg-surface p-3">
-              <h2 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
-                <Icon name="reloj" size={12} />
-                Próximos partidos
-                <span class="tabular">({Math.min(upcoming.length, 8)})</span>
-              </h2>
-              <ul class="mx-auto grid max-w-[42rem]">
-                {upcoming.slice(0, 8).map((match) => (
-                  <li>
-                    <MatchRow match={match} showDate hrefPartido={enlacePartido} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )
-        }
-
-        <!--
-          Las etapas en el orden que manda el API: primero la que se está jugando. Mientras van los
-          octavos manda el cuadro; cuando arranca la fase de grupos de la temporada siguiente, manda
-          la fase de grupos y el cuadro dice que todavía no está definido.
-        -->
-        {
-          !partido &&
-            etapas.map((fase) =>
-            fase.etapa === 'grupos' ? (
-              <BloqueGrupos
-                grupos={standingGroups}
-                abierto={grupo}
-                juntos={gruposJuntos}
-                enJuego={fase.enJuego}
-                hrefFase={enlaceFase}
-                hrefEquipo={enlaceEquipoCopa}
-              />
-            ) : fase.rondas.length > 0 ? (
-              <Cuadro
-                rondas={fase.rondas}
-                paleta={paleta}
-                rondaActual={view.round}
-                titulo={TITULO_ETAPA[fase.etapa] as string}
-                hrefPartido={enlacePartidoEnCopa}
-                hrefEquipo={enlaceEquipoCopa}
-              />
-            ) : (
-              <Card>
-                <p class="text-sm text-ink-muted">
-                  El cuadro se define cuando termine la fase de grupos.
-                </p>
-              </Card>
-            ),
-          )
-        }
-
-        {
-          !partido &&
-            !esCopa &&
-            (grupo ? (
-              <section class="rounded-xl border border-border bg-surface">
-                <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
-                  <h2 class="font-display text-base font-semibold uppercase">
-                    Tabla de posiciones
-                    {standingGroups.length === 1 && grupo.label && (
-                      <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
-                        {nombreFase(grupo.label)}
-                      </span>
-                    )}
-                  </h2>
-                  <SelectorFase grupos={standingGroups} activo={grupo.label} href={enlaceFase} />
-                </header>
-                <div class="p-3">
-                  <StandingsTable rows={grupo.rows} />
-                </div>
-              </section>
-            ) : (
-              <Card>
-                <p class="text-sm text-ink-muted">
-                  La tabla estará disponible cuando arranque la competencia.
-                </p>
-              </Card>
-            ))
-        }
-      </div>
-
-
+    <div class="grid gap-4">
       <!--
-        La columna angosta: los que deciden y el once, uno al lado del otro, y debajo los últimos
-        resultados ocupando el ancho de los dos.
+        Con un partido abierto, la página es ese partido: mostrarlo arriba del cuadro dejaría dos
+        temas a la vez y el doble de alto.
       -->
-      <div class="grid min-w-0 gap-4">
-        <div class="grid min-w-0 gap-4 sm:grid-cols-2">
-          {
-            hayLideres && (
-              <section class="rounded-xl border border-border bg-surface">
-                <div class="grid gap-4 p-3">
-                  <TablaLideres titulo="Goleadores" lideres={scorers} metrica="goals" filas={5} />
-                  <TablaLideres
-                    titulo="Asistencias"
-                    lideres={assisters}
-                    metrica="assists"
-                    filas={5}
-                  />
-                </div>
-              </section>
-            )
-          }
-          {
-            onceDelTorneoVisible ? (
-              <OnceDelTorneo once={onceDelTorneoVisible} paleta={paleta} temporada={seasonLabel} />
-            ) : (
-              onceDeLaFechaVisible && (
-                <OnceDeLaFecha
-                  once={onceDeLaFechaVisible}
-                  logoUrl={competition.logoUrl}
-                  nombreLiga={competition.name}
+      {partido && <PartidoEnLaCopa match={partido} volver={`/competencias/${competition.slug}`} />}
+
+      {
+        !partido && (
+          <>
+            <!--
+              Arriba, en fila: los partidos ronda por ronda, quiénes deciden y el once. Las tres
+              caben en una banda de alto parejo, y así lo de abajo —el cuadro, la fase de grupos, la
+              tabla— se queda con todo el ancho de la página en lugar de con una columna.
+            -->
+            <!--
+              Las tres al mismo alto —el del once, que es el más alto— en lugar de cada una con el suyo:
+              con `items-start` la de partidos y la de goleadores dejaban un hueco debajo y la fila se
+              leía como tres cosas sueltas. Adentro, cada tarjeta usa el alto que le toca.
+            -->
+            <div
+              class:list={[
+                'grid gap-4',
+                /* Sin goleadores —una copa que nunca pasó por /players— la fila es de dos y no
+                   deja un hueco de 400px en el medio de la página. */
+                hayLideres
+                  ? '2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_23rem]'
+                  : '2xl:grid-cols-[minmax(0,1fr)_23rem]',
+              ]}
+            >
+              <PartidosPorRonda
+                rondas={porRonda}
+                hrefPartido={enlacePartido}
+                hrefEquipo={esCopa ? enlaceEquipoCopa : undefined}
+              />
+
+              {hayLideres && (
+                <section class="rounded-xl border border-border bg-surface">
+                  <div class="grid h-full content-between gap-4 p-3">
+                    <TablaLideres titulo="Goleadores" lideres={scorers} metrica="goals" filas={6} />
+                    <TablaLideres
+                      titulo="Asistencias"
+                      lideres={assisters}
+                      metrica="assists"
+                      filas={6}
+                    />
+                  </div>
+                </section>
+              )}
+
+              <div class="grid min-w-0 gap-4">
+                {onceDelTorneoVisible ? (
+                  <OnceDelTorneo once={onceDelTorneoVisible} paleta={paleta} temporada={seasonLabel} />
+                ) : (
+                  onceDeLaFechaVisible && (
+                    <OnceDeLaFecha
+                      once={onceDeLaFechaVisible}
+                      logoUrl={competition.logoUrl}
+                      nombreLiga={competition.name}
+                    />
+                  )
+                )}
+                <AvisoFavoritos />
+              </div>
+            </div>
+
+            <!--
+              Las etapas en el orden que manda el API: primero la que se está jugando. Mientras van
+              los octavos manda el cuadro; cuando arranca la fase de grupos, manda la fase de grupos
+              y el cuadro dice que todavía no está definido. A todo el ancho entran siete rondas sin
+              desplazarse, que es un camino al título completo.
+            -->
+            {etapas.map((fase) =>
+              fase.etapa === 'grupos' ? (
+                <BloqueGrupos
+                  grupos={standingGroups}
+                  abierto={grupo}
+                  juntos={gruposJuntos}
+                  enJuego={fase.enJuego}
+                  hrefFase={enlaceFase}
+                  hrefEquipo={enlaceEquipoCopa}
                 />
-              )
-            )
-          }
-        </div>
+              ) : fase.rondas.length > 0 ? (
+                <Cuadro
+                  rondas={fase.rondas}
+                  paleta={paleta}
+                  titulo={TITULO_ETAPA[fase.etapa] as string}
+                  hrefPartido={enlacePartidoEnCopa}
+                  hrefEquipo={enlaceEquipoCopa}
+                />
+              ) : (
+                <Card>
+                  <p class="text-sm text-ink-muted">
+                    El cuadro se define cuando termine la fase de grupos.
+                  </p>
+                </Card>
+              ),
+            )}
 
-        <section class="rounded-xl border border-border bg-surface p-3">
-          <h2 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
-            <Icon name="cancha" size={12} />
-            Últimos resultados
-          </h2>
-          {recent.length === 0 ? (
-            <p class="px-1 text-sm text-ink-muted">Aún no hay resultados esta temporada.</p>
-          ) : (
-            <ul class="grid">
-              {recent.slice(0, 8).map((match) => (
-                <li>
-                  <MatchRow match={match} showDate hrefPartido={enlacePartido} />
-                </li>
+            <!--
+              La tabla de una liga no va a todo el ancho: nueve números estirados en 1840px dejan un
+              hueco entre el nombre del equipo y las cifras. Centrada y con techo se lee como una
+              tabla.
+            -->
+            {!esCopa &&
+              (grupo ? (
+                <section class="mx-auto w-full max-w-[76rem] rounded-xl border border-border bg-surface">
+                  <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
+                    <h2 class="font-display text-base font-semibold uppercase">
+                      Tabla de posiciones
+                      {standingGroups.length === 1 && grupo.label && (
+                        <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
+                          {nombreFase(grupo.label)}
+                        </span>
+                      )}
+                    </h2>
+                    <SelectorFase grupos={standingGroups} activo={grupo.label} href={enlaceFase} />
+                  </header>
+                  <div class="p-3">
+                    <StandingsTable rows={grupo.rows} />
+                  </div>
+                </section>
+              ) : (
+                <Card>
+                  <p class="text-sm text-ink-muted">
+                    La tabla estará disponible cuando arranque la competencia.
+                  </p>
+                </Card>
               ))}
-            </ul>
-          )}
-        </section>
-
-        <AvisoFavoritos />
-      </div>
+          </>
+        )
+      }
     </div>
   </Container>
   </div>

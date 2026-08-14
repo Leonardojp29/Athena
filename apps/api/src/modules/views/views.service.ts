@@ -1,12 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  describirRonda,
+  clasificarRondas,
   escaleraDesde,
-  etapaDeRonda,
   gruposVigentes,
   ordenarEtapas,
-  ordenarRondas,
   type Etapa,
+  type Ronda,
 } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
@@ -80,6 +79,15 @@ const matchPlayerStats = {
   penaltyMissed: true,
   penaltySaved: true,
 } as const;
+
+/* Un partido que todavía se puede jugar: si no queda ninguno y hay jugados, el torneo terminó. */
+const PENDIENTE = new Set(['scheduled', 'in_play', 'paused', 'postponed', 'suspended']);
+
+/* Un partido programado que quedó atrás hace más de esto no se va a jugar: es basura del proveedor. */
+const RANCIO_MS = 14 * 24 * 3600_000;
+
+/* Cuántas rondas se mandan a cada lado de la que se juega. */
+const VENTANA = 3;
 
 const matchCard = {
   id: true,
@@ -431,7 +439,10 @@ export class ViewsService {
         select: goleador,
       }),
       this.onceDeLaFecha(slug),
-      /* Todos los partidos de la temporada: con 142 en una copa, es una consulta y arma el cuadro. */
+      /*
+       * Todos los partidos de la temporada: con 142 en una copa es una sola consulta, y de ella salen
+       * el cuadro, los partidos ronda por ronda y el estado del torneo.
+       */
       this.prisma.match.findMany({
         relationLoadStrategy: JOIN,
         where: { season: temporadaVigente },
@@ -440,6 +451,8 @@ export class ViewsService {
           id: true,
           kickoffUtc: true,
           status: true,
+          statusDetail: true,
+          elapsedMinutes: true,
           homeScore: true,
           awayScore: true,
           round: true,
@@ -468,6 +481,40 @@ export class ViewsService {
     const jornada = upcoming[0]?.round ?? recent[0]?.round ?? null;
     const vigentes = new Set(gruposVigentes(jornada, [...groups.keys()]));
 
+    const rondas = clasificarRondas([...new Set(todos.map((m) => m.round ?? ''))].filter(Boolean));
+
+    /*
+     * En qué momento está la temporada. Sin esto, la Copa del Rey decía "en juego" cuatro meses después
+     * de la final: la ronda en curso se deduce del último partido jugado cuando no queda ninguno por
+     * jugar, y un torneo terminado se leía como uno vivo.
+     *
+     * Dos cosas que la base enseñó y que una regla ingenua no ve. Un partido programado que ya pasó
+     * hace semanas no es un partido por jugar sino un dato podrido —la FA Cup arrastra dos replays de
+     * agosto de 2025 que nadie va a jugar—, y una copa no termina hasta que se juega su final: la Copa
+     * do Brasil no tiene nada programado porque el proveedor todavía no publicó los cuartos, no porque
+     * haya campeón.
+     */
+    const limiteRancio = Date.now() - RANCIO_MS;
+    const porJugar = todos.some(
+      (m) => PENDIENTE.has(m.status) && m.kickoffUtc.getTime() > limiteRancio,
+    );
+    const jugados = todos.filter((m) => m.status === 'finished').length;
+    const eliminatorias = rondas.filter((r) => r.eliminatoria && r.etapa === 'final');
+    const ultima = eliminatorias.at(-1);
+    const cuadroCompleto =
+      ultima === undefined ||
+      new Set(
+        todos
+          .filter((m) => m.round === ultima.round)
+          .map((m) => [m.homeTeam.id, m.awayTeam.id].sort().join('|')),
+      ).size === 1;
+
+    const estado: EstadoDeTemporada =
+      jugados === 0 ? 'por-empezar' : porJugar || !cuadroCompleto ? 'en-juego' : 'terminado';
+
+    /* La ronda en curso solo existe mientras el torneo lo esté: después, nada está "en juego". */
+    const enCurso = estado === 'en-juego' ? jornada : null;
+
     const standingGroups = [...groups.entries()]
       .map(([label, rows]) => ({ label, rows, current: vigentes.has(label) }))
       .sort((a, b) => Number(b.current) - Number(a.current));
@@ -487,14 +534,27 @@ export class ViewsService {
        * Las etapas del torneo, ya ordenadas: una liga devuelve una lista vacía porque no tiene
        * ninguna ronda eliminatoria ni grupos que mostrar aparte de su tabla.
        */
-      etapas: this.fasesDe(todos, jornada),
-      etapaEnJuego: etapaDeRonda(jornada),
+      /*
+       * Una liga no tiene etapas: la fase regular es su tabla y la liguilla —si llega— es lo único que
+       * se dibuja como cuadro. Sin esto, la Liga MX mostraba "fase de grupos" en lugar de su tabla.
+       */
+      etapas: this.fasesDe(todos, rondas, enCurso, competition.format === 'league'),
+      etapaEnJuego: rondas.find((r) => r.round === enCurso)?.etapa ?? null,
+      estado,
+      /* Los partidos agrupados por ronda, para navegarlos de una en una en lugar de dos listas. */
+      porRonda: this.partidosPorRonda(
+        todos,
+        rondas,
+        jornada,
+        enCurso,
+        new Map(standings.map((fila) => [fila.team.id, fila.groupLabel])),
+      ),
       /*
        * El nombre de la jornada en español, para no traducirlo en cada vista. Solo cuando el dominio
        * la reconoce como ronda de copa: la jornada de una liga —"Clausura - 5"— la rotula la web con
        * su propio diccionario de fases.
        */
-      roundLabel: jornada && etapaDeRonda(jornada) ? describirRonda(jornada).label : null,
+      roundLabel: rondas.find((r) => r.round === jornada)?.label ?? null,
       onceDelTorneo,
       seasons,
     };
@@ -638,23 +698,41 @@ export class ViewsService {
    * adelante, avanzó. Es la única forma honesta de resolver una llave que se definió por penales,
    * dato que el proveedor no publica en el partido.
    */
-  private cuadroDe(partidos: PartidoDeCuadro[], etapa: Etapa): RondaDeCuadro[] {
-    const rondas = ordenarRondas([...new Set(partidos.map((m) => m.round ?? ''))].filter(Boolean));
+  private cuadroDe(
+    partidos: PartidoDeCuadro[],
+    rondas: Ronda[],
+    etapa: Etapa,
+    enCurso: string | null,
+  ): RondaDeCuadro[] {
+    /*
+     * Un rótulo es una columna. El proveedor manda "Preliminary Round" y "Preliminary Round Replays"
+     * como rondas distintas, pero un replay es otro partido de la misma llave y la FA Cup mostraba dos
+     * columnas iguales; agrupar por rótulo las junta sin fusionar lo que de verdad es distinto —el
+     * Apertura y el Clausura tienen cada uno su final y el rótulo lo dice—.
+     */
+    const columnas = new Map<string, { label: string; rank: number; rounds: string[] }>();
+    for (const ronda of rondas) {
+      const columna = columnas.get(ronda.label);
+      if (columna) columna.rounds.push(ronda.round);
+      else columnas.set(ronda.label, { label: ronda.label, rank: ronda.rank, rounds: [ronda.round] });
+    }
 
-    /* Para cada ronda, los equipos que juegan alguna posterior: esos son los que pasaron. */
-    const equiposPorRango = rondas.map((ronda) => ({
-      rank: ronda.rank,
+    /* Para cada columna, los equipos que juegan alguna posterior: esos son los que pasaron. */
+    const equiposPorRango = [...columnas.values()].map((columna) => ({
+      rank: columna.rank,
       equipos: new Set(
         partidos
-          .filter((m) => (m.round ?? '') === ronda.round)
+          .filter((m) => columna.rounds.includes(m.round ?? ''))
           .flatMap((m) => [m.homeTeam.id, m.awayTeam.id]),
       ),
     }));
 
     const dibujadas = rondas
       .filter((ronda) => ronda.eliminatoria && ronda.etapa === etapa)
+      .filter((ronda, i, todas) => todas.findIndex((r) => r.label === ronda.label) === i)
       .map((ronda) => {
-        const suyos = partidos.filter((m) => (m.round ?? '') === ronda.round);
+        const columna = columnas.get(ronda.label) as { rounds: string[] };
+        const suyos = partidos.filter((m) => columna.rounds.includes(m.round ?? ''));
         const masAdelante = new Set(
           equiposPorRango.filter((r) => r.rank > ronda.rank).flatMap((r) => [...r.equipos]),
         );
@@ -670,6 +748,7 @@ export class ViewsService {
         return {
           round: ronda.round,
           label: ronda.label,
+          enJuego: columna.rounds.includes(enCurso ?? ''),
           ties: [...llaves.values()]
             .map((legs) => {
               const ordenados = [...legs].sort((a, b) =>
@@ -719,7 +798,7 @@ export class ViewsService {
       })
       .filter((ronda) => ronda.ties.length > 0);
 
-    return etapa === 'final' ? [...dibujadas, ...this.escaleraPendiente(dibujadas)] : dibujadas;
+    return etapa === 'final' ? [...dibujadas, ...this.escaleraPendiente(dibujadas, rondas)] : dibujadas;
   }
 
   /**
@@ -730,21 +809,137 @@ export class ViewsService {
    * permite mostrar el camino completo al título en lugar de una columna suelta; el dominio se niega
    * a deducirlo cuando el número de llaves no es potencia de dos.
    */
-  private escaleraPendiente(dibujadas: RondaDeCuadro[]): RondaDeCuadro[] {
+  private escaleraPendiente(dibujadas: RondaDeCuadro[], rondas: Ronda[]): RondaDeCuadro[] {
     /* Desde la más profunda que ya existe: la de más atrás puede tener otro tamaño —el "Round of 32"
        de la Sudamericana son ocho llaves, no dieciséis— y la escalera saldría corrida. */
     const ultima = dibujadas.at(-1);
     if (!ultima) return [];
 
-    const rangos = new Set(dibujadas.map((r) => describirRonda(r.round).rank));
+    const rangos = new Set(
+      dibujadas.map((d) => rondas.find((r) => r.round === d.round)?.rank ?? 0),
+    );
     return escaleraDesde(ultima.ties.length)
       .filter((escalon) => !rangos.has(escalon.rank))
       .map((escalon) => ({
         round: `por-definir-${escalon.rank}`,
         label: escalon.label,
+        enJuego: false,
         ties: [],
         porDefinir: escalon.llaves,
       }));
+  }
+
+  /**
+   * Los partidos de la temporada agrupados por ronda, en una ventana alrededor de la que se juega.
+   *
+   * Reemplaza a "próximos partidos" y "últimos resultados", que eran dos listas con el mismo contenido
+   * partido en dos: la ronda en curso ya trae lo que viene y la anterior lo que pasó. La ventana es de
+   * tres rondas para cada lado —siete paneles— porque una Conference League tiene 210 partidos en la
+   * temporada y mandarlos todos engorda la página sin que nadie los mire.
+   *
+   * El orden sale de la fecha del primer partido de cada ronda y no del rango: entre dos fechas de una
+   * liga el rango es el mismo, y ordenar "Clausura - 10" alfabéticamente lo pondría antes de la 2.
+   */
+  private partidosPorRonda(
+    partidos: PartidoDeCuadro[],
+    rondas: Ronda[],
+    jornada: string | null,
+    enCurso: string | null,
+    grupoDe: Map<string, string>,
+  ): RondaDePartidos[] {
+    const columnas = new Map<string, { label: string; etapa: Etapa | null; eliminatoria: boolean; partidos: PartidoDeCuadro[] }>();
+    for (const ronda of rondas) {
+      const suyos = partidos.filter((m) => m.round === ronda.round);
+      if (suyos.length === 0) continue;
+      const columna = columnas.get(ronda.label);
+      if (columna) columna.partidos.push(...suyos);
+      else
+        columnas.set(ronda.label, {
+          label: ronda.label,
+          etapa: ronda.etapa,
+          eliminatoria: ronda.eliminatoria,
+          partidos: [...suyos],
+        });
+    }
+
+    const ordenadas = [...columnas.values()]
+      .map((columna) => {
+        const suyos = columna.partidos.sort(
+          (a, b) => a.kickoffUtc.getTime() - b.kickoffUtc.getTime(),
+        );
+        return {
+          label: columna.label,
+          enJuego: false,
+          partidos: suyos,
+          bloques: this.bloquesDe(columna, suyos, grupoDe),
+        };
+      })
+      .sort((a, b) => a.partidos[0]!.kickoffUtc.getTime() - b.partidos[0]!.kickoffUtc.getTime());
+
+    const rotuloDe = (round: string | null) =>
+      round ? (rondas.find((r) => r.round === round)?.label ?? null) : null;
+    const enJuego = rotuloDe(enCurso);
+    for (const columna of ordenadas) columna.enJuego = columna.label === enJuego;
+
+    /* Sin ronda en curso, la ventana se abre donde está el torneo: la jornada del último partido. */
+    const centro = Math.max(
+      0,
+      ordenadas.findIndex((c) => c.label === (enJuego ?? rotuloDe(jornada))),
+    );
+    const desde = Math.max(0, Math.min(centro - VENTANA, ordenadas.length - (VENTANA * 2 + 1)));
+    return ordenadas.slice(desde, desde + VENTANA * 2 + 1);
+  }
+
+  /**
+   * En qué se parte una ronda para que se entienda.
+   *
+   * Una ronda de dieciséis partidos no se lee: son ocho llaves con ida y vuelta y, sin decirlo, el
+   * mismo cruce aparece dos veces sin explicación. Y una fecha de la fase de grupos son ocho grupos
+   * distintos jugando lo suyo, así que el grupo es tan importante como el día.
+   *
+   * Devuelve vacío cuando no hay nada que separar —una final, una fecha de liga—: ahí un encabezado
+   * de más es ruido y la lista va derecha.
+   */
+  private bloquesDe(
+    columna: { etapa: Etapa | null; eliminatoria: boolean },
+    partidos: PartidoDeCuadro[],
+    grupoDe: Map<string, string>,
+  ): Array<{ titulo: string; partidos: PartidoDeCuadro[] }> {
+    if (columna.etapa === 'grupos') {
+      /* El grupo sale de la tabla: la ronda del proveedor dice "Group Stage - 3" y no de qué grupo. */
+      const porGrupo = new Map<string, PartidoDeCuadro[]>();
+      for (const partido of partidos) {
+        const grupo = grupoDe.get(partido.homeTeam.id) ?? grupoDe.get(partido.awayTeam.id);
+        if (grupo === undefined) return [];
+        porGrupo.set(grupo, [...(porGrupo.get(grupo) ?? []), partido]);
+      }
+      return porGrupo.size > 1
+        ? [...porGrupo.entries()]
+            .sort(([a], [b]) => a.localeCompare(b, 'es'))
+            .map(([titulo, suyos]) => ({ titulo, partidos: suyos }))
+        : [];
+    }
+
+    if (!columna.eliminatoria) return [];
+
+    /* Ida y vuelta: el mismo cruce jugado dos veces. El orden ya es cronológico. */
+    const vistos = new Set<string>();
+    const ida: PartidoDeCuadro[] = [];
+    const vuelta: PartidoDeCuadro[] = [];
+    for (const partido of partidos) {
+      const clave = [partido.homeTeam.id, partido.awayTeam.id].sort().join('|');
+      if (vistos.has(clave)) vuelta.push(partido);
+      else {
+        vistos.add(clave);
+        ida.push(partido);
+      }
+    }
+    return vuelta.length === 0
+      ? []
+      : [
+          { titulo: 'Ida', partidos: ida },
+          { titulo: 'Vuelta', partidos: vuelta },
+        ];
   }
 
   /**
@@ -756,15 +951,20 @@ export class ViewsService {
    * `standingGroups`— y la final aparece vacía mientras haya grupos por terminar, para poder decir
    * que el cuadro todavía no está definido.
    */
-  private fasesDe(partidos: PartidoDeCuadro[], rondaActual: string | null) {
-    const enJuego = etapaDeRonda(rondaActual);
-    const hayGrupos = partidos.some((m) => etapaDeRonda(m.round) === 'grupos');
+  private fasesDe(
+    partidos: PartidoDeCuadro[],
+    rondas: Ronda[],
+    rondaActual: string | null,
+    esLiga: boolean,
+  ) {
+    const enJuego = rondas.find((r) => r.round === rondaActual)?.etapa ?? null;
+    const hayGrupos = !esLiga && rondas.some((r) => r.etapa === 'grupos');
 
     return ordenarEtapas(enJuego)
       .map((etapa) => ({
         etapa,
         enJuego: etapa === enJuego,
-        rondas: etapa === 'grupos' ? [] : this.cuadroDe(partidos, etapa),
+        rondas: etapa === 'grupos' ? [] : this.cuadroDe(partidos, rondas, etapa, rondaActual),
       }))
       .filter((bloque) =>
         bloque.etapa === 'grupos'
@@ -1428,6 +1628,8 @@ export interface PartidoDeCuadro {
   id: string;
   kickoffUtc: Date;
   status: string;
+  statusDetail: string | null;
+  elapsedMinutes: number | null;
   homeScore: number | null;
   awayScore: number | null;
   round: string | null;
@@ -1435,9 +1637,21 @@ export interface PartidoDeCuadro {
   awayTeam: { id: string; name: string; shortName: string | null; slug: string; logoUrl: string | null };
 }
 
+export type EstadoDeTemporada = 'en-juego' | 'terminado' | 'por-empezar';
+
+export interface RondaDePartidos {
+  label: string;
+  enJuego: boolean;
+  partidos: PartidoDeCuadro[];
+  /** En qué se parte la ronda —ida y vuelta, grupo por grupo—; vacío si no hay nada que separar. */
+  bloques: Array<{ titulo: string; partidos: PartidoDeCuadro[] }>;
+}
+
 export interface RondaDeCuadro {
   round: string;
   label: string;
+  /** Cierto solo en la ronda que el calendario tiene en curso, y nunca en un torneo terminado. */
+  enJuego: boolean;
   /** Cuántas llaves va a tener cuando se defina; solo en las rondas que todavía no se sortearon. */
   porDefinir?: number;
   ties: Array<{

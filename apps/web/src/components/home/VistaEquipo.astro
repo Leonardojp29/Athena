@@ -7,6 +7,7 @@ import MatchRow from '../MatchRow.astro';
 import PlantillaCompacta from './PlantillaCompacta.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { TeamView } from '../../lib/api';
+import { mezclaRondas } from '../../lib/rondas';
 import { temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
@@ -218,6 +219,7 @@ const bloques = [
                   match={match}
                   showDate
                   destacado={team.slug}
+                  mostrarRonda={mezclaRondas(bloque.partidos)}
                   hrefEquipo={(slug) => `/?equipo=${slug}`}
                 />
               </li>

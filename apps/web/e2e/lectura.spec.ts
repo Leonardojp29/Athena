@@ -96,9 +96,58 @@ test.describe('recorrido de lectura', () => {
     await expect(page.locator('main')).not.toContainText(/Qualifying Round|Play-offs/i);
   });
 
+  /*
+   * Leonardo abrió la Copa del Rey y encontró dos columnas "Final" —la de septiembre con diez llaves y
+   * la de abril con una— y un cartel de "en juego" cuatro meses después del campeón. Las dos cosas eran
+   * la misma raíz: el proveedor llama "1/128-finals" a la primera ronda y nadie miraba el calendario.
+   */
+  test('una copa terminada dice que terminó y no repite el nombre de una ronda', async ({ page }) => {
+    await page.goto('/competencias/copa-del-rey');
+
+    await expect(page.locator('main')).toContainText(/torneo terminado/i);
+    await expect(page.locator('main')).not.toContainText(/en juego/i);
+
+    const cuadro = page.locator('section', {
+      has: page.getByRole('heading', { name: /camino al título/i }),
+    });
+    /* Ninguna ronda repetida y ninguna palabra que no se escribe. */
+    const nombres = (await cuadro.locator('li > div > p:first-child').allInnerTexts()).map((t) =>
+      t.split('\n')[0]!.trim(),
+    );
+    expect(nombres.length).toBeGreaterThan(4);
+    expect(new Set(nombres).size).toBe(nombres.length);
+    expect(nombres.join(' ')).not.toMatch(/treintaidosavos|dieciseisavos|sesentaicuatroavos/i);
+    expect(nombres.join(' ')).toMatch(/32avos de final/i);
+  });
+
+  /*
+   * Los partidos van en una sola tarjeta que se navega por ronda, abierta en la que se juega: antes eran
+   * "próximos partidos" y "últimos resultados", el mismo calendario partido en dos y sin decir de qué
+   * ronda era cada partido.
+   */
+  test('los partidos de una competencia se navegan por ronda', async ({ page }) => {
+    await page.goto('/competencias/conmebol-libertadores');
+
+    const partidos = page.locator('section', {
+      has: page.getByRole('heading', { name: /^partidos$/i }),
+    });
+    await expect(partidos).toBeVisible();
+    await expect(partidos.getByText(/en juego/i).first()).toBeVisible();
+
+    const visibles = () => partidos.locator('[data-ronda-panel]:not([hidden])');
+    const antes = await visibles().first().innerText();
+    await partidos.getByRole('button', { name: 'Ronda anterior' }).click();
+    await expect(visibles()).toHaveCount(1);
+    expect(await visibles().first().innerText()).not.toBe(antes);
+  });
+
   test('un partido muestra su marcador', async ({ page }) => {
     await page.goto('/competencias/primera-division');
-    await page.locator('a[href^="/partidos/"]').first().click();
+    /*
+     * El primero que se ve, no el primero del documento: los partidos van por ronda y las rondas que
+     * no se están jugando viven en paneles ocultos, con sus enlaces fuera del alcance de quien lee.
+     */
+    await page.locator('a[href^="/partidos/"]:visible').first().click();
 
     await expect(page).toHaveURL(/\/partidos\//);
     await expect(page.locator('main')).toContainText(/–|:/);

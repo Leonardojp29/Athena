@@ -1,6 +1,7 @@
 ---
 import type { MatchCard } from '../lib/api';
 import { formatDate, formatKickoff, isLive, statusLabel } from '../lib/format';
+import { etiquetaDeRonda } from '../lib/rondas';
 
 /*
  * Una fila de partido. El enlace estirado cubre toda la fila y los escudos van encima: anidar
@@ -13,7 +14,8 @@ import { formatDate, formatKickoff, isLive, statusLabel } from '../lib/format';
  * grilla con distinta colocación, no dos bloques: duplicar el DOM duplicaría también los enlaces.
  */
 interface Props {
-  match: MatchCard;
+  /* Sin la competencia: una fila no la usa, y así también sirve para un partido del cuadro de la copa. */
+  match: Omit<MatchCard, 'season'>;
   showDate?: boolean;
   /**
    * A dónde lleva un equipo. En la home abre su vista simplificada en el mismo contenedor; en el
@@ -27,6 +29,14 @@ interface Props {
    * competencia, que es donde el partido tiene sentido.
    */
   hrefPartido?: (id: string) => string;
+  /**
+   * La ronda, en una pastilla al final de la fila. Va donde la lista mezcla rondas —el cómo va de la
+   * home, los resultados de una copa—: sin ella, la final de la Copa del Rey se leía como un partido
+   * cualquiera. Dentro de un panel de una sola ronda no va, porque el encabezado ya lo dice.
+   */
+  mostrarRonda?: boolean;
+  /** Marca la fila a la que el contenedor lleva el scroll: el primer partido que falta jugar. */
+  anclado?: boolean;
 }
 
 const {
@@ -35,12 +45,16 @@ const {
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
   destacado = null,
   hrefPartido = (id: string) => `/partidos/${id}`,
+  mostrarRonda = false,
+  anclado = false,
 } = Astro.props;
 const live = isLive(match.status);
 const finished = match.status === 'finished';
 const hasScore = match.homeScore !== null && match.awayScore !== null;
 
 /* Con la fecha pedida, un partido terminado la muestra: el marcador ya dice que terminó. */
+const ronda = mostrarRonda ? etiquetaDeRonda(match.round) : null;
+
 const estado = live && match.elapsedMinutes !== null
   ? `${match.elapsedMinutes}'`
   : showDate
@@ -50,7 +64,13 @@ const estado = live && match.elapsedMinutes !== null
       : statusLabel(match.status);
 ---
 
-<div class="group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle sm:grid-cols-[1fr_auto_1fr]">
+<div
+  data-anclado={anclado ? '' : undefined}
+  class:list={[
+    'group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle',
+    ronda ? 'sm:grid-cols-[1fr_auto_1fr_auto]' : 'sm:grid-cols-[1fr_auto_1fr]',
+  ]}
+>
   <a
     href={hrefPartido(match.id)}
     class="absolute inset-0 rounded-md"
@@ -121,4 +141,16 @@ const estado = live && match.elapsedMinutes !== null
       {match.awayTeam.name}
     </a>
   </span>
+
+  <!--
+    La ronda cierra la fila, en el borde: en la grilla apilada del teléfono ocupa su propia línea
+    debajo de los dos equipos, y desde `sm` se alinea al final sin empujar los nombres.
+  -->
+  {
+    ronda && (
+      <span class="pointer-events-none col-span-2 col-start-1 row-start-3 justify-self-start rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-label text-ink-muted sm:col-span-1 sm:col-start-4 sm:row-start-1 sm:justify-self-end">
+        {ronda}
+      </span>
+    )
+  }
 </div>

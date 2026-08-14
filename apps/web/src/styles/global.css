@@ -175,6 +175,22 @@
   }
 }
 
+@utility barra-fina {
+  /*
+   * La barra de 10px del sitio es correcta en una página; dentro de una columna de cuadro de 15,5rem
+   * compite con las llaves. Acá va de 6px y sin el borde que la separa del fondo.
+   */
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border: 0;
+    background: var(--a-color-border-strong);
+  }
+}
+
 @utility chalk-edge {
   /* El filo de tiza reemplaza al borde genérico en todo lo que es plano. */
   border: 1px solid var(--a-color-border);

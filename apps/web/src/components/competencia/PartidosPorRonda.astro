@@ -1,0 +1,223 @@
+---
+import Icon from '../Icon.astro';
+import MatchRow from '../MatchRow.astro';
+import type { PartidoDeCuadro, RondaDePartidos } from '../../lib/api';
+import { formatDate, isLive } from '../../lib/format';
+import { nombreFase } from '../../lib/paises';
+
+/*
+ * Los partidos de la competencia, una ronda por vez.
+ *
+ * Antes eran dos tarjetas —"próximos partidos" y "últimos resultados"— que mostraban el mismo
+ * calendario partido en dos, y ninguna decía a qué ronda pertenecía cada partido: la final de la Copa
+ * del Rey se leía igual que un amistoso. Una sola tarjeta con flechas resuelve las dos cosas, porque la
+ * ronda en curso ya trae lo que viene y la anterior lo que pasó.
+ *
+ * Adentro, una ronda tampoco es una lista plana. Dieciséis partidos de octavos son ocho llaves con ida
+ * y vuelta, y sin decirlo el mismo cruce aparece dos veces sin explicación; una fecha de la fase de
+ * grupos son ocho grupos jugando lo suyo. Así que la ronda se parte —Ida y Vuelta, o grupo por grupo—
+ * y adentro de cada parte los partidos se juntan por día: qué se juega, cuándo y de qué ronda es.
+ *
+ * Abre en la ronda que se está jugando y con el scroll puesto en el primer partido que falta jugar: en
+ * una ronda de 56 llaves, el que importa nunca es el primero de la lista.
+ */
+interface Props {
+  rondas: RondaDePartidos[];
+  hrefPartido?: (id: string) => string;
+  hrefEquipo?: (slug: string) => string;
+}
+
+const { rondas, hrefPartido, hrefEquipo } = Astro.props;
+
+/* La que se juega; si el torneo terminó, la última con algo jugado, que es donde quedó. */
+const inicial = (() => {
+  const enJuego = rondas.findIndex((r) => r.enJuego);
+  if (enJuego !== -1) return enJuego;
+  const jugada = rondas
+    .map((r) => r.partidos.some((p) => p.status === 'finished'))
+    .lastIndexOf(true);
+  return jugada === -1 ? 0 : jugada;
+})();
+
+/**
+ * Los partidos de un tramo, juntados por día en el orden en que se juegan.
+ *
+ * La clave es el día ya escrito en la zona de Lima y no el de la fecha UTC: un partido de las 19:30 en
+ * Buenos Aires cae al día siguiente en UTC, y el martes salía dos veces con un partido en cada uno.
+ */
+function porDia(partidos: PartidoDeCuadro[]): Array<{ dia: string; partidos: PartidoDeCuadro[] }> {
+  const dias = new Map<string, PartidoDeCuadro[]>();
+  for (const partido of partidos) {
+    const dia = formatDate(partido.kickoffUtc);
+    dias.set(dia, [...(dias.get(dia) ?? []), partido]);
+  }
+  return [...dias.entries()].map(([dia, suyos]) => ({ dia, partidos: suyos }));
+}
+
+/* Sin nada que separar, la ronda es un solo tramo sin título. */
+const tramosDe = (ronda: RondaDePartidos) =>
+  ronda.bloques.length > 0 ? ronda.bloques : [{ titulo: '', partidos: ronda.partidos }];
+
+/**
+ * Dónde se para el scroll al abrir la ronda: en el partido que se está jugando y, si no hay ninguno, en
+ * el primero que falta jugar. En una ronda de 56 llaves el que importa nunca es el primero de la lista.
+ */
+const pendienteDe = (ronda: RondaDePartidos) =>
+  (ronda.partidos.find((p) => isLive(p.status)) ?? ronda.partidos.find((p) => p.status !== 'finished'))
+    ?.id ?? null;
+---
+
+{
+  rondas.length > 0 && (
+    <section
+      class="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface"
+      data-carrusel-rondas
+    >
+      <header class="flex items-center gap-2 border-b border-border p-3">
+        <h2 class="mr-auto font-display text-sm font-semibold uppercase leading-none">Partidos</h2>
+        {rondas.length > 1 && (
+          <div class="flex items-center gap-1">
+            <button
+              type="button"
+              data-ronda-anterior
+              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              aria-label="Ronda anterior"
+            >
+              <Icon name="chevron-derecha" size={14} class="rotate-180" />
+            </button>
+            <span class="flex items-center gap-1 px-0.5">
+              {rondas.map((ronda, i) => (
+                <button
+                  type="button"
+                  data-ronda-punto={i}
+                  aria-current={i === inicial ? 'true' : undefined}
+                  class="size-1.5 cursor-pointer rounded-full bg-border-strong transition-colors hover:bg-ink-muted aria-[current]:bg-primary-ink"
+                  aria-label={ronda.label}
+                  title={ronda.label}
+                />
+              ))}
+            </span>
+            <button
+              type="button"
+              data-ronda-siguiente
+              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              aria-label="Ronda siguiente"
+            >
+              <Icon name="chevron-derecha" size={14} />
+            </button>
+          </div>
+        )}
+      </header>
+
+      {/*
+        Los paneles van absolutos dentro de esta caja para que la ronda más larga no estire la fila: el
+        alto lo pone el once, que es la tarjeta más alta, y acá adentro se desplaza. Debajo de 2xl cada
+        tarjeta es su propia fila, así que ahí la caja lleva un alto propio.
+      */}
+      <div class="relative min-h-[26rem] flex-1 2xl:min-h-0">
+      {rondas.map((ronda, i) => (
+        <div data-ronda-panel hidden={i !== inicial} class="absolute inset-0 flex flex-col">
+          <p class="flex items-center gap-1.5 border-b border-border bg-canvas-subtle/40 px-3 py-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+            {ronda.label}
+            {ronda.enJuego && (
+              <span class="flex items-center gap-1 font-medium normal-case tracking-normal text-primary-ink">
+                <span class="size-1.5 rounded-full bg-live" />
+                en juego
+              </span>
+            )}
+            <span class="ml-auto font-medium normal-case tracking-normal">
+              {`${ronda.partidos.length} ${ronda.partidos.length === 1 ? 'partido' : 'partidos'}`}
+            </span>
+          </p>
+
+          {/*
+            El scroll vive acá: `flex-1` con `min-h-0` le da a la lista el alto que sobra en la tarjeta
+            —el de la fila, que lo fija el once— en lugar de estirar la tarjeta con la ronda más larga.
+          */}
+          <div class="barra-fina min-h-0 flex-1 overflow-y-auto overscroll-contain" data-lista>
+            {tramosDe(ronda).map((tramo) => (
+              <>
+                {tramo.titulo !== '' && (
+                  <p class="flex items-center gap-2 px-3 pt-2.5 text-2xs font-semibold uppercase tracking-label text-ink">
+                    {nombreFase(tramo.titulo)}
+                    <span class="h-px flex-1 bg-border" />
+                  </p>
+                )}
+                {porDia(tramo.partidos).map((dia) => (
+                  <>
+                    <p class="px-3 pb-0.5 pt-2 text-[10px] font-medium text-ink-muted first-letter:uppercase">
+                      {dia.dia}
+                    </p>
+                    <div class="grid gap-0.5 px-1.5 pb-1">
+                      {dia.partidos.map((partido) => (
+                        <MatchRow
+                          match={partido}
+                          hrefPartido={hrefPartido}
+                          hrefEquipo={hrefEquipo}
+                          anclado={partido.id === pendienteDe(ronda)}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ))}
+              </>
+            ))}
+          </div>
+        </div>
+      ))}
+      </div>
+    </section>
+  )
+}
+
+<script>
+  /*
+   * Una ronda por vez, sin navegar. El sentido va al contenedor para que el panel entre desde el lado
+   * al que se fue, que es lo que hace que se lea como un movimiento y no como un salto.
+   *
+   * Al mostrar una ronda, el scroll se para en el primer partido por jugar. Se calcula a mano y no con
+   * scrollIntoView porque ese además mueve la página, y acá solo hay que mover la lista.
+   */
+  document.querySelectorAll<HTMLElement>('[data-carrusel-rondas]').forEach((caja) => {
+    const paneles = [...caja.querySelectorAll<HTMLElement>('[data-ronda-panel]')];
+    if (paneles.length === 0) return;
+
+    const anterior = caja.querySelector<HTMLButtonElement>('[data-ronda-anterior]');
+    const siguiente = caja.querySelector<HTMLButtonElement>('[data-ronda-siguiente]');
+    const puntos = [...caja.querySelectorAll<HTMLButtonElement>('[data-ronda-punto]')];
+    let actual = Math.max(
+      0,
+      paneles.findIndex((p) => !p.hidden),
+    );
+
+    const alPendiente = (panel: HTMLElement) => {
+      const lista = panel.querySelector<HTMLElement>('[data-lista]');
+      const fila = lista?.querySelector<HTMLElement>('[data-anclado]');
+      if (!lista || !fila) return;
+      /* Con aire arriba, para que se vea que hay partidos antes de este. */
+      lista.scrollTop = Math.max(0, fila.offsetTop - lista.offsetTop - 44);
+    };
+
+    const mostrar = (indice: number) => {
+      const destino = Math.min(paneles.length - 1, Math.max(0, indice));
+      caja.dataset.sentido = destino > actual ? 'adelante' : 'atras';
+      actual = destino;
+      paneles.forEach((panel, i) => {
+        panel.hidden = i !== actual;
+      });
+      puntos.forEach((punto, i) => {
+        if (i === actual) punto.setAttribute('aria-current', 'true');
+        else punto.removeAttribute('aria-current');
+      });
+      if (anterior) anterior.disabled = actual === 0;
+      if (siguiente) siguiente.disabled = actual === paneles.length - 1;
+      const panel = paneles[actual];
+      if (panel) alPendiente(panel);
+    };
+
+    anterior?.addEventListener('click', () => mostrar(actual - 1));
+    siguiente?.addEventListener('click', () => mostrar(actual + 1));
+    puntos.forEach((punto, i) => punto.addEventListener('click', () => mostrar(i)));
+    mostrar(actual);
+  });
+</script>

@@ -7,8 +7,8 @@ import MatchRow from '../MatchRow.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { CompetitionView } from '../../lib/api';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
-import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
-import { etiquetaDeRonda } from '../../lib/rondas';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import { etiquetaDeRonda, mezclaRondas } from '../../lib/rondas';
 
 /*
  * La liga abierta dentro de la home, sin salir de la página.
@@ -35,7 +35,10 @@ const pais = paisEnEspanol(competition.country);
 const nombre = nombreTorneo(competition.name);
 
 /* La jornada viene traducida del API; para una liga queda el nombre de la fase. */
-const jornada = view.roundLabel ?? etiquetaDeRonda(view.round);
+const jornada =
+  view.estado === 'terminado'
+    ? 'Torneo terminado'
+    : (view.roundLabel ?? etiquetaDeRonda(view.round));
 
 const bloques = [
   { titulo: 'Próximos partidos', partidos: upcoming.slice(0, 8), icono: 'reloj' as const },
@@ -150,7 +153,12 @@ const cabecera = paleta
           <ul class="mx-auto grid max-w-[42rem]">
             {bloque.partidos.map((match) => (
               <li>
-                <MatchRow match={match} showDate hrefEquipo={(slug) => `/?equipo=${slug}`} />
+                <MatchRow
+                  match={match}
+                  showDate
+                  mostrarRonda={mezclaRondas(bloque.partidos)}
+                  hrefEquipo={(slug) => `/?equipo=${slug}`}
+                />
               </li>
             ))}
           </ul>

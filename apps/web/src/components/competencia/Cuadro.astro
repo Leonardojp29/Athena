@@ -23,15 +23,29 @@ import { formatDate, formatKickoff, isLive } from '../../lib/format';
 interface Props {
   rondas: RondaDeCuadro[];
   paleta: PaletaCompetencia | null;
-  /** La jornada en curso, para marcar la columna que se está jugando. */
-  rondaActual: string | null;
   titulo: string;
   /** A dónde lleva una llave y a dónde un equipo; la página decide cómo los abre. */
   hrefPartido: (id: string) => string;
   hrefEquipo: (slug: string) => string;
 }
 
-const { rondas, paleta, rondaActual, titulo, hrefPartido, hrefEquipo } = Astro.props;
+const { rondas, paleta, titulo, hrefPartido, hrefEquipo } = Astro.props;
+
+/*
+ * Con más llaves que un octavos, la columna lleva su propio scroll: la primera ronda de la Copa del Rey
+ * son 56 llaves y una columna de 56 hacía una página de cinco pantallas donde la final quedaba perdida
+ * arriba. Ocho o menos se leen de un golpe y no se toca nada.
+ */
+const MAX_SIN_SCROLL = 8;
+const alto = 'max-h-[34rem] overflow-y-auto overscroll-contain barra-fina pr-1';
+
+/*
+ * Las columnas se reparten el ancho que hay. Con cuatro rondas —una Libertadores en octavos— crecen y
+ * los nombres largos dejan de cortarse; con ocho —una Copa del Rey desde los 128avos— se angostan para
+ * que el camino completo entre en pantalla en lugar de terminar cortado en la final.
+ */
+const anchoColumna =
+  rondas.length > 7 ? 'basis-[13.75rem] max-w-[17rem]' : 'basis-[15.5rem] max-w-[26rem]';
 
 const acento = paleta?.acento.base ?? 'var(--color-primary-ink)';
 const halo = paleta?.acento.suave(0.14) ?? 'color-mix(in oklab, var(--color-primary) 14%, transparent)';
@@ -78,13 +92,14 @@ const partidoDeLaLlave = (llave: LlaveDeCuadro) =>
 
   <!-- Las rondas en fila y con desplazamiento propio: apiladas se pierde el sentido de avance. -->
   <div class="overflow-x-auto overscroll-x-contain p-3">
-    <ol class="flex min-w-max snap-x snap-mandatory gap-3">
+    <ol class="flex snap-x snap-mandatory gap-3">
       {
         rondas.map((ronda) => {
-          const enJuego = rondaActual !== null && ronda.round === rondaActual;
+          const enJuego = ronda.enJuego;
+          const llaves = ronda.porDefinir ?? ronda.ties.length;
           const equipos = new Set(ronda.ties.flatMap((t) => [t.homeTeam.id, t.awayTeam.id]));
           return (
-            <li class="w-[15.5rem] shrink-0 snap-start">
+            <li class:list={['shrink-0 grow snap-start', anchoColumna]}>
               <div
                 class="mb-2 border-b-2 px-1 pb-1.5"
                 style={enJuego ? `border-color:${acento}` : 'border-color:var(--color-border-strong)'}
@@ -109,7 +124,7 @@ const partidoDeLaLlave = (llave: LlaveDeCuadro) =>
 
               {/* La ronda que todavía no se sorteó: se sabe cuántas llaves va a tener, no quiénes. */}
               {ronda.porDefinir ? (
-                <ol class="grid gap-1.5">
+                <ol class:list={['grid gap-1.5', llaves > MAX_SIN_SCROLL ? alto : '']}>
                   {Array.from({ length: ronda.porDefinir }).map(() => (
                     <li class="grid h-[4.4rem] place-items-center rounded-lg border border-dashed border-border text-2xs text-ink-muted">
                       Por definir
@@ -117,7 +132,7 @@ const partidoDeLaLlave = (llave: LlaveDeCuadro) =>
                   ))}
                 </ol>
               ) : (
-                <ol class="grid gap-1.5">
+                <ol class:list={['grid gap-1.5', llaves > MAX_SIN_SCROLL ? alto : '']}>
                   {ronda.ties.map((llave) => {
                     const pendiente = proximo(llave);
                     const doble = llave.legs.length > 1;
@@ -222,7 +237,12 @@ const partidoDeLaLlave = (llave: LlaveDeCuadro) =>
                                 )}
                               </>
                             ) : (
-                              <>Llave cerrada</>
+                              /* La fecha en que se jugó: "Llave cerrada" repetido en cada llave de
+                                 una copa terminada no dice nada que no diga ya el marcador. */
+                              <>
+                                <Icon name="check" size={10} />
+                                {formatDate((llave.legs.at(-1) ?? llave.legs[0])!.kickoffUtc)}
+                              </>
                             )
                           }
                         </p>

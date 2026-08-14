@@ -251,8 +251,15 @@ export interface CompetitionView {
    * una liga, que no tiene más que su tabla.
    */
   etapas: FaseDeCopa[];
-  /** Qué etapa se está jugando ahora; null en una liga o cuando la ronda no se reconoce. */
+  /** Qué etapa se está jugando ahora; null en una liga o cuando el torneo ya terminó. */
   etapaEnJuego: Etapa | null;
+  /** En qué momento está la temporada: con `terminado` no queda nada "en juego" que mostrar. */
+  estado: EstadoDeTemporada;
+  /**
+   * Los partidos por ronda, en una ventana de tres rondas a cada lado de la que se juega. Reemplaza a
+   * las listas de próximos y últimos, que eran el mismo calendario partido en dos.
+   */
+  porRonda: RondaDePartidos[];
   /** La jornada en curso ya traducida: "Octavos de final", "Fase de grupos · fecha 6". */
   roundLabel: string | null;
   /** El once y el mejor de toda la temporada; null cuando no hay notas suficientes. */
@@ -273,6 +280,8 @@ export interface PartidoDeCuadro {
   id: string;
   kickoffUtc: string;
   status: string;
+  statusDetail: string | null;
+  elapsedMinutes: number | null;
   homeScore: number | null;
   awayScore: number | null;
   round: string | null;
@@ -294,10 +303,24 @@ export interface LlaveDeCuadro {
 export interface RondaDeCuadro {
   round: string;
   label: string;
+  /** Lo decide el API: una ronda de un torneo terminado nunca está en juego. */
+  enJuego: boolean;
   ties: LlaveDeCuadro[];
   /** Cuántas llaves va a tener cuando se defina; solo en las rondas que todavía no se sortearon. */
   porDefinir?: number;
 }
+
+/** Una ronda con sus partidos, para navegarlos de una en una. */
+export interface RondaDePartidos {
+  label: string;
+  enJuego: boolean;
+  partidos: PartidoDeCuadro[];
+  /** En qué se parte la ronda —ida y vuelta, grupo por grupo—; vacío si no hay nada que separar. */
+  bloques: Array<{ titulo: string; partidos: PartidoDeCuadro[] }>;
+}
+
+/** En qué momento está la temporada; con `terminado` desaparece todo el "en juego" de la interfaz. */
+export type EstadoDeTemporada = 'en-juego' | 'terminado' | 'por-empezar';
 
 /** Las tres etapas de una copa: la fase final, la fase de grupos y la previa. */
 export type Etapa = 'final' | 'grupos' | 'previa';
