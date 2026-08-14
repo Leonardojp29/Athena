@@ -67,23 +67,15 @@ const resto: Goleador[] = top.scorers.slice(1, 8);
       aria-label="Región"
     >
       {
-        REGIONES.map((region) => {
-          const activa = region.clave === top.continent;
-          return (
-            <a
-              href={href(region.clave)}
-              aria-current={activa ? 'true' : undefined}
-              class:list={[
-                'rounded-md px-2 py-1 text-2xs font-medium transition-colors',
-                activa
-                  ? 'bg-surface text-ink shadow-card'
-                  : 'text-ink-muted hover:bg-surface/60 hover:text-ink',
-              ]}
-            >
-              {region.label}
-            </a>
-          );
-        })
+        REGIONES.map((region) => (
+          <a
+            href={href(region.clave)}
+            aria-current={region.clave === top.continent ? 'true' : undefined}
+            class="rounded-md px-2 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink aria-[current]:bg-surface aria-[current]:text-ink aria-[current]:shadow-card"
+          >
+            {region.label}
+          </a>
+        ))
       }
     </div>
   </header>

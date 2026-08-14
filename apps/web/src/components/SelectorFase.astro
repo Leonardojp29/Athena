@@ -37,24 +37,21 @@ const { grupos, activo, href, class: className } = Astro.props;
       aria-label="Fase de la temporada"
       data-selector-fase
     >
-      {grupos.map((grupo) => {
-        const abierto = grupo.label === activo;
-        return (
+      <!--
+        El estilo cuelga de `aria-current` y no de un ternario del servidor: cuando el clic cambia de
+        panel sin navegar, el atributo es lo único que se mueve, y con las clases decididas en el
+        servidor la pastilla se quedaba en la fase que había renderizado el servidor.
+      -->
+      {grupos.map((grupo) => (
           <a
             href={href(grupo.label)}
             data-fase={grupo.label}
-            aria-current={abierto ? 'true' : undefined}
-            class:list={[
-              'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-2xs font-medium transition-colors',
-              abierto
-                ? 'bg-surface text-ink shadow-card'
-                : 'text-ink-muted hover:bg-surface/60 hover:text-ink',
-            ]}
+            aria-current={grupo.label === activo ? 'true' : undefined}
+            class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink aria-[current]:bg-surface aria-[current]:text-ink aria-[current]:shadow-card"
           >
             {nombreFase(grupo.label)}
           </a>
-        );
-      })}
+      ))}
     </div>
   )
 }

@@ -15,12 +15,11 @@ interface Props {
   grupos: Array<{ label: string; rows: StandingRow[]; current: boolean }>;
   abierto: { label: string; rows: StandingRow[] } | undefined;
   juntos: boolean;
-  enJuego: boolean;
   hrefFase: (label: string) => string;
   hrefEquipo: (slug: string) => string;
 }
 
-const { grupos, abierto, juntos, enJuego, hrefFase, hrefEquipo } = Astro.props;
+const { grupos, abierto, juntos, hrefFase, hrefEquipo } = Astro.props;
 ---
 
 {

@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+const S = '/tmp/claude-1000/-home-leonardo-personal-athenea/ec569081-26c2-4512-a7f0-074d84384203/scratchpad';
+const nav = await chromium.launch({ args: ['--disable-features=OverlayScrollbar'] });
+const p = await (await nav.newContext({ viewport: { width: 1600, height: 1000 } })).newPage();
+await p.goto('http://localhost:4321/competencias/primera-division', { waitUntil: 'networkidle' });
+const pastilla = () => p.evaluate(() => [...document.querySelectorAll('[data-fase]')].map((a) => `${a.dataset.fase}${a.getAttribute('aria-current') ? '*' : ''}:${getComputedStyle(a).backgroundColor}`));
+console.log('antes ', await pastilla());
+await p.evaluate(() => document.querySelector('[data-fase="Apertura"]').click());
+await p.waitForTimeout(300);
+console.log('después', await pastilla());
+await p.locator('section', { has: p.getByRole('heading', { name: 'Tabla de posiciones' }) }).screenshot({ path: `${S}/g1-toggle.png` });
+await p.goto('http://localhost:4321/?liga=primera-division', { waitUntil: 'networkidle' });
+await p.locator('aside section').first().screenshot({ path: `${S}/g1-riel.png` });
+await nav.close();

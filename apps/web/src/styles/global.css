@@ -123,9 +123,22 @@
   :root {
     accent-color: var(--a-color-primary-ink);
     caret-color: var(--a-color-primary-ink);
-    scrollbar-color: var(--a-color-border-strong) transparent;
-    scrollbar-width: thin;
     color-scheme: light;
+  }
+
+  /*
+   * Las barras se pintan con el vocabulario webkit, que es el único que permite elegir el ancho en
+   * píxeles. `scrollbar-width` y `scrollbar-color` **se heredan**, y en Chromium un scroller cuyo
+   * valor heredado no sea `auto` ignora todo `::-webkit-scrollbar`: mientras estuvieron declaradas
+   * en `:root`, ni los 10px de acá abajo ni los 6px de `barra-fina` se aplicaron nunca, y lo que se
+   * veía era la barra nativa de 11px. Firefox no entiende el pseudo-elemento, así que ahí —y solo
+   * ahí— entran las propiedades estándar.
+   */
+  @supports not selector(::-webkit-scrollbar) {
+    :root {
+      scrollbar-color: var(--a-color-border-strong) transparent;
+      scrollbar-width: thin;
+    }
   }
 
   :root[data-theme='dark'] {

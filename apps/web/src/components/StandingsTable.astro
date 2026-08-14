@@ -61,7 +61,7 @@ const diferencia = (row: StandingRow) => {
 ---
 
 {label && <h3 class="mb-2 text-sm font-semibold text-ink-muted">{label}</h3>}
-<div class="overflow-auto" style={maxAlto ? `max-height:${maxAlto}` : undefined}>
+<div class="barra-fina overflow-auto" style={maxAlto ? `max-height:${maxAlto}` : undefined}>
   <!--
     En la tabla grande los anchos van por porcentaje y con `table-fixed`: con anchos automáticos, el
     nombre del equipo se comía todo el sobrante y los números terminaban a mil píxeles del equipo al
@@ -114,9 +114,10 @@ const diferencia = (row: StandingRow) => {
           <tr
             class:list={[
               'transition-colors hover:bg-canvas-subtle',
-              /* A lo ancho de la página el ojo se pierde de renglón: una fila sí y una no, con un
-                 tinte apenas visible, alcanza para seguir la línea sin ensuciar la tabla. */
-              grande ? 'even:bg-canvas-subtle/70' : 'border-b border-border/50',
+              /* El ojo se pierde de renglón entre el nombre y las cifras: una fila sí y una no, con
+                 un tinte apenas visible, alcanza para seguir la línea sin ensuciar la tabla. */
+              'even:bg-canvas-subtle/70',
+              grande ? '' : 'border-b border-border/40',
               row.team.id === highlightTeamId ? 'bg-primary/8' : '',
             ]}
           >
