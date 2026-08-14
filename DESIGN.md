@@ -470,8 +470,11 @@ que 260×300, se comporta como siempre: centrada, con el fondo oscurecido.
 
 ### Las notas sobre el césped
 
-Cuatro escalones **macizos** de la misma familia (`lib/nota.ts`): lima de 8 para arriba, un verde lima
-más oscuro de 7 a 8 (`--a-color-rating-good`), neutro de 6 a 7 y rojo por debajo. Antes eran dos y
+Seis escalones **macizos** (`lib/nota.ts`): dorado con aro en el 10, cian de 9 a 10, lima de 8 a 9, un
+verde lima más oscuro de 7 a 8 (`--a-color-rating-good`), neutro de 6 a 7 y rojo por debajo. Arriba del
+lima hacen falta dos escalones más porque un 9 no es un 8 y un 10 es una vez al año: el cian —el color
+con el que Athena marca los datos— rompe con todos los verdes de la cancha, y el dorado con aro es el
+único chip que no se parece a ningún otro. Antes eran dos y
 medio y el único que se distinguía de un golpe era el rojo: un 6,6 y un 7,4 se veían igual. Macizos y
 no translúcidos: sobre el césped, un chip transparente se ve desvaído —como si el dato estuviera
 apagado— en lugar de bueno.
