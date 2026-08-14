@@ -37,9 +37,24 @@ const { competition, standingGroups, etapas, etapaEnJuego } = view;
 const grupo = standingGroups.find((g) => g.label === fase) ?? standingGroups[0];
 
 /* El cuadro del riel es el de la fase final: la previa se lee en la página de la copa. */
-const cuadro = etapas.find((f) => f.etapa === 'final')?.rondas ?? [];
+const cuadro = (etapas.find((f) => f.etapa === 'final')?.rondas ?? []).filter(
+  (r) => r.ties.length > 0,
+);
 const esCopa = etapas.length > 0;
-const hayCuadro = cuadro.some((r) => r.ties.length > 0);
+const hayCuadro = cuadro.length > 0;
+
+/*
+ * Una ronda por vez, con flechas. Una Copa del Rey en dieciseisavos son dieciséis llaves y todas las
+ * rondas apiladas hacían un riel interminable; así se ve la que se está jugando y se puede ir atrás
+ * —cómo llegó cada uno— o adelante. La que arranca visible es la del calendario.
+ */
+const rondaInicial = (() => {
+  const enJuego = cuadro.findIndex((r) => r.round === view.round);
+  if (enJuego !== -1) return enJuego;
+  /* Sin coincidencia, la última con algo jugado: es donde está el torneo. */
+  const jugada = cuadro.map((r) => r.ties.some((t) => t.aggregate !== null)).lastIndexOf(true);
+  return jugada === -1 ? 0 : jugada;
+})();
 
 const abierta = (() => {
   if (!esCopa) return 'grupos';
@@ -111,24 +126,54 @@ const golesDe = (leg: LlaveDeCuadro['legs'][number], teamId: string): number | n
 
       {abierta === 'cuadro' ? (
         /*
-         * El cuadro como escalera y no como columnas: en 24rem una llave con sus dos marcadores no
-         * entra al lado de otra. Cada ronda es un bloque con sus cruces, del más lejano a la final.
+         * Una ronda por vez: en 24rem una llave con sus dos marcadores no entra al lado de otra, y
+         * apilar todas las rondas hacía un riel de tres pantallas.
          */
-        <ol class="grid gap-2 p-2">
-          {cuadro
-            .filter((ronda) => ronda.ties.length > 0)
-            .map((ronda) => (
-              <li>
-                <p class="mb-1 flex items-center gap-1.5 px-1 text-2xs font-semibold uppercase tracking-label text-ink-muted">
-                  {ronda.label}
-                  {ronda.round === view.round && (
-                    <span class="flex items-center gap-1 font-medium normal-case tracking-normal text-primary-ink">
-                      <span class="size-1.5 rounded-full bg-live" />
-                      en juego
-                    </span>
-                  )}
-                </p>
-                <ul class="grid gap-1">
+        <div data-rondas>
+          <div class="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+            <button
+              type="button"
+              data-ronda-anterior
+              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              aria-label="Ronda anterior"
+            >
+              <Icon name="chevron-derecha" size={14} class="rotate-180" />
+            </button>
+            <span class="flex flex-1 items-center justify-center gap-1">
+              {cuadro.map((ronda, i) => (
+                <button
+                  type="button"
+                  data-ronda-punto={i}
+                  aria-current={i === rondaInicial ? 'true' : undefined}
+                  class="size-1.5 cursor-pointer rounded-full bg-border-strong transition-colors hover:bg-ink-muted aria-[current]:bg-primary-ink"
+                  aria-label={ronda.label}
+                  title={ronda.label}
+                />
+              ))}
+            </span>
+            <button
+              type="button"
+              data-ronda-siguiente
+              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              aria-label="Ronda siguiente"
+            >
+              <Icon name="chevron-derecha" size={14} />
+            </button>
+          </div>
+
+          {cuadro.map((ronda, i) => (
+            <div data-ronda-panel hidden={i !== rondaInicial} class="p-2">
+              <p class="mb-1 flex items-center gap-1.5 px-1 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+                {ronda.label}
+                {ronda.round === view.round && (
+                  <span class="flex items-center gap-1 font-medium normal-case tracking-normal text-primary-ink">
+                    <span class="size-1.5 rounded-full bg-live" />
+                    en juego
+                  </span>
+                )}
+              </p>
+              <!-- Con dieciséis llaves la ronda no entra en pantalla: scroll propio y listo. -->
+              <ul class="grid max-h-[26rem] gap-1 overflow-y-auto overscroll-contain">
                   {ronda.ties.map((llave) => (
                     <li>
                       <a
@@ -172,11 +217,11 @@ const golesDe = (leg: LlaveDeCuadro['legs'][number], teamId: string): number | n
                         )}
                       </a>
                     </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-        </ol>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       ) : (
         grupo && (
           <>
@@ -214,3 +259,40 @@ const golesDe = (leg: LlaveDeCuadro['legs'][number], teamId: string): number | n
     </section>
   )
 }
+
+<script>
+  /*
+   * Navegación de rondas del cuadro: cambia de panel al instante, sin navegar. El sentido va al
+   * contenedor para que la animación entre desde el lado correcto, que es lo que hace que se lea como
+   * un movimiento y no como un salto.
+   */
+  document.querySelectorAll<HTMLElement>('[data-rondas]').forEach((caja) => {
+    const paneles = [...caja.querySelectorAll<HTMLElement>('[data-ronda-panel]')];
+    if (paneles.length < 2) return;
+
+    const anterior = caja.querySelector<HTMLButtonElement>('[data-ronda-anterior]');
+    const siguiente = caja.querySelector<HTMLButtonElement>('[data-ronda-siguiente]');
+    const puntos = [...caja.querySelectorAll<HTMLButtonElement>('[data-ronda-punto]')];
+    let actual = paneles.findIndex((p) => !p.hidden);
+
+    const mostrar = (indice: number) => {
+      const destino = Math.min(paneles.length - 1, Math.max(0, indice));
+      caja.dataset.sentido = destino > actual ? 'adelante' : 'atras';
+      actual = destino;
+      paneles.forEach((panel, i) => {
+        panel.hidden = i !== actual;
+      });
+      puntos.forEach((punto, i) => {
+        if (i === actual) punto.setAttribute('aria-current', 'true');
+        else punto.removeAttribute('aria-current');
+      });
+      if (anterior) anterior.disabled = actual === 0;
+      if (siguiente) siguiente.disabled = actual === paneles.length - 1;
+    };
+
+    anterior?.addEventListener('click', () => mostrar(actual - 1));
+    siguiente?.addEventListener('click', () => mostrar(actual + 1));
+    puntos.forEach((punto, i) => punto.addEventListener('click', () => mostrar(i)));
+    mostrar(actual);
+  });
+</script>

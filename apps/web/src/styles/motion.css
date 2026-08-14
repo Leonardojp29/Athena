@@ -237,6 +237,33 @@
 }
 
 /*
+ * La ronda del cuadro entra desde el lado al que se fue: el panel pasa de `display:none` a visible y
+ * la animación arranca sola, sin tocar una clase desde JavaScript. Sin el desplazamiento se lee como
+ * un salto; con él, como un movimiento.
+ */
+[data-ronda-panel]:not([hidden]) {
+  animation: ronda-entra var(--a-motion-base) var(--a-ease-out-expo) both;
+}
+
+[data-rondas][data-sentido='atras'] [data-ronda-panel]:not([hidden]) {
+  animation-name: ronda-entra-atras;
+}
+
+@keyframes ronda-entra {
+  from {
+    opacity: 0;
+    transform: translateX(0.75rem);
+  }
+}
+
+@keyframes ronda-entra-atras {
+  from {
+    opacity: 0;
+    transform: translateX(-0.75rem);
+  }
+}
+
+/*
  * La ficha del jugador entra desde el tablero: crece un poco y se asienta. `@starting-style` es
  * lo que permite animar la apertura de un <dialog> sin tocar una clase desde JavaScript.
  */

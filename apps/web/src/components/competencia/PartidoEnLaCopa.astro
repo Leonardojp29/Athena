@@ -1,0 +1,136 @@
+---
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Historial from '../match/Historial.astro';
+import Icon from '../Icon.astro';
+import MatchCenter from '../MatchCenter';
+import PitchLineups from '../pitch/PitchLineups.astro';
+import Suplentes from '../match/Suplentes.astro';
+import type { MatchView } from '../../lib/api';
+import { formatDateLong, formatKickoff, isLive } from '../../lib/format';
+import { etiquetaDeRonda } from '../../lib/rondas';
+
+/*
+ * Un partido de la copa, dentro de la copa.
+ *
+ * El partido de los octavos de la Libertadores es de la Libertadores: verlo no debería sacarte del
+ * torneo. Es un resumen con salida —marcador, cancha, minuto a minuto y el historial entre los dos—
+ * y quien quiera todo tiene el botón a la página del partido, que es donde viven las pestañas, las
+ * estadísticas y el análisis. Así no se reimplementa el centro de partido en dos lugares.
+ */
+interface Props {
+  match: MatchView;
+  /** A dónde vuelve: el cuadro de la copa. */
+  volver: string;
+}
+
+const { match, volver } = Astro.props;
+
+const jornada = etiquetaDeRonda(match.round);
+const enVivo = isLive(match.status);
+const hayAlineaciones = match.lineups.length > 0;
+---
+
+<section class="overflow-hidden rounded-xl border border-border bg-surface">
+  <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border p-3">
+    <a
+      href={volver}
+      class="flex items-center gap-1.5 rounded-md bg-canvas-subtle px-2 py-1 text-2xs font-medium text-ink-muted transition-colors hover:text-ink"
+    >
+      <Icon name="flecha-izquierda" size={12} />
+      Volver al cuadro
+    </a>
+    <p class="flex min-w-0 flex-wrap items-center gap-x-2 text-2xs text-ink-muted">
+      <EscudoTorneo url={match.season.competition.logoUrl} size={14} />
+      {jornada && <span class="font-medium text-ink">{jornada}</span>}
+      <span>{formatDateLong(match.kickoffUtc)}</span>
+    </p>
+    <a
+      href={`/partidos/${match.id}`}
+      class="ml-auto flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
+    >
+      Ver el partido completo
+      <Icon name="chevron-derecha" size={12} />
+    </a>
+  </header>
+
+  <!-- El marcador, con los dos escudos grandes: es lo primero que se busca al abrir un partido. -->
+  <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 p-4">
+    {
+      [match.homeTeam, match.awayTeam].map((equipo, i) => (
+        <a
+          href={`/equipos/${equipo.slug}`}
+          class:list={[
+            'flex min-w-0 items-center gap-2.5 transition-colors hover:text-primary-ink',
+            i === 0 ? 'justify-end text-right' : 'order-3',
+          ]}
+        >
+          {equipo.logoUrl && (
+            <img
+              src={equipo.logoUrl}
+              alt=""
+              width="40"
+              height="40"
+              class:list={['size-10 shrink-0 object-contain', i === 0 ? 'order-2' : '']}
+            />
+          )}
+          <span class="truncate font-display text-base font-semibold uppercase">{equipo.name}</span>
+        </a>
+      ))
+    }
+    <div class="order-2 text-center">
+      {
+        match.homeScore !== null ? (
+          <p class="font-display text-3xl font-bold leading-none tabular">
+            {match.homeScore} – {match.awayScore}
+          </p>
+        ) : (
+          <p class="font-display text-2xl font-semibold leading-none tabular">
+            {formatKickoff(match.kickoffUtc)}
+          </p>
+        )
+      }
+      <p
+        class:list={[
+          'mt-1 text-2xs',
+          enVivo ? 'font-medium text-live' : 'text-ink-muted',
+        ]}
+      >
+        {enVivo ? `${match.elapsedMinutes ?? 0}'` : match.status === 'finished' ? 'Final' : 'Programado'}
+      </p>
+    </div>
+  </div>
+
+  <div class="grid gap-4 border-t border-border p-3 2xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div class="grid min-w-0 gap-3">
+      {
+        hayAlineaciones ? (
+          <PitchLineups
+            lineups={match.lineups}
+            playerStatistics={match.playerStatistics}
+            homeTeam={match.homeTeam}
+            awayTeam={match.awayTeam}
+          />
+        ) : (
+          <p class="text-sm text-ink-muted">
+            El proveedor todavía no publicó las alineaciones de este partido.
+          </p>
+        )
+      }
+      {hayAlineaciones && <Suplentes lineups={match.lineups} homeTeam={match.homeTeam} awayTeam={match.awayTeam} />}
+    </div>
+
+    <div class="grid min-w-0 gap-3">
+      {
+        match.events.length > 0 && (
+          <section class="rounded-lg border border-border p-3">
+            <h3 class="mb-1 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+              Minuto a minuto
+            </h3>
+            <MatchCenter initial={match} live={false} part="timeline" />
+          </section>
+        )
+      }
+      <Historial historial={match.historial} homeTeam={match.homeTeam} awayTeam={match.awayTeam} />
+    </div>
+  </div>
+</section>

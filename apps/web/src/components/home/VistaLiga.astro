@@ -165,12 +165,8 @@ const cabecera = paleta
 
   {
     (scorers.length > 0 || assisters.length > 0) && (
+      <!-- Sin cabecera de sección: los títulos de las dos tablas ya dicen qué es esto. -->
       <div class="p-3">
-        <h3 class="mb-1.5 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
-          <Icon name="destello" size={12} />
-          Los que deciden
-          <span class="font-normal normal-case tracking-normal">temporada {season.year}</span>
-        </h3>
         <div class="grid gap-x-5 gap-y-3 sm:grid-cols-2">
           <TablaLideres
             titulo="Goleadores"

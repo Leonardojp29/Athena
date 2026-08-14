@@ -517,8 +517,20 @@ suponerla sería inventar.
 enlace eran los veinte píxeles del casillero del marcador. Los nombres de equipo, encima, abren al
 equipo dentro de la copa.
 
+**La página de una copa son dos columnas**: a la izquierda lo que pasa en la cancha —los próximos
+partidos y el camino del torneo—, a la derecha quiénes lo deciden (goleadores y once del torneo, uno al
+lado del otro) con los últimos resultados debajo ocupando los dos. La segunda mide 40rem justamente
+para que a la primera le queden los mil doscientos píxeles que el cuadro necesita para mostrar cuatro
+rondas sin desplazarse.
+
+**El partido de la copa se abre dentro de la copa** (`?partido=`): marcador, cancha, minuto a minuto e
+historial, y un botón a la página del partido para las pestañas y el análisis. Reemplaza el contenido
+de la primera columna en lugar de sumarse arriba, así la página no tiene dos temas a la vez.
+
 **En el riel de la home** la copa se lee con dos pestañas —cuadro y grupos— abiertas en la etapa en
-juego. Con los octavos en marcha, la tabla de la fase de grupos cerrada en mayo no dice nada; con los
+juego, y el cuadro se recorre **ronda por ronda** con flechas: una Copa del Rey en dieciseisavos son
+dieciséis llaves, y apilar todas las rondas hacía un riel de tres pantallas. La ronda entra desde el
+lado al que se fue, que es lo que la hace leer como un movimiento y no como un salto. Con los octavos en marcha, la tabla de la fase de grupos cerrada en mayo no dice nada; con los
 grupos en marcha, el cuadro todavía no existe. La pestaña sin datos explica por qué.
 
 ### La copa internacional

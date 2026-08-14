@@ -22,6 +22,11 @@ interface Props {
   hrefEquipo?: (slug: string) => string;
   /** Resalta a un equipo: en su propia vista importa ver de qué lado jugó. */
   destacado?: string | null;
+  /**
+   * A dónde lleva la fila. Por omisión, la página del partido; en una copa, su detalle dentro de la
+   * competencia, que es donde el partido tiene sentido.
+   */
+  hrefPartido?: (id: string) => string;
 }
 
 const {
@@ -29,6 +34,7 @@ const {
   showDate = false,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
   destacado = null,
+  hrefPartido = (id: string) => `/partidos/${id}`,
 } = Astro.props;
 const live = isLive(match.status);
 const finished = match.status === 'finished';
@@ -46,7 +52,7 @@ const estado = live && match.elapsedMinutes !== null
 
 <div class="group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle sm:grid-cols-[1fr_auto_1fr]">
   <a
-    href={`/partidos/${match.id}`}
+    href={hrefPartido(match.id)}
     class="absolute inset-0 rounded-md"
     aria-label={`${match.homeTeam.name} contra ${match.awayTeam.name}`}
   ></a>

@@ -171,6 +171,35 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * En una copa el riel muestra el cuadro y los grupos en dos pestañas, y el cuadro se recorre ronda
+   * por ronda: con dieciséis llaves en dieciseisavos, apilar todas las rondas hacía un riel de tres
+   * pantallas. Abre en la ronda que se está jugando.
+   */
+  test('el riel de una copa recorre el cuadro ronda por ronda', async ({ page }) => {
+    await page.goto('/?liga=fifa-club-world-cup');
+
+    const riel = page.locator('main aside').last();
+    const rondas = riel.locator('[data-rondas]');
+    test.skip((await rondas.count()) === 0, 'esta copa todavía no tiene cuadro');
+
+    /* Dos pestañas: la del cuadro abierta y la de grupos a un clic. */
+    await expect(riel.getByRole('tablist')).toBeVisible();
+    await expect(riel.locator('[data-ronda-panel]:not([hidden])')).toHaveCount(1);
+
+    const titulo = async () =>
+      (await riel.locator('[data-ronda-panel]:not([hidden]) p').first().innerText()).split('\n')[0];
+    const primera = await titulo();
+
+    const atras = riel.locator('[data-ronda-anterior]');
+    test.skip(await atras.isDisabled(), 'esta copa tiene una sola ronda en el cuadro');
+
+    await atras.click();
+    expect(await titulo()).not.toBe(primera);
+    /* Y se puede volver: la flecha de la derecha deja de estar deshabilitada. */
+    await expect(riel.locator('[data-ronda-siguiente]')).toBeEnabled();
+  });
+
+  /*
    * El riel del equipo muestra con qué salió en su último partido, no los goleadores del mundo:
    * quien abrió a Alianza no vino a ver quién la rompe en Europa. Se dibuja con el `grid` del
    * proveedor, así que cada ficha queda donde jugó y abre las estadísticas de ese partido.
@@ -308,9 +337,12 @@ test.describe('shell del sitio', () => {
     await expect(liga.locator('table')).toHaveCount(0);
 
     /* Y el orden dentro de la tarjeta: los partidos antes de los goleadores. */
-    const partidos = await liga.getByRole('heading', { name: /próximos partidos/i }).first().boundingBox();
-    const deciden = await liga.getByRole('heading', { name: /los que deciden/i }).boundingBox();
-    expect(partidos!.y).toBeLessThan(deciden!.y);
+    const partidos = await liga
+      .getByRole('heading', { name: /próximos partidos/i })
+      .first()
+      .boundingBox();
+    const goleadores = await liga.getByRole('heading', { name: /goleadores/i }).first().boundingBox();
+    expect(partidos!.y).toBeLessThan(goleadores!.y);
 
     /* En móvil el riel va debajo y no tiene columna propia, pero la tabla sigue siendo suya. */
     const riel = page.locator('main aside').last();
