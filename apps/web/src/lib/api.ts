@@ -371,6 +371,15 @@ export interface SquadPlayer {
   player: PlayerLink & { position: string | null };
 }
 
+/** La alineación del último partido jugado, con las notas de ese partido si el proveedor las dio. */
+export interface UltimaAlineacion {
+  match: MatchCard;
+  formation: string | null;
+  coachName: string | null;
+  startXi: LineupPlayer[];
+  stats: Array<MatchPlayerStats & { matchId: string }>;
+}
+
 export interface TeamView {
   team: {
     id: string;
@@ -396,6 +405,8 @@ export interface TeamView {
   >;
   recent: MatchCard[];
   upcoming: MatchCard[];
+  /** Con qué salió en su último partido; null si el proveedor no publicó esa alineación. */
+  lastLineup: UltimaAlineacion | null;
 }
 
 /** El historial entre los dos equipos: el resumen de siempre y los últimos cruces. */

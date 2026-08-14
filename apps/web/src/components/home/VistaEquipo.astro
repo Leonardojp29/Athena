@@ -3,7 +3,7 @@ import EscudoTorneo from '../EscudoTorneo.astro';
 import BotonFavorito from '../BotonFavorito.astro';
 import CountryFlag from '../CountryFlag.astro';
 import Icon from '../Icon.astro';
-import ListaPartidosCompacta from './ListaPartidosCompacta.astro';
+import MatchRow from '../MatchRow.astro';
 import PlantillaCompacta from './PlantillaCompacta.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { TeamView } from '../../lib/api';
@@ -11,9 +11,13 @@ import { temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
- * El equipo abierto dentro de la home, igual que la liga: cómo va en cada torneo, lo que viene y
- * lo último, sin cambiar de página. Desde una tabla de posiciones, tocar un equipo abría otra
- * pantalla y perdías el día entero de vista.
+ * El equipo abierto dentro de la home, igual que la liga: cómo va en cada torneo, lo que viene y lo
+ * último, sin cambiar de página. Desde una tabla de posiciones, tocar un equipo abría otra pantalla
+ * y perdías el día entero de vista.
+ *
+ * El orden es el mismo que en la liga: primero lo que se juega —a todo el ancho, una fila por
+ * partido—, después quiénes lo definen y al final la plantilla. Con qué salió en su último partido
+ * vive en el riel, sobre la cancha.
  */
 interface Props {
   view: TeamView;
@@ -46,8 +50,8 @@ const ultimos = (form: string | null) =>
 const principal = standings[0] ?? null;
 
 const bloques = [
-  { titulo: 'Próximos', icono: 'reloj' as const, partidos: upcoming.slice(0, 3) },
-  { titulo: 'Últimos resultados', icono: 'cancha' as const, partidos: recent.slice(0, 3) },
+  { titulo: 'Próximos partidos', icono: 'reloj' as const, partidos: upcoming.slice(0, 6) },
+  { titulo: 'Últimos resultados', icono: 'cancha' as const, partidos: recent.slice(0, 6) },
 ].filter((bloque) => bloque.partidos.length > 0);
 ---
 
@@ -198,13 +202,44 @@ const bloques = [
   }
 
   {
+    bloques.length > 0 ? (
+      bloques.map((bloque) => (
+        <div class="border-b border-border p-3">
+          <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+            <Icon name={bloque.icono} size={12} />
+            {bloque.titulo}
+            <span class="tabular">({bloque.partidos.length})</span>
+          </h3>
+          <!-- Con tope de ancho: los nombres quedaban flotando lejos del marcador. -->
+          <ul class="mx-auto grid max-w-[42rem]">
+            {bloque.partidos.map((match) => (
+              <li>
+                <MatchRow
+                  match={match}
+                  showDate
+                  destacado={team.slug}
+                  hrefEquipo={(slug) => `/?equipo=${slug}`}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    ) : (
+      <p class="border-b border-border p-3 text-sm text-ink-muted">
+        Todavía no hay partidos sincronizados de este equipo.
+      </p>
+    )
+  }
+
+  {
     scorers.length > 0 && (
       <div class="border-b border-border p-3">
         <TablaLideres
           titulo="Goleadores del equipo"
           lideres={scorers}
           metrica="goals"
-          filas={4}
+          filas={5}
           hrefEquipo={(slug) => `/?equipo=${slug}`}
           hrefJugador={(slug) => `/?jugador=${slug}`}
         />
@@ -212,24 +247,7 @@ const bloques = [
     )
   }
 
-  {
-    bloques.length > 0 ? (
-      <div class="grid gap-x-4 gap-y-3 p-3 sm:grid-cols-2">
-        {bloques.map((bloque) => (
-          <ListaPartidosCompacta
-            titulo={bloque.titulo}
-            icono={bloque.icono}
-            partidos={bloque.partidos}
-            destacado={team.slug}
-          />
-        ))}
-      </div>
-    ) : (
-      <p class="p-3 text-sm text-ink-muted">Todavía no hay partidos sincronizados de este equipo.</p>
-    )
-  }
-
-  <div class="border-t border-border p-3">
+  <div class="p-3">
     <PlantillaCompacta squad={squad} hrefJugador={(slug) => `/?jugador=${slug}`} />
   </div>
 </section>

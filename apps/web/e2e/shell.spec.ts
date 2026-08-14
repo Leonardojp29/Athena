@@ -158,6 +158,41 @@ test.describe('shell del sitio', () => {
     /* Once o más: una plantilla con tres nombres no es una plantilla. */
     expect(await tarjeta.locator('a[href^="/?jugador="]').count()).toBeGreaterThan(10);
     await expect(tarjeta.getByRole('heading', { name: /goleadores del equipo/i })).toBeVisible();
+
+    /* Y el orden: lo que se juega antes de quiénes lo definen. */
+    const partidos = await tarjeta
+      .getByRole('heading', { name: /próximos partidos|últimos resultados/i })
+      .first()
+      .boundingBox();
+    const goleadores = await tarjeta
+      .getByRole('heading', { name: /goleadores del equipo/i })
+      .boundingBox();
+    expect(partidos!.y).toBeLessThan(goleadores!.y);
+  });
+
+  /*
+   * El riel del equipo muestra con qué salió en su último partido, no los goleadores del mundo:
+   * quien abrió a Alianza no vino a ver quién la rompe en Europa. Se dibuja con el `grid` del
+   * proveedor, así que cada ficha queda donde jugó y abre las estadísticas de ese partido.
+   */
+  test('en un equipo el riel muestra la alineación de su último partido', async ({ page }) => {
+    await page.goto('/?equipo=alianza-lima');
+
+    const riel = page.locator('main aside').last();
+    const cancha = riel.getByRole('heading', { name: /con qué salió/i });
+    test.skip((await cancha.count()) === 0, 'este equipo no tiene alineación publicada todavía');
+    await expect(cancha).toBeVisible();
+
+    /* Los goleadores del mundo no aparecen en la vista de equipo. */
+    await expect(page.getByRole('heading', { name: /los que la rompen/i })).toHaveCount(0);
+
+    const fichas = riel.locator('[data-iman]');
+    expect(await fichas.count()).toBe(11);
+
+    await fichas.first().click();
+    const ficha = page.locator('#ficha-jugador');
+    await expect(ficha).toBeVisible();
+    await expect(ficha.locator('#ficha-nombre')).not.toBeEmpty();
   });
 
   /*

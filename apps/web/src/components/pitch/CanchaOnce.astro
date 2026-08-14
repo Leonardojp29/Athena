@@ -13,18 +13,23 @@ import { apellidoDe, formacionDe, notaDe, porPuesto, PUESTOS, type FichaOnce } f
  */
 interface Props {
   jugadores: FichaOnce[];
+  /**
+   * La formación del proveedor. Cuando viene, las fichas traen su casilla y se dibujan donde
+   * jugaron; sin ella, se deduce de los puestos, que es el caso del once ideal.
+   */
+  formacion?: string | null;
 }
 
-const { jugadores } = Astro.props;
+const { jugadores, formacion: formacionDada = null } = Astro.props;
 
 const grupos = porPuesto(jugadores);
 const ordenados = PUESTOS.flatMap((p) => grupos.get(p) ?? []);
-const formacion = formacionDe(jugadores);
+const formacion = formacionDada ?? formacionDe(jugadores);
 
 const ubicados =
   (formacion
     ? layout(
-        ordenados.map((j) => ({ ...j, grid: null })),
+        ordenados.map((j) => ({ ...j, grid: j.grid ?? null })),
         { formation: formacion },
       )
     : null) ?? [];
@@ -91,10 +96,14 @@ const ubicados =
                 </span>
               )}
             </span>
-            <!-- Los dos rótulos en una plaquita: el nombre del equipo suelto sobre el césped no llega al contraste mínimo. -->
+            <!--
+              Los rótulos en una plaquita: el texto suelto sobre el césped no llega al contraste
+              mínimo. El equipo se omite cuando es uno solo —una alineación—: repetir "LIM" once
+              veces no informa de nada.
+            -->
             <span class="mt-1.5 grid max-w-full rounded bg-board/85 px-1 py-0.5 leading-tight">
               <span class="truncate text-[11px] font-medium text-chalk">{apellidoDe(j.nombre)}</span>
-              <span class="truncate text-[10px] leading-none text-chalk/70">{j.equipo}</span>
+              {j.equipo && <span class="truncate text-[10px] leading-none text-chalk/70">{j.equipo}</span>}
             </span>
           </Ficha>
         );

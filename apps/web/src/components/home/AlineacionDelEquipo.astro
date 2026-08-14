@@ -1,0 +1,157 @@
+---
+import CanchaOnce from '../pitch/CanchaOnce.astro';
+import Icon from '../Icon.astro';
+import type { MatchPlayerStats, TeamSummary, UltimaAlineacion } from '../../lib/api';
+import type { FichaOnce } from '../../lib/once';
+import { formatDate } from '../../lib/format';
+import { nombreTorneo } from '../../lib/paises';
+
+/*
+ * Con qué salió el equipo en su último partido, sobre la cancha.
+ *
+ * Es la pregunta que se hace un hincha cuando abre a su equipo, y el dato estaba en la base sin que
+ * ninguna vista fuera del partido lo mostrara. En el riel del equipo reemplaza a los goleadores del
+ * mundo, que ahí no dicen nada: quien vino a ver a Alianza no vino a ver quién la rompe en Europa.
+ *
+ * Se dibuja con el `grid` del proveedor, así que las fichas quedan donde jugaron —un 4-2-3-1 se ve
+ * como un 4-2-3-1— y cada una abre las estadísticas de ese partido, no el promedio de la temporada.
+ */
+interface Props {
+  alineacion: UltimaAlineacion;
+  equipo: TeamSummary;
+}
+
+const { alineacion, equipo } = Astro.props;
+const { match, formation, coachName, startXi, stats } = alineacion;
+
+const rival = match.homeTeam.id === equipo.id ? match.awayTeam : match.homeTeam;
+const deLocal = match.homeTeam.id === equipo.id;
+const golesPropios = deLocal ? match.homeScore : match.awayScore;
+const golesRival = deLocal ? match.awayScore : match.homeScore;
+
+const resultado =
+  golesPropios === null || golesRival === null
+    ? null
+    : golesPropios > golesRival
+      ? { letra: 'V', clase: 'bg-primary text-primary-contrast', titulo: 'Victoria' }
+      : golesPropios === golesRival
+        ? { letra: 'E', clase: 'bg-border-strong text-ink', titulo: 'Empate' }
+        : { letra: 'D', clase: 'bg-card-red/85 text-chalk', titulo: 'Derrota' };
+
+const notaPorJugador = new Map(stats.map((s) => [s.player.id, s]));
+
+/* El puesto sale de la nota del partido —`G`, `D`, `M`, `F`— y si no hay nota, del rótulo del
+   proveedor en la alineación. Solo ordena las fichas: la casilla es la que las coloca. */
+const PUESTO_POR_ROTULO: Record<string, string> = {
+  arquero: 'G',
+  defensor: 'D',
+  mediocampista: 'M',
+  delantero: 'F',
+};
+
+/* El mismo payload que la cancha del partido: el clic abre la ficha sin pedir nada al servidor. */
+const ficha = (nota: MatchPlayerStats): string =>
+  JSON.stringify({
+    playerId: nota.player.id,
+    slug: nota.player.slug,
+    name: nota.player.name,
+    photoUrl: nota.player.photoUrl,
+    number: nota.shirtNumber,
+    position: nota.position,
+    team: { name: equipo.name, slug: equipo.slug, logoUrl: equipo.logoUrl },
+    stats: nota,
+  });
+
+const jugadores: FichaOnce[] = startXi.map((titular) => {
+  const nota = titular.playerId === null ? undefined : notaPorJugador.get(titular.playerId);
+  return {
+    puesto: nota?.position ?? PUESTO_POR_ROTULO[titular.position ?? ''] ?? 'M',
+    nombre: nota?.player.name ?? titular.name,
+    href: titular.slug ? `/?jugador=${titular.slug}` : `/partidos/${match.id}`,
+    fotoUrl: titular.photoUrl ?? nota?.player.photoUrl ?? null,
+    /* Sin equipo en la ficha: son todos del mismo y la cancha ya lo dice. */
+    equipo: '',
+    nota: nota?.rating ?? null,
+    dorsal: titular.number ?? nota?.shirtNumber ?? null,
+    goles: (nota?.goals ?? 0) + (nota?.penaltyScored ?? 0),
+    grid: titular.grid,
+    ficha: nota ? ficha(nota) : null,
+  };
+});
+
+const dibujable = jugadores.length === 11;
+---
+
+<section class="overflow-hidden rounded-xl border border-border bg-surface">
+  <header class="border-b border-border p-3">
+    <h2 class="flex items-center gap-1.5 font-display text-sm font-semibold uppercase leading-none">
+      <Icon name="formacion" size={14} class="text-primary-ink" />
+      Con qué salió
+      {
+        formation && (
+          <span class="ml-auto rounded bg-canvas-subtle px-1.5 py-0.5 font-sans text-2xs font-semibold tabular">
+            {formation}
+          </span>
+        )
+      }
+    </h2>
+
+    <!-- El partido es el contexto: sin rival ni resultado, la cancha no dice de cuándo habla. -->
+    <a
+      href={`/partidos/${match.id}`}
+      class="mt-2 flex items-center gap-2 rounded-md bg-canvas-subtle px-2 py-1.5 transition-colors hover:bg-border/40"
+    >
+      {
+        resultado && (
+          <span
+            class:list={[
+              'grid size-5 shrink-0 place-items-center rounded font-display text-2xs font-bold',
+              resultado.clase,
+            ]}
+            title={resultado.titulo}
+          >
+            {resultado.letra}
+          </span>
+        )
+      }
+      <span class="min-w-0 flex-1">
+        <span class="flex items-center gap-1.5">
+          <span class="text-2xs text-ink-muted">{deLocal ? 'vs' : 'en'}</span>
+          {
+            rival.logoUrl && (
+              <img src={rival.logoUrl} alt="" width="16" height="16" loading="lazy" class="shrink-0" />
+            )
+          }
+          <span class="truncate text-sm font-medium">{rival.shortName ?? rival.name}</span>
+          {
+            golesPropios !== null && (
+              <span class="ml-auto shrink-0 font-display text-sm font-semibold tabular">
+                {golesPropios}–{golesRival}
+              </span>
+            )
+          }
+        </span>
+        <span class="mt-0.5 block truncate text-2xs text-ink-muted">
+          {formatDate(match.kickoffUtc)} · {nombreTorneo(match.season.competition.name)}
+        </span>
+      </span>
+    </a>
+  </header>
+
+  {
+    dibujable ? (
+      <div class="p-2">
+        <CanchaOnce jugadores={jugadores} formacion={formation} />
+      </div>
+    ) : (
+      <p class="p-3 text-sm text-ink-muted">
+        El proveedor publicó {jugadores.length} titulares de este partido, así que la cancha quedaría
+        incompleta.
+      </p>
+    )
+  }
+
+  <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
+    {coachName ? `Dirigió ${coachName}. ` : ''}Tocá un jugador para ver su partido.
+  </p>
+</section>

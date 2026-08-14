@@ -421,6 +421,25 @@ la cancha se dibujaba de 256px.
 En móvil el orden es contenido → tabla y once → catálogo: el árbol de navegación se leía en medio de
 la lectura.
 
+### La home con un equipo abierto
+
+El mismo orden que la liga: la cabecera con cómo va, después **próximos partidos** y **últimos
+resultados** a todo el ancho —una fila por partido, con el equipo en negrita para ver de qué lado
+jugó—, después **los goleadores del club** y al final **la plantilla**.
+
+En el riel, **con qué salió en su último partido**, sobre la cancha. Es la pregunta que se hace un
+hincha cuando abre a su equipo, y el dato estaba en la base sin que ninguna vista fuera del partido
+lo mostrara. Reemplaza a los goleadores del mundo, que ahí no dicen nada: quien vino a ver a Alianza
+no vino a ver quién la rompe en Europa.
+
+Se dibuja con el **`grid` del proveedor**, no con los puestos deducidos: un 4-1-3-2 se ve como un
+4-1-3-2, con el volante tapón donde jugó. Cada ficha lleva su dorsal y su nota de ese partido y abre
+las estadísticas de **ese** encuentro, no el promedio de la temporada. Es la misma cancha del once
+ideal (`CanchaOnce`), que ahora acepta la formación y las casillas cuando existen.
+
+En una alineación el rótulo del equipo se omite bajo cada ficha: repetir "LIM" once veces no informa
+de nada.
+
 ### La copa internacional
 
 Una copa no se lee como una liga. Lo que trae a alguien a la página de la Libertadores es **quién

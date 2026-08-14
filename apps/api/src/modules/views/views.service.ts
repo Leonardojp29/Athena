@@ -789,7 +789,9 @@ export class ViewsService {
    * a Supabase; filtrar por la relación cuesta un join, que del lado de la base no se nota.
    */
   async team(slug: string) {
-    const [team, standings, recent, upcoming, squad, scorers] = await Promise.all([
+    const ultimoJugado = { team: { slug }, match: { status: 'finished' } };
+    const [team, standings, recent, upcoming, squad, scorers, alineacion, notas] =
+      await Promise.all([
       this.prisma.team.findUnique({
         where: { slug },
         select: {
@@ -874,6 +876,34 @@ export class ViewsService {
           season: { select: { year: true, competition: { select: { name: true, slug: true } } } },
         },
       }),
+      /*
+       * La alineación del último partido jugado. Es lo que un hincha quiere ver del equipo —con qué
+       * salió— y ya estaba en la base sin que ninguna vista la mostrara fuera del partido.
+       */
+      this.prisma.matchLineup.findFirst({
+        relationLoadStrategy: JOIN,
+        where: ultimoJugado,
+        orderBy: { match: { kickoffUtc: 'desc' } },
+        select: {
+          teamId: true,
+          formation: true,
+          coachName: true,
+          startXi: true,
+          match: { select: matchCard },
+        },
+      }),
+      /*
+       * Las notas de ese partido, en la misma tanda paralela: pedirlas después de saber cuál es
+       * costaría un viaje entero a Supabase. Con cuarenta filas entran los dos últimos partidos, y
+       * se conservan las del que trajo la alineación.
+       */
+      this.prisma.matchPlayerStatistics.findMany({
+        relationLoadStrategy: JOIN,
+        where: ultimoJugado,
+        orderBy: [{ match: { kickoffUtc: 'desc' } }],
+        take: 40,
+        select: { ...matchPlayerStats, matchId: true, player: playerLink },
+      }),
     ]);
     if (!team) throw new NotFoundException('Equipo no encontrado');
 
@@ -910,6 +940,20 @@ export class ViewsService {
     const squadYear = squad[0]?.year ?? null;
     const currentSquad = squad.filter((row) => row.year === squadYear);
 
+    /*
+     * Las notas se pidieron por equipo y fecha, no por partido, así que se quedan las del partido
+     * que trajo la alineación. Sin notas la cancha se dibuja igual: es la alineación la que manda.
+     */
+    const lastLineup = alineacion
+      ? {
+          match: alineacion.match,
+          formation: alineacion.formation,
+          coachName: alineacion.coachName,
+          startXi: alineacion.startXi,
+          stats: notas.filter((n) => n.matchId === alineacion.match.id),
+        }
+      : null;
+
     return {
       team,
       standings: tablas,
@@ -917,6 +961,7 @@ export class ViewsService {
       upcoming,
       squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },
       scorers,
+      lastLineup,
     };
   }
 

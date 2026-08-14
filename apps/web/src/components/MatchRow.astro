@@ -20,12 +20,15 @@ interface Props {
    * resto del sitio, su página. El valor por omisión es la página, que es lo correcto fuera de casa.
    */
   hrefEquipo?: (slug: string) => string;
+  /** Resalta a un equipo: en su propia vista importa ver de qué lado jugó. */
+  destacado?: string | null;
 }
 
 const {
   match,
   showDate = false,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
+  destacado = null,
 } = Astro.props;
 const live = isLive(match.status);
 const finished = match.status === 'finished';
@@ -64,7 +67,10 @@ const estado = live && match.elapsedMinutes !== null
     }
     <a
       href={hrefEquipo(match.homeTeam.slug)}
-      class="relative truncate text-sm hover:text-primary-ink hover:underline sm:order-1"
+      class:list={[
+        'relative truncate text-sm hover:text-primary-ink hover:underline sm:order-1',
+        match.homeTeam.slug === destacado ? 'font-semibold' : '',
+      ]}
     >
       {match.homeTeam.name}
     </a>
@@ -101,7 +107,10 @@ const estado = live && match.elapsedMinutes !== null
     }
     <a
       href={hrefEquipo(match.awayTeam.slug)}
-      class="relative truncate text-sm hover:text-primary-ink hover:underline"
+      class:list={[
+        'relative truncate text-sm hover:text-primary-ink hover:underline',
+        match.awayTeam.slug === destacado ? 'font-semibold' : '',
+      ]}
     >
       {match.awayTeam.name}
     </a>

@@ -8,6 +8,7 @@ import MatchGeography from '../components/home/MatchGeography.astro';
 import MatchRow from '../components/MatchRow.astro';
 import LideresDelMundo from '../components/home/LideresDelMundo.astro';
 import OnceDeLaFecha from '../components/home/OnceDeLaFecha.astro';
+import AlineacionDelEquipo from '../components/home/AlineacionDelEquipo.astro';
 import PlayerSheet from '../components/pitch/PlayerSheet.astro';
 import TablaDelRiel from '../components/home/TablaDelRiel.astro';
 import VistaEquipo from '../components/home/VistaEquipo.astro';
@@ -266,20 +267,29 @@ const destacado = feed?.insights[0]
       >
         {vistaLiga && <TablaDelRiel view={vistaLiga} fase={fase} />}
         {
-          vistaLiga?.once ? (
+          vistaLiga?.once && (
             <OnceDeLaFecha
               once={vistaLiga.once}
               logoUrl={vistaLiga.competition.logoUrl}
               nombreLiga={vistaLiga.competition.name}
             />
-          ) : (
-            !vistaLiga && (
-              <LideresDelMundo
-                top={mejores}
-                href={(continente: string) => `/?region=${continente}`}
-                hrefJugador={(slug: string) => `/?jugador=${slug}`}
-              />
-            )
+          )
+        }
+        {
+          vistaEquipo?.lastLineup && (
+            <AlineacionDelEquipo
+              alineacion={vistaEquipo.lastLineup}
+              equipo={vistaEquipo.team}
+            />
+          )
+        }
+        {
+          !vistaLiga && !vistaEquipo && (
+            <LideresDelMundo
+              top={mejores}
+              href={(continente: string) => `/?region=${continente}`}
+              hrefJugador={(slug: string) => `/?jugador=${slug}`}
+            />
           )
         }
 
@@ -304,6 +314,6 @@ const destacado = feed?.insights[0]
     </div>
   </Container>
 
-  <!-- La ficha del once: solo se monta cuando hay cancha que la abra. -->
-  {vistaLiga?.once && <PlayerSheet />}
+  <!-- La ficha del jugador: solo se monta cuando hay una cancha que la abra. -->
+  {(vistaLiga?.once || vistaEquipo?.lastLineup) && <PlayerSheet />}
 </Base>

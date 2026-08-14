@@ -18,6 +18,11 @@ export interface FichaOnce {
   goles?: number | null;
   /** Cuando viene, la ficha abre el modal del partido en lugar de navegar. */
   ficha?: string | null;
+  /**
+   * La casilla del proveedor, `fila:columna`. Cuando existe —una alineación real— manda sobre la
+   * formación deducida: un 4-2-3-1 se dibuja como tal y no como un 4-5-1.
+   */
+  grid?: string | null;
 }
 
 export const PUESTOS = ['G', 'D', 'M', 'F'] as const;
