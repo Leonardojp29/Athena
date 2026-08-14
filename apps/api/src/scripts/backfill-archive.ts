@@ -97,6 +97,36 @@ async function main(): Promise<void> {
   console.log(
     `\nArchivo listo: ${temporadas} temporadas, ${partidos} partidos, ${fallos} fallos`,
   );
+
+  /*
+   * Segunda pasada: las temporadas que tienen partidos pero se quedaron sin tabla. Pasa cuando el
+   * proveedor devuelve filas repetidas y el `createMany` rebota; los partidos ya estaban escritos, así
+   * que la primera pasada las da por hechas y nunca volvería a mirarlas.
+   */
+  const sinTabla = await prisma.$queryRaw<Array<{ provider_ref: string; year: number; slug: string }>>`
+    SELECT r.provider_ref, se.year, c.slug
+    FROM seasons se
+    JOIN competitions c ON c.id = se.competition_id
+    JOIN external_references r
+      ON r.entity_type = 'competition' AND r.entity_id = c.id AND r.provider = 'api-football'
+    WHERE EXISTS (SELECT 1 FROM matches m WHERE m.season_id = se.id)
+      AND NOT EXISTS (SELECT 1 FROM standings s WHERE s.season_id = se.id)
+    ORDER BY se.year DESC`;
+
+  if (sinTabla.length > 0) {
+    console.log(`\n${sinTabla.length} temporadas con partidos y sin tabla: reintentando`);
+    let recuperadas = 0;
+    for (const fila of sinTabla) {
+      try {
+        const filas = await syncStandings.execute(fila.provider_ref, fila.year);
+        if (filas > 0) recuperadas++;
+      } catch (error) {
+        console.error(`  ✗ ${fila.slug} ${fila.year}: ${String(error).slice(0, 120)}`);
+      }
+    }
+    console.log(`Tablas recuperadas: ${recuperadas}/${sinTabla.length}`);
+  }
+
   await app.close();
 }
 

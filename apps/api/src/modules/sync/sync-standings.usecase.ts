@@ -40,10 +40,29 @@ export class SyncStandingsUseCase {
     );
     const resolvable = rows.filter((r) => teams.has(r.teamRef));
 
+    /*
+     * Un equipo no puede aparecer dos veces en la misma tabla, y en temporadas viejas el proveedor lo
+     * hace: devuelve dos etapas con la misma etiqueta de grupo y los mismos equipos. `createMany`
+     * rebota contra el índice único y se perdía la tabla entera de esa temporada, así que se conserva
+     * la primera aparición —el proveedor lista las tablas en su orden— y se avisa cuántas se cayeron.
+     */
+    const vistos = new Set<string>();
+    const unicos = resolvable.filter((r) => {
+      const clave = `${r.groupLabel}|${teams.get(r.teamRef) as string}`;
+      if (vistos.has(clave)) return false;
+      vistos.add(clave);
+      return true;
+    });
+    if (unicos.length !== resolvable.length) {
+      this.logger.warn(
+        `Standings ${competitionRef}/${seasonYear}: ${resolvable.length - unicos.length} filas repetidas descartadas`,
+      );
+    }
+
     await this.prisma.$transaction([
       this.prisma.standing.deleteMany({ where: { seasonId: season.id } }),
       this.prisma.standing.createMany({
-        data: resolvable.map((r) => ({
+        data: unicos.map((r) => ({
           seasonId: season.id,
           teamId: teams.get(r.teamRef) as string,
           groupLabel: r.groupLabel,
@@ -60,7 +79,7 @@ export class SyncStandingsUseCase {
       }),
     ]);
 
-    this.logger.log(`Standings ${competitionRef}/${seasonYear}: ${resolvable.length} rows`);
-    return resolvable.length;
+    this.logger.log(`Standings ${competitionRef}/${seasonYear}: ${unicos.length} rows`);
+    return unicos.length;
   }
 }
