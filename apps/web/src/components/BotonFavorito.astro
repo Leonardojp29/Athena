@@ -47,11 +47,12 @@ const payload = JSON.stringify({ tipo, id, slug, nombre, logoUrl, pais, banderaU
 const etiqueta = variante === 'boton' ? `Seguir ${nombre}` : `Marcar ${nombre} como favorito`;
 
 const CLASES = {
+  /* Rellena al marcar: el contorno cambiando de color no se leía como "ya está guardado". */
   estrella:
-    'cursor-pointer rounded p-0.5 text-border-strong transition-all hover:text-primary-ink aria-pressed:text-primary-ink',
+    'cursor-pointer rounded p-0.5 text-border-strong transition-all hover:text-primary-ink aria-pressed:text-primary-ink [&>svg]:transition-colors aria-pressed:[&>svg]:fill-current',
   boton: onBoard
-    ? 'flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-chalk/30 px-2.5 py-1.5 text-2xs font-medium text-chalk transition-colors hover:border-primary hover:text-primary aria-pressed:border-primary aria-pressed:bg-primary/20 aria-pressed:text-primary'
-    : 'flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-2.5 py-1.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-ink aria-pressed:border-primary-ink aria-pressed:bg-primary/12 aria-pressed:text-primary-ink',
+    ? 'flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-chalk/30 px-2.5 py-1.5 text-2xs font-medium text-chalk transition-colors hover:border-primary hover:text-primary aria-pressed:border-primary aria-pressed:bg-primary/20 aria-pressed:text-primary aria-pressed:[&>svg]:fill-current'
+    : 'flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-border px-2.5 py-1.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-ink aria-pressed:border-primary-ink aria-pressed:bg-primary/12 aria-pressed:text-primary-ink aria-pressed:[&>svg]:fill-current',
 };
 ---
 

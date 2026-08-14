@@ -68,7 +68,7 @@ const estado = live && match.elapsedMinutes !== null
   data-anclado={anclado ? '' : undefined}
   class:list={[
     'group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-0.5 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle',
-    ronda ? 'sm:grid-cols-[1fr_auto_1fr_auto]' : 'sm:grid-cols-[1fr_auto_1fr]',
+    mostrarRonda ? 'sm:grid-cols-[1fr_auto_1fr_auto]' : 'sm:grid-cols-[1fr_auto_1fr]',
   ]}
 >
   <a
@@ -145,11 +145,20 @@ const estado = live && match.elapsedMinutes !== null
   <!--
     La ronda cierra la fila, en el borde: en la grilla apilada del teléfono ocupa su propia línea
     debajo de los dos equipos, y desde `sm` se alinea al final sin empujar los nombres.
+
+    Con ancho fijo, porque cada fila es una grilla independiente: sin él, "Fase de grupos · fecha 6"
+    corría el nombre del visitante y la fila de al lado, con "Octavos de final", quedaba en otro
+    lugar. Se corta con puntos suspensivos antes que desalinear la lista entera.
   -->
   {
-    ronda && (
-      <span class="pointer-events-none col-span-2 col-start-1 row-start-3 justify-self-start rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-label text-ink-muted sm:col-span-1 sm:col-start-4 sm:row-start-1 sm:justify-self-end">
-        {ronda}
+    mostrarRonda && (
+      <span class="pointer-events-none col-span-2 col-start-1 row-start-3 flex sm:col-span-1 sm:col-start-4 sm:row-start-1 sm:w-[9.5rem] sm:justify-end">
+        <span
+          class="truncate rounded border border-border px-1.5 py-px text-[10px] font-medium uppercase tracking-label text-ink-muted empty:hidden"
+          title={ronda ?? undefined}
+        >
+          {ronda}
+        </span>
       </span>
     )
   }

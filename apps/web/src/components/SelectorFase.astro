@@ -8,6 +8,11 @@ import { nombreFase } from '../lib/paises';
  * el botón atrás funciona y la página sigue costando 0 KB. La que está en juego viene primera del
  * API y es la que se abre por defecto, que es el punto de todo esto —antes la Liga 1 abría en el
  * Apertura, terminado en mayo, mientras se jugaba el Clausura—.
+ *
+ * Cuando la página ya trae todas las tablas en el HTML —`[data-tablas]` con un panel por fase—, el
+ * clic cambia de panel en el momento y solo actualiza la URL: recargar para mover una tabla que ya
+ * está en la página tiraba el scroll al principio en cada cambio. Sin JavaScript, el enlace navega
+ * como siempre.
  */
 interface Props {
   grupos: Array<{ label: string; current: boolean }>;
@@ -30,12 +35,14 @@ const { grupos, activo, href, class: className } = Astro.props;
       ]}
       role="group"
       aria-label="Fase de la temporada"
+      data-selector-fase
     >
       {grupos.map((grupo) => {
         const abierto = grupo.label === activo;
         return (
           <a
             href={href(grupo.label)}
+            data-fase={grupo.label}
             aria-current={abierto ? 'true' : undefined}
             class:list={[
               'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-2xs font-medium transition-colors',
@@ -45,16 +52,47 @@ const { grupos, activo, href, class: className } = Astro.props;
             ]}
           >
             {nombreFase(grupo.label)}
-            {grupo.current && (
-              <span
-                class="size-1.5 shrink-0 rounded-full bg-live"
-                title="En juego"
-                aria-label="En juego"
-              />
-            )}
           </a>
         );
       })}
     </div>
   )
 }
+
+<script>
+  /*
+   * Cambio de fase sin navegar, cuando la página trae todas las tablas en el HTML. Es el mismo gesto
+   * de las rondas: se muestra el panel, se marca el botón y la URL queda al día para que el enlace
+   * siga siendo compartible. El scroll no se mueve, que era el punto.
+   */
+  const tablas = document.querySelector<HTMLElement>('[data-tablas]');
+  if (tablas) {
+    const paneles = [...tablas.querySelectorAll<HTMLElement>('[data-tabla-panel]')];
+
+    const mostrar = (fase: string) => {
+      const destino = paneles.find((p) => p.dataset.tablaPanel === fase);
+      if (!destino) return false;
+      for (const panel of paneles) panel.hidden = panel !== destino;
+      for (const boton of document.querySelectorAll<HTMLElement>('[data-selector-fase] [data-fase]')) {
+        if (boton.dataset.fase === fase) boton.setAttribute('aria-current', 'true');
+        else boton.removeAttribute('aria-current');
+      }
+      return true;
+    };
+
+    for (const boton of document.querySelectorAll<HTMLAnchorElement>('[data-selector-fase] [data-fase]')) {
+      boton.addEventListener('click', (evento) => {
+        const fase = boton.dataset.fase;
+        if (!fase || evento.metaKey || evento.ctrlKey || evento.shiftKey) return;
+        if (!mostrar(fase)) return;
+        evento.preventDefault();
+        history.pushState({ fase }, '', boton.href);
+      });
+    }
+
+    addEventListener('popstate', () => {
+      const fase = new URL(location.href).searchParams.get('tabla');
+      mostrar(fase ?? paneles[0]?.dataset.tablaPanel ?? '');
+    });
+  }
+</script>

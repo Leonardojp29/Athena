@@ -18,6 +18,21 @@ export function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+/**
+ * El día con todas sus letras y sin el año: "martes, 11 de agosto".
+ *
+ * Va donde hay lugar y el año no aporta —los partidos de una ronda, que se juegan esta semana—: en un
+ * encabezado de día, "mar, 11 ago." obliga a descifrar una abreviatura para ahorrar diez píxeles.
+ */
+export function formatDayLong(iso: string): string {
+  return new Intl.DateTimeFormat('es-PE', {
+    timeZone: TZ,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(new Date(iso));
+}
+
 export function formatDateLong(iso: string): string {
   return new Intl.DateTimeFormat('es-PE', {
     timeZone: TZ,

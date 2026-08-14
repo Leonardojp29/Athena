@@ -32,12 +32,6 @@ const { grupos, abierto, juntos, enJuego, hrefFase, hrefEquipo } = Astro.props;
           <span class="font-sans text-2xs font-medium normal-case text-ink-muted">
             {grupos.length > 1 ? `${grupos.length} grupos` : nombreFase(grupos[0]?.label ?? '')}
           </span>
-          {enJuego && (
-            <span class="flex items-center gap-1 text-2xs font-medium normal-case text-primary-ink">
-              <span class="size-1.5 rounded-full bg-live" />
-              en juego
-            </span>
-          )}
         </h2>
         {!juntos && abierto && (
           <SelectorFase grupos={grupos} activo={abierto.label} href={hrefFase} />

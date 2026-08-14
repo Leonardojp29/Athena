@@ -17,6 +17,12 @@ interface Props {
    * de una copa: nueve columnas obligaban a mostrar una tabla por vez, o a 1200px de ancho.
    */
   compacto?: boolean;
+  /**
+   * La tabla como protagonista: filas más altas, escudos más grandes y números que se leen de lejos.
+   * Es lo que va en una liga, donde la tabla no compite con un cuadro ni con una fase de grupos y
+   * tiene la página entera para ella.
+   */
+  grande?: boolean;
 }
 
 const {
@@ -26,7 +32,13 @@ const {
   maxAlto,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
   compacto = false,
+  grande = false,
 } = Astro.props;
+
+/* Un solo juego de medidas por tamaño: la tabla grande respira, la normal es la de siempre. */
+const alto = grande ? 'py-3' : 'py-2';
+const cifra = grande ? 'text-base' : '';
+const escudo = grande ? 24 : 18;
 
 /*
  * El proveedor manda la forma en inglés ("WWDLW") y el más reciente primero. Se traduce y se
@@ -38,8 +50,8 @@ const FORMA: Record<string, { letra: string; clase: string; titulo: string }> = 
   L: { letra: 'D', clase: 'bg-card-red/85 text-chalk', titulo: 'Derrota' },
 };
 
-const ultimos = (form: string | null) =>
-  form === null ? [] : [...form.slice(0, 5)].reverse().flatMap((c) => FORMA[c] ?? []);
+const ultimos = (form: string | null, cuantos: number) =>
+  form === null ? [] : [...form.slice(0, cuantos)].reverse().flatMap((c) => FORMA[c] ?? []);
 
 /* Se arma como un solo string: dos expresiones JSX seguidas meten un espacio en el medio. */
 const diferencia = (row: StandingRow) => {
@@ -50,32 +62,50 @@ const diferencia = (row: StandingRow) => {
 
 {label && <h3 class="mb-2 text-sm font-semibold text-ink-muted">{label}</h3>}
 <div class="overflow-auto" style={maxAlto ? `max-height:${maxAlto}` : undefined}>
-  <table class="w-full text-sm">
+  <!--
+    En la tabla grande los anchos van por porcentaje y con `table-fixed`: con anchos automáticos, el
+    nombre del equipo se comía todo el sobrante y los números terminaban a mil píxeles del equipo al
+    que pertenecen. Así la fila se lee de un vistazo aunque la página tenga 1840px.
+  -->
+  <table class:list={['w-full', grande ? 'table-fixed text-base' : 'text-sm']}>
     <thead class="sticky top-0 z-10 bg-surface">
       <tr class="border-b border-border text-2xs text-ink-muted uppercase tracking-label">
-        <th scope="col" class="w-8 py-2 pr-2 text-left font-semibold">#</th>
-        <th scope="col" class="py-2 text-left font-semibold">Equipo</th>
-        <th scope="col" class="w-11 py-2 text-center font-semibold">PJ</th>
+        <th scope="col" class:list={['pr-2 text-left font-semibold', alto, grande ? 'w-[4%]' : 'w-8']}>#</th>
+        <th scope="col" class:list={['text-left font-semibold', alto, grande ? 'w-[32%]' : '']}>Equipo</th>
+        <th scope="col" class:list={['text-center font-semibold', alto, grande ? 'w-[6%]' : 'w-11']}>PJ</th>
         {!compacto && (
           <>
-            <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">G</th>
-            <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">E</th>
-            <th scope="col" class="hidden w-9 py-2 text-center font-semibold sm:table-cell">P</th>
+            <th scope="col" class:list={['hidden text-center font-semibold sm:table-cell', alto, grande ? 'w-[6%]' : 'w-9']}>G</th>
+            <th scope="col" class:list={['hidden text-center font-semibold sm:table-cell', alto, grande ? 'w-[6%]' : 'w-9']}>E</th>
+            <th scope="col" class:list={['hidden text-center font-semibold sm:table-cell', alto, grande ? 'w-[6%]' : 'w-9']}>P</th>
+            {grande && (
+              <>
+                <th scope="col" class:list={['hidden w-[6%] text-center font-semibold md:table-cell', alto]}>GF</th>
+                <th scope="col" class:list={['hidden w-[6%] text-center font-semibold md:table-cell', alto]}>GC</th>
+              </>
+            )}
           </>
         )}
         <th
           scope="col"
           class:list={[
-            'w-11 py-2 text-center font-semibold',
+            'text-center font-semibold',
+            alto,
+            grande ? 'w-[6%]' : 'w-11',
             compacto ? '' : 'hidden md:table-cell',
           ]}
         >
           DG
         </th>
         {!compacto && (
-          <th scope="col" class="hidden w-28 py-2 text-left font-semibold lg:table-cell">Forma</th>
+          <th
+            scope="col"
+            class:list={['hidden font-semibold lg:table-cell', alto, grande ? 'w-[16%] text-center' : 'w-28 text-left']}
+          >
+            Forma
+          </th>
         )}
-        <th scope="col" class="w-12 py-2 text-center font-semibold">Pts</th>
+        <th scope="col" class:list={['text-center font-semibold', alto, grande ? 'w-[7%]' : 'w-12']}>Pts</th>
       </tr>
     </thead>
     <tbody>
@@ -83,33 +113,61 @@ const diferencia = (row: StandingRow) => {
         rows.map((row) => (
           <tr
             class:list={[
-              'border-b border-border/50 transition-colors hover:bg-canvas-subtle',
+              'transition-colors hover:bg-canvas-subtle',
+              /* A lo ancho de la página el ojo se pierde de renglón: una fila sí y una no, con un
+                 tinte apenas visible, alcanza para seguir la línea sin ensuciar la tabla. */
+              grande ? 'even:bg-canvas-subtle/70' : 'border-b border-border/50',
               row.team.id === highlightTeamId ? 'bg-primary/8' : '',
             ]}
           >
-            <td class="py-2 pr-2 tabular text-ink-muted">{row.position}</td>
-            <td class="py-2">
+            <td class:list={['pr-2 tabular text-ink-muted', alto, grande ? 'text-base' : '']}>
+              {row.position}
+            </td>
+            <td class={alto}>
               <a
                 href={hrefEquipo(row.team.slug)}
-                class="flex items-center gap-2 transition-colors hover:text-primary-ink hover:underline"
+                class:list={[
+                  'flex items-center transition-colors hover:text-primary-ink hover:underline',
+                  grande ? 'gap-3 font-medium' : 'gap-2',
+                ]}
               >
                 {row.team.logoUrl && (
-                  <img src={row.team.logoUrl} alt="" width="18" height="18" loading="lazy" />
+                  <img
+                    src={row.team.logoUrl}
+                    alt=""
+                    width={escudo}
+                    height={escudo}
+                    loading="lazy"
+                    style={`width:${escudo}px;height:${escudo}px`}
+                    class="object-contain"
+                  />
                 )}
                 <span class="max-w-44 truncate sm:max-w-none">{row.team.name}</span>
               </a>
             </td>
-            <td class="py-2 text-center tabular">{row.played}</td>
+            <td class:list={['text-center tabular', alto, cifra]}>{row.played}</td>
             {!compacto && (
               <>
-                <td class="hidden py-2 text-center tabular sm:table-cell">{row.won}</td>
-                <td class="hidden py-2 text-center tabular sm:table-cell">{row.drawn}</td>
-                <td class="hidden py-2 text-center tabular sm:table-cell">{row.lost}</td>
+                <td class:list={['hidden text-center tabular sm:table-cell', alto, cifra]}>{row.won}</td>
+                <td class:list={['hidden text-center tabular sm:table-cell', alto, cifra]}>{row.drawn}</td>
+                <td class:list={['hidden text-center tabular sm:table-cell', alto, cifra]}>{row.lost}</td>
+                {grande && (
+                  <>
+                    <td class:list={['hidden text-center tabular md:table-cell', alto, cifra]}>
+                      {row.goalsFor}
+                    </td>
+                    <td class:list={['hidden text-center tabular text-ink-muted md:table-cell', alto, cifra]}>
+                      {row.goalsAgainst}
+                    </td>
+                  </>
+                )}
               </>
             )}
             <td
               class:list={[
-                'py-2 text-center tabular',
+                'text-center tabular',
+                alto,
+                cifra,
                 compacto ? '' : 'hidden md:table-cell',
               ]}
             >
@@ -117,12 +175,13 @@ const diferencia = (row: StandingRow) => {
             </td>
             {!compacto && (
               <>
-                <td class="hidden py-2 lg:table-cell">
-                  <span class="flex gap-0.5">
-                    {ultimos(row.form).map((r) => (
+                <td class:list={['hidden lg:table-cell', alto]}>
+                  <span class:list={['flex', grande ? 'justify-center gap-1' : 'gap-0.5']}>
+                    {ultimos(row.form, grande ? 8 : 5).map((r) => (
                       <span
                         class:list={[
-                          'grid size-4 place-items-center rounded-[2px] text-[9px] font-bold',
+                          'grid place-items-center rounded-[2px] font-bold',
+                          grande ? 'size-6 rounded-[3px] text-[11px]' : 'size-4 text-[9px]',
                           r.clase,
                         ]}
                         title={r.titulo}
@@ -134,7 +193,15 @@ const diferencia = (row: StandingRow) => {
                 </td>
               </>
             )}
-            <td class="py-2 text-center font-semibold tabular">{row.points}</td>
+            <td
+              class:list={[
+                'text-center font-semibold tabular',
+                alto,
+                grande ? 'font-display text-lg' : '',
+              ]}
+            >
+              {row.points}
+            </td>
           </tr>
         ))
       }

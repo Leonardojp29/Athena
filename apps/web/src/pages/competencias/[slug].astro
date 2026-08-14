@@ -380,26 +380,35 @@ const jsonLd = {
             )}
 
             <!--
-              La tabla de una liga no va a todo el ancho: nueve números estirados en 1840px dejan un
-              hueco entre el nombre del equipo y las cifras. Centrada y con techo se lee como una
-              tabla.
+              En una liga la tabla es la página: no compite con un cuadro ni con una fase de grupos,
+              así que se queda con todo el ancho y con el tamaño grande —filas más altas, escudos más
+              grandes, puntos que se leen de lejos—.
             -->
             {!esCopa &&
               (grupo ? (
-                <section class="mx-auto w-full max-w-[76rem] rounded-xl border border-border bg-surface">
-                  <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
-                    <h2 class="font-display text-base font-semibold uppercase">
+                <section class="w-full rounded-xl border border-border bg-surface">
+                  <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                    <h2 class="font-display text-lg font-semibold uppercase">
                       Tabla de posiciones
                       {standingGroups.length === 1 && grupo.label && (
-                        <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
+                        <span class="ml-1.5 font-sans text-2xs font-medium normal-case text-ink-muted">
                           {nombreFase(grupo.label)}
                         </span>
                       )}
                     </h2>
                     <SelectorFase grupos={standingGroups} activo={grupo.label} href={enlaceFase} />
                   </header>
-                  <div class="p-3">
-                    <StandingsTable rows={grupo.rows} />
+                  <!--
+                    Todas las fases en el HTML y una visible: son dos o tres tablas de dieciocho
+                    filas, y a cambio cambiar de Apertura a Clausura no recarga la página ni tira el
+                    scroll al principio.
+                  -->
+                  <div class="px-4 py-2" data-tablas>
+                    {standingGroups.map((fase) => (
+                      <div data-tabla-panel={fase.label} hidden={fase.label !== grupo.label}>
+                        <StandingsTable rows={fase.rows} grande />
+                      </div>
+                    ))}
                   </div>
                 </section>
               ) : (

@@ -2,7 +2,7 @@
 import Icon from '../Icon.astro';
 import MatchRow from '../MatchRow.astro';
 import type { PartidoDeCuadro, RondaDePartidos } from '../../lib/api';
-import { formatDate, isLive } from '../../lib/format';
+import { formatDayLong, isLive } from '../../lib/format';
 import { nombreFase } from '../../lib/paises';
 
 /*
@@ -44,11 +44,12 @@ const inicial = (() => {
  *
  * La clave es el día ya escrito en la zona de Lima y no el de la fecha UTC: un partido de las 19:30 en
  * Buenos Aires cae al día siguiente en UTC, y el martes salía dos veces con un partido en cada uno.
+ * Va con todas sus letras —"martes, 11 de agosto"— porque acá el encabezado tiene todo el ancho.
  */
 function porDia(partidos: PartidoDeCuadro[]): Array<{ dia: string; partidos: PartidoDeCuadro[] }> {
   const dias = new Map<string, PartidoDeCuadro[]>();
   for (const partido of partidos) {
-    const dia = formatDate(partido.kickoffUtc);
+    const dia = formatDayLong(partido.kickoffUtc);
     dias.set(dia, [...(dias.get(dia) ?? []), partido]);
   }
   return [...dias.entries()].map(([dia, suyos]) => ({ dia, partidos: suyos }));
@@ -117,15 +118,16 @@ const pendienteDe = (ronda: RondaDePartidos) =>
       <div class="relative min-h-[26rem] flex-1 2xl:min-h-0">
       {rondas.map((ronda, i) => (
         <div data-ronda-panel hidden={i !== inicial} class="absolute inset-0 flex flex-col">
-          <p class="flex items-center gap-1.5 border-b border-border bg-canvas-subtle/40 px-3 py-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+          <!-- La ronda en curso es la que abre y va en color; no hace falta decir "en juego", que se
+               leía como si el partido estuviera en cancha. -->
+          <p
+            class:list={[
+              'flex items-center gap-1.5 border-b border-border bg-canvas-subtle/40 px-3 py-1.5 text-2xs font-semibold uppercase tracking-label',
+              ronda.enJuego ? 'text-primary-ink' : 'text-ink-muted',
+            ]}
+          >
             {ronda.label}
-            {ronda.enJuego && (
-              <span class="flex items-center gap-1 font-medium normal-case tracking-normal text-primary-ink">
-                <span class="size-1.5 rounded-full bg-live" />
-                en juego
-              </span>
-            )}
-            <span class="ml-auto font-medium normal-case tracking-normal">
+            <span class="ml-auto font-medium normal-case tracking-normal text-ink-muted">
               {`${ronda.partidos.length} ${ronda.partidos.length === 1 ? 'partido' : 'partidos'}`}
             </span>
           </p>

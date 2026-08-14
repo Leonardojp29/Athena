@@ -45,6 +45,13 @@ const bloques = [
   { titulo: 'Últimos resultados', partidos: recent.slice(0, 8), icono: 'cancha' as const },
 ].filter((bloque) => bloque.partidos.length > 0);
 
+/*
+ * La ronda se decide para las dos listas juntas, no bloque por bloque: los próximos suelen ser todos
+ * de la misma ronda y los últimos no, así que una lista quedaba con pastilla y la otra sin ella, con
+ * los nombres corridos entre una y otra.
+ */
+const conRonda = mezclaRondas(bloques.flatMap((bloque) => bloque.partidos));
+
 /* Una copa internacional trae sus colores también acá: abrirla en la home ya se siente distinta. */
 const paleta = paletaCompetencia(competition.slug);
 const cabecera = paleta
@@ -156,7 +163,7 @@ const cabecera = paleta
                 <MatchRow
                   match={match}
                   showDate
-                  mostrarRonda={mezclaRondas(bloque.partidos)}
+                  mostrarRonda={conRonda}
                   hrefEquipo={(slug) => `/?equipo=${slug}`}
                 />
               </li>

@@ -54,6 +54,13 @@ const bloques = [
   { titulo: 'Próximos partidos', icono: 'reloj' as const, partidos: upcoming.slice(0, 6) },
   { titulo: 'Últimos resultados', icono: 'cancha' as const, partidos: recent.slice(0, 6) },
 ].filter((bloque) => bloque.partidos.length > 0);
+
+/*
+ * La ronda se decide para las dos listas juntas, no bloque por bloque: los próximos suelen ser todos
+ * de la misma ronda y los últimos no, así que una lista quedaba con pastilla y la otra sin ella, con
+ * los nombres corridos entre una y otra.
+ */
+const conRonda = mezclaRondas(bloques.flatMap((bloque) => bloque.partidos));
 ---
 
 <section
@@ -219,7 +226,7 @@ const bloques = [
                   match={match}
                   showDate
                   destacado={team.slug}
-                  mostrarRonda={mezclaRondas(bloque.partidos)}
+                  mostrarRonda={conRonda}
                   hrefEquipo={(slug) => `/?equipo=${slug}`}
                 />
               </li>

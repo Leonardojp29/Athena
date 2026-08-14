@@ -109,11 +109,6 @@ const partidoDeLaLlave = (llave: LlaveDeCuadro) =>
                   style={enJuego ? `color:${acento}` : undefined}
                 >
                   {ronda.label}
-                  {enJuego && (
-                    <span class="text-2xs font-medium normal-case" style={`color:${acento}`}>
-                      en juego
-                    </span>
-                  )}
                 </p>
                 <p class="mt-0.5 text-2xs text-ink-muted">
                   {ronda.porDefinir

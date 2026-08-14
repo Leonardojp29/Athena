@@ -105,7 +105,6 @@ test.describe('recorrido de lectura', () => {
     await page.goto('/competencias/copa-del-rey');
 
     await expect(page.locator('main')).toContainText(/torneo terminado/i);
-    await expect(page.locator('main')).not.toContainText(/en juego/i);
 
     const cuadro = page.locator('section', {
       has: page.getByRole('heading', { name: /camino al título/i }),
@@ -132,7 +131,9 @@ test.describe('recorrido de lectura', () => {
       has: page.getByRole('heading', { name: /^partidos$/i }),
     });
     await expect(partidos).toBeVisible();
-    await expect(partidos.getByText(/en juego/i).first()).toBeVisible();
+    /* Abre en la ronda que se juega y la parte en ida y vuelta. */
+    await expect(partidos.getByText(/octavos de final/i).first()).toBeVisible();
+    await expect(partidos.getByText(/^vuelta$/i).first()).toBeVisible();
 
     const visibles = () => partidos.locator('[data-ronda-panel]:not([hidden])');
     const antes = await visibles().first().innerText();
