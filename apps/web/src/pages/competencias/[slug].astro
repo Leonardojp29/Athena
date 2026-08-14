@@ -6,6 +6,7 @@ import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
+import BloqueGrupos from '../../components/competencia/BloqueGrupos.astro';
 import Cuadro from '../../components/competencia/Cuadro.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import OnceDelTorneo from '../../components/competencia/OnceDelTorneo.astro';
@@ -18,6 +19,7 @@ import { api, ApiError, type CompetitionView } from '../../lib/api';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { getSession } from '../../lib/supabase';
 import { nombreFase, paisEnEspanol } from '../../lib/paises';
+import { etiquetaDeRonda } from '../../lib/rondas';
 
 const { slug } = Astro.params;
 
@@ -49,10 +51,25 @@ const {
   scorers,
   assisters,
   once,
-  bracket,
+  etapas,
   onceDelTorneo,
   seasons,
 } = view;
+
+/* Una copa trae etapas; una liga, solo su tabla. */
+const esCopa = etapas.length > 0;
+const hayGrupos = etapas.some((f) => f.etapa === 'grupos');
+
+const TITULO_ETAPA: Record<string, string> = {
+  final: 'Camino al título',
+  previa: 'Fase previa',
+  grupos: 'Fase de grupos',
+};
+
+/* Los paneles de la copa: el partido y el equipo se abren acá mismo, sin salir de la competencia. */
+const enlacePartido = (id: string) => `/competencias/${competition.slug}?partido=${id}`;
+const enlaceEquipoCopa = (slugEquipo: string) =>
+  `/competencias/${competition.slug}?equipo=${slugEquipo}`;
 
 const etiquetaTemporada = (year: number) =>
   competition.format === 'league' &&
@@ -94,21 +111,11 @@ const enlaceFase = (label: string) => {
 };
 
 /*
- * "Clausura - 4" → "Clausura · fecha 4", y "Round of 16" → "Octavos": la ronda de una copa ya viene
- * traducida en el cuadro, así que la cabecera reusa esa etiqueta en lugar de mostrar el inglés del
- * proveedor.
+ * La jornada ya viene traducida del API —"Octavos de final", "Fase de grupos · fecha 6"— porque el
+ * vocabulario del proveedor es cosa del dominio y no de cada vista. Para una liga, que no pasa por
+ * las reglas de copa, queda el nombre de la fase.
  */
-const jornada = (() => {
-  const enCuadro = bracket.find((r) => r.round === view.round);
-  if (enCuadro) return enCuadro.label;
-  if (!view.round) return null;
-  const corte = view.round.lastIndexOf(' - ');
-  if (corte === -1) return nombreFase(view.round);
-  const cola = view.round.slice(corte + 3).trim();
-  return /^\d+$/.test(cola)
-    ? `${nombreFase(view.round.slice(0, corte))} · fecha ${cola}`
-    : nombreFase(view.round);
-})();
+const jornada = view.roundLabel ?? etiquetaDeRonda(view.round);
 
 const pais = paisEnEspanol(competition.country);
 
@@ -120,14 +127,14 @@ const hayLideres = scorers.length > 0 || assisters.length > 0;
  * En una copa el once que importa es el del torneo, no el de la última fecha: responde "quién fue
  * este torneo" y además evita dos canchas en el mismo riel, que era exactamente lo que sobraba.
  */
-const onceDelTorneoVisible = bracket.length > 0 ? onceDelTorneo : null;
+const onceDelTorneoVisible = esCopa ? onceDelTorneo : null;
 
 /*
  * Los ocho grupos de una copa se muestran juntos y compactos. Con el selector de fases se veía un
  * grupo de cuatro equipos estirado en mil píxeles y el resto de la columna vacía; así se lee la
  * fase entera de un golpe, que es lo que se quiere saber en una copa.
  */
-const gruposJuntos = bracket.length > 0 && standingGroups.length > 2;
+const gruposJuntos = esCopa && standingGroups.length > 2;
 const onceDeLaFechaVisible = onceDelTorneoVisible ? null : once;
 
 const jsonLd = {
@@ -247,15 +254,6 @@ const jsonLd = {
     style={paleta ? `background:linear-gradient(180deg, ${paleta.base.suave(0.1)}, transparent 44rem)` : undefined}
   >
   <Container width="wide" class="py-5">
-    <!-- El cuadro va a todo lo ancho y arriba: en una copa es lo que se viene a ver. -->
-    {
-      bracket.length > 0 && (
-        <div class="mb-4">
-          <Cuadro rondas={bracket} paleta={paleta} rondaActual={view.round} />
-        </div>
-      )
-    }
-
     <div
       class:list={[
         'grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_23rem]',
@@ -263,50 +261,67 @@ const jsonLd = {
       ]}
     >
       <div class="grid gap-4 lg:col-start-1 lg:row-start-1">
+        <!--
+          Las etapas en el orden que manda el API: primero la que se está jugando. Mientras van los
+          octavos manda el cuadro; cuando arranca la fase de grupos de la temporada siguiente, manda
+          la fase de grupos y el cuadro dice que todavía no está definido.
+        -->
         {
-          gruposJuntos ? (
-            <section class="rounded-xl border border-border bg-surface">
-              <header class="flex flex-wrap items-center gap-2 border-b border-border p-3">
-                <h2 class="font-display text-base font-semibold uppercase">Fase de grupos</h2>
-                <span class="text-2xs text-ink-muted">{standingGroups.length} grupos</span>
-              </header>
-              <div class="grid gap-x-6 gap-y-5 p-3 sm:grid-cols-2">
-                {standingGroups.map((g) => (
-                  <div>
-                    <p class="mb-1 font-display text-sm font-semibold uppercase leading-none">
-                      {nombreFase(g.label)}
-                    </p>
-                    <StandingsTable rows={g.rows} compacto />
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : grupo ? (
-            <section class="rounded-xl border border-border bg-surface">
-              <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
-                <h2 class="font-display text-base font-semibold uppercase">
-                  {bracket.length > 0 ? 'Fase de grupos' : 'Tabla de posiciones'}
-                  {standingGroups.length === 1 && grupo.label && (
-                    <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
-                      {nombreFase(grupo.label)}
-                    </span>
-                  )}
-                </h2>
-                <SelectorFase grupos={standingGroups} activo={grupo.label} href={enlaceFase} />
-              </header>
-              <div class="p-3">
-                <StandingsTable rows={grupo.rows} />
-              </div>
-            </section>
-          ) : (
-            bracket.length === 0 && (
+          etapas.map((fase) =>
+            fase.etapa === 'grupos' ? (
+              <BloqueGrupos
+                grupos={standingGroups}
+                abierto={grupo}
+                juntos={gruposJuntos}
+                enJuego={fase.enJuego}
+                hrefFase={enlaceFase}
+                hrefEquipo={enlaceEquipoCopa}
+              />
+            ) : fase.rondas.length > 0 ? (
+              <Cuadro
+                rondas={fase.rondas}
+                paleta={paleta}
+                rondaActual={view.round}
+                titulo={TITULO_ETAPA[fase.etapa] as string}
+                hrefPartido={enlacePartido}
+                hrefEquipo={enlaceEquipoCopa}
+              />
+            ) : (
+              <Card>
+                <p class="text-sm text-ink-muted">
+                  El cuadro se define cuando termine la fase de grupos.
+                </p>
+              </Card>
+            ),
+          )
+        }
+
+        {
+          !esCopa &&
+            (grupo ? (
+              <section class="rounded-xl border border-border bg-surface">
+                <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
+                  <h2 class="font-display text-base font-semibold uppercase">
+                    Tabla de posiciones
+                    {standingGroups.length === 1 && grupo.label && (
+                      <span class="ml-1 font-sans text-2xs font-medium normal-case text-ink-muted">
+                        {nombreFase(grupo.label)}
+                      </span>
+                    )}
+                  </h2>
+                  <SelectorFase grupos={standingGroups} activo={grupo.label} href={enlaceFase} />
+                </header>
+                <div class="p-3">
+                  <StandingsTable rows={grupo.rows} />
+                </div>
+              </section>
+            ) : (
               <Card>
                 <p class="text-sm text-ink-muted">
                   La tabla estará disponible cuando arranque la competencia.
                 </p>
               </Card>
-            )
-          )
+            ))
         }
       </div>
 

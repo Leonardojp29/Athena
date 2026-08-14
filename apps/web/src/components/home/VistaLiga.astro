@@ -8,6 +8,7 @@ import TablaLideres from '../TablaLideres.astro';
 import type { CompetitionView } from '../../lib/api';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import { etiquetaDeRonda } from '../../lib/rondas';
 
 /*
  * La liga abierta dentro de la home, sin salir de la página.
@@ -33,17 +34,8 @@ const { competition, season, recent, upcoming, scorers, assisters } = view;
 const pais = paisEnEspanol(competition.country);
 const nombre = nombreTorneo(competition.name);
 
-/* "Clausura - 4" → "Clausura · fecha 4"; en una copa, la ronda ya viene traducida en el cuadro. */
-const jornada = (() => {
-  const enCuadro = view.bracket.find((r) => r.round === view.round);
-  if (enCuadro) return enCuadro.label;
-  if (!view.round) return null;
-  const corte = view.round.lastIndexOf(' - ');
-  if (corte === -1) return nombreFase(view.round);
-  const cola = view.round.slice(corte + 3).trim();
-  const cabeza = nombreFase(view.round.slice(0, corte));
-  return /^\d+$/.test(cola) ? `${cabeza} · fecha ${cola}` : nombreFase(view.round);
-})();
+/* La jornada viene traducida del API; para una liga queda el nombre de la fase. */
+const jornada = view.roundLabel ?? etiquetaDeRonda(view.round);
 
 const bloques = [
   { titulo: 'Próximos partidos', partidos: upcoming.slice(0, 8), icono: 'reloj' as const },

@@ -4,7 +4,7 @@ import CanchaOnce from '../pitch/CanchaOnce.astro';
 import ListaDelOnce from '../pitch/ListaDelOnce.astro';
 import type { JugadorDelOnce, OnceDeLaFecha } from '../../lib/api';
 import { fichaJson, formacionDe, LINEA, type FichaOnce } from '../../lib/once';
-import { nombreFase } from '../../lib/paises';
+import { etiquetaDeRonda } from '../../lib/rondas';
 
 /*
  * El once de la fecha de una competencia, sobre la cancha.
@@ -75,15 +75,7 @@ const jugadores: FichaOnce[] = once.players.map((j) => ({
 
 const formacion = formacionDe(jugadores);
 
-const jornada = (() => {
-  if (!once.round) return null;
-  const corte = once.round.lastIndexOf(' - ');
-  if (corte === -1) return nombreFase(once.round);
-  const cola = once.round.slice(corte + 3).trim();
-  return /^\d+$/.test(cola)
-    ? `${nombreFase(once.round.slice(0, corte))} · fecha ${cola}`
-    : nombreFase(once.round);
-})();
+const jornada = etiquetaDeRonda(once.round);
 ---
 
 <section class="overflow-hidden rounded-xl border border-border bg-surface">

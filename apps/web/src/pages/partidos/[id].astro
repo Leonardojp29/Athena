@@ -16,6 +16,7 @@ import PlayerSheet from '../../components/pitch/PlayerSheet.astro';
 import PreviewCard from '../../components/PreviewCard.astro';
 import { api, ApiError, type MatchView } from '../../lib/api';
 import { formatDateLong, isLive } from '../../lib/format';
+import { etiquetaDeRonda } from '../../lib/rondas';
 
 const { id } = Astro.params;
 let match: MatchView;
@@ -36,6 +37,9 @@ const startsSoon =
   new Date(match.kickoffUtc).getTime() - Date.now() < 3 * 3600_000 &&
   new Date(match.kickoffUtc).getTime() - Date.now() > -4 * 3600_000;
 const live = isLive(match.status) || startsSoon;
+
+/* La jornada en español: el proveedor la manda en inglés y acá salía cruda. */
+const jornada = etiquetaDeRonda(match.round);
 
 const hayAlineaciones = match.lineups.length > 0;
 const hayEstadisticas = match.statistics.length > 0 || match.playerStatistics.length > 0;
@@ -81,7 +85,7 @@ const jsonLd = {
         >
           <EscudoTorneo url={match.season.competition.logoUrl} size={13} />
           {match.season.competition.name}
-          {match.round && <span>· {match.round}</span>}
+          {jornada && <span>· {jornada}</span>}
         </a>
         <span class="flex items-center gap-3">
           <span class="flex items-center gap-1.5">
@@ -269,7 +273,7 @@ const jsonLd = {
             {match.round && (
               <div class="flex justify-between gap-3">
                 <dt class="text-ink-muted">Jornada</dt>
-                <dd class="text-right">{match.round}</dd>
+                <dd class="text-right">{jornada}</dd>
               </div>
             )}
             {match.venue && (

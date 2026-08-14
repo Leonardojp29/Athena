@@ -483,6 +483,44 @@ apagado— en lugar de bueno.
 la cancha en un ranking, y para eso ya está la nota de cada uno. El gol pasó a mostrar **el número** en
 lugar de un punto, porque el punto se leía como si marcara al jugador destacado.
 
+### Las etapas de una copa
+
+Una fase previa, una fase de grupos y una llave de octavos no son rondas comparables, y mostrarlas en
+fila decía algo falso: que después de la fase previa 3 vienen los octavos, cuando en el medio está la
+fase de grupos. Ahora cada ronda tiene su **etapa** —`previa`, `grupos`, `final`— y la página se
+ordena sola: **primero la etapa que se está jugando**, después el resto por importancia (final,
+grupos, previa). Cuando arranque la próxima temporada, los grupos pasan primeros y el cuadro dice que
+todavía no está definido.
+
+El vocabulario vive en `packages/domain/src/rounds.ts` y salió de mirar los **147 strings distintos**
+que el proveedor usó para las mismas nueve copas. Lo que arregló:
+
+- `8th Finals` y `16th Finals` son octavos y dieciseisavos: caían en la regla de la final y el Mundial
+  de Clubes 2025 mostraba "Final" dos veces, con los octavos después de la semi.
+- `Knockout Round Play-offs` es el repechaje de febrero, posterior a la fase liga, no la previa de
+  agosto: los dos terminan en "Play-offs" y compartían regla.
+- `1st/2nd/3rd Round` son las fases previas de la Libertadores hasta 2025 —el proveedor pasó a
+  `Qualification Round N` en 2026— y no entraban al cuadro.
+- `League Stage` y `League Phase East/West` son la fase liga del formato nuevo: son grupos, no una
+  ronda desconocida ordenada después de la final.
+- Las cinco variantes de "Preliminary" son rondas distintas: la CAF juega dos en la misma temporada.
+
+De 473 rondas cargadas queda una sin clasificar: `R66244`, que es basura del proveedor y merece
+quedar afuera.
+
+**El cuadro se dibuja hasta la final.** Con ocho llaves en octavos se sabe que vienen cuartos, semis y
+final, porque una eliminatoria se parte en dos cada vez: esas columnas aparecen vacías y marcadas "por
+definir". Solo cuando el número de llaves es potencia de dos —si no, la escalera no es deducible y
+suponerla sería inventar.
+
+**La llave entera es clickeable** y abre el partido dentro de la copa (`?partido=`): antes el único
+enlace eran los veinte píxeles del casillero del marcador. Los nombres de equipo, encima, abren al
+equipo dentro de la copa.
+
+**En el riel de la home** la copa se lee con dos pestañas —cuadro y grupos— abiertas en la etapa en
+juego. Con los octavos en marcha, la tabla de la fase de grupos cerrada en mayo no dice nada; con los
+grupos en marcha, el cuadro todavía no existe. La pestaña sin datos explica por qué.
+
 ### La copa internacional
 
 Una copa no se lee como una liga. Lo que trae a alguien a la página de la Libertadores es **quién

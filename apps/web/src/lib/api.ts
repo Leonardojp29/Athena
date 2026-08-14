@@ -246,8 +246,15 @@ export interface CompetitionView {
   assisters: SeasonLeader[];
   /** El equipo ideal de la última jornada con notas; null si todavía no alcanza para armarlo. */
   once: OnceDeLaFecha | null;
-  /** Las llaves de la copa, de la ronda más lejana a la final. Vacío en una liga. */
-  bracket: RondaDeCuadro[];
+  /**
+   * Las etapas de la copa en el orden en que se muestran: primero la que se está jugando. Vacío en
+   * una liga, que no tiene más que su tabla.
+   */
+  etapas: FaseDeCopa[];
+  /** Qué etapa se está jugando ahora; null en una liga o cuando la ronda no se reconoce. */
+  etapaEnJuego: Etapa | null;
+  /** La jornada en curso ya traducida: "Octavos de final", "Fase de grupos · fecha 6". */
+  roundLabel: string | null;
   /** El once y el mejor de toda la temporada; null cuando no hay notas suficientes. */
   onceDelTorneo: OnceDelTorneo | null;
   /** Los años con partidos en la base, del más nuevo al más viejo: el archivo. */
@@ -288,6 +295,18 @@ export interface RondaDeCuadro {
   round: string;
   label: string;
   ties: LlaveDeCuadro[];
+  /** Cuántas llaves va a tener cuando se defina; solo en las rondas que todavía no se sortearon. */
+  porDefinir?: number;
+}
+
+/** Las tres etapas de una copa: la fase final, la fase de grupos y la previa. */
+export type Etapa = 'final' | 'grupos' | 'previa';
+
+export interface FaseDeCopa {
+  etapa: Etapa;
+  enJuego: boolean;
+  /** Las rondas del cuadro; vacío en la fase de grupos, que se dibuja con sus tablas. */
+  rondas: RondaDeCuadro[];
 }
 
 /** Una fila del once del torneo: viene de SQL con los puestos que usa el proveedor. */

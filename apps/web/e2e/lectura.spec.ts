@@ -49,13 +49,51 @@ test.describe('recorrido de lectura', () => {
     await expect(page.getByRole('heading', { name: /el once del torneo/i })).toBeVisible();
     await expect(page.locator('main')).not.toContainText(/Round of|Quarter-finals|Semi-finals/i);
 
-    /* Cada llave lleva a los dos equipos y a sus partidos. */
-    const cuadro = page.locator('section', { has: page.getByRole('heading', { name: /camino al título/i }) });
-    expect(await cuadro.locator('a[href^="/equipos/"]').count()).toBeGreaterThan(4);
-    expect(await cuadro.locator('a[href^="/partidos/"]').count()).toBeGreaterThan(4);
+    /*
+     * Cada llave abre el partido y cada nombre su equipo, y las dos cosas **dentro de la copa**: el
+     * partido de los octavos de la Libertadores es de la Libertadores, así que su detalle se ve sin
+     * salir de la competencia.
+     */
+    const cuadro = page.locator('section', {
+      has: page.getByRole('heading', { name: /camino al título/i }),
+    });
+    expect(await cuadro.locator('a[href*="?partido="]').count()).toBeGreaterThan(4);
+    expect(await cuadro.locator('a[href*="?equipo="]').count()).toBeGreaterThan(4);
+    expect(
+      await cuadro.locator('a[href^="/competencias/conmebol-libertadores?"]').count(),
+    ).toBeGreaterThan(8);
 
-    /* Las llaves cerradas dicen el global; sin eso el cuadro sería una lista de resultados. */
-    await expect(cuadro.getByText(/Global/).first()).toBeVisible();
+    /*
+     * El camino completo al título: la ronda en juego y las que faltan sortear. Una eliminatoria se
+     * parte en dos cada vez, así que con los octavos en marcha ya se sabe que vienen cuartos, semis
+     * y final aunque el proveedor no haya publicado un partido.
+     */
+    await expect(cuadro.getByText(/por definir/i).first()).toBeVisible();
+
+    /*
+     * Y el orden es dinámico: mientras se juega la fase final, el cuadro va antes que la fase de
+     * grupos y que la fase previa. Antes las tres estaban en la misma fila, como si la fase previa 3
+     * siguiera a los octavos.
+     */
+    const titulos = await page.locator('main h2').allInnerTexts();
+    const posicion = (aguja: RegExp) => titulos.findIndex((t) => aguja.test(t));
+    expect(posicion(/camino al título/i)).toBeGreaterThanOrEqual(0);
+    expect(posicion(/camino al título/i)).toBeLessThan(posicion(/fase de grupos/i));
+    expect(posicion(/fase de grupos/i)).toBeLessThan(posicion(/fase previa/i));
+  });
+
+  /*
+   * La misma página, otra competencia y otro momento del calendario: la Champions recién empezó y
+   * solo tiene fase previa, así que no hay cuadro que mostrar y no se inventa uno.
+   */
+  test('una copa que recién arranca muestra su fase previa y ningún cuadro', async ({ page }) => {
+    await page.goto('/competencias/uefa-champions-league');
+
+    const previa = page.getByRole('heading', { name: /fase previa/i }).first();
+    test.skip((await previa.count()) === 0, 'esta temporada ya pasó la fase previa');
+
+    await expect(previa).toBeVisible();
+    await expect(page.locator('main')).not.toContainText(/Qualifying Round|Play-offs/i);
   });
 
   test('un partido muestra su marcador', async ({ page }) => {

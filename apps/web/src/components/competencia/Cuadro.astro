@@ -5,32 +5,36 @@ import type { PaletaCompetencia } from '../../lib/coloresCompetencia';
 import { formatDate, formatKickoff, isLive } from '../../lib/format';
 
 /*
- * El cuadro de una copa: las rondas en columnas, de la más lejana a la final.
+ * El cuadro de una etapa: sus rondas en columnas, de la más lejana a la final.
  *
  * Es la pregunta que trae a alguien a la página de la Libertadores —quién juega con quién y cómo
- * sigue— y hasta ahora la respuesta era una lista de resultados sueltos. Cada llave muestra sus
- * partidos, el global y quién pasó; quién pasó lo dice la ronda siguiente y no el resultado, así que
- * las llaves definidas por penales quedan bien resueltas sin que el proveedor publique la tanda.
+ * sigue—. Dibuja **una sola etapa**: la fase previa y la fase final no son rondas comparables y
+ * mostrarlas en fila decía que después de la fase previa 3 vienen los octavos, cuando en el medio
+ * está la fase de grupos.
  *
- * No se dibujan las líneas que unen una llave con la siguiente: el cuadro real tiene fases previas,
- * grupos y equipos que entran más tarde, así que cualquier línea prometería un árbol perfecto que no
- * existe. Lo que sí se dice es cuántos equipos deja cada ronda y quién sigue vivo.
+ * Cada llave muestra sus partidos, el global y quién pasó; quién pasó lo dice la ronda siguiente y no
+ * el resultado, así que las llaves definidas por penales quedan bien resueltas sin que el proveedor
+ * publique la tanda.
+ *
+ * No se dibujan líneas entre llaves: el cuadro real tiene equipos que entran más tarde y cualquier
+ * línea prometería un árbol perfecto que no existe. Lo que sí se dice es cuántos equipos deja cada
+ * ronda, cuál se está jugando y cuáles faltan sortear.
  */
 interface Props {
   rondas: RondaDeCuadro[];
   paleta: PaletaCompetencia | null;
-  /** La jornada en curso según el calendario, para marcar la columna que se está jugando. */
+  /** La jornada en curso, para marcar la columna que se está jugando. */
   rondaActual: string | null;
+  titulo: string;
+  /** A dónde lleva una llave y a dónde un equipo; la página decide cómo los abre. */
+  hrefPartido: (id: string) => string;
+  hrefEquipo: (slug: string) => string;
 }
 
-const { rondas, paleta, rondaActual } = Astro.props;
+const { rondas, paleta, rondaActual, titulo, hrefPartido, hrefEquipo } = Astro.props;
 
 const acento = paleta?.acento.base ?? 'var(--color-primary-ink)';
 const halo = paleta?.acento.suave(0.14) ?? 'color-mix(in oklab, var(--color-primary) 14%, transparent)';
-
-/* El nombre completo, recortado por CSS: el `shortName` del proveedor son tres letras —"STR", "TAC"—
-   y una llave escrita así no se entiende. */
-const nombreCorto = (equipo: { name: string; shortName: string | null }) => equipo.name;
 
 /* El campeón: el que pasó la última ronda, que es la final cuando el cuadro está completo. */
 const final = rondas.at(-1);
@@ -47,14 +51,17 @@ const golesDe = (leg: LlaveDeCuadro['legs'][number], teamId: string): number | n
   return leg.homeTeam.id === teamId ? leg.homeScore : leg.awayScore;
 };
 
-const proximo = (llave: LlaveDeCuadro) =>
-  llave.legs.find((l) => l.status !== 'finished') ?? null;
+const proximo = (llave: LlaveDeCuadro) => llave.legs.find((l) => l.status !== 'finished') ?? null;
+
+/* El partido que abre la llave: la vuelta si se jugó, y si no la ida, que es la que viene. */
+const partidoDeLaLlave = (llave: LlaveDeCuadro) =>
+  (llave.legs.filter((l) => l.status === 'finished').at(-1) ?? llave.legs[0])?.id ?? null;
 ---
 
 <section class="overflow-hidden rounded-xl border border-border bg-surface">
   <header class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border p-3">
     <span style={`color:${acento}`}><Icon name="cuadro" size={16} /></span>
-    <h2 class="font-display text-base font-semibold uppercase leading-none">Camino al título</h2>
+    <h2 class="font-display text-base font-semibold uppercase leading-none">{titulo}</h2>
     {
       campeon && (
         <span
@@ -69,8 +76,7 @@ const proximo = (llave: LlaveDeCuadro) =>
     <span class="ml-auto text-2xs text-ink-muted">{rondas.length} rondas</span>
   </header>
 
-  <!-- Las rondas en fila y con desplazamiento propio: una copa africana tiene seis, y apiladas la
-       página se vuelve un scroll infinito donde se pierde el sentido de avance. -->
+  <!-- Las rondas en fila y con desplazamiento propio: apiladas se pierde el sentido de avance. -->
   <div class="overflow-x-auto overscroll-x-contain p-3">
     <ol class="flex min-w-max snap-x snap-mandatory gap-3">
       {
@@ -95,112 +101,136 @@ const proximo = (llave: LlaveDeCuadro) =>
                   )}
                 </p>
                 <p class="mt-0.5 text-2xs text-ink-muted">
-                  {equipos.size} equipos · {ronda.ties.length}{' '}
-                  {ronda.ties.length === 1 ? 'llave' : 'llaves'}
+                  {ronda.porDefinir
+                    ? `${ronda.porDefinir} ${ronda.porDefinir === 1 ? 'llave' : 'llaves'} por definir`
+                    : `${equipos.size} equipos · ${ronda.ties.length} ${ronda.ties.length === 1 ? 'llave' : 'llaves'}`}
                 </p>
               </div>
 
-              <ol class="grid gap-1.5">
-                {ronda.ties.map((llave) => {
-                  const pendiente = proximo(llave);
-                  const doble = llave.legs.length > 1;
-                  const ganador = [llave.homeTeam, llave.awayTeam].find(
-                    (t) => t.id === llave.advancedTeamId,
-                  );
-                  return (
-                    <li class="rounded-lg border border-border bg-canvas-subtle/40">
-                      {[llave.homeTeam, llave.awayTeam].map((equipo) => {
-                        const paso = llave.advancedTeamId === equipo.id;
-                        return (
-                          <div
-                            class="flex items-center gap-1.5 border-b border-border/60 px-2 py-1.5 last:border-b-0"
-                            style={paso ? `box-shadow:inset 2px 0 0 ${acento}` : undefined}
-                          >
-                            <a
-                              href={`/equipos/${equipo.slug}`}
-                              class="flex min-w-0 flex-1 items-center gap-1.5 transition-colors hover:text-primary-ink"
-                            >
-                              {equipo.logoUrl ? (
-                                <img
-                                  src={equipo.logoUrl}
-                                  alt=""
-                                  width="18"
-                                  height="18"
-                                  loading="lazy"
-                                  class="size-[18px] shrink-0 rounded-sm bg-surface object-contain p-px"
-                                />
-                              ) : (
-                                <span class="size-[18px] shrink-0 rounded-sm bg-surface" />
-                              )}
-                              <span
-                                class:list={[
-                                  'truncate text-xs',
-                                  paso ? 'font-semibold' : 'text-ink-muted',
-                                ]}
-                              >
-                                {nombreCorto(equipo)}
-                              </span>
-                            </a>
+              {/* La ronda que todavía no se sorteó: se sabe cuántas llaves va a tener, no quiénes. */}
+              {ronda.porDefinir ? (
+                <ol class="grid gap-1.5">
+                  {Array.from({ length: ronda.porDefinir }).map(() => (
+                    <li class="grid h-[4.4rem] place-items-center rounded-lg border border-dashed border-border text-2xs text-ink-muted">
+                      Por definir
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <ol class="grid gap-1.5">
+                  {ronda.ties.map((llave) => {
+                    const pendiente = proximo(llave);
+                    const doble = llave.legs.length > 1;
+                    const ganador = [llave.homeTeam, llave.awayTeam].find(
+                      (t) => t.id === llave.advancedTeamId,
+                    );
+                    const partido = partidoDeLaLlave(llave);
+                    return (
+                      <li class="group relative rounded-lg border border-border bg-canvas-subtle/40 transition-colors hover:border-border-strong">
+                        {/*
+                          La llave entera abre el partido: antes el único enlace eran los veinte
+                          píxeles del casillero del marcador. Enlace estirado con los de equipo
+                          encima, que es como se hace sin anidar un <a> dentro de otro.
+                        */}
+                        {partido && (
+                          <a
+                            href={hrefPartido(partido)}
+                            class="absolute inset-0 rounded-lg"
+                            aria-label={`${llave.homeTeam.name} contra ${llave.awayTeam.name}`}
+                          />
+                        )}
 
-                            <!-- Un casillero por partido: la ida y la vuelta se leen en columna. -->
-                            {llave.legs.map((leg) => {
-                              const goles = golesDe(leg, equipo.id);
-                              return (
-                                <a
-                                  href={`/partidos/${leg.id}`}
-                                  title={`${formatDate(leg.kickoffUtc)} · ${formatKickoff(leg.kickoffUtc)}`}
+                        {[llave.homeTeam, llave.awayTeam].map((equipo) => {
+                          const paso = llave.advancedTeamId === equipo.id;
+                          return (
+                            <div
+                              class="flex items-center gap-1.5 border-b border-border/60 px-2 py-1.5 last:border-b-0"
+                              style={paso ? `box-shadow:inset 2px 0 0 ${acento}` : undefined}
+                            >
+                              <a
+                                href={hrefEquipo(equipo.slug)}
+                                class="relative flex min-w-0 flex-1 items-center gap-1.5 transition-colors hover:text-primary-ink"
+                              >
+                                {equipo.logoUrl ? (
+                                  <img
+                                    src={equipo.logoUrl}
+                                    alt=""
+                                    width="18"
+                                    height="18"
+                                    loading="lazy"
+                                    class="size-[18px] shrink-0 rounded-sm bg-surface object-contain p-px"
+                                  />
+                                ) : (
+                                  <span class="size-[18px] shrink-0 rounded-sm bg-surface" />
+                                )}
+                                <span
                                   class:list={[
-                                    'w-5 shrink-0 rounded text-center font-display text-xs font-semibold tabular transition-colors hover:bg-canvas-subtle',
-                                    goles === null ? 'text-ink-muted/50' : paso ? '' : 'text-ink-muted',
-                                    isLive(leg.status) ? 'text-live' : '',
+                                    'truncate text-xs',
+                                    paso ? 'font-semibold' : 'text-ink-muted',
                                   ]}
                                 >
-                                  {goles ?? '–'}
-                                </a>
-                              );
-                            })}
-                            <span class="w-3 shrink-0">
-                              {paso && (
-                                <span style={`color:${acento}`}>
-                                  <Icon name="check" size={12} />
+                                  {equipo.name}
                                 </span>
-                              )}
-                            </span>
-                          </div>
-                        );
-                      })}
+                              </a>
 
-                      <p class="flex items-center gap-1.5 border-t border-border/60 px-2 py-1 text-[10px] leading-none text-ink-muted">
-                        {
-                          pendiente ? (
-                            <>
-                              <Icon name="reloj" size={10} />
-                              {doble && (
-                                <span class="font-medium">
-                                  {llave.legs.indexOf(pendiente) === 0 ? 'Ida' : 'Vuelta'}
-                                </span>
-                              )}
-                              {formatDate(pendiente.kickoffUtc)} · {formatKickoff(pendiente.kickoffUtc)}
-                            </>
-                          ) : doble && llave.aggregate ? (
-                            <>
-                              Global{' '}
-                              <span class="font-display font-semibold tabular text-ink">
-                                {llave.aggregate.local}-{llave.aggregate.visita}
+                              <!-- Un casillero por partido: la ida y la vuelta se leen en columna. -->
+                              {llave.legs.map((leg) => {
+                                const goles = golesDe(leg, equipo.id);
+                                return (
+                                  <span
+                                    class:list={[
+                                      'w-5 shrink-0 text-center font-display text-xs font-semibold tabular',
+                                      goles === null ? 'text-ink-muted/50' : paso ? '' : 'text-ink-muted',
+                                      isLive(leg.status) ? 'text-live' : '',
+                                    ]}
+                                  >
+                                    {goles ?? '–'}
+                                  </span>
+                                );
+                              })}
+                              <span class="w-3 shrink-0">
+                                {paso && (
+                                  <span style={`color:${acento}`}>
+                                    <Icon name="check" size={12} />
+                                  </span>
+                                )}
                               </span>
-                              {llave.aggregate.local === llave.aggregate.visita && ganador && (
-                                <span>· pasó {nombreCorto(ganador)}</span>
-                              )}
-                            </>
-                          ) : (
-                            <>Llave cerrada</>
-                          )
-                        }
-                      </p>
-                    </li>
-                  );
-                })}
-              </ol>
+                            </div>
+                          );
+                        })}
+
+                        <p class="flex items-center gap-1.5 border-t border-border/60 px-2 py-1 text-[10px] leading-none text-ink-muted">
+                          {
+                            pendiente ? (
+                              <>
+                                <Icon name="reloj" size={10} />
+                                {doble && (
+                                  <span class="font-medium">
+                                    {llave.legs.indexOf(pendiente) === 0 ? 'Ida' : 'Vuelta'}
+                                  </span>
+                                )}
+                                {formatDate(pendiente.kickoffUtc)} · {formatKickoff(pendiente.kickoffUtc)}
+                              </>
+                            ) : doble && llave.aggregate ? (
+                              <>
+                                Global{' '}
+                                <span class="font-display font-semibold tabular text-ink">
+                                  {llave.aggregate.local}-{llave.aggregate.visita}
+                                </span>
+                                {llave.aggregate.local === llave.aggregate.visita && ganador && (
+                                  <span>· pasó {ganador.shortName ?? ganador.name}</span>
+                                )}
+                              </>
+                            ) : (
+                              <>Llave cerrada</>
+                            )
+                          }
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
             </li>
           );
         })

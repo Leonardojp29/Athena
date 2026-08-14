@@ -1,5 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { gruposVigentes, ordenarRondas } from '@athena/domain';
+import {
+  describirRonda,
+  escaleraDesde,
+  etapaDeRonda,
+  gruposVigentes,
+  ordenarEtapas,
+  ordenarRondas,
+  type Etapa,
+} from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
   CONTINENT_LABEL,
@@ -475,8 +483,18 @@ export class ViewsService {
       scorers,
       assisters,
       once,
-      /* El cuadro solo existe si la competencia tiene llaves; una liga devuelve una lista vacía. */
-      bracket: this.cuadroDe(todos),
+      /*
+       * Las etapas del torneo, ya ordenadas: una liga devuelve una lista vacía porque no tiene
+       * ninguna ronda eliminatoria ni grupos que mostrar aparte de su tabla.
+       */
+      etapas: this.fasesDe(todos, jornada),
+      etapaEnJuego: etapaDeRonda(jornada),
+      /*
+       * El nombre de la jornada en español, para no traducirlo en cada vista. Solo cuando el dominio
+       * la reconoce como ronda de copa: la jornada de una liga —"Clausura - 5"— la rotula la web con
+       * su propio diccionario de fases.
+       */
+      roundLabel: jornada && etapaDeRonda(jornada) ? describirRonda(jornada).label : null,
       onceDelTorneo,
       seasons,
     };
@@ -620,7 +638,7 @@ export class ViewsService {
    * adelante, avanzó. Es la única forma honesta de resolver una llave que se definió por penales,
    * dato que el proveedor no publica en el partido.
    */
-  private cuadroDe(partidos: PartidoDeCuadro[]): RondaDeCuadro[] {
+  private cuadroDe(partidos: PartidoDeCuadro[], etapa: Etapa): RondaDeCuadro[] {
     const rondas = ordenarRondas([...new Set(partidos.map((m) => m.round ?? ''))].filter(Boolean));
 
     /* Para cada ronda, los equipos que juegan alguna posterior: esos son los que pasaron. */
@@ -633,13 +651,14 @@ export class ViewsService {
       ),
     }));
 
-    return rondas
-      .filter((ronda) => ronda.eliminatoria)
+    const dibujadas = rondas
+      .filter((ronda) => ronda.eliminatoria && ronda.etapa === etapa)
       .map((ronda) => {
         const suyos = partidos.filter((m) => (m.round ?? '') === ronda.round);
         const masAdelante = new Set(
           equiposPorRango.filter((r) => r.rank > ronda.rank).flatMap((r) => [...r.equipos]),
         );
+        const esUltima = !equiposPorRango.some((r) => r.rank > ronda.rank);
 
         /* Ida y vuelta son el mismo cruce: la clave es el par de equipos, sin importar el orden. */
         const llaves = new Map<string, PartidoDeCuadro[]>();
@@ -671,11 +690,21 @@ export class ViewsService {
                 { local: 0, visita: 0 },
               );
 
+              /*
+               * Quién pasó lo dice la ronda siguiente. En la última no hay ronda siguiente, así que
+               * ahí —y solo ahí— lo dice el global, siempre que sea decisivo: una final igualada se
+               * define por penales y el proveedor no publica la tanda.
+               */
+              const decisivo = jugados.length > 0 && global.local !== global.visita;
               const paso = masAdelante.has(local.id)
                 ? local.id
                 : masAdelante.has(visita.id)
                   ? visita.id
-                  : null;
+                  : esUltima && decisivo
+                    ? global.local > global.visita
+                      ? local.id
+                      : visita.id
+                    : null;
 
               return {
                 homeTeam: local,
@@ -689,6 +718,59 @@ export class ViewsService {
         };
       })
       .filter((ronda) => ronda.ties.length > 0);
+
+    return etapa === 'final' ? [...dibujadas, ...this.escaleraPendiente(dibujadas)] : dibujadas;
+  }
+
+  /**
+   * Las rondas que faltan para llegar a la final, vacías y marcadas.
+   *
+   * Con ocho llaves en octavos ya se sabe que vienen cuartos, semis y final aunque el proveedor no
+   * haya publicado un solo partido, porque una eliminatoria se parte en dos cada vez. Es lo que
+   * permite mostrar el camino completo al título en lugar de una columna suelta; el dominio se niega
+   * a deducirlo cuando el número de llaves no es potencia de dos.
+   */
+  private escaleraPendiente(dibujadas: RondaDeCuadro[]): RondaDeCuadro[] {
+    /* Desde la más profunda que ya existe: la de más atrás puede tener otro tamaño —el "Round of 32"
+       de la Sudamericana son ocho llaves, no dieciséis— y la escalera saldría corrida. */
+    const ultima = dibujadas.at(-1);
+    if (!ultima) return [];
+
+    const rangos = new Set(dibujadas.map((r) => describirRonda(r.round).rank));
+    return escaleraDesde(ultima.ties.length)
+      .filter((escalon) => !rangos.has(escalon.rank))
+      .map((escalon) => ({
+        round: `por-definir-${escalon.rank}`,
+        label: escalon.label,
+        ties: [],
+        porDefinir: escalon.llaves,
+      }));
+  }
+
+  /**
+   * Las etapas de la competencia en el orden en que se muestran.
+   *
+   * Primero la que se está jugando y después el resto por importancia, así la página se reordena sola
+   * cuando cambia la temporada: mientras van los octavos manda el cuadro, y cuando arranca la fase de
+   * grupos manda la fase de grupos. La etapa de grupos no trae llaves —sus tablas ya viajan en
+   * `standingGroups`— y la final aparece vacía mientras haya grupos por terminar, para poder decir
+   * que el cuadro todavía no está definido.
+   */
+  private fasesDe(partidos: PartidoDeCuadro[], rondaActual: string | null) {
+    const enJuego = etapaDeRonda(rondaActual);
+    const hayGrupos = partidos.some((m) => etapaDeRonda(m.round) === 'grupos');
+
+    return ordenarEtapas(enJuego)
+      .map((etapa) => ({
+        etapa,
+        enJuego: etapa === enJuego,
+        rondas: etapa === 'grupos' ? [] : this.cuadroDe(partidos, etapa),
+      }))
+      .filter((bloque) =>
+        bloque.etapa === 'grupos'
+          ? hayGrupos
+          : bloque.rondas.length > 0 || (bloque.etapa === 'final' && hayGrupos),
+      );
   }
 
   /**
@@ -1356,6 +1438,8 @@ export interface PartidoDeCuadro {
 export interface RondaDeCuadro {
   round: string;
   label: string;
+  /** Cuántas llaves va a tener cuando se defina; solo en las rondas que todavía no se sortearon. */
+  porDefinir?: number;
   ties: Array<{
     homeTeam: PartidoDeCuadro['homeTeam'];
     awayTeam: PartidoDeCuadro['awayTeam'];
