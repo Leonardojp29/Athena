@@ -17,7 +17,8 @@
     "arch": "depcruise src --config .dependency-cruiser.cjs",
     "backfill:players": "node --env-file-if-exists=../../.env dist/scripts/backfill-players.js",
     "relink:lineups": "node --env-file-if-exists=../../.env dist/scripts/relink-lineups.js",
-    "resync:events": "node --env-file-if-exists=../../.env dist/scripts/resync-events.js"
+    "resync:events": "node --env-file-if-exists=../../.env dist/scripts/resync-events.js",
+    "backfill:venues": "node --env-file-if-exists=../../.env dist/scripts/backfill-venues.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",

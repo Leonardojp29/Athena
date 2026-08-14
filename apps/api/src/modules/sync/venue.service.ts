@@ -37,7 +37,16 @@ export class VenueService {
       (
         await this.prisma.venue.findMany({
           where: { id: { in: [...ids.values()] } },
-          select: { id: true, name: true, city: true, country: true, capacity: true },
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            country: true,
+            capacity: true,
+            imageUrl: true,
+            surface: true,
+            address: true,
+          },
         })
       ).map((v) => [v.id, v]),
     );
@@ -46,21 +55,28 @@ export class VenueService {
       const id = ids.get(venue.providerRef);
       if (id) {
         const actual = actuales.get(id);
+        /*
+         * Nada se escribe con un nulo encima de un dato bueno. El feed de partidos manda el estadio
+         * pelado —id, nombre y ciudad— y el de equipos manda todo; sin esta guarda, cada partido
+         * borraba la capacidad, la foto y la superficie que había traído el catálogo. La ciudad
+         * entra en la misma regla por lo mismo.
+         */
+        const nuevos = {
+          ...(venue.data.city !== null ? { city: venue.data.city } : {}),
+          ...(venue.data.country !== null ? { country: venue.data.country } : {}),
+          ...(venue.data.capacity !== null ? { capacity: venue.data.capacity } : {}),
+          ...(venue.data.imageUrl !== null ? { imageUrl: venue.data.imageUrl } : {}),
+          ...(venue.data.surface !== null ? { surface: venue.data.surface } : {}),
+          ...(venue.data.address !== null ? { address: venue.data.address } : {}),
+        };
         const cambio =
           !actual ||
           actual.name !== venue.data.name ||
-          actual.city !== venue.data.city ||
-          (venue.data.country !== null && actual.country !== venue.data.country) ||
-          (venue.data.capacity !== null && actual.capacity !== venue.data.capacity);
+          Object.entries(nuevos).some(([campo, valor]) => actual[campo as keyof typeof nuevos] !== valor);
         if (cambio) {
           await this.prisma.venue.update({
             where: { id },
-            data: {
-              name: venue.data.name,
-              city: venue.data.city,
-              ...(venue.data.country !== null ? { country: venue.data.country } : {}),
-              ...(venue.data.capacity !== null ? { capacity: venue.data.capacity } : {}),
-            },
+            data: { name: venue.data.name, ...nuevos },
           });
         }
         continue;
@@ -73,6 +89,9 @@ export class VenueService {
             city: venue.data.city,
             country: venue.data.country,
             capacity: venue.data.capacity,
+            imageUrl: venue.data.imageUrl,
+            surface: venue.data.surface,
+            address: venue.data.address,
           },
           select: { id: true },
         });

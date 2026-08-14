@@ -1,0 +1,112 @@
+---
+import Icon from '../Icon.astro';
+import type { VenueSummary } from '../../lib/api';
+import { aforo, superficieEnEspanol } from '../../lib/estadio';
+
+/*
+ * La casa del club: una banda a sangre entre la cabecera y el cuerpo de la página.
+ *
+ * No es una foto con texto encima —eso obliga a apostar a que la foto sea oscura donde va el texto y
+ * pierde la apuesta la mitad de las veces—: es **la cabecera que sigue y la foto que la rompe**. El
+ * fondo es el mismo degradado del club que ya usa el encabezado, y la foto entra por la derecha bajo
+ * una máscara que la desvanece antes de llegar al texto, igual que el escudo gigante del encabezado.
+ * Así el contraste está garantizado con cualquier imagen que mande el proveedor.
+ *
+ * La escalera de degradación es la misma de siempre: sin foto queda la banda con el icono marcado de
+ * fondo, y sin estadio no se dibuja nada —un hueco del tamaño de un hero anuncia el dato que falta
+ * más fuerte que el dato mismo—.
+ */
+interface Props {
+  venue: VenueSummary;
+  /** Las variables de tinta del club, las mismas que arma la cabecera. */
+  vars: string;
+}
+
+const { venue, vars } = Astro.props;
+
+const capacidad = aforo(venue.capacity);
+const superficie = superficieEnEspanol(venue.surface);
+const foto = venue.imageUrl;
+
+/* Solo lo que existe: una fila de datos con huecos se lee como un formulario a medio llenar. */
+const datos = [
+  capacidad ? { valor: capacidad, rotulo: 'de aforo' } : null,
+  venue.city ? { valor: venue.city, rotulo: 'ciudad' } : null,
+  superficie ? { valor: superficie, rotulo: 'campo' } : null,
+].filter((d) => d !== null);
+---
+
+<section
+  class:list={[
+    'relative w-full overflow-hidden border-b border-board-edge bg-board',
+    foto ? 'h-44 sm:h-52 lg:h-56' : '',
+  ]}
+  style={vars}
+  aria-label={`Estadio de local: ${venue.name}`}
+>
+  {
+    foto ? (
+      <img
+        src={foto}
+        alt=""
+        width="1200"
+        height="640"
+        decoding="async"
+        aria-hidden="true"
+        class="pointer-events-none absolute inset-y-0 right-0 h-full w-full object-cover object-center sm:w-3/4 lg:w-3/5"
+        style="mask-image:linear-gradient(90deg, transparent 0%, black 60%); -webkit-mask-image:linear-gradient(90deg, transparent 0%, black 60%)"
+      />
+    ) : (
+      <span
+        class="pointer-events-none absolute -right-6 top-1/2 -translate-y-1/2 text-(--tinta-tenue)"
+        aria-hidden="true"
+      >
+        <Icon name="estadio" size={190} />
+      </span>
+    )
+  }
+
+  <!-- El degradado del club por encima de la foto: el texto siempre apoya sobre su propio color. -->
+  {
+    foto && (
+      <span
+        class="pointer-events-none absolute inset-0"
+        style="background:linear-gradient(90deg, var(--fondo-solido) 22%, transparent 78%)"
+        aria-hidden="true"
+      />
+    )
+  }
+
+  <div class="relative mx-auto flex h-full max-w-[100rem] flex-col justify-center px-4 py-5 sm:px-6">
+    <p class="flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-(--tinta-suave)">
+      <Icon name="estadio" size={13} />
+      La casa
+    </p>
+    <h2 class="mt-1 max-w-2xl font-display text-2xl font-semibold uppercase leading-none text-(--tinta) sm:text-4xl">
+      {venue.name}
+    </h2>
+
+    {
+      datos.length > 0 && (
+        <dl class="mt-3 flex flex-wrap items-end gap-x-7 gap-y-2 text-(--tinta)">
+          {datos.map((dato) => (
+            <div>
+              <dd class="font-display text-xl font-semibold leading-none tabular text-(--tinta) sm:text-2xl">
+                {dato.valor}
+              </dd>
+              <dt class="mt-1 text-2xs uppercase tracking-label text-(--tinta-suave)">
+                {dato.rotulo}
+              </dt>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+
+    <!--
+      Cada cifra lleva su origen, también cuando el origen es discutible: el proveedor a veces ubica
+      un club en la ciudad equivocada. Va del lado del color, no sobre la foto, donde no se leía.
+    -->
+    <p class="mt-2.5 text-[10px] text-(--tinta-tenue)">dato del proveedor</p>
+  </div>
+</section>

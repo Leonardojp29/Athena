@@ -26,6 +26,10 @@ export interface ApiFootballVenue {
   city: string | null;
   capacity?: number | null;
   country?: string | null;
+  /* Los tres siguientes solo vienen en /teams; /fixtures manda el estadio pelado. */
+  image?: string | null;
+  surface?: string | null;
+  address?: string | null;
 }
 
 export interface ApiFootballTeam {

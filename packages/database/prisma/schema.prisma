@@ -104,6 +104,10 @@ model Venue {
   city     String?
   country  String?
   capacity Int?
+  /// Los tres siguientes solo llegan por el endpoint de equipos; el de partidos manda el estadio pelado.
+  imageUrl String? @map("image_url")
+  surface  String?
+  address  String?
   teams    Team[]
   matches  Match[]
 

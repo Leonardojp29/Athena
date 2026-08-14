@@ -107,6 +107,18 @@ const conRonda = mezclaRondas(bloques.flatMap((bloque) => bloque.partidos));
             </>
           )
         }
+        {/* Dónde juega, sin foto: acá el espacio es del calendario, no de una banda con imagen. */}
+        {
+          team.venue && (
+            <>
+              <span class="text-(--tinta-tenue)">·</span>
+              <span class="flex min-w-0 items-center gap-1">
+                <Icon name="estadio" size={12} />
+                <span class="truncate">{team.venue.name}</span>
+              </span>
+            </>
+          )
+        }
       </p>
     </div>
 

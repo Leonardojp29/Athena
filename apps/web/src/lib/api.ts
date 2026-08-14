@@ -452,6 +452,8 @@ export interface TeamView {
     /** Hex sin almohadilla, como los publica el proveedor en las alineaciones. */
     primaryColor: string | null;
     secondaryColor: string | null;
+    /** Dónde juega de local; null en el 15% de equipos que el proveedor no ubica. */
+    venue: VenueSummary | null;
   };
   squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
   /** Los goleadores del club en la temporada: quiénes juegan, no solo quiénes están. */
@@ -640,6 +642,10 @@ export interface VenueSummary {
   name: string;
   city: string | null;
   capacity: number | null;
+  /** Los tres siguientes solo llegan por el endpoint de equipos, así que en un partido son null. */
+  surface?: string | null;
+  imageUrl?: string | null;
+  address?: string | null;
 }
 
 export interface TeamLineup {

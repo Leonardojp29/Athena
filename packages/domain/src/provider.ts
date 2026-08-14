@@ -33,6 +33,11 @@ export interface ProviderVenue {
   city: string | null;
   country: string | null;
   capacity: number | null;
+  /** La foto del estadio; solo llega en el endpoint de equipos, nunca en el de partidos. */
+  imageUrl: string | null;
+  /** El tipo de campo tal como lo manda el proveedor: "grass", "artificial turf". */
+  surface: string | null;
+  address: string | null;
 }
 
 export interface ProviderTeam {

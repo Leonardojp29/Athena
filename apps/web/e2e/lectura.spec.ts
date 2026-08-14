@@ -142,6 +142,24 @@ test.describe('recorrido de lectura', () => {
     expect(await visibles().first().innerText()).not.toBe(antes);
   });
 
+  /*
+   * La casa del club: el proveedor manda foto, aforo y superficie en el mismo endpoint de equipos que
+   * ya se pedía, y se descartaban. La banda no se dibuja cuando el equipo no tiene estadio, que es
+   * uno de cada siete.
+   */
+  test('la página de un equipo muestra su estadio', async ({ page }) => {
+    await page.goto('/equipos/flamengo');
+
+    const casa = page.getByRole('region', { name: /estadio de local/i });
+    test.skip((await casa.count()) === 0, 'el proveedor no ubica a este equipo');
+
+    await expect(casa).toContainText(/la casa/i);
+    await expect(casa).toContainText(/maracan/i);
+    /* El aforo con separador de miles y la superficie en español, nunca "grass". */
+    await expect(casa).toContainText(/\d{2}[.,]\d{3}/);
+    await expect(casa).not.toContainText(/grass|artificial turf/i);
+  });
+
   test('un partido muestra su marcador', async ({ page }) => {
     await page.goto('/competencias/primera-division');
     /*

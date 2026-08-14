@@ -1092,6 +1092,18 @@ export class ViewsService {
           logoUrl: true,
           primaryColor: true,
           secondaryColor: true,
+          /* La casa del club: un JOIN sobre un findUnique, y sirve a la página y a la home. */
+          venue: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              capacity: true,
+              surface: true,
+              imageUrl: true,
+              address: true,
+            },
+          },
         },
       }),
       this.prisma.standing.findMany({

@@ -60,6 +60,9 @@ export function mapVenue(raw: ApiFootballVenue | undefined): ProviderRef<Provide
       city: raw.city ?? null,
       country: raw.country ?? null,
       capacity: raw.capacity ?? null,
+      imageUrl: raw.image ?? null,
+      surface: raw.surface ?? null,
+      address: raw.address ?? null,
     },
   };
 }

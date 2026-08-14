@@ -5,6 +5,7 @@ import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
+import FichaEstadio from '../../components/team/FichaEstadio.astro';
 import Icon from '../../components/Icon.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
@@ -51,8 +52,8 @@ const tema = temaEquipo(team.primaryColor, team.secondaryColor);
 
 /* Las variables alimentan las clases de la cabecera; sin tema, los valores de la pizarra. */
 const varsCabecera = tema
-  ? `background-image:${tema.fondo};--tinta:${tema.tinta};--tinta-suave:${tema.tintaSuave};--tinta-tenue:${tema.tintaTenue};--linea:${tema.linea};--chip:${tema.chip}`
-  : '--tinta:var(--color-chalk);--tinta-suave:var(--color-chalk-dim);--tinta-tenue:color-mix(in oklab, var(--color-chalk) 30%, transparent);--linea:color-mix(in oklab, var(--color-chalk) 16%, transparent);--chip:color-mix(in oklab, var(--color-chalk) 10%, transparent)';
+  ? `background-image:${tema.fondo};--tinta:${tema.tinta};--tinta-suave:${tema.tintaSuave};--tinta-tenue:${tema.tintaTenue};--linea:${tema.linea};--chip:${tema.chip};--fondo-solido:${tema.lavado(0.97)}`
+  : '--tinta:var(--color-chalk);--tinta-suave:var(--color-chalk-dim);--tinta-tenue:color-mix(in oklab, var(--color-chalk) 30%, transparent);--linea:color-mix(in oklab, var(--color-chalk) 16%, transparent);--chip:color-mix(in oklab, var(--color-chalk) 10%, transparent);--fondo-solido:var(--color-board)';
 
 /* El API manda la fase en juego primero: la primera fila es "cómo va hoy". */
 const principal = standings[0] ?? null;
@@ -72,6 +73,25 @@ const jsonLd = {
   sport: 'Soccer',
   ...(team.logoUrl ? { logo: team.logoUrl } : {}),
   ...(team.founded ? { foundingDate: String(team.founded) } : {}),
+  /* La dirección del estadio no se muestra —es postal y viene a medias—, pero acá sí sirve. */
+  ...(team.venue
+    ? {
+        location: {
+          '@type': 'StadiumOrArena',
+          name: team.venue.name,
+          ...(team.venue.capacity ? { maximumAttendeeCapacity: team.venue.capacity } : {}),
+          ...(team.venue.address || team.venue.city
+            ? {
+                address: {
+                  '@type': 'PostalAddress',
+                  ...(team.venue.address ? { streetAddress: team.venue.address } : {}),
+                  ...(team.venue.city ? { addressLocality: team.venue.city } : {}),
+                },
+              }
+            : {}),
+        },
+      }
+    : {}),
 };
 ---
 
@@ -208,6 +228,8 @@ const jsonLd = {
       </div>
     </Container>
   </section>
+
+  {team.venue && <FichaEstadio venue={team.venue} vars={varsCabecera} />}
 
   <!-- El lavado del club baja con la página: la pertenencia no se queda en la cabecera. -->
   <div class="w-full" style={tema ? `background:linear-gradient(180deg, ${tema.lavado(0.07)}, transparent 38rem)` : undefined}>
