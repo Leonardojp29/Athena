@@ -3,7 +3,7 @@ import EscudoTorneo from '../EscudoTorneo.astro';
 import CanchaOnce from '../pitch/CanchaOnce.astro';
 import ListaDelOnce from '../pitch/ListaDelOnce.astro';
 import type { JugadorDelOnce, OnceDeLaFecha } from '../../lib/api';
-import { formacionDe, LINEA, type FichaOnce } from '../../lib/once';
+import { fichaJson, formacionDe, LINEA, type FichaOnce } from '../../lib/once';
 import { nombreFase } from '../../lib/paises';
 
 /*
@@ -26,7 +26,7 @@ const { once, logoUrl = null, nombreLiga } = Astro.props;
  * encuentro por el que fue elegido figura, sin salir de la página ni pedir nada al servidor.
  */
 const ficha = (j: JugadorDelOnce): string =>
-  JSON.stringify({
+  fichaJson({
     playerId: j.player_id,
     slug: j.player_slug,
     name: j.player_name,

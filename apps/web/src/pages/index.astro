@@ -118,6 +118,10 @@ if (liga) {
 /* La fase de la tabla viaja en la URL para que el enlace sea compartible. */
 const fase = Astro.url.searchParams.get('tabla');
 
+/* Y la fecha elegida en la tarjeta de alineaciones: el id del partido que arranca visible. */
+const fechaPedida = Astro.url.searchParams.get('fecha');
+const fecha = fechaPedida && /^[0-9a-f-]{36}$/.test(fechaPedida) ? fechaPedida : null;
+
 /* La bandera y el país de la liga abierta salen del catálogo: la vista de competencia no los trae. */
 const paisDeLaLiga = liga
   ? (catalogo.flatMap((c) => c.countries).find((p) => p.competitions.some((t) => t.slug === liga)) ??
@@ -276,10 +280,11 @@ const destacado = feed?.insights[0]
           )
         }
         {
-          vistaEquipo?.lastLineup && (
+          vistaEquipo && vistaEquipo.lineups.length > 0 && (
             <AlineacionDelEquipo
-              alineacion={vistaEquipo.lastLineup}
+              alineaciones={vistaEquipo.lineups}
               equipo={vistaEquipo.team}
+              fechaPedida={fecha}
             />
           )
         }
@@ -315,5 +320,5 @@ const destacado = feed?.insights[0]
   </Container>
 
   <!-- La ficha del jugador: solo se monta cuando hay una cancha que la abra. -->
-  {(vistaLiga?.once || vistaEquipo?.lastLineup) && <PlayerSheet />}
+  {(vistaLiga?.once || (vistaEquipo?.lineups.length ?? 0) > 0) && <PlayerSheet />}
 </Base>

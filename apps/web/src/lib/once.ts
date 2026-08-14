@@ -23,6 +23,8 @@ export interface FichaOnce {
    * formación deducida: un 4-2-3-1 se dibuja como tal y no como un 4-5-1.
    */
   grid?: string | null;
+  /** El minuto en que lo reemplazaron: la ficha lleva su flecha de salida. */
+  salioEn?: number | null;
 }
 
 export const PUESTOS = ['G', 'D', 'M', 'F'] as const;
@@ -46,6 +48,18 @@ export function formacionDe(jugadores: FichaOnce[]): string | null {
   return PUESTOS.slice(1)
     .map((p) => grupos.get(p)?.length ?? 0)
     .join('-');
+}
+
+/**
+ * El payload de una ficha, sin los nulos.
+ *
+ * Cada ficha lleva las veinticinco estadísticas del partido y la mitad viene en null —un defensor no
+ * tiene atajadas ni penales—, así que el JSON pesaba el doble de lo que dice. La ficha ya omite la
+ * fila cuando el valor falta, así que quitarlos no cambia nada de lo que se ve: en la tarjeta de
+ * alineaciones, con cinco fechas y cien fichas, son decenas de kilobytes de HTML.
+ */
+export function fichaJson(payload: unknown): string {
+  return JSON.stringify(payload, (_clave, valor) => (valor === null ? undefined : valor));
 }
 
 export const notaDe = (valor: string | null): string | null =>

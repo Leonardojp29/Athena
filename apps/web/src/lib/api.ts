@@ -371,12 +371,30 @@ export interface SquadPlayer {
   player: PlayerLink & { position: string | null };
 }
 
-/** La alineación del último partido jugado, con las notas de ese partido si el proveedor las dio. */
+/**
+ * Un cambio, ya normalizado por el API.
+ *
+ * El proveedor pone al que sale en `player` y al que entra en `relatedPlayer`; acá los nombres dicen
+ * lo que son. Un tercio de los eventos no tiene el jugador resuelto en Athena, así que además del
+ * enlace viaja el nombre suelto como respaldo.
+ */
+export interface Cambio {
+  minute: number;
+  extraMinute: number | null;
+  sale: PlayerLink | null;
+  saleNombre: string | null;
+  entra: PlayerLink | null;
+  entraNombre: string | null;
+}
+
+/** Una alineación con su banco, sus cambios y las notas de ese partido. */
 export interface UltimaAlineacion {
   match: MatchCard;
   formation: string | null;
   coachName: string | null;
   startXi: LineupPlayer[];
+  substitutes: LineupPlayer[];
+  substitutions: Cambio[];
   stats: Array<MatchPlayerStats & { matchId: string }>;
 }
 
@@ -405,8 +423,8 @@ export interface TeamView {
   >;
   recent: MatchCard[];
   upcoming: MatchCard[];
-  /** Con qué salió en su último partido; null si el proveedor no publicó esa alineación. */
-  lastLineup: UltimaAlineacion | null;
+  /** Con qué salió en sus últimos partidos, del más reciente al más viejo; vacío si no hay ninguna. */
+  lineups: UltimaAlineacion[];
 }
 
 /** El historial entre los dos equipos: el resumen de siempre y los últimos cruces. */

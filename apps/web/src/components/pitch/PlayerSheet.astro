@@ -5,6 +5,13 @@ import Icon from '../Icon.astro';
  * Ficha del jugador en un <dialog> nativo: trampa de foco, Escape, backdrop y capa superior
  * salen gratis del navegador. Se rellena desde el data-ficha del imán, así que abrirla no
  * cuesta ni una llamada; el estado va al hash para que el enlace sea compartible.
+ *
+ * Cuando el imán está en una cancha, la ficha se dibuja **encima de esa cancha** y solo la cancha se
+ * difumina: el resto de la página queda a la vista, que es lo que uno quiere mientras compara. Sigue
+ * siendo `showModal()` —el foco, el Escape y la vuelta del foco al imán son del navegador— y por eso
+ * el diálogo se queda en el nivel de página: al vivir en la capa superior, el `filter` de la cancha
+ * no lo alcanza. Se posiciona con variables leídas del rectángulo de la cancha, y si la cancha es
+ * chica o el imán no está en una —la tabla de rendimiento—, se comporta como siempre.
  */
 ---
 
@@ -70,30 +77,31 @@ import Icon from '../Icon.astro';
 </dialog>
 
 <script>
+  /* Cada campo puede faltar: el payload viaja sin los nulos para no pesar de más. */
   interface FichaStats {
-    minutesPlayed: number | null;
-    rating: string | null;
-    goals: number | null;
-    assists: number | null;
-    saves: number | null;
-    shotsTotal: number | null;
-    shotsOnTarget: number | null;
-    passesTotal: number | null;
-    passesKey: number | null;
-    passesAccurate: number | null;
-    tacklesTotal: number | null;
-    interceptions: number | null;
-    duelsTotal: number | null;
-    duelsWon: number | null;
-    dribblesTotal: number | null;
-    dribblesSuccess: number | null;
-    foulsCommitted: number | null;
-    foulsDrawn: number | null;
-    yellowCards: number | null;
-    redCards: number | null;
-    penaltyScored: number | null;
-    penaltyMissed: number | null;
-    penaltySaved: number | null;
+    minutesPlayed?: number | null;
+    rating?: string | null;
+    goals?: number | null;
+    assists?: number | null;
+    saves?: number | null;
+    shotsTotal?: number | null;
+    shotsOnTarget?: number | null;
+    passesTotal?: number | null;
+    passesKey?: number | null;
+    passesAccurate?: number | null;
+    tacklesTotal?: number | null;
+    interceptions?: number | null;
+    duelsTotal?: number | null;
+    duelsWon?: number | null;
+    dribblesTotal?: number | null;
+    dribblesSuccess?: number | null;
+    foulsCommitted?: number | null;
+    foulsDrawn?: number | null;
+    yellowCards?: number | null;
+    redCards?: number | null;
+    penaltyScored?: number | null;
+    penaltyMissed?: number | null;
+    penaltySaved?: number | null;
   }
 
   interface Ficha {
@@ -191,23 +199,32 @@ import Icon from '../Icon.astro';
       }
 
       const filas: string[] = [];
+      /*
+       * Ausente es ausente, venga como null o sin la clave: el payload viaja sin los nulos —la mitad
+       * de las veinticinco estadísticas lo son y con cien fichas en la página eran decenas de
+       * kilobytes—, así que estas dos funciones tratan los dos casos igual. Con `!== null` solo,
+       * la fila salía diciendo "undefined".
+       */
+      const falta = (valor: number | null | undefined) => valor === null || valor === undefined;
+      const cifra = (valor: number | null | undefined) => (falta(valor) ? null : String(valor));
+
       const agregar = (label: string, valor: string | null) => {
         if (valor !== null) filas.push(par(label, valor));
       };
-      const dos = (a: number | null, b: number | null) =>
-        a === null && b === null ? null : `${num(a)}/${num(b)}`;
+      const dos = (a: number | null | undefined, b: number | null | undefined) =>
+        falta(a) && falta(b) ? null : `${num(a)}/${num(b)}`;
 
-      agregar('Asistencias', s.assists !== null ? String(s.assists) : null);
+      agregar('Asistencias', cifra(s.assists));
       agregar('Remates (al arco)', dos(s.shotsOnTarget, s.shotsTotal));
       agregar('Pases (logrados)', dos(s.passesAccurate, s.passesTotal));
-      agregar('Pases clave', s.passesKey !== null ? String(s.passesKey) : null);
+      agregar('Pases clave', cifra(s.passesKey));
       agregar('Duelos ganados', dos(s.duelsWon, s.duelsTotal));
       agregar('Regates', dos(s.dribblesSuccess, s.dribblesTotal));
-      agregar('Quites', s.tacklesTotal !== null ? String(s.tacklesTotal) : null);
-      agregar('Intercepciones', s.interceptions !== null ? String(s.interceptions) : null);
-      agregar('Atajadas', s.saves !== null ? String(s.saves) : null);
-      agregar('Faltas cometidas', s.foulsCommitted !== null ? String(s.foulsCommitted) : null);
-      agregar('Faltas recibidas', s.foulsDrawn !== null ? String(s.foulsDrawn) : null);
+      agregar('Quites', cifra(s.tacklesTotal));
+      agregar('Intercepciones', cifra(s.interceptions));
+      agregar('Atajadas', cifra(s.saves));
+      agregar('Faltas cometidas', cifra(s.foulsCommitted));
+      agregar('Faltas recibidas', cifra(s.foulsDrawn));
       if (s.yellowCards) agregar('Amarillas', String(s.yellowCards));
       if (s.redCards) agregar('Rojas', String(s.redCards));
       if (s.penaltyMissed) agregar('Penales errados', String(s.penaltyMissed));
@@ -216,10 +233,54 @@ import Icon from '../Icon.astro';
       if (detalle) detalle.innerHTML = filas.join('');
     }
 
+    /* Debajo de esto la ficha taparía la cancha entera y no habría nada que mirar detrás. */
+    const MINIMO_ANCHO = 260;
+    const MINIMO_ALTO = 300;
+
+    let cancha: HTMLElement | null = null;
+
+    const ubicar = () => {
+      if (!cancha) return;
+      const caja = cancha.getBoundingClientRect();
+      /*
+       * Acotada a la parte visible de la cancha: en un teléfono la cancha mide más que la pantalla y
+       * la ficha, centrada en la cancha entera, quedaba con la mitad fuera de cuadro.
+       */
+      const arriba = Math.max(caja.top, 8);
+      const abajo = Math.min(caja.bottom, window.innerHeight - 8);
+      const d = dialogo!.style;
+      d.setProperty('--ficha-x', `${caja.left + caja.width / 2}px`);
+      d.setProperty('--ficha-y', `${(arriba + abajo) / 2}px`);
+      d.setProperty('--ficha-ancho', `${caja.width}px`);
+      d.setProperty('--ficha-alto', `${Math.max(0, abajo - arriba)}px`);
+    };
+
+    const soltarCancha = () => {
+      cancha?.removeAttribute('data-difuminada');
+      cancha = null;
+      dialogo!.removeAttribute('data-contenida');
+      window.removeEventListener('scroll', ubicar);
+      window.removeEventListener('resize', ubicar);
+    };
+
     function abrir(boton: HTMLElement): void {
       const crudo = boton.dataset.ficha;
       if (!crudo) return;
       pintar(JSON.parse(crudo) as Ficha);
+
+      soltarCancha();
+      const suya = boton.closest<HTMLElement>('[data-cancha]');
+      const caja = suya?.getBoundingClientRect();
+      if (suya && caja && caja.width >= MINIMO_ANCHO && caja.height >= MINIMO_ALTO) {
+        cancha = suya;
+        cancha.setAttribute('data-difuminada', '');
+        dialogo!.setAttribute('data-contenida', '');
+        ubicar();
+        /* Mientras está abierta, la ficha sigue a su cancha: el diálogo es fijo a la pantalla. */
+        window.addEventListener('scroll', ubicar, { passive: true });
+        window.addEventListener('resize', ubicar);
+      }
+
       if (!dialogo!.open) dialogo!.showModal();
       const id = boton.dataset.jugador;
       if (id) history.replaceState(null, '', `#jugador-${id}`);
@@ -237,6 +298,7 @@ import Icon from '../Icon.astro';
       if (event.target === dialogo) dialogo.close();
     });
     dialogo.addEventListener('close', () => {
+      soltarCancha();
       if (location.hash.startsWith('#jugador-')) {
         history.replaceState(null, '', location.pathname + location.search);
       }

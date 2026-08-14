@@ -427,7 +427,8 @@ El mismo orden que la liga: la cabecera con cómo va, después **próximos parti
 resultados** a todo el ancho —una fila por partido, con el equipo en negrita para ver de qué lado
 jugó—, después **los goleadores del club** y al final **la plantilla**.
 
-En el riel, **con qué salió en su último partido**, sobre la cancha. Es la pregunta que se hace un
+En el riel, **con qué salió**, sobre la cancha, con flechas para recorrer las últimas cinco
+fechas. Es la pregunta que se hace un
 hincha cuando abre a su equipo, y el dato estaba en la base sin que ninguna vista fuera del partido
 lo mostrara. Reemplaza a los goleadores del mundo, que ahí no dicen nada: quien vino a ver a Alianza
 no vino a ver quién la rompe en Europa.
@@ -439,6 +440,26 @@ ideal (`CanchaOnce`), que ahora acepta la formación y las casillas cuando exist
 
 En una alineación el rótulo del equipo se omite bajo cada ficha: repetir "LIM" once veces no informa
 de nada.
+
+**Las flechas no navegan.** Las cinco alineaciones vienen en el HTML y el botón solo cambia de panel:
+el clic es instantáneo. No encarece la entrada porque las fotos de los paneles ocultos no se piden
+—un `loading="lazy"` dentro de un `display:none` nunca intersecta la pantalla, medido: once fotos al
+entrar, no cincuenta y cinco— y porque el payload de cada ficha viaja sin sus nulos. La fecha se
+escribe en la URL solo cuando alguien toca una flecha, así que el enlace de siempre queda limpio y el
+que se comparte después de moverse abre ese partido.
+
+**El banco va fuera de la cancha**: el proveedor manda a los suplentes sin casilla, así que ponerlos
+en el césped sería inventar dónde estuvieron. Cada uno lleva su minuto de entrada y a quién
+reemplazó, y a los que no jugaron se los ve en gris. Al titular que salió le queda su minuto sobre la
+ficha, en rojo.
+
+**La ficha del jugador se abre dentro de la cancha** y solo la cancha se difumina: el resto de la
+página queda a la vista, que es lo que uno quiere mientras compara. Sigue siendo un `<dialog>` con
+`showModal()` —el foco atrapado, el Escape y la vuelta del foco al imán son del navegador— y por eso
+mismo vive en el nivel de página: al estar en la capa superior, el `filter` de la cancha no lo
+alcanza. Se posiciona con variables leídas del rectángulo de la cancha, acotado a la parte visible de
+la pantalla. Cuando el imán no está en una cancha —la tabla de rendimiento— o la cancha es más chica
+que 260×300, se comporta como siempre: centrada, con el fondo oscurecido.
 
 ### La copa internacional
 

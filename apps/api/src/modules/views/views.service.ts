@@ -104,6 +104,12 @@ const matchCard = {
   },
 } as const;
 
+/*
+ * Cuántas alineaciones viajan con la vista de equipo. Cinco fechas es lo que se recorre con las
+ * flechas de la tarjeta; más no aporta y cada una suma su HTML.
+ */
+const ALINEACIONES = 5;
+
 /* Perú no tiene horario de verano: el desplazamiento fijo es correcto para siempre. */
 const LIMA_OFFSET = '-05:00';
 const DAY_MS = 86_400_000;
@@ -790,7 +796,7 @@ export class ViewsService {
    */
   async team(slug: string) {
     const ultimoJugado = { team: { slug }, match: { status: 'finished' } };
-    const [team, standings, recent, upcoming, squad, scorers, alineacion, notas] =
+    const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas] =
       await Promise.all([
       this.prisma.team.findUnique({
         where: { slug },
@@ -877,31 +883,53 @@ export class ViewsService {
         },
       }),
       /*
-       * La alineación del último partido jugado. Es lo que un hincha quiere ver del equipo —con qué
-       * salió— y ya estaba en la base sin que ninguna vista la mostrara fuera del partido.
+       * Las alineaciones de los últimos partidos jugados. Es lo que un hincha quiere ver del equipo
+       * —con qué salió— y ya estaba en la base sin que ninguna vista la mostrara fuera del partido.
+       * Vienen las cinco para que la tarjeta pueda moverse entre fechas sin volver a pedir nada.
        */
-      this.prisma.matchLineup.findFirst({
+      this.prisma.matchLineup.findMany({
         relationLoadStrategy: JOIN,
         where: ultimoJugado,
         orderBy: { match: { kickoffUtc: 'desc' } },
+        /* De más: hay filas cáscara con el once vacío —copas que el proveedor nunca completó— y se
+           descartan después, así que pedir justo cinco dejaría huecos en las flechas. */
+        take: ALINEACIONES + 4,
         select: {
           teamId: true,
           formation: true,
           coachName: true,
           startXi: true,
-          match: { select: matchCard },
+          substitutes: true,
+          match: {
+            select: {
+              ...matchCard,
+              /* Los cambios salen del mismo select: quién entró, quién salió y en qué minuto. */
+              events: {
+                where: { kind: 'substitution' },
+                orderBy: [{ minute: 'asc' }, { extraMinute: 'asc' }],
+                select: {
+                  minute: true,
+                  extraMinute: true,
+                  team: { select: { id: true } },
+                  player: playerLink,
+                  relatedPlayer: playerLink,
+                  detail: true,
+                },
+              },
+            },
+          },
         },
       }),
       /*
-       * Las notas de ese partido, en la misma tanda paralela: pedirlas después de saber cuál es
-       * costaría un viaje entero a Supabase. Con cuarenta filas entran los dos últimos partidos, y
-       * se conservan las del que trajo la alineación.
+       * Las notas de esos partidos, en la misma tanda paralela: pedirlas después de saber cuáles son
+       * costaría un viaje entero a Supabase. Se piden por fecha y se agrupan por partido; con ciento
+       * veinte filas entran los cinco últimos con sus suplentes.
        */
       this.prisma.matchPlayerStatistics.findMany({
         relationLoadStrategy: JOIN,
         where: ultimoJugado,
         orderBy: [{ match: { kickoffUtc: 'desc' } }],
-        take: 40,
+        take: ALINEACIONES * 30,
         select: { ...matchPlayerStats, matchId: true, player: playerLink },
       }),
     ]);
@@ -941,18 +969,48 @@ export class ViewsService {
     const currentSquad = squad.filter((row) => row.year === squadYear);
 
     /*
-     * Las notas se pidieron por equipo y fecha, no por partido, así que se quedan las del partido
-     * que trajo la alineación. Sin notas la cancha se dibuja igual: es la alineación la que manda.
+     * Las notas se pidieron por equipo y fecha, no por partido, así que se agrupan acá. Sin notas la
+     * cancha se dibuja igual: es la alineación la que manda.
      */
-    const lastLineup = alineacion
-      ? {
-          match: alineacion.match,
-          formation: alineacion.formation,
-          coachName: alineacion.coachName,
-          startXi: alineacion.startXi,
-          stats: notas.filter((n) => n.matchId === alineacion.match.id),
-        }
-      : null;
+    const notasPorPartido = new Map<string, typeof notas>();
+    for (const nota of notas) {
+      notasPorPartido.set(nota.matchId, [...(notasPorPartido.get(nota.matchId) ?? []), nota]);
+    }
+
+    /*
+     * El cambio se normaliza acá, y con cuidado: el proveedor pone al que **sale** en `player` y al
+     * que entra en `relatedPlayer`. Se verificó contra los datos —el `player` siempre estaba en el
+     * once con los minutos cortados en el minuto del cambio— porque el nombre de los campos sugiere
+     * lo contrario. Un tercio de los eventos no tiene el jugador resuelto en Athena, así que el
+     * nombre del proveedor viaja como respaldo.
+     */
+    const nombreSuelto = (detail: unknown, clave: 'playerName' | 'relatedPlayerName') => {
+      const valor = (detail as Record<string, unknown> | null)?.[clave];
+      return typeof valor === 'string' ? valor : null;
+    };
+
+    const lineups = alineaciones
+      /* Sin once no hay cancha: las filas cáscara ensuciarían la navegación con canchas vacías. */
+      .filter((a) => Array.isArray(a.startXi) && a.startXi.length > 0)
+      .slice(0, ALINEACIONES)
+      .map(({ match, teamId, ...resto }) => {
+        const { events, ...partido } = match;
+        return {
+          ...resto,
+          match: partido,
+          stats: notasPorPartido.get(match.id) ?? [],
+          substitutions: events
+            .filter((e) => e.team.id === teamId)
+            .map((e) => ({
+              minute: e.minute,
+              extraMinute: e.extraMinute,
+              sale: e.player,
+              saleNombre: e.player?.name ?? nombreSuelto(e.detail, 'playerName'),
+              entra: e.relatedPlayer,
+              entraNombre: e.relatedPlayer?.name ?? nombreSuelto(e.detail, 'relatedPlayerName'),
+            })),
+        };
+      });
 
     return {
       team,
@@ -961,7 +1019,7 @@ export class ViewsService {
       upcoming,
       squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },
       scorers,
-      lastLineup,
+      lineups,
     };
   }
 

@@ -2,6 +2,7 @@
 import { layout } from '@athena/domain';
 import Icon from '../Icon.astro';
 import PitchMarks from './PitchMarks.astro';
+import EventIcon from '../EventIcon.astro';
 import { apellidoDe, formacionDe, notaDe, porPuesto, PUESTOS, type FichaOnce } from '../../lib/once';
 
 /*
@@ -35,8 +36,13 @@ const ubicados =
     : null) ?? [];
 ---
 
+<!--
+  `data-cancha` marca el césped: es lo que la ficha del jugador difumina al abrirse encima, y de paso
+  hereda la entrada escalonada de los imanes que hasta ahora solo tenía la cancha del partido.
+-->
 <div
-  class="relative mx-auto aspect-[680/1000] w-full max-w-[21rem] overflow-hidden rounded-lg border border-board-edge"
+  data-cancha
+  class="relative mx-auto aspect-[680/1000] w-full max-w-[21rem] overflow-hidden rounded-lg border border-board-edge transition-[filter] duration-200"
 >
   <svg
     viewBox="0 0 680 1050"
@@ -93,6 +99,12 @@ const ubicados =
               {notaDe(j.nota) && (
                 <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-primary px-1.5 font-display text-[11px] font-bold tabular text-primary-contrast">
                   {notaDe(j.nota)}
+                </span>
+              )}
+              {typeof j.salioEn === 'number' && (
+                <span class="absolute -right-2.5 bottom-1.5 flex items-center gap-px rounded-full bg-board px-1 text-[10px] font-bold tabular text-card-red ring-1 ring-card-red/40">
+                  <EventIcon kind="sub_out" size={9} detail={`minuto ${j.salioEn}`} />
+                  {j.salioEn}'
                 </span>
               )}
             </span>

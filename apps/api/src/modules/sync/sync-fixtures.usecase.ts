@@ -14,6 +14,16 @@ import { VenueService } from './venue.service.js';
  */
 const STALE_AFTER_MS = 3 * 3600_000;
 
+/*
+ * Hasta dónde se mira atrás por partidos que nadie cerró. Cubre una semana larga de worker caído
+ * —el caso real: la máquina apagada de un viernes al otro— sin volver a preguntar para siempre por
+ * un aplazado de 2020 o por una llave de copa que el proveedor dejó en TBD.
+ */
+const VENTANA_OLVIDADOS_MS = 14 * 24 * 3600_000;
+
+/* Techo por corrida: un request por cada veinte, así el peor caso son diez llamadas. */
+const MAX_OLVIDADOS = 200;
+
 @Injectable()
 export class SyncFixturesUseCase {
   private readonly logger = new Logger(SyncFixturesUseCase.name);
@@ -56,21 +66,36 @@ export class SyncFixturesUseCase {
   }
 
   /**
-   * Saca de "en juego" los partidos que el proveedor ya no lista como en vivo.
+   * Cierra los partidos que ya se jugaron y quedaron con un estado viejo.
    *
-   * `live=all` contiene SOLO lo que está en juego: cuando un partido termina desaparece del
-   * feed y nadie vuelve a tocar su fila, así que quedaba clavado en 2H 90' para siempre —con
-   * el marcador de la última vez que apareció— y nunca disparaba MATCH_FINISHED. Eso a su vez
-   * dejaba al partido sin alineaciones, sin estadísticas y sin análisis, porque el refresco
-   * diario busca por `status: finished`.
+   * Son dos agujeros del feed en vivo, que contiene SOLO lo que está en juego:
    *
-   * Se pregunta el estado real en lugar de adivinarlo: dar por terminado un partido con el
-   * marcador viejo es peor que dejarlo en vivo.
+   * 1. **El que se quedó en juego.** Cuando un partido termina desaparece del feed y nadie vuelve a
+   *    tocar su fila, así que quedaba clavado en 2H 90' con el marcador de la última vez que
+   *    apareció, y nunca disparaba MATCH_FINISHED.
+   * 2. **El que nunca entró en vivo.** Si el worker estaba caído a la hora del partido, nadie lo vio
+   *    empezar ni terminar: se queda `scheduled` con la hora ya pasada, invisible en la web —fuera
+   *    de los próximos porque ya fue, fuera de los últimos resultados porque no está terminado—.
+   *    Es lo que pasó con la fecha 4 del Clausura peruano tras una semana con la máquina apagada.
+   *
+   * Se pregunta el estado real en lugar de adivinarlo: dar por terminado un partido con el marcador
+   * viejo es peor que dejarlo como está.
    */
   async reconcileStale(): Promise<number> {
-    const limite = new Date(Date.now() - STALE_AFTER_MS);
+    const ahora = Date.now();
+    const limite = new Date(ahora - STALE_AFTER_MS);
     const colgados = await this.prisma.match.findMany({
-      where: { status: { in: ['in_play', 'paused'] }, kickoffUtc: { lt: limite } },
+      where: {
+        OR: [
+          { status: { in: ['in_play', 'paused'] }, kickoffUtc: { lt: limite } },
+          {
+            status: { in: ['scheduled', 'postponed'] },
+            kickoffUtc: { lt: limite, gt: new Date(ahora - VENTANA_OLVIDADOS_MS) },
+          },
+        ],
+      },
+      orderBy: { kickoffUtc: 'desc' },
+      take: MAX_OLVIDADOS,
       select: { id: true },
     });
     if (colgados.length === 0) return 0;
@@ -87,9 +112,7 @@ export class SyncFixturesUseCase {
 
     const reales = await this.provider.getMatchesByRefs(refs.map((r) => r.providerRef));
     const escritos = await this.upsertMany(reales, { quiet: true });
-    this.logger.log(
-      `Reconciliados ${escritos}/${colgados.length} partidos que el proveedor ya no lista en vivo`,
-    );
+    this.logger.log(`Reconciliados ${escritos}/${colgados.length} partidos con estado viejo`);
     return escritos;
   }
 

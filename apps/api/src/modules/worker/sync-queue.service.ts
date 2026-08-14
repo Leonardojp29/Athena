@@ -166,6 +166,14 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
 
   // Solo llama al API si la base indica que puede haber fútbol en juego: costo cero fuera de partidos.
   private async liveTick(): Promise<number> {
+    /*
+     * La reconciliación va primero y sin condición: un partido que nadie cerró no depende de que
+     * haya fútbol en cancha ahora mismo. Antes vivía después del corte por candidatos, así que con
+     * el worker caído toda una semana los partidos de esos días se quedaban invisibles hasta que
+     * volviera a haber algo en juego. Cuesta cero requests cuando no hay ninguno.
+     */
+    await this.syncFixtures.reconcileStale();
+
     const now = new Date();
     const soon = new Date(now.getTime() + 30 * 60 * 1000);
     const staleThreshold = new Date(now.getTime() - 4 * 60 * 60 * 1000);
@@ -183,12 +191,6 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     const escritos = await this.syncFixtures.syncLive();
     await this.fetchMissingDetail();
     await this.refreshLivePlayers();
-    /*
-     * Y después la reconciliación: sin esto un partido terminado se queda "en juego" para
-     * siempre, porque desaparece del feed en vivo y nadie vuelve a mirarlo. Cuesta un request
-     * por cada veinte colgados y cero cuando no hay ninguno.
-     */
-    await this.syncFixtures.reconcileStale();
     return escritos;
   }
 

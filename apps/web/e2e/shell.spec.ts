@@ -186,13 +186,69 @@ test.describe('shell del sitio', () => {
     /* Los goleadores del mundo no aparecen en la vista de equipo. */
     await expect(page.getByRole('heading', { name: /los que la rompen/i })).toHaveCount(0);
 
-    const fichas = riel.locator('[data-iman]');
+    /* Los cinco paneles están en el documento; las once fichas son las del que está abierto. */
+    const abierto = riel.locator('[data-panel]:not([hidden])');
+    const fichas = abierto.locator('[data-iman]');
     expect(await fichas.count()).toBe(11);
 
     await fichas.first().click();
     const ficha = page.locator('#ficha-jugador');
     await expect(ficha).toBeVisible();
     await expect(ficha.locator('#ficha-nombre')).not.toBeEmpty();
+
+    /*
+     * La ficha se abre dentro de la cancha y solo la cancha se difumina: el resto de la página queda
+     * a la vista, que es lo que uno quiere mientras compara.
+     */
+    await expect(ficha).toHaveAttribute('data-contenida', '');
+    await expect(riel.locator('[data-cancha][data-difuminada]')).toHaveCount(1);
+
+    /* Y al cerrar, la cancha vuelve a estar nítida. */
+    await page.keyboard.press('Escape');
+    await expect(ficha).toBeHidden();
+    await expect(riel.locator('[data-difuminada]')).toHaveCount(0);
+  });
+
+  /*
+   * Las flechas recorren las últimas cinco alineaciones sin navegar: el cambio es instantáneo y la
+   * fecha elegida queda en la URL, así que el enlace se puede compartir.
+   */
+  test('las flechas de la alineación cambian de partido sin recargar', async ({ page }) => {
+    await page.goto('/?equipo=alianza-lima');
+
+    const tarjeta = page.locator('[data-alineaciones]');
+    test.skip((await tarjeta.count()) === 0, 'este equipo no tiene alineaciones publicadas');
+
+    const siguiente = tarjeta.locator('[data-alineacion-siguiente]');
+    test.skip((await siguiente.count()) === 0, 'solo hay una alineación, sin flechas');
+
+    const paneles = tarjeta.locator('[data-panel]');
+    expect(await paneles.count()).toBeGreaterThan(1);
+    /* Uno visible por vez: el resto está en el documento pero oculto. */
+    await expect(tarjeta.locator('[data-panel]:not([hidden])')).toHaveCount(1);
+
+    const primero = await tarjeta.locator('[data-panel]:not([hidden])').getAttribute('data-panel');
+    await expect(tarjeta.locator('[data-alineacion-anterior]')).toBeDisabled();
+
+    await siguiente.click();
+    const segundo = await tarjeta.locator('[data-panel]:not([hidden])').getAttribute('data-panel');
+    expect(segundo).not.toBe(primero);
+    await expect(page).toHaveURL(new RegExp(`fecha=${segundo}`));
+    await expect(tarjeta.locator('[data-alineacion-anterior]')).toBeEnabled();
+
+    /* Once fichas en la cancha del panel abierto, no las de los cinco paneles juntos. */
+    const abierto = tarjeta.locator('[data-panel]:not([hidden])');
+    expect(await abierto.locator('[data-cancha] [data-iman]').count()).toBe(11);
+    /* Y el banco, fuera de la cancha: los suplentes no tienen casilla donde ponerlos. */
+    await expect(abierto.getByRole('heading', { name: /el banco/i })).toBeVisible();
+    expect(await abierto.locator('[data-cancha]').getByText(/el banco/i).count()).toBe(0);
+
+    /* El enlace con la fecha abre ese mismo partido. */
+    await page.goto(`/?equipo=alianza-lima&fecha=${segundo}`);
+    await expect(tarjeta.locator('[data-panel]:not([hidden])')).toHaveAttribute(
+      'data-panel',
+      segundo as string,
+    );
   });
 
   /*

@@ -195,12 +195,27 @@ function Timeline({ match }: { match: MatchView }) {
             </span>
             <EventIcon kind={event.kind} detail={`${nombre} ${event.minute}'`} />
             <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
-              <NombreJugador player={event.player} fallback={nombre} className="font-medium" />
-              {event.kind === 'substitution' && related && (
-                <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
-                  <span aria-label="sale">←</span>
-                  <NombreJugador player={event.relatedPlayer} fallback={related} />
-                </span>
+              {/*
+                En un cambio el que entra es el destacado, así que va primero y en negrita. El
+                proveedor los manda al revés de lo que sugieren los nombres de sus campos: `player`
+                es **el que sale** —verificado contra los datos: siempre estaba en el once y con los
+                minutos cortados en el minuto del cambio— y `relatedPlayer` el que entra. Antes esta
+                fila los mostraba invertidos y decía "sale" del que acababa de entrar.
+              */}
+              {event.kind === 'substitution' && related ? (
+                <>
+                  <NombreJugador
+                    player={event.relatedPlayer}
+                    fallback={related}
+                    className="font-medium"
+                  />
+                  <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
+                    <span aria-label="por">←</span>
+                    <NombreJugador player={event.player} fallback={nombre} />
+                  </span>
+                </>
+              ) : (
+                <NombreJugador player={event.player} fallback={nombre} className="font-medium" />
               )}
               {ASISTIBLE.has(event.kind) && related && (
                 <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">

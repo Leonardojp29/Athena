@@ -133,7 +133,12 @@
  * el contenido del `style`: la posición es un detalle de implementación y la animación no
  * debería romperse si cambia.
  */
-[data-cancha] [data-iman] {
+/*
+ * La entrada escalonada es de la cancha del partido, que se dibuja una sola vez al abrir la página.
+ * No se le pone a las canchas de la home: ahí las flechas cambian de alineación y con el retardo la
+ * cancha aparecía vacía medio segundo, justo lo contrario de instantáneo.
+ */
+[data-entrada-escalonada] [data-iman] {
   animation: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;
   /* Después del trazo: el técnico dibuja la cancha y recién entonces pone los imanes. */
   animation-delay: calc(380ms + var(--fila, 0) * 45ms);
@@ -255,6 +260,31 @@
     opacity: 0;
     transform: scale(0.96);
   }
+}
+
+/*
+ * Ficha contenida: se dibuja encima de la cancha que la abrió y solo esa cancha se difumina. El
+ * diálogo vive en la capa superior, así que el `filter` de la cancha no lo toca; el ancho se topea
+ * en 30rem para que en la cancha grande del partido no quede una ficha de mil píxeles.
+ */
+#ficha-jugador[data-contenida] {
+  position: fixed;
+  margin: 0;
+  width: min(30rem, var(--ficha-ancho));
+  max-height: var(--ficha-alto);
+  overflow-y: auto;
+  left: var(--ficha-x);
+  top: var(--ficha-y);
+  translate: -50% -50%;
+}
+
+#ficha-jugador[data-contenida]::backdrop {
+  background-color: transparent;
+  backdrop-filter: none;
+}
+
+[data-cancha][data-difuminada] {
+  filter: blur(3px) saturate(0.8) brightness(0.85);
 }
 
 #ficha-jugador::backdrop {
