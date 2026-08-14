@@ -2,7 +2,8 @@
 import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
 import Container from '../../components/layout/Container.astro';
-import Historial from '../../components/match/Historial.astro';
+import HistorialCompacto from '../../components/match/HistorialCompacto.astro';
+import HistorialCompleto from '../../components/match/HistorialCompleto.astro';
 import RefrescoEnVivo from '../../components/match/RefrescoEnVivo.astro';
 import Icon from '../../components/Icon.astro';
 import InsightCard from '../../components/InsightCard.astro';
@@ -45,11 +46,17 @@ const hayAlineaciones = match.lineups.length > 0;
 const hayEstadisticas = match.statistics.length > 0 || match.playerStatistics.length > 0;
 const analisis = match.insight ?? match.preview;
 
+/*
+ * El historial va al final y **nunca deshabilitado**: el cero de las alineaciones es un hueco de
+ * datos, pero el cero del historial es una respuesta —"es la primera vez que se enfrentan"— y merece
+ * su pantalla igual.
+ */
 const TABS: Tab[] = [
   { id: 'resumen', label: 'Resumen' },
   { id: 'alineaciones', label: 'Alineaciones', disabled: !hayAlineaciones },
   { id: 'estadisticas', label: 'Estadísticas', disabled: !hayEstadisticas },
   { id: 'analisis', label: 'Análisis', disabled: analisis === null },
+  { id: 'historial', label: 'Historial' },
 ];
 
 const pedida = Astro.url.searchParams.get('vista') ?? 'resumen';
@@ -193,6 +200,16 @@ const jsonLd = {
             </>
           )
         }
+
+        {
+          vista === 'historial' && (
+            <HistorialCompleto
+              historial={match.historial}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+            />
+          )
+        }
       </div>
 
       <!-- El riel: el análisis es la tesis del producto, no puede vivir al final de la página. -->
@@ -244,11 +261,18 @@ const jsonLd = {
           )
         }
 
-        <Historial
-          historial={match.historial}
-          homeTeam={match.homeTeam}
-          awayTeam={match.awayTeam}
-        />
+        <!--
+          En su propia pestaña la tarjeta no se repite: la balanza dos veces en la misma pantalla es
+          peor que no tenerla en el riel.
+        -->
+        {vista !== 'historial' && (
+          <HistorialCompacto
+            historial={match.historial}
+            homeTeam={match.homeTeam}
+            awayTeam={match.awayTeam}
+            href={`${baseUrl}?vista=historial`}
+          />
+        )}
 
         <section class="rounded-lg border border-border bg-surface p-4">
           <h2 class="mb-2 text-2xs font-medium tracking-label text-ink-muted uppercase">

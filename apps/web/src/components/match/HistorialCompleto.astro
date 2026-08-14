@@ -1,0 +1,284 @@
+---
+import BalanzaCruce from './BalanzaCruce.astro';
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import TiraCruces from './TiraCruces.astro';
+import type { CruceHistorial, Historial, TeamSummary } from '../../lib/api';
+import { formatDate } from '../../lib/format';
+import { etiquetaDeRonda } from '../../lib/rondas';
+import {
+  golesPorCruce,
+  MINIMO_PARA_ANALIZAR,
+  racha,
+  resultadoDeCruce,
+} from '../../lib/historial';
+
+/*
+ * El cara a cara entre los dos equipos, a todo el ancho.
+ *
+ * Vivía apretado en una tarjeta del riel: tres cifras, una barra de dos píxeles y cinco cruces
+ * plegados detrás de un "ver más". Acá tiene su propia pestaña y responde en orden las preguntas que
+ * se hacen antes de un partido: quién domina la historia, quién manda en cada cancha, y qué pasó las
+ * últimas veces.
+ *
+ * El bloque de sedes es el único que habla del partido de hoy —hoy se juega en una de esas dos
+ * canchas— y por eso lleva marcada la que corresponde.
+ */
+interface Props {
+  historial: Historial;
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+}
+
+const { historial, homeTeam, awayTeam } = Astro.props;
+const { resumen, ultimos } = historial;
+
+const nombre = (equipo: TeamSummary) => equipo.shortName ?? equipo.name;
+const laRacha = resumen ? racha(ultimos, homeTeam.slug) : null;
+const promedio = resumen ? golesPorCruce(resumen) : null;
+const suficientes = (resumen?.jugados ?? 0) >= MINIMO_PARA_ANALIZAR;
+
+const frasesDeRacha: Record<string, (a: string, b: string) => string> = {
+  local: (a) => `${a} ganó los últimos`,
+  visita: (_a, b) => `${b} ganó los últimos`,
+  empate: () => 'Empataron los últimos',
+};
+
+/* Las cifras que se derivan del resumen; cada una con su rótulo y ninguna inventada. */
+const cifras = resumen
+  ? [
+      { valor: `${resumen.goles_local}–${resumen.goles_visita}`, rotulo: 'en goles' },
+      ...(promedio ? [{ valor: promedio, rotulo: 'goles por cruce' }] : []),
+      ...(laRacha && laRacha.cuantos > 1
+        ? [
+            {
+              valor: String(laRacha.cuantos),
+              rotulo: frasesDeRacha[laRacha.resultado]!(nombre(homeTeam), nombre(awayTeam)),
+            },
+          ]
+        : []),
+    ]
+  : [];
+
+const sedes = resumen
+  ? [
+      { equipo: homeTeam, sede: resumen.casa_local, esHoy: true },
+      { equipo: awayTeam, sede: resumen.casa_visita, esHoy: false },
+    ]
+  : [];
+
+/* Los cruces agrupados por año: la historia se recuerda por temporadas, no por fechas sueltas. */
+const porAnio = ultimos.reduce<Array<{ anio: number; cruces: CruceHistorial[] }>>((acc, cruce) => {
+  const anio = new Date(cruce.kickoff_utc).getUTCFullYear();
+  const ultimo = acc.at(-1);
+  if (ultimo && ultimo.anio === anio) ultimo.cruces.push(cruce);
+  else acc.push({ anio, cruces: [cruce] });
+  return acc;
+}, []);
+
+const desde = resumen ? new Date(resumen.desde_utc).getUTCFullYear() : null;
+const comparar = `/comparar?tipo=equipo&a=${homeTeam.slug}&b=${awayTeam.slug}`;
+---
+
+{
+  resumen === null || resumen.jugados === 0 ? (
+    <!--
+      La primera vez que se cruzan es una respuesta, no un hueco: se dice con todas las letras y con
+      salidas, en lugar de esconder la sección como hacía antes.
+    -->
+    <section class="rounded-xl border border-border bg-surface p-8 text-center">
+      <div class="flex items-center justify-center gap-5">
+        {[homeTeam, awayTeam].map((equipo, i) => (
+          <>
+            {i === 1 && <span class="font-display text-3xl text-ink-muted">—</span>}
+            {equipo.logoUrl && <img src={equipo.logoUrl} alt="" width="44" height="44" class="size-11 object-contain" />}
+          </>
+        ))}
+      </div>
+      <h2 class="mt-4 font-display text-2xl font-semibold uppercase">Primera vez</h2>
+      <p class="mx-auto mt-1.5 max-w-md text-sm text-ink-muted">
+        {homeTeam.name} y {awayTeam.name} nunca se cruzaron en los torneos que Athena tiene cargados.
+      </p>
+      <a
+        href={comparar}
+        class="mt-4 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-2xs font-medium transition-colors hover:border-primary-ink hover:text-primary-ink"
+      >
+        Comparar los dos equipos
+        <Icon name="chevron-derecha" size={12} />
+      </a>
+    </section>
+  ) : (
+    <div class="grid gap-4">
+      <section class="rounded-xl border border-border bg-surface p-4 sm:p-5">
+        <header class="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 class="font-display text-lg font-semibold uppercase leading-none">Cara a cara</h2>
+          <p class="text-2xs text-ink-muted">
+            {`${resumen.jugados} ${resumen.jugados === 1 ? 'cruce' : 'cruces'}${desde ? ` desde ${desde}` : ''}`}
+          </p>
+        </header>
+
+        <BalanzaCruce resumen={resumen} homeTeam={homeTeam} awayTeam={awayTeam} tamano="seccion" />
+
+        {cifras.length > 0 && (
+          <dl class="mt-5 flex flex-wrap gap-x-10 gap-y-3 border-t border-border pt-4">
+            {cifras.map((cifra) => (
+              <div>
+                <dd class="font-display text-2xl font-semibold leading-none tabular">{cifra.valor}</dd>
+                <dt class="mt-1 text-2xs uppercase tracking-label text-ink-muted">{cifra.rotulo}</dt>
+              </div>
+            ))}
+          </dl>
+        )}
+      </section>
+
+      {suficientes && (
+        <section class="rounded-xl border border-border bg-surface p-4 sm:p-5">
+          <h2 class="mb-3 font-display text-base font-semibold uppercase leading-none">
+            Quién manda en cada cancha
+          </h2>
+          <div class="grid gap-3 sm:grid-cols-2">
+            {sedes.map(({ equipo, sede, esHoy }) => {
+              const perdio = sede.jugados - sede.gano - sede.empato;
+              const ancho = (n: number) => (sede.jugados === 0 ? 0 : Math.round((n / sede.jugados) * 100));
+              return (
+                <div
+                  class:list={[
+                    'rounded-lg border p-3',
+                    esHoy ? 'border-primary-ink/40 bg-primary/6' : 'border-border',
+                  ]}
+                >
+                  <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+                    {equipo.logoUrl && (
+                      <img src={equipo.logoUrl} alt="" width="18" height="18" class="size-[18px] object-contain" />
+                    )}
+                    <span class="truncate">De local, {nombre(equipo)}</span>
+                    {esHoy && (
+                      <span class="rounded-full bg-primary px-1.5 py-px text-[10px] font-semibold uppercase tracking-label text-primary-contrast">
+                        es el caso de hoy
+                      </span>
+                    )}
+                  </p>
+                  {sede.jugados === 0 ? (
+                    <p class="mt-2 text-2xs text-ink-muted">Nunca lo recibió en su cancha.</p>
+                  ) : (
+                    <>
+                      <p class="mt-2 font-display text-xl font-semibold tabular">
+                        {`${sede.gano}-${sede.empato}-${perdio}`}
+                        <span class="ml-2 font-sans text-2xs font-medium text-ink-muted">
+                          {`en ${sede.jugados} ${sede.jugados === 1 ? 'cruce' : 'cruces'}`}
+                        </span>
+                      </p>
+                      <div class="mt-2 flex h-1.5 overflow-hidden rounded-full bg-canvas-subtle">
+                        <span class="bg-primary" style={`width:${ancho(sede.gano)}%`} />
+                        <span class="bg-border-strong" style={`width:${ancho(sede.empato)}%`} />
+                        <span class="bg-ink-muted" style={`width:${ancho(perdio)}%`} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p class="mt-3 text-2xs text-ink-muted">
+            En una final o en cancha neutral, quién figura de local lo decide el proveedor.
+          </p>
+        </section>
+      )}
+
+      <section class="overflow-hidden rounded-xl border border-border bg-surface">
+        <header class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-border p-3 sm:p-4">
+          <h2 class="font-display text-base font-semibold uppercase leading-none">
+            {`Los últimos ${ultimos.length} cruces`}
+          </h2>
+          {suficientes && (
+            <TiraCruces cruces={ultimos} homeTeam={homeTeam} awayTeam={awayTeam} limite={12} />
+          )}
+        </header>
+
+        <div class="p-1.5">
+          {porAnio.map(({ anio, cruces }) => (
+            <>
+              <p class="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+                {anio}
+              </p>
+              <ol class="grid gap-0.5">
+                {cruces.map((cruce) => {
+                  const resultado = resultadoDeCruce(cruce, homeTeam.slug);
+                  const ganoLocalDelCruce = (cruce.home_score ?? 0) > (cruce.away_score ?? 0);
+                  const ganoVisitaDelCruce = (cruce.away_score ?? 0) > (cruce.home_score ?? 0);
+                  const jornada = etiquetaDeRonda(cruce.round);
+                  return (
+                    <li class="group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_14rem]">
+                      <a
+                        href={`/partidos/${cruce.id}`}
+                        class="absolute inset-0 rounded-md"
+                        aria-label={`${cruce.home_name} contra ${cruce.away_name}`}
+                      />
+                      <span class="col-start-1 row-start-1 text-2xs text-ink-muted sm:row-auto">
+                        {formatDate(cruce.kickoff_utc)}
+                      </span>
+
+                      <span
+                        class:list={[
+                          'col-start-1 row-start-2 flex min-w-0 items-center gap-2 text-sm sm:col-start-2 sm:row-auto sm:justify-end sm:text-right',
+                          ganoLocalDelCruce ? 'font-medium' : 'text-ink-muted',
+                        ]}
+                      >
+                        <span class="truncate sm:order-1">{cruce.home_name}</span>
+                        {cruce.home_logo && (
+                          <img src={cruce.home_logo} alt="" width="18" height="18" loading="lazy" class="size-[18px] shrink-0 object-contain sm:order-2" />
+                        )}
+                      </span>
+
+                      <span class="col-start-2 row-span-2 row-start-1 shrink-0 rounded bg-canvas-subtle px-2 py-0.5 text-center font-display text-base font-semibold tabular sm:col-start-3 sm:row-span-1 sm:row-auto">
+                        {cruce.home_score}–{cruce.away_score}
+                      </span>
+
+                      <span
+                        class:list={[
+                          'col-start-1 row-start-3 flex min-w-0 items-center gap-2 text-sm sm:col-start-4 sm:row-auto',
+                          ganoVisitaDelCruce ? 'font-medium' : 'text-ink-muted',
+                        ]}
+                      >
+                        {cruce.away_logo && (
+                          <img src={cruce.away_logo} alt="" width="18" height="18" loading="lazy" class="size-[18px] shrink-0 object-contain" />
+                        )}
+                        <span class="truncate">{cruce.away_name}</span>
+                      </span>
+
+                      <span class="col-span-2 col-start-1 row-start-4 flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted sm:col-span-1 sm:col-start-5 sm:row-auto sm:justify-end">
+                        <EscudoTorneo url={cruce.competition_logo} size={14} />
+                        <span class="truncate">{cruce.competition_name}</span>
+                        {jornada && <span class="hidden shrink-0 text-ink-muted/70 lg:inline">· {jornada}</span>}
+                        <span
+                          class:list={[
+                            'grid size-4 shrink-0 place-items-center rounded-[3px] text-[9px] font-bold',
+                            resultado === 'local'
+                              ? 'bg-primary text-primary-contrast'
+                              : resultado === 'visita'
+                                ? 'bg-ink-muted text-surface'
+                                : 'bg-border-strong text-ink',
+                          ]}
+                        >
+                          {resultado === 'local' ? 'V' : resultado === 'visita' ? 'D' : 'E'}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </>
+          ))}
+        </div>
+
+        <footer class="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2 text-2xs text-ink-muted">
+          <span>El equipo de la izquierda jugó de local. La V, la E y la D son de {nombre(homeTeam)}.</span>
+          <a href={comparar} class="flex items-center gap-1 transition-colors hover:text-primary-ink">
+            Comparar los dos equipos
+            <Icon name="chevron-derecha" size={12} />
+          </a>
+        </footer>
+      </section>
+    </div>
+  )
+}

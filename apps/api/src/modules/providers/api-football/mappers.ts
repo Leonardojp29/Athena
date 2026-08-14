@@ -51,6 +51,18 @@ export function mapLeague(raw: ApiFootballLeague): ProviderRef<ProviderCompetiti
 }
 
 /** El estadio viaja dentro de /teams y /fixtures: no cuesta un request propio. */
+/*
+ * Fotos del proveedor que retratan otro estadio.
+ *
+ * La 1242 dice "Estadio Monumental" —el nombre, la ciudad y los 80 093 asientos son los correctos—
+ * pero la imagen es una toma aérea del Estadio Nacional de Lima, que está a quince kilómetros. Antes
+ * que mostrar una foto equivocada en la página del club más grande del Perú, se muestra la banda sin
+ * foto: no saber es honesto, decir cualquier cosa no.
+ *
+ * Es una lista, no un mecanismo: cuando aparezca la tercera se verá si merece uno.
+ */
+const FOTOS_ERRADAS = new Set(['1242']);
+
 export function mapVenue(raw: ApiFootballVenue | undefined): ProviderRef<ProviderVenue> | null {
   if (!raw?.id || !raw.name) return null;
   return {
@@ -60,7 +72,7 @@ export function mapVenue(raw: ApiFootballVenue | undefined): ProviderRef<Provide
       city: raw.city ?? null,
       country: raw.country ?? null,
       capacity: raw.capacity ?? null,
-      imageUrl: raw.image ?? null,
+      imageUrl: FOTOS_ERRADAS.has(String(raw.id)) ? null : (raw.image ?? null),
       surface: raw.surface ?? null,
       address: raw.address ?? null,
     },

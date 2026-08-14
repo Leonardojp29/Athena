@@ -189,26 +189,30 @@ test.describe('cancha interactiva', () => {
 
 test.describe('pestañas del partido', () => {
   /*
-   * El historial entre los dos equipos es lo primero que se busca antes de un partido y estaba sin
-   * mostrar. Los cruces van plegados a propósito: desplegados, las cuatro vistas dejaban de caber
-   * en 1080p.
+   * El historial entre los dos equipos es lo primero que se busca antes de un partido. Vive en su
+   * propia pestaña —antes era una tarjeta de riel con los cruces plegados— y en el riel queda el
+   * adelanto con la salida.
    */
   test('el partido muestra el historial entre los dos equipos', async ({ page }) => {
     const id = await partidoConAlineacion(page);
     test.skip(id === null, 'ningún partido del día tiene alineación sincronizada');
 
     await page.goto(`/partidos/${id}`);
-    const historial = page.getByRole('heading', { name: /historial/i });
-    test.skip((await historial.count()) === 0, 'estos dos equipos no se cruzaron antes');
+    const adelanto = page.locator('main aside section').filter({ hasText: /historial/i }).first();
+    await expect(adelanto).toBeVisible();
 
-    await expect(historial).toBeVisible();
-    /* El resumen dice cuántos se jugaron, y esa cifra tiene que ser un número de verdad. */
-    await expect(historial).toContainText(/\d+\s+partido/i);
+    const salida = adelanto.locator('a[href*="vista=historial"]');
+    test.skip((await salida.count()) === 0, 'estos dos equipos no se cruzaron antes');
+    await salida.click();
 
-    const cruces = page.locator('main aside details ul a[href^="/partidos/"]');
-    await expect(cruces.first()).toBeHidden();
-    await page.getByText(/ver los últimos cruces/i).click();
-    await expect(cruces.first()).toBeVisible();
+    await expect(page).toHaveURL(/vista=historial/);
+    const cara = page.getByRole('heading', { name: /cara a cara/i });
+    await expect(cara).toBeVisible();
+
+    /* Cada cruce es un enlace a su partido, con el año a la vista y sin inglés del proveedor. */
+    const cruces = page.locator('main ol li a[href^="/partidos/"]');
+    expect(await cruces.count()).toBeGreaterThan(0);
+    await expect(page.locator('main')).not.toContainText(/Round of|Group Stage|Quarter-finals/i);
   });
 
   test('el marcador sigue presente en todas las vistas', async ({ page }) => {

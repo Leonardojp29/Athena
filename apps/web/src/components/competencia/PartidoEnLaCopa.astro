@@ -1,6 +1,6 @@
 ---
 import EscudoTorneo from '../EscudoTorneo.astro';
-import Historial from '../match/Historial.astro';
+import HistorialCompacto from '../match/HistorialCompacto.astro';
 import Icon from '../Icon.astro';
 import MatchCenter from '../MatchCenter';
 import PitchLineups from '../pitch/PitchLineups.astro';
@@ -134,7 +134,12 @@ const hayAlineaciones = match.lineups.length > 0;
           </section>
         )
       }
-      <Historial historial={match.historial} homeTeam={match.homeTeam} awayTeam={match.awayTeam} />
+      <HistorialCompacto
+        historial={match.historial}
+        homeTeam={match.homeTeam}
+        awayTeam={match.awayTeam}
+        href={`/partidos/${match.id}?vista=historial`}
+      />
     </div>
   </div>
 </section>

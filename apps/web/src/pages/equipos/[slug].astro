@@ -229,8 +229,6 @@ const jsonLd = {
     </Container>
   </section>
 
-  {team.venue && <FichaEstadio venue={team.venue} vars={varsCabecera} />}
-
   <!-- El lavado del club baja con la página: la pertenencia no se queda en la cabecera. -->
   <div class="w-full" style={tema ? `background:linear-gradient(180deg, ${tema.lavado(0.07)}, transparent 38rem)` : undefined}>
   <Container width="wide" class="py-5">
@@ -334,6 +332,8 @@ const jsonLd = {
             </Card>
           )
         }
+
+        {team.venue && <FichaEstadio venue={team.venue} vars={varsCabecera} />}
 
         <AvisoFavoritos />
       </div>

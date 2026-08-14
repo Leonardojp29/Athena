@@ -573,14 +573,16 @@ export class ViewsService {
      * Una sola consulta para los cruces y el resumen. Eran dos y, dentro del lote que Prisma arma
      * con el resto de la vista, la segunda perdía de vista su propio FROM y respondía 42P01 —cada
      * una por separado funcionaba—. Las funciones de ventana se evalúan antes del LIMIT, así que
-     * `OVER ()` cuenta toda la historia aunque solo se devuelvan los últimos ocho cruces.
+     * `OVER ()` cuenta toda la historia aunque solo se devuelvan los últimos doce cruces. Todas las
+     * ventanas comparten la especificación vacía, así que Postgres las resuelve en un solo nodo:
+     * sumar el corte por sede no cuesta un recorrido más.
      */
     const filas = await this.prisma.$queryRaw<FilaHistorial[]>`
       WITH actual AS (
         SELECT home_team_id, away_team_id FROM matches WHERE id = ${matchId}::uuid
       ),
       cruces AS (
-        SELECT m.id, m.kickoff_utc, m.home_score, m.away_score,
+        SELECT m.id, m.kickoff_utc, m.home_score, m.away_score, m.round,
                m.home_team_id, m.away_team_id, a.home_team_id AS local_actual,
                a.away_team_id AS visita_actual, m.season_id
         FROM matches m
@@ -590,13 +592,15 @@ export class ViewsService {
           AND ((m.home_team_id = a.home_team_id AND m.away_team_id = a.away_team_id)
             OR (m.home_team_id = a.away_team_id AND m.away_team_id = a.home_team_id))
       )
-      SELECT c.id, c.kickoff_utc, c.home_score, c.away_score,
+      SELECT c.id, c.kickoff_utc, c.home_score, c.away_score, c.round,
              hl.name AS home_name, hl.short_name AS home_short, hl.slug AS home_slug,
              hl.logo_url AS home_logo,
              aw.name AS away_name, aw.short_name AS away_short, aw.slug AS away_slug,
              aw.logo_url AS away_logo,
              co.name AS competition_name, co.slug AS competition_slug,
+             co.logo_url AS competition_logo, se.year AS season_year,
              count(*) OVER ()::int AS jugados,
+             min(c.kickoff_utc) OVER () AS desde_utc,
              sum(CASE WHEN (c.home_team_id = c.local_actual AND c.home_score > c.away_score)
                         OR (c.away_team_id = c.local_actual AND c.away_score > c.home_score)
                       THEN 1 ELSE 0 END) OVER ()::int AS gano_local,
@@ -607,14 +611,28 @@ export class ViewsService {
              sum(CASE WHEN c.home_team_id = c.local_actual THEN c.home_score ELSE c.away_score END)
                OVER ()::int AS goles_local,
              sum(CASE WHEN c.home_team_id = c.visita_actual THEN c.home_score ELSE c.away_score END)
-               OVER ()::int AS goles_visita
+               OVER ()::int AS goles_visita,
+             -- El corte por sede: es lo único del historial que habla del partido de hoy, porque hoy
+             -- se juega en una de las dos casas.
+             sum(CASE WHEN c.home_team_id = c.local_actual THEN 1 ELSE 0 END)
+               OVER ()::int AS casa_local_jugados,
+             sum(CASE WHEN c.home_team_id = c.local_actual AND c.home_score > c.away_score THEN 1 ELSE 0 END)
+               OVER ()::int AS casa_local_gano,
+             sum(CASE WHEN c.home_team_id = c.local_actual AND c.home_score = c.away_score THEN 1 ELSE 0 END)
+               OVER ()::int AS casa_local_empato,
+             sum(CASE WHEN c.home_team_id = c.visita_actual THEN 1 ELSE 0 END)
+               OVER ()::int AS casa_visita_jugados,
+             sum(CASE WHEN c.home_team_id = c.visita_actual AND c.home_score > c.away_score THEN 1 ELSE 0 END)
+               OVER ()::int AS casa_visita_gano,
+             sum(CASE WHEN c.home_team_id = c.visita_actual AND c.home_score = c.away_score THEN 1 ELSE 0 END)
+               OVER ()::int AS casa_visita_empato
       FROM cruces c
       JOIN teams hl ON hl.id = c.home_team_id
       JOIN teams aw ON aw.id = c.away_team_id
       JOIN seasons se ON se.id = c.season_id
       JOIN competitions co ON co.id = se.competition_id
       ORDER BY c.kickoff_utc DESC
-      LIMIT 8`;
+      LIMIT 12`;
 
     const primera = filas[0];
     return {
@@ -626,6 +644,17 @@ export class ViewsService {
             gano_visita: primera.gano_visita,
             goles_local: primera.goles_local,
             goles_visita: primera.goles_visita,
+            desde_utc: primera.desde_utc,
+            casa_local: {
+              jugados: primera.casa_local_jugados,
+              gano: primera.casa_local_gano,
+              empato: primera.casa_local_empato,
+            },
+            casa_visita: {
+              jugados: primera.casa_visita_jugados,
+              gano: primera.casa_visita_gano,
+              empato: primera.casa_visita_empato,
+            },
           }
         : null,
       ultimos: filas,
@@ -1581,6 +1610,13 @@ function puntaje(fila: {
   return (fila.goals ?? 0) * 2 + (fila.assists ?? 0) + nota / 10;
 }
 
+/** Cómo le fue a cada uno jugando en su cancha, sobre toda la historia. */
+export interface SedeHistorial {
+  jugados: number;
+  gano: number;
+  empato: number;
+}
+
 export interface ResumenHistorial {
   jugados: number;
   gano_local: number;
@@ -1588,9 +1624,30 @@ export interface ResumenHistorial {
   gano_visita: number;
   goles_local: number;
   goles_visita: number;
+  /** El primer cruce de la historia: una cifra sin su desde no dice de cuándo habla. */
+  desde_utc: Date;
+  /** El local de hoy, jugando en su cancha. */
+  casa_local: SedeHistorial;
+  /** El visitante de hoy, jugando en la suya. */
+  casa_visita: SedeHistorial;
 }
 
-export interface FilaHistorial extends CruceHistorial, ResumenHistorial {}
+/** Cada fila del SQL repite el resumen, con las sumas planas tal como las devuelve Postgres. */
+export interface FilaHistorial extends CruceHistorial {
+  jugados: number;
+  gano_local: number;
+  empates: number;
+  gano_visita: number;
+  goles_local: number;
+  goles_visita: number;
+  desde_utc: Date;
+  casa_local_jugados: number;
+  casa_local_gano: number;
+  casa_local_empato: number;
+  casa_visita_jugados: number;
+  casa_visita_gano: number;
+  casa_visita_empato: number;
+}
 
 export interface CruceHistorial {
   id: string;
@@ -1607,6 +1664,10 @@ export interface CruceHistorial {
   away_logo: string | null;
   competition_name: string;
   competition_slug: string;
+  competition_logo: string | null;
+  season_year: number;
+  /** La ronda como la nombra el proveedor; la web la traduce. */
+  round: string | null;
 }
 
 export interface Historial {

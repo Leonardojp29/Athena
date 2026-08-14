@@ -1,0 +1,130 @@
+---
+import type { ResumenHistorial, TeamSummary } from '../../lib/api';
+import { porcentajes } from '../../lib/historial';
+
+/*
+ * La balanza del cara a cara: cuántas ganó cada uno y cuántas empataron.
+ *
+ * Es la misma pieza a dos escalas —la tarjeta del riel y la sección a todo el ancho—, así que vive
+ * suelta en lugar de duplicarse. El vocabulario de color es el de las estadísticas del partido: lima
+ * para el local y pizarra para el visitante, nunca `data`, que en este sistema marca lo que dice la
+ * IA y nada más.
+ *
+ * La cifra va **dentro** de su tramo cuando el tramo da el ancho: así el color deja de ser el único
+ * canal y de paso desaparece la línea de tres números repetidos debajo.
+ */
+interface Props {
+  resumen: ResumenHistorial;
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+  tamano?: 'riel' | 'seccion';
+}
+
+const { resumen, homeTeam, awayTeam, tamano = 'riel' } = Astro.props;
+const parte = porcentajes(resumen);
+const grande = tamano === 'seccion';
+
+/* Con menos de un séptimo del ancho, un número adentro del tramo se corta: va afuera o no va. */
+const entra = (porcentaje: number) => porcentaje >= 14;
+
+const nombre = (equipo: TeamSummary) => equipo.shortName ?? equipo.name;
+const escudo = grande ? 32 : 20;
+
+const tramos = [
+  { clave: 'local' as const, valor: resumen.gano_local, fondo: 'bg-primary', tinta: 'text-primary-contrast' },
+  { clave: 'empate' as const, valor: resumen.empates, fondo: 'bg-border-strong', tinta: 'text-ink' },
+  { clave: 'visita' as const, valor: resumen.gano_visita, fondo: 'bg-ink-muted', tinta: 'text-surface' },
+];
+
+const leyenda = `${nombre(homeTeam)} ganó ${resumen.gano_local}, ${nombre(awayTeam)} ganó ${resumen.gano_visita}, empataron ${resumen.empates}`;
+---
+
+<div>
+  <div class:list={['flex items-end justify-between', grande ? 'gap-6' : 'gap-3']}>
+    <!-- El local a la izquierda, los empates al medio y el visitante a la derecha: el mismo orden
+         que la barra de abajo, que era lo que no coincidía. -->
+    <div class:list={['flex min-w-0 items-center', grande ? 'gap-3' : 'gap-2']}>
+      {homeTeam.logoUrl && (
+        <img
+          src={homeTeam.logoUrl}
+          alt=""
+          width={escudo}
+          height={escudo}
+          style={`width:${escudo}px;height:${escudo}px`}
+          class="shrink-0 object-contain"
+        />
+      )}
+      <div class="min-w-0">
+        <p
+          class:list={[
+            'font-display font-semibold leading-none tabular text-primary-ink',
+            grande ? 'text-4xl sm:text-5xl' : 'text-2xl',
+          ]}
+        >
+          {resumen.gano_local}
+        </p>
+        <p class="mt-1 truncate text-2xs text-ink-muted">{nombre(homeTeam)}</p>
+      </div>
+    </div>
+
+    <div class="shrink-0 text-center">
+      <p
+        class:list={[
+          'font-display font-semibold leading-none tabular text-ink-muted',
+          grande ? 'text-2xl' : 'text-lg',
+        ]}
+      >
+        {resumen.empates}
+      </p>
+      <p class="mt-1 text-2xs text-ink-muted">empates</p>
+    </div>
+
+    <div class:list={['flex min-w-0 flex-row-reverse items-center text-right', grande ? 'gap-3' : 'gap-2']}>
+      {awayTeam.logoUrl && (
+        <img
+          src={awayTeam.logoUrl}
+          alt=""
+          width={escudo}
+          height={escudo}
+          style={`width:${escudo}px;height:${escudo}px`}
+          class="shrink-0 object-contain"
+        />
+      )}
+      <div class="min-w-0">
+        <p
+          class:list={[
+            'font-display font-semibold leading-none tabular text-ink',
+            grande ? 'text-4xl sm:text-5xl' : 'text-2xl',
+          ]}
+        >
+          {resumen.gano_visita}
+        </p>
+        <p class="mt-1 truncate text-2xs text-ink-muted">{nombre(awayTeam)}</p>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class:list={[
+      'mt-2 flex overflow-hidden rounded-full bg-canvas-subtle',
+      grande ? 'h-6' : 'h-1.5',
+    ]}
+    role="img"
+    aria-label={leyenda}
+  >
+    {
+      tramos.map((tramo) => (
+        <span
+          class:list={[
+            'flex items-center justify-center font-display text-xs font-semibold tabular',
+            tramo.fondo,
+            grande && entra(parte[tramo.clave]) ? tramo.tinta : '',
+          ]}
+          style={`width:${parte[tramo.clave]}%`}
+        >
+          {grande && entra(parte[tramo.clave]) ? tramo.valor : ''}
+        </span>
+      ))
+    }
+  </div>
+</div>

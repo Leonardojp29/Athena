@@ -487,17 +487,34 @@ export interface CruceHistorial {
   away_logo: string | null;
   competition_name: string;
   competition_slug: string;
+  competition_logo: string | null;
+  season_year: number;
+  /** La ronda como la nombra el proveedor; se traduce con `etiquetaDeRonda`. */
+  round: string | null;
+}
+
+/** Cómo le fue a un equipo jugando en su cancha, sobre toda la historia del cruce. */
+export interface SedeHistorial {
+  jugados: number;
+  gano: number;
+  empato: number;
+}
+
+export interface ResumenHistorial {
+  jugados: number;
+  gano_local: number;
+  empates: number;
+  gano_visita: number;
+  goles_local: number;
+  goles_visita: number;
+  /** El primer cruce: una cifra sin su desde no dice de cuándo habla. */
+  desde_utc: string;
+  casa_local: SedeHistorial;
+  casa_visita: SedeHistorial;
 }
 
 export interface Historial {
-  resumen: {
-    jugados: number;
-    gano_local: number;
-    empates: number;
-    gano_visita: number;
-    goles_local: number;
-    goles_visita: number;
-  } | null;
+  resumen: ResumenHistorial | null;
   ultimos: CruceHistorial[];
 }
 

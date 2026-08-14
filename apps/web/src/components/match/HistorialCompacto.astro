@@ -1,0 +1,66 @@
+---
+import BalanzaCruce from './BalanzaCruce.astro';
+import Icon from '../Icon.astro';
+import TiraCruces from './TiraCruces.astro';
+import type { Historial, TeamSummary } from '../../lib/api';
+import { MINIMO_PARA_ANALIZAR } from '../../lib/historial';
+
+/*
+ * El cara a cara en una tarjeta: el riel del partido y el panel de la copa.
+ *
+ * Es un adelanto con salida, no un resumen resignado: la balanza, la tira de los últimos y el enlace
+ * a la sección completa. Antes acá vivía todo el historial detrás de un "ver los últimos cruces", y
+ * en el panel de la copa —que por debajo de 2xl toma el ancho entero— ese diseño de 320px se estiraba
+ * a mil doscientos.
+ *
+ * Por eso la fila se acomoda sola: apilada cuando la columna es angosta, en línea cuando hay ancho.
+ */
+interface Props {
+  historial: Historial;
+  homeTeam: TeamSummary;
+  awayTeam: TeamSummary;
+  /** A dónde lleva "ver el historial completo". */
+  href: string;
+}
+
+const { historial, homeTeam, awayTeam, href } = Astro.props;
+const { resumen, ultimos } = historial;
+const hay = resumen !== null && resumen.jugados > 0;
+---
+
+<section class="rounded-lg border border-border bg-surface p-4">
+  <h2 class="mb-3 flex items-center gap-1.5 text-2xs font-medium uppercase tracking-label text-ink-muted">
+    <Icon name="cancha" size={13} />
+    {hay ? `Historial · ${resumen!.jugados} ${resumen!.jugados === 1 ? 'cruce' : 'cruces'}` : 'Historial'}
+  </h2>
+
+  {
+    hay && resumen ? (
+      <div class="flex flex-wrap items-end gap-x-8 gap-y-3">
+        <div class="min-w-[13rem] flex-1">
+          <BalanzaCruce resumen={resumen} homeTeam={homeTeam} awayTeam={awayTeam} />
+        </div>
+
+        {resumen.jugados >= MINIMO_PARA_ANALIZAR && (
+          <div class="min-w-0">
+            <p class="mb-1 text-2xs text-ink-muted">últimos cruces</p>
+            <TiraCruces cruces={ultimos} homeTeam={homeTeam} awayTeam={awayTeam} limite={6} />
+          </div>
+        )}
+
+        <a
+          href={href}
+          class="flex shrink-0 items-center gap-1 text-2xs text-primary-ink transition-colors hover:underline"
+        >
+          {`Ver los ${resumen.jugados} cruces`}
+          <Icon name="chevron-derecha" size={11} />
+        </a>
+      </div>
+    ) : (
+      /* Que la tarjeta desaparezca —lo que hacía antes— deja la duda de si falta el dato o el cruce. */
+      <p class="text-2xs text-ink-muted">
+        {homeTeam.name} y {awayTeam.name} nunca se cruzaron en los torneos que Athena tiene cargados.
+      </p>
+    )
+  }
+</section>
