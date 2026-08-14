@@ -46,7 +46,7 @@ describe('describirRonda', () => {
       'Octavos de final',
       'Cuartos de final',
       'Semifinales',
-      'Definición de puestos',
+      '5º puesto',
       'Final',
     ]);
   });
@@ -245,6 +245,18 @@ describe('describirRonda', () => {
     expect(describirRonda('Grand Final')).toMatchObject({ label: 'Final', rank: 470 });
     expect(describirRonda('Elimination Final').label).toBe('Eliminación');
     expect(describirRonda('Elimination Final').rank).toBeLessThan(describirRonda('Grand Final').rank);
+
+    /* Ocho partidos de consuelo en un mismo torneo, cada uno por su puesto y en orden. */
+    const puestos = clasificarRondas(['11th place', '5th place', '7th place', '9th place']).map(
+      (r) => r.label,
+    );
+    expect(puestos).toEqual(['5º puesto', '7º puesto', '9º puesto', '11º puesto']);
+
+    /* El play-in de la Liga MX tiene semifinal y final. */
+    expect(describirRonda('Apertura - Play-In Semi-finals').label).toBe(
+      'Apertura · Play-in · semifinales',
+    );
+    expect(describirRonda('Apertura - Play-In Final').label).toBe('Apertura · Play-in · final');
 
     /* Dos preliminares numeradas seguidas, en la misma copa. */
     expect(describirRonda('3rd Preliminary Round').label).toBe('Preliminar 3');

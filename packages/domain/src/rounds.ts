@@ -56,6 +56,8 @@ interface Regla {
   eliminatoria?: boolean;
   /** La ronda es una fecha de liga: el rótulo sale del encabezado y no de la regla. */
   jornada?: boolean;
+  /** El rótulo lleva el puesto que se define: "5º puesto". El tercer puesto tiene su propio nombre. */
+  puesto?: boolean;
   /**
    * Ronda numerada del tipo "3rd Round": es fase previa cuando el torneo tiene fase de grupos —la
    * Libertadores— y es el cuadro principal cuando no la tiene —la FA Cup, la Copa del Rey—. Lo
@@ -90,6 +92,9 @@ const REGLAS: Regla[] = [
 
   /* El repechaje de la fase liga, antes que la regla de "Play-offs" que lo capturaba. */
   { patron: /knockout\s*(round\s*)?play[\s-]?offs?/i, label: 'Repechaje', rank: 425, etapa: 'final' },
+  /* El play-in de la Liga MX tiene semifinal y final: sin separarlas eran una sola columna. */
+  { patron: /^play[\s-]?in\s+semi/i, label: 'Play-in · semifinales', rank: 414, etapa: 'final' },
+  { patron: /^play[\s-]?in\s+finals?/i, label: 'Play-in · final', rank: 416, etapa: 'final' },
   { patron: /play[\s-]?in/i, label: 'Play-in', rank: 415, etapa: 'final' },
   /* Con guion, con espacio o pegado: el proveedor escribe "Play-offs", "Play Offs" y "Playoffs". */
   { patron: /play[\s-]?offs?/i, label: 'Repechaje de acceso', rank: 100, etapa: 'previa' },
@@ -151,7 +156,8 @@ const REGLAS: Regla[] = [
   { patron: /semi/i, label: 'Semifinales', rank: 450, etapa: 'final' },
   /* Los puestos de consuelo, antes de la regla de la final: los dos dicen "Final". */
   { patron: /(3rd|third|tercer)\s*place/i, label: 'Tercer puesto', rank: 460, etapa: 'final' },
-  { patron: /\d+(st|nd|rd|th)\s*place/i, label: 'Definición de puestos', rank: 465, etapa: 'final' },
+  /* El puesto va en el rótulo: un torneo con ocho partidos de consuelo los tenía todos como uno. */
+  { patron: /(\d+)(st|nd|rd|th)\s*place/i, label: 'Definición de puestos', rank: 465, etapa: 'final', puesto: true },
   { patron: /finals?$|^finals?\b/i, label: 'Final', rank: 470, etapa: 'final' },
 ];
 
@@ -160,6 +166,9 @@ const RANGO_PREVIA_NUMERADA: Record<number, number> = { 1: 60, 2: 70, 3: 80, 4: 
 
 /** El número de fecha al final de la ronda: "Group Stage - 6" o "1st Round - 3" → "6" / "3". */
 const FECHA = /-\s*(\d+)\s*$/;
+
+/** El puesto que define un partido de consuelo: "5th Place Final" → "5". */
+const PUESTO = /(\d+)(st|nd|rd|th)\s*place/i;
 
 /**
  * Parte `X - Y` en sus dos mitades cuando la segunda es una ronda: `Apertura - Final`,
@@ -191,10 +200,12 @@ export function describirRonda(round: string): Ronda {
   if (!regla) return { round: limpio, label: limpio, rank: 999, eliminatoria: false, etapa: null };
 
   const eliminatoria = regla.eliminatoria ?? regla.etapa !== 'grupos';
+  /* Los partidos por puesto se ordenan por el puesto: el 5º antes que el 11º, no alfabéticamente. */
+  const puesto = regla.puesto ? PUESTO.exec(limpio)?.[1] : undefined;
   return {
     round: limpio,
     label: etiquetaDe(limpio, regla),
-    rank: regla.rank,
+    rank: puesto ? regla.rank + Number(puesto) / 100 : regla.rank,
     eliminatoria,
     etapa: regla.etapa,
   };
@@ -220,7 +231,8 @@ function etiquetaDe(round: string, regla: Regla): string {
   if (partes) return partes.map((parte) => describirRonda(parte).label).join(' · ');
 
   const grupo = /^group\s+([a-l])\b/i.exec(round)?.[1]?.toUpperCase();
-  const base = grupo ? `Grupo ${grupo}` : regla.label;
+  const puesto = regla.puesto ? PUESTO.exec(round)?.[1] : undefined;
+  const base = grupo ? `Grupo ${grupo}` : puesto ? `${puesto}º puesto` : regla.label;
   return fecha ? `${base} · fecha ${fecha}` : base;
 }
 
