@@ -1,6 +1,6 @@
 ---
 import type { MatchCard } from '../../lib/api';
-import { formatKickoff, isLive } from '../../lib/format';
+import { formatKickoff, isLive, minutoEnVivo } from '../../lib/format';
 import Icon from '../Icon.astro';
 import Container from '../layout/Container.astro';
 
@@ -105,8 +105,10 @@ const fecha = new Intl.DateTimeFormat('es-PE', {
                   {match.awayTeam.logoUrl && (
                     <img src={match.awayTeam.logoUrl} alt="" width="14" height="14" />
                   )}
-                  {isLive(match.status) && match.elapsedMinutes !== null && (
-                    <span class="tabular text-live-board">{match.elapsedMinutes}'</span>
+                  {isLive(match.status) && (
+                    <span class="tabular text-live-board">
+                      {minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)}
+                    </span>
                   )}
                 </a>
               ))}

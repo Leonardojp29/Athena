@@ -1,6 +1,6 @@
 ---
 import type { MatchCard } from '../../lib/api';
-import { formatKickoff, isLive } from '../../lib/format';
+import { formatKickoff, isLive, minutoEnVivo } from '../../lib/format';
 import { getHomeView } from '../../lib/live';
 import Container from './Container.astro';
 
@@ -61,8 +61,10 @@ const matches: MatchCard[] = [
                   )}
                 </span>
 
-                {vivo && match.elapsedMinutes !== null && (
-                  <span class="tabular text-live/90">{match.elapsedMinutes}'</span>
+                {vivo && (
+                  <span class="tabular text-live/90">
+                    {minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)}
+                  </span>
                 )}
               </a>
             );

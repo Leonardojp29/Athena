@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import EventIcon from './EventIcon';
 import type { MatchEventView, MatchView, PlayerLink } from '../lib/api';
-import { formatKickoff, isLive, statusLabel } from '../lib/format';
+import { formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
 
 /*
  * Marcador y minuto a minuto. Es un solo componente y una sola consulta: dos islas
@@ -154,8 +154,8 @@ function Scoreboard({ match }: { match: MatchView }) {
         >
           {live && <span className="size-1.5 rounded-full bg-live-board animate-live-pulse" />}
           <span data-minuto>
-            {live && match.elapsedMinutes !== null
-              ? `${match.elapsedMinutes}'`
+            {live
+              ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)
               : statusLabel(match.status)}
           </span>
         </span>

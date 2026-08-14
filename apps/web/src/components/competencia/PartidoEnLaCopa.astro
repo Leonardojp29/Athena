@@ -6,7 +6,7 @@ import MatchCenter from '../MatchCenter';
 import PitchLineups from '../pitch/PitchLineups.astro';
 import Suplentes from '../match/Suplentes.astro';
 import type { MatchView } from '../../lib/api';
-import { formatDateLong, formatKickoff, isLive } from '../../lib/format';
+import { formatDateLong, formatKickoff, isLive, minutoEnVivo } from '../../lib/format';
 import { etiquetaDeRonda } from '../../lib/rondas';
 
 /*
@@ -95,7 +95,11 @@ const hayAlineaciones = match.lineups.length > 0;
           enVivo ? 'font-medium text-live' : 'text-ink-muted',
         ]}
       >
-        {enVivo ? `${match.elapsedMinutes ?? 0}'` : match.status === 'finished' ? 'Final' : 'Programado'}
+        {enVivo
+          ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)
+          : match.status === 'finished'
+            ? 'Final'
+            : 'Programado'}
       </p>
     </div>
   </div>

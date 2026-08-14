@@ -47,3 +47,20 @@ export function statusLabel(status: string): string {
 export function isLive(status: string): boolean {
   return status === 'in_play' || status === 'paused';
 }
+
+/**
+ * El reloj de un partido en vivo.
+ *
+ * En el entretiempo el minuto se congela: un partido detenido en "45'" durante quince minutos parece
+ * un dato viejo cuando en realidad están en el vestuario, así que ahí el reloj dice qué está pasando.
+ * Lo mismo antes del alargue y durante los penales, que el minuto tampoco sabe contar.
+ */
+export function minutoEnVivo(
+  status: string,
+  elapsedMinutes: number | null,
+  statusDetail: string | null = null,
+): string {
+  if (status === 'paused') return statusDetail === 'BT' ? 'Al alargue' : 'Descanso';
+  if (statusDetail === 'P') return 'Penales';
+  return elapsedMinutes === null ? statusLabel(status) : `${elapsedMinutes}'`;
+}

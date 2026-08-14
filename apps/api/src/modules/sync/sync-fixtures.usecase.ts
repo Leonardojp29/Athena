@@ -15,6 +15,17 @@ import { VenueService } from './venue.service.js';
 const STALE_AFTER_MS = 3 * 3600_000;
 
 /*
+ * Cuánto silencio delata a un partido que ya terminó.
+ *
+ * El feed en vivo trae solo lo que está en cancha y el tick lo recorre cada minuto, así que mientras
+ * un partido se juega su fila se toca todo el tiempo. Cuando termina desaparece del feed y deja de
+ * tocarse: diez minutos sin novedad de un partido "en juego" es que ya no lo está. Antes había que
+ * esperar las tres horas del margen de arriba, y mientras tanto la web mostraba un 90' clavado en un
+ * partido que había terminado hacía rato.
+ */
+const SILENCIO_EN_VIVO_MS = 10 * 60_000;
+
+/*
  * Hasta dónde se mira atrás por partidos que nadie cerró. Cubre una semana larga de worker caído
  * —el caso real: la máquina apagada de un viernes al otro— sin volver a preguntar para siempre por
  * un aplazado de 2020 o por una llave de copa que el proveedor dejó en TBD.
@@ -72,7 +83,8 @@ export class SyncFixturesUseCase {
    *
    * 1. **El que se quedó en juego.** Cuando un partido termina desaparece del feed y nadie vuelve a
    *    tocar su fila, así que quedaba clavado en 2H 90' con el marcador de la última vez que
-   *    apareció, y nunca disparaba MATCH_FINISHED.
+   *    apareció, y nunca disparaba MATCH_FINISHED. Se lo reconoce por el silencio: diez minutos sin
+   *    que el tick lo toque, aunque haya empezado hace media hora.
    * 2. **El que nunca entró en vivo.** Si el worker estaba caído a la hora del partido, nadie lo vio
    *    empezar ni terminar: se queda `scheduled` con la hora ya pasada, invisible en la web —fuera
    *    de los próximos porque ya fue, fuera de los últimos resultados porque no está terminado—.
@@ -87,7 +99,13 @@ export class SyncFixturesUseCase {
     const colgados = await this.prisma.match.findMany({
       where: {
         OR: [
-          { status: { in: ['in_play', 'paused'] }, kickoffUtc: { lt: limite } },
+          {
+            status: { in: ['in_play', 'paused'] },
+            OR: [
+              { kickoffUtc: { lt: limite } },
+              { updatedAt: { lt: new Date(ahora - SILENCIO_EN_VIVO_MS) } },
+            ],
+          },
           {
             status: { in: ['scheduled', 'postponed'] },
             kickoffUtc: { lt: limite, gt: new Date(ahora - VENTANA_OLVIDADOS_MS) },

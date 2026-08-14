@@ -1,7 +1,7 @@
 ---
 import Icon from '../Icon.astro';
 import type { MatchCard } from '../../lib/api';
-import { formatKickoff, isLive } from '../../lib/format';
+import { formatKickoff, isLive, minutoEnVivo } from '../../lib/format';
 
 /*
  * Los partidos en un riel angosto: hora y día a la izquierda, los dos equipos uno encima del otro
@@ -52,7 +52,9 @@ const diaCorto = (iso: string): string =>
               ]}
             >
               {isLive(match.status) ? (
-                <span class="font-medium">{match.elapsedMinutes ?? 0}'</span>
+                <span class="font-medium">
+                  {minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)}
+                </span>
               ) : (
                 <span class="font-medium text-ink">{formatKickoff(match.kickoffUtc)}</span>
               )}
