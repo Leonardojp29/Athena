@@ -14,15 +14,19 @@ import { SyncModule } from '../modules/sync/sync.module.js';
 class ArchivoModule {}
 
 /**
- * El archivo de las copas internacionales: las temporadas pasadas, no solo la vigente.
+ * El archivo: las temporadas pasadas de cada competencia, no solo la vigente.
  *
- * Quien entra a la Libertadores quiere ver también las anteriores —quién ganó, cómo fue ese cuadro—
- * y las filas de temporada ya existían en la base, vacías. Son tres pedidos por temporada (equipos,
- * partidos, tabla) y solo se hacen las que están vacías, así que la corrida se puede repetir sin
- * gastar cuota de nuevo.
+ * Quien entra a la Libertadores quiere ver también las anteriores —quién ganó, cómo fue ese cuadro— y
+ * el historial entre dos equipos con una sola temporada en la base es una tabla de un partido. Las
+ * filas de temporada ya existían, vacías. Son tres pedidos por temporada (equipos, partidos, tabla) y
+ * solo se hacen las que están vacías, así que la corrida se puede repetir sin gastar cuota de nuevo.
  *
  * Los equipos van primero porque un partido de 2022 puede tener un club que hoy no juega nada: sin
  * ellos el sync descarta el partido por referencias sin resolver.
+ *
+ * `ARCHIVE_SCOPE=copas` limita a los torneos internacionales; por omisión entra todo el catálogo.
+ * Traer el archivo **no** dispara el detalle de cada partido: el worker solo lo pide para lo de la
+ * última semana, así que esto cuesta tres pedidos por temporada y no tres por partido.
  */
 async function main(): Promise<void> {
   const app = await NestFactory.createApplicationContext(ArchivoModule, {
@@ -35,7 +39,12 @@ async function main(): Promise<void> {
   const syncStandings = app.get(SyncStandingsUseCase);
 
   const anios = Number(process.env.ARCHIVE_YEARS ?? 5);
-  const copas = CONFIGURED_COMPETITIONS.filter((c) => c.countryCode === null);
+  const soloCopas = process.env.ARCHIVE_SCOPE === 'copas';
+  const copas = soloCopas
+    ? CONFIGURED_COMPETITIONS.filter((c) => c.countryCode === null)
+    : CONFIGURED_COMPETITIONS;
+
+  console.log(`${copas.length} competencias · hasta ${anios} temporadas vacías cada una`);
 
   let temporadas = 0;
   let partidos = 0;

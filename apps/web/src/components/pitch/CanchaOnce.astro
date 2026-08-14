@@ -3,6 +3,7 @@ import { layout } from '@athena/domain';
 import Icon from '../Icon.astro';
 import PitchMarks from './PitchMarks.astro';
 import EventIcon from '../EventIcon.astro';
+import { claseDeNota } from '../../lib/nota';
 import { apellidoDe, formacionDe, notaDe, porPuesto, PUESTOS, type FichaOnce } from '../../lib/once';
 
 /*
@@ -97,7 +98,12 @@ const ubicados =
                 </span>
               )}
               {notaDe(j.nota) && (
-                <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded bg-primary px-1.5 font-display text-[11px] font-bold tabular text-primary-contrast">
+                <span
+                  class:list={[
+                    'absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded px-1.5 font-display text-[11px] font-bold tabular',
+                    claseDeNota(Number(j.nota)),
+                  ]}
+                >
                   {notaDe(j.nota)}
                 </span>
               )}

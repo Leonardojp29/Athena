@@ -223,18 +223,34 @@ test.describe('shell del sitio', () => {
     test.skip((await siguiente.count()) === 0, 'solo hay una alineación, sin flechas');
 
     const paneles = tarjeta.locator('[data-panel]');
-    expect(await paneles.count()).toBeGreaterThan(1);
+    const ids = await paneles.evaluateAll((nodos) =>
+      nodos.map((n) => (n as HTMLElement).dataset.panel as string),
+    );
+    expect(ids.length).toBeGreaterThan(1);
     /* Uno visible por vez: el resto está en el documento pero oculto. */
     await expect(tarjeta.locator('[data-panel]:not([hidden])')).toHaveCount(1);
 
-    const primero = await tarjeta.locator('[data-panel]:not([hidden])').getAttribute('data-panel');
-    await expect(tarjeta.locator('[data-alineacion-anterior]')).toBeDisabled();
+    /*
+     * Los paneles van en orden de calendario, así que se abre el último —el partido más reciente— y
+     * de ahí solo se puede ir hacia atrás: la flecha derecha arranca deshabilitada.
+     */
+    const visible = tarjeta.locator('[data-panel]:not([hidden])');
+    await expect(visible).toHaveAttribute('data-panel', ids[ids.length - 1] as string);
+    await expect(siguiente).toBeDisabled();
 
-    await siguiente.click();
-    const segundo = await tarjeta.locator('[data-panel]:not([hidden])').getAttribute('data-panel');
-    expect(segundo).not.toBe(primero);
+    /* Izquierda es el partido anterior: el panel que está justo antes en el documento. */
+    await tarjeta.locator('[data-alineacion-anterior]').click();
+    const segundo = ids[ids.length - 2] as string;
+    await expect(visible).toHaveAttribute('data-panel', segundo);
     await expect(page).toHaveURL(new RegExp(`fecha=${segundo}`));
-    await expect(tarjeta.locator('[data-alineacion-anterior]')).toBeEnabled();
+    await expect(siguiente).toBeEnabled();
+
+    /* Y los puntos dicen dónde estás y permiten saltar directo. */
+    const puntos = tarjeta.locator('[data-alineacion-punto]');
+    expect(await puntos.count()).toBe(ids.length);
+    await expect(puntos.nth(ids.length - 2)).toHaveAttribute('aria-current', 'true');
+    await puntos.first().click();
+    await expect(visible).toHaveAttribute('data-panel', ids[0] as string);
 
     /* Once fichas en la cancha del panel abierto, no las de los cinco paneles juntos. */
     const abierto = tarjeta.locator('[data-panel]:not([hidden])');

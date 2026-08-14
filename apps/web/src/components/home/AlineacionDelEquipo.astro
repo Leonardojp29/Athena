@@ -31,10 +31,14 @@ interface Props {
 
 const { alineaciones, equipo, fechaPedida = null } = Astro.props;
 
-const indiceInicial = Math.max(
-  0,
-  alineaciones.findIndex((a) => a.match.id === fechaPedida),
-);
+/*
+ * En orden de calendario, del más viejo al último: así la flecha izquierda es el partido anterior y
+ * la derecha el siguiente, que es lo que espera cualquiera. El API los manda del más reciente para
+ * atrás porque es lo que se abre por omisión.
+ */
+const enOrden = [...alineaciones].reverse();
+const pedido = enOrden.findIndex((a) => a.match.id === fechaPedida);
+const indiceInicial = pedido === -1 ? enOrden.length - 1 : pedido;
 
 /* El puesto sale de la nota del partido —`G`, `D`, `M`, `F`— y si no hay nota, del rótulo del
    proveedor en la alineación. Solo ordena las fichas: la casilla es la que las coloca. */
@@ -60,7 +64,7 @@ const ficha = (nota: MatchPlayerStats): string =>
 
 const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
 
-const paneles = alineaciones.map((alineacion) => {
+const paneles = enOrden.map((alineacion) => {
   const { match, formation, coachName, startXi, substitutes, substitutions, stats } = alineacion;
 
   const rival = match.homeTeam.id === equipo.id ? match.awayTeam : match.homeTeam;
@@ -123,26 +127,38 @@ const paneles = alineaciones.map((alineacion) => {
 
     {
       paneles.length > 1 && (
-        <div class="ml-auto flex items-center gap-1">
+        <div class="ml-auto flex items-center gap-1.5">
           <!--
             Las flechas son botones y no enlaces porque no navegan: cambian de panel en el mismo
             documento. El estado igual queda en la URL, así que el enlace se puede compartir.
+
+            Los puntos reemplazan al "1 de 5", que no decía de qué: son cinco partidos en orden de
+            calendario y se puede saltar directo a cualquiera.
           -->
           <button
             type="button"
             data-alineacion-anterior
-            class="grid size-6 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-30"
+            class="grid size-6 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
             aria-label="Partido anterior"
           >
             <Icon name="chevron-derecha" size={14} class="rotate-180" />
           </button>
-          <span class="min-w-14 text-center text-2xs tabular text-ink-muted" data-alineacion-contador>
-            {indiceInicial + 1} de {paneles.length}
+          <span class="flex items-center gap-1">
+            {paneles.map((panel, i) => (
+              <button
+                type="button"
+                data-alineacion-punto={i}
+                aria-current={i === indiceInicial ? 'true' : undefined}
+                class="size-1.5 cursor-pointer rounded-full bg-border-strong transition-colors aria-[current]:bg-primary-ink hover:bg-ink-muted"
+                aria-label={`${formatDate(panel.match.kickoffUtc)} contra ${panel.rival.shortName ?? panel.rival.name}`}
+                title={`${formatDate(panel.match.kickoffUtc)} · ${panel.rival.shortName ?? panel.rival.name}`}
+              />
+            ))}
           </span>
           <button
             type="button"
             data-alineacion-siguiente
-            class="grid size-6 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-30"
+            class="grid size-6 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
             aria-label="Partido siguiente"
           >
             <Icon name="chevron-derecha" size={14} />
@@ -154,7 +170,7 @@ const paneles = alineaciones.map((alineacion) => {
 
   {
     paneles.map((panel, i) => (
-      <div data-panel={panel.match.id} hidden={i !== indiceInicial}>
+      <div data-panel={panel.match.id} data-cancha-ambito hidden={i !== indiceInicial}>
         <!-- El partido es el contexto: sin rival ni resultado, la cancha no dice de cuándo habla. -->
         <a
           href={`/partidos/${panel.match.id}`}
@@ -290,7 +306,7 @@ const paneles = alineaciones.map((alineacion) => {
 
     const anterior = tarjeta.querySelector<HTMLButtonElement>('[data-alineacion-anterior]');
     const siguiente = tarjeta.querySelector<HTMLButtonElement>('[data-alineacion-siguiente]');
-    const contador = tarjeta.querySelector<HTMLElement>('[data-alineacion-contador]');
+    const puntos = [...tarjeta.querySelectorAll<HTMLButtonElement>('[data-alineacion-punto]')];
     let actual = paneles.findIndex((p) => !p.hidden);
 
     /* `enUrl` es falso al arrancar: escribir la fecha sin que nadie toque una flecha ensucia el
@@ -300,7 +316,10 @@ const paneles = alineaciones.map((alineacion) => {
       paneles.forEach((panel, i) => {
         panel.hidden = i !== actual;
       });
-      if (contador) contador.textContent = `${actual + 1} de ${paneles.length}`;
+      puntos.forEach((punto, i) => {
+        if (i === actual) punto.setAttribute('aria-current', 'true');
+        else punto.removeAttribute('aria-current');
+      });
       if (anterior) anterior.disabled = actual === 0;
       if (siguiente) siguiente.disabled = actual === paneles.length - 1;
 
@@ -313,6 +332,7 @@ const paneles = alineaciones.map((alineacion) => {
 
     anterior?.addEventListener('click', () => mostrar(actual - 1, true));
     siguiente?.addEventListener('click', () => mostrar(actual + 1, true));
+    puntos.forEach((punto, i) => punto.addEventListener('click', () => mostrar(i, true)));
     mostrar(actual);
   });
 </script>

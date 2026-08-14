@@ -29,6 +29,13 @@ const QUEUE = 'sync';
 /* El análisis espera a que aterricen los eventos y las estadísticas que lo respaldan. */
 const INSIGHT_DELAY_MS = 3 * 60_000;
 
+/*
+ * Hasta cuándo un partido terminado merece que le pidamos su detalle. Lo del archivo llega marcado
+ * como terminado igual que lo de anoche, y a tres pedidos por partido eso serían más de cien mil
+ * requests de una cuota compartida.
+ */
+const DETALLE_MAX_ANTIGUEDAD_MS = 7 * 24 * 3600_000;
+
 /* El proveedor publica la alineación unos 40 minutos antes del pitazo. */
 const LINEUP_LEAD_MS = 45 * 60_000;
 
@@ -301,8 +308,25 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
    * pero ni alineaciones ni estadísticas: la cancha quedaba vacía hasta el refresco de las 05:00.
    * El análisis va con retraso a propósito, porque su fact sheet se arma con los eventos y las
    * estadísticas que encolamos acá arriba.
+   *
+   * Solo para partidos recientes. Importar el archivo —cinco temporadas de sesenta competencias—
+   * marca decenas de miles de partidos como terminados de golpe, y a tres pedidos cada uno serían
+   * más de cien mil requests de una cuota que se comparte con otros sistemas. El detalle de lo viejo
+   * se rellena a mano con `backfill:matches`, que es donde se decide cuánto gastar.
    */
   private async onMatchFinished(matchId: string): Promise<void> {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+      select: { kickoffUtc: true },
+    });
+    if (!match) return;
+
+    const antiguedad = Date.now() - match.kickoffUtc.getTime();
+    if (antiguedad > DETALLE_MAX_ANTIGUEDAD_MS) {
+      this.logger.debug?.(`Partido ${matchId} es del archivo: sin detalle ni análisis`);
+      return;
+    }
+
     const ref = await this.prisma.externalReference.findUnique({
       where: {
         provider_entityType_entityId: {

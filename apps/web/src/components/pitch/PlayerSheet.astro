@@ -17,61 +17,54 @@ import Icon from '../Icon.astro';
 
 <dialog
   id="ficha-jugador"
-  class="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-modal backdrop:bg-canvas/70 backdrop:backdrop-blur-sm"
+  class="m-auto w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-modal backdrop:bg-canvas/70 backdrop:backdrop-blur-sm"
   aria-labelledby="ficha-nombre"
 >
-  <header class="flex items-start gap-3 border-b border-border p-4">
+  <header class="flex items-center gap-2.5 border-b border-border p-3">
     <span data-ficha-foto class="shrink-0 empty:hidden"></span>
     <div class="min-w-0 flex-1">
-      <p class="flex items-center gap-2 text-2xs text-ink-muted">
+      <p class="flex items-center gap-1.5 text-[10px] text-ink-muted">
         <span data-ficha-escudo class="empty:hidden"></span>
         <span data-ficha-equipo class="truncate"></span>
         <span data-ficha-dorsal class="tabular"></span>
       </p>
-      <h2 id="ficha-nombre" class="font-display text-xl font-semibold uppercase"></h2>
-      <p data-ficha-posicion class="text-2xs text-ink-muted capitalize"></p>
-    </div>
-
-    <div class="flex shrink-0 items-center gap-1">
-      <!--
-        Con etiqueta y no solo una flecha: una flecha diagonal no le dice a nadie que lleva al
-        perfil del jugador. El icono queda como refuerzo, no como única pista.
-      -->
-      <a
-        data-ficha-perfil
-        href="/"
-        class="hidden items-center gap-1.5 rounded-md border border-border px-2 py-1 text-2xs text-ink-muted transition-colors hover:border-primary-ink hover:text-ink sm:flex"
+      <h2
+        id="ficha-nombre"
+        class="truncate font-display text-base font-semibold uppercase leading-tight"
       >
-        Ver perfil
-        <Icon name="flecha-externa" size={12} />
-      </a>
-      <button
-        type="button"
-        data-ficha-cerrar
-        class="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
-        aria-label="Cerrar"
-      >
-        <Icon name="cerrar" size={18} />
-      </button>
+      </h2>
+      <p data-ficha-posicion class="truncate text-[10px] capitalize text-ink-muted"></p>
     </div>
+    <button
+      type="button"
+      data-ficha-cerrar
+      class="shrink-0 cursor-pointer rounded-md p-1 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+      aria-label="Cerrar"
+    >
+      <Icon name="cerrar" size={16} />
+    </button>
   </header>
 
-  <div class="max-h-[60vh] overflow-y-auto p-4">
-    <div data-ficha-destacados class="mb-4 grid grid-cols-3 gap-2"></div>
-    <dl data-ficha-detalle class="grid gap-0"></dl>
+  <!--
+    Sin scroll: la ficha vive dentro de la cancha, y una ficha que hay que desplazar tapa el partido
+    sin dejar ver nada. Las estadísticas van en dos columnas y las once filas entran de una.
+  -->
+  <div class="p-3">
+    <div data-ficha-destacados class="mb-2.5 grid grid-cols-3 gap-1.5"></div>
+    <dl data-ficha-detalle class="grid grid-cols-2 gap-x-3"></dl>
     <p data-ficha-vacio class="text-sm text-ink-muted" hidden>
       Todavía no hay estadísticas individuales de este partido.
     </p>
   </div>
 
-  <footer class="border-t border-border px-4 py-3">
+  <footer class="border-t border-border">
     <a
       data-ficha-perfil-pie
       href="/"
-      class="flex items-center gap-1.5 text-sm text-primary-ink hover:underline"
+      class="flex items-center gap-1.5 px-3 py-2 text-2xs text-primary-ink transition-colors hover:bg-canvas-subtle"
     >
-      Ver su perfil completo: todas sus temporadas y últimos partidos
-      <Icon name="chevron-derecha" size={14} />
+      Ver su perfil completo
+      <Icon name="chevron-derecha" size={12} />
     </a>
   </footer>
 </dialog>
@@ -127,23 +120,21 @@ import Icon from '../Icon.astro';
     const destacados = $<HTMLElement>('[data-ficha-destacados]');
     const detalle = $<HTMLElement>('[data-ficha-detalle]');
     const vacio = $<HTMLElement>('[data-ficha-vacio]');
-    const perfiles = dialogo.querySelectorAll<HTMLAnchorElement>(
-      '[data-ficha-perfil], [data-ficha-perfil-pie]',
-    );
+    const perfiles = dialogo.querySelectorAll<HTMLAnchorElement>('[data-ficha-perfil-pie]');
 
     const num = (valor: number | null | undefined) =>
       valor === null || valor === undefined ? '–' : String(valor);
 
     const par = (label: string, valor: string) =>
-      `<div class="flex justify-between gap-4 border-b border-border/60 py-1.5 last:border-0">
-         <dt class="text-sm text-ink-muted">${label}</dt>
-         <dd class="text-sm font-medium tabular">${valor}</dd>
+      `<div class="flex items-baseline justify-between gap-2 border-b border-border/50 py-1">
+         <dt class="truncate text-2xs text-ink-muted">${label}</dt>
+         <dd class="shrink-0 text-2xs font-medium tabular">${valor}</dd>
        </div>`;
 
     const destacado = (label: string, valor: string) =>
-      `<div class="rounded-md bg-canvas-subtle px-2 py-1.5 text-center">
-         <p class="font-display text-lg font-semibold tabular leading-none">${valor}</p>
-         <p class="mt-0.5 text-2xs text-ink-muted">${label}</p>
+      `<div class="rounded-md bg-canvas-subtle px-1.5 py-1 text-center">
+         <p class="font-display text-base font-semibold tabular leading-none">${valor}</p>
+         <p class="mt-0.5 text-[10px] text-ink-muted">${label}</p>
        </div>`;
 
     function pintarImagen(
@@ -175,7 +166,7 @@ import Icon from '../Icon.astro';
        * caja rota esperando que alguien le quite el `hidden`. Y se arman con createElement en
        * lugar de innerHTML porque la URL viene de un proveedor.
        */
-      pintarImagen(foto, ficha.photoUrl, 52, 'size-13 rounded-full bg-canvas-subtle object-cover');
+      pintarImagen(foto, ficha.photoUrl, 40, 'size-10 rounded-full bg-canvas-subtle object-cover');
       pintarImagen(escudo, ficha.team.logoUrl, 14, '');
       for (const enlace of perfiles) {
         enlace.href = ficha.slug ? `/jugadores/${ficha.slug}` : `/equipos/${ficha.team.slug}`;
@@ -230,6 +221,11 @@ import Icon from '../Icon.astro';
       if (s.penaltyMissed) agregar('Penales errados', String(s.penaltyMissed));
       if (s.penaltySaved) agregar('Penales atajados', String(s.penaltySaved));
 
+      /* Con filas impares, la última toma las dos columnas: un hueco al final se lee como un dato
+         que falta. */
+      if (filas.length % 2 === 1) {
+        filas[filas.length - 1] = `<div class="col-span-2">${filas[filas.length - 1] as string}</div>`;
+      }
       if (detalle) detalle.innerHTML = filas.join('');
     }
 
@@ -255,10 +251,14 @@ import Icon from '../Icon.astro';
       d.setProperty('--ficha-alto', `${Math.max(0, abajo - arriba)}px`);
     };
 
+    /*
+     * `data-contenida` no se quita acá: al cerrar, el diálogo tarda su transición en irse y sin el
+     * atributo su `::backdrop` recupera el oscurecido de pantalla completa a mitad de camino —se veía
+     * como un fogonazo que difuminaba toda la página—. Se decide al abrir, cada vez.
+     */
     const soltarCancha = () => {
       cancha?.removeAttribute('data-difuminada');
       cancha = null;
-      dialogo!.removeAttribute('data-contenida');
       window.removeEventListener('scroll', ubicar);
       window.removeEventListener('resize', ubicar);
     };
@@ -269,7 +269,17 @@ import Icon from '../Icon.astro';
       pintar(JSON.parse(crudo) as Ficha);
 
       soltarCancha();
-      const suya = boton.closest<HTMLElement>('[data-cancha]');
+      /*
+       * El imán puede estar en el césped o en el banco, que vive fuera para no inventarle una casilla
+       * a quien entró desde el banco. En los dos casos la ficha pertenece a esa cancha, y el ámbito
+       * es lo que las une.
+       */
+      const suya =
+        boton.closest<HTMLElement>('[data-cancha]') ??
+        boton
+          .closest<HTMLElement>('[data-cancha-ambito]')
+          ?.querySelector<HTMLElement>('[data-cancha]') ??
+        null;
       const caja = suya?.getBoundingClientRect();
       if (suya && caja && caja.width >= MINIMO_ANCHO && caja.height >= MINIMO_ALTO) {
         cancha = suya;
@@ -279,6 +289,8 @@ import Icon from '../Icon.astro';
         /* Mientras está abierta, la ficha sigue a su cancha: el diálogo es fijo a la pantalla. */
         window.addEventListener('scroll', ubicar, { passive: true });
         window.addEventListener('resize', ubicar);
+      } else {
+        dialogo!.removeAttribute('data-contenida');
       }
 
       if (!dialogo!.open) dialogo!.showModal();

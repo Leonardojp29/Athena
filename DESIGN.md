@@ -441,6 +441,11 @@ ideal (`CanchaOnce`), que ahora acepta la formación y las casillas cuando exist
 En una alineación el rótulo del equipo se omite bajo cada ficha: repetir "LIM" once veces no informa
 de nada.
 
+**Las flechas van en orden de calendario**: la izquierda es el partido anterior y la derecha el
+siguiente, y la tarjeta abre en el más reciente, así que la derecha arranca deshabilitada. En lugar de
+un "1 de 5" —que no decía de qué— hay cinco puntos: dicen dónde estás y permiten saltar directo a
+cualquier fecha.
+
 **Las flechas no navegan.** Las cinco alineaciones vienen en el HTML y el botón solo cambia de panel:
 el clic es instantáneo. No encarece la entrada porque las fotos de los paneles ocultos no se piden
 —un `loading="lazy"` dentro de un `display:none` nunca intersecta la pantalla, medido: once fotos al
@@ -454,12 +459,24 @@ reemplazó, y a los que no jugaron se los ve en gris. Al titular que salió le q
 ficha, en rojo.
 
 **La ficha del jugador se abre dentro de la cancha** y solo la cancha se difumina: el resto de la
-página queda a la vista, que es lo que uno quiere mientras compara. Sigue siendo un `<dialog>` con
+página queda a la vista, que es lo que uno quiere mientras compara. Es **chica y sin scroll** —21rem,
+las estadísticas en dos columnas, un solo enlace al perfil—: una ficha que hay que desplazar tapa el
+partido sin dejar ver nada, y el punto de abrirla sobre la cancha es no perder de vista la cancha. Sigue siendo un `<dialog>` con
 `showModal()` —el foco atrapado, el Escape y la vuelta del foco al imán son del navegador— y por eso
 mismo vive en el nivel de página: al estar en la capa superior, el `filter` de la cancha no lo
 alcanza. Se posiciona con variables leídas del rectángulo de la cancha, acotado a la parte visible de
 la pantalla. Cuando el imán no está en una cancha —la tabla de rendimiento— o la cancha es más chica
 que 260×300, se comporta como siempre: centrada, con el fondo oscurecido.
+
+### Las notas sobre el césped
+
+Cuatro escalones de la misma familia (`lib/nota.ts`): lima macizo de 8 para arriba, lima translúcido
+de 7 a 8, neutro de 6 a 7 y rojo por debajo. Antes eran dos y medio y el único que se distinguía de un
+golpe era el rojo: un 6,6 y un 7,4 se veían igual.
+
+**La figura del partido lleva estrella**, y solo ella: marcar también al segundo y al tercero convierte
+la cancha en un ranking, y para eso ya está la nota de cada uno. El gol pasó a mostrar **el número** en
+lugar de un punto, porque el punto se leía como si marcara al jugador destacado.
 
 ### La copa internacional
 

@@ -35,6 +35,16 @@ const dibujable = xiLocal !== null && xiVisita !== null;
 
 const statsPorJugador = new Map(playerStatistics.map((s) => [s.player.id, s]));
 
+/*
+ * La figura del partido: la mejor nota de los veintidós, con estrella. Solo la primera —marcar al
+ * segundo y al tercero convierte la cancha en un ranking y ya está la nota de cada uno para eso.
+ */
+const figura = playerStatistics.reduce<{ id: string; nota: number } | null>((mejor, s) => {
+  const nota = s.rating === null ? null : Number(s.rating);
+  if (nota === null) return mejor;
+  return mejor === null || nota > mejor.nota ? { id: s.player.id, nota } : mejor;
+}, null);
+
 /* La mitad del local va de 0 a 50 sobre el largo; la del visitante se refleja desde 100. */
 const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' ? y / 2 : 100 - y / 2);
 ---
@@ -80,6 +90,7 @@ const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' 
                 largo={enLaCancha(mitad, slot.y)}
                 ancho={slot.x}
                 fila={slot.row}
+                figura={slot.player.playerId !== null && slot.player.playerId === figura?.id}
               />
             )),
           )}
