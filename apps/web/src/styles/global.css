@@ -39,6 +39,7 @@
   --color-live: var(--a-color-live);
   --color-live-board: var(--a-color-live-on-board);
   --color-card-yellow: var(--a-color-card-yellow);
+  --color-nota-buena: var(--a-color-rating-good);
   --color-card-red: var(--a-color-card-red);
   --color-card-red-ink: var(--a-color-card-red-ink);
 

@@ -470,11 +470,13 @@ que 260×300, se comporta como siempre: centrada, con el fondo oscurecido.
 
 ### Las notas sobre el césped
 
-Cuatro escalones de la misma familia (`lib/nota.ts`): lima macizo de 8 para arriba, lima translúcido
-de 7 a 8, neutro de 6 a 7 y rojo por debajo. Antes eran dos y medio y el único que se distinguía de un
-golpe era el rojo: un 6,6 y un 7,4 se veían igual.
+Cuatro escalones **macizos** de la misma familia (`lib/nota.ts`): lima de 8 para arriba, un verde lima
+más oscuro de 7 a 8 (`--a-color-rating-good`), neutro de 6 a 7 y rojo por debajo. Antes eran dos y
+medio y el único que se distinguía de un golpe era el rojo: un 6,6 y un 7,4 se veían igual. Macizos y
+no translúcidos: sobre el césped, un chip transparente se ve desvaído —como si el dato estuviera
+apagado— en lugar de bueno.
 
-**La figura del partido lleva estrella**, y solo ella: marcar también al segundo y al tercero convierte
+**La figura del partido lleva estrella dorada**, y solo ella: marcar también al segundo y al tercero convierte
 la cancha en un ranking, y para eso ya está la nota de cada uno. El gol pasó a mostrar **el número** en
 lugar de un punto, porque el punto se leía como si marcara al jugador destacado.
 

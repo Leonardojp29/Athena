@@ -114,9 +114,10 @@ const ficha = clickeable
                 {goles}
               </span>
             )}
+            <!-- Dorada, no del color del pizarrón: una estrella verde no se lee como estrella. -->
             {figura && (
               <span
-                class="absolute -left-1 -top-1 grid size-4.5 place-items-center rounded-full bg-chalk text-board shadow-magnet sm:size-5"
+                class="absolute -left-1 -top-1 grid size-4.5 place-items-center rounded-full bg-card-yellow text-board shadow-magnet sm:size-5"
                 title="Figura del partido"
               >
                 <Icon name="estrella" size={11} class="fill-current" />

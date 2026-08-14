@@ -47,6 +47,11 @@
   /* Sobre la pizarra el verde tiene que ser el claro: el de superficie ahí no se ve. */
   --a-color-live-on-board: oklch(0.723 0.196 150);
   --a-color-card-yellow: oklch(0.762 0.145 78);
+  /*
+   * El escalón intermedio de las notas: un verde lima macizo, más oscuro que el lima de acción y
+   * más claro que el césped. Con dos escalones y medio, un 6,6 y un 7,4 se veían igual.
+   */
+  --a-color-rating-good: oklch(0.72 0.16 122);
   --a-color-card-red: oklch(0.582 0.202 24);
   --a-color-card-red-ink: oklch(0.532 0.198 24);
   --a-color-focus: oklch(0.462 0.128 128);
