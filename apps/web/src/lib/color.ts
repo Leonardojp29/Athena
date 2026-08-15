@@ -35,11 +35,17 @@ const COLORES_DE_CLUB: Record<string, [string, string]> = {
 /**
  * Qué colores usar para un club.
  *
- * Un kit casi blanco o casi negro no es una identidad: son 424 de los 835 equipos que tienen color, y
- * pintan una cabecera lavada —o una franja blanco a naranja, como la de Alianza— que dice del club
- * algo que no es cierto. En esos casos no se muestra ninguno y la página usa la pizarra de siempre:
- * no saber es honesto, inventar no. El secundario tampoco sirve de reemplazo, porque es el color del
- * dorsal y no el de la camiseta alternativa.
+ * Lo que descalifica a un color no es ser claro sino **no tener color**: el blanco, el negro y el gris
+ * son 331 de los 835 equipos con dato, y pintan una cabecera lavada —o una franja de blanco a naranja,
+ * como la de Alianza— que dice del club algo que no es cierto. Ahí no se muestra ninguno y manda la
+ * pizarra de siempre: no saber es honesto, inventar no.
+ *
+ * Se mide con el croma y no con la luminancia, y la diferencia no es teórica: el crema de
+ * Universitario tiene luminancia 0,854 —cruzaba por cuatro milésimas un umbral de 0,85 y se descartaba
+ * como si fuera blanco— pero croma 0,094, mientras que el blanco puro y el gris tienen croma 0. Con la
+ * regla correcta vuelven noventa y tres equipos con color propio.
+ *
+ * El secundario tampoco sirve de reemplazo: es el color del dorsal, no el de la camiseta alternativa.
  */
 export function coloresDeClub(
   slug: string,
@@ -48,19 +54,18 @@ export function coloresDeClub(
 ): [string | null, string | null] {
   const propio = COLORES_DE_CLUB[slug];
   if (propio) return propio;
+  if (!primario || !HEX.test(primario)) return [null, null];
 
-  const color = colorEquipo(primario);
-  if (!color) return [null, null];
-
-  const l = luminanciaDe(primario as string);
-  return l > 0.85 || l < 0.06 ? [null, null] : [primario ?? null, secundario ?? null];
+  return cromaDe(primario) < CROMA_MINIMO ? [null, null] : [primario, secundario ?? null];
 }
 
-function luminanciaDe(hex: string): number {
-  const r = Number.parseInt(hex.slice(0, 2), 16) / 255;
-  const g = Number.parseInt(hex.slice(2, 4), 16) / 255;
-  const b = Number.parseInt(hex.slice(4, 6), 16) / 255;
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+/* Debajo de esto el color es blanco, negro o gris: no distingue a nadie. */
+const CROMA_MINIMO = 0.06;
+
+/** Cuánto se aparta el color del gris: la distancia entre su canal más alto y el más bajo. */
+function cromaDe(hex: string): number {
+  const canales = [0, 2, 4].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255);
+  return Math.max(...canales) - Math.min(...canales);
 }
 
 export function colorEquipo(hex: string | null | undefined): ColorEquipo | null {

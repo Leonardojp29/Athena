@@ -5,6 +5,7 @@ import { ExternalReferenceService } from './external-reference.service.js';
 import { MatchEventWriter } from './match-event.writer.js';
 import { OutboxService } from './outbox.service.js';
 import { PlayerResolverService } from './player-resolver.service.js';
+import { RecalcularColoresUseCase } from './recalcular-colores.usecase.js';
 import { SyncCompetitionUseCase } from './sync-competition.usecase.js';
 import { SyncFixturesUseCase } from './sync-fixtures.usecase.js';
 import { SyncMatchDetailUseCase } from './sync-match-detail.usecase.js';
@@ -24,6 +25,7 @@ import { VenueService } from './venue.service.js';
     MatchEventWriter,
     OutboxService,
     PlayerResolverService,
+    RecalcularColoresUseCase,
     VenueService,
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
@@ -37,6 +39,7 @@ import { VenueService } from './venue.service.js';
   ],
   exports: [
     OutboxService,
+    RecalcularColoresUseCase,
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
     SyncFixturesUseCase,

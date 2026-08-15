@@ -23,33 +23,3 @@ export function aforo(capacidad: number | null | undefined): string | null {
     ? null
     : capacidad.toLocaleString('es-PE');
 }
-
-/**
- * Fotos propias, para los estadios donde la del proveedor no es de ese estadio.
- *
- * La imagen que API-Football publica para el Monumental de Lima es una toma aérea del Estadio
- * Nacional, que está a quince kilómetros. Antes que mostrar el estadio equivocado en la página del
- * club más grande del Perú, va una foto con licencia libre y su crédito: eso lo exige la licencia y
- * además es la misma regla de siempre, que cada cosa diga de dónde salió.
- *
- * Es una lista de casos, no un mecanismo. La clave es el nombre y la ciudad porque son lo que se ve.
- */
-interface FotoPropia {
-  url: string;
-  credito: string;
-}
-
-const FOTOS_PROPIAS: Record<string, FotoPropia> = {
-  'estadio monumental|lima': {
-    url: '/estadios/estadio-monumental-lima.jpg',
-    credito: 'Foto: MicroX · CC BY-SA 3.0',
-  },
-};
-
-export function fotoDeEstadio(
-  venue: { name: string; city: string | null; imageUrl?: string | null },
-): { url: string; credito: string | null } | null {
-  const propia = FOTOS_PROPIAS[`${venue.name.trim().toLowerCase()}|${(venue.city ?? '').trim().toLowerCase()}`];
-  if (propia) return { url: propia.url, credito: propia.credito };
-  return venue.imageUrl ? { url: venue.imageUrl, credito: null } : null;
-}

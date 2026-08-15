@@ -55,8 +55,13 @@ const REGISTRO = {
   reloj: {
     body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3.2 2"/>',
   },
+  /*
+   * El estadio con sus torres de luz: el trazo es de Tabler Icons (MIT), que ya dibuja en la misma
+   * grilla de 24 y con el mismo grosor que el resto del juego. Los dos intentos propios —un cilindro
+   * con dos rayas, después dos óvalos concéntricos— no se leían como un estadio a ningún tamaño.
+   */
   estadio: {
-    body: '<path d="M3.5 8.5C3.5 6.6 7.3 5 12 5s8.5 1.6 8.5 3.5"/><path d="M3.5 8.5v7C3.5 17.4 7.3 19 12 19s8.5-1.6 8.5-3.5v-7"/><path d="M9 9.2v6M15 9.2v6"/>',
+    body: '<path d="M12 12m-8 0a8 2 0 1 0 16 0a8 2 0 1 0 -16 0"/><path d="M4 12v7c0 .94 2.51 1.785 6 2v-3h4v3c3.435 -.225 6 -1.07 6 -2v-7"/><path d="M15 6h4v-3h-4v7"/><path d="M7 6h4v-3h-4v7"/>',
   },
   info: {
     body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><path d="M12 7.8h.01" stroke-width="2.2"/>',

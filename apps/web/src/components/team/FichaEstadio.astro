@@ -1,21 +1,18 @@
 ---
 import Icon from '../Icon.astro';
 import type { VenueSummary } from '../../lib/api';
-import { aforo, fotoDeEstadio, superficieEnEspanol } from '../../lib/estadio';
+import { aforo, superficieEnEspanol } from '../../lib/estadio';
 
 /*
  * La casa del club, en el riel.
  *
- * La foto va **entera**: recortada al ancho de la tarjeta se perdía media tribuna y el estadio dejaba
- * de reconocerse, que es lo único que una foto de estadio tiene que lograr. Va sin cortar dentro de
- * una caja apaisada —más baja que la proporción de la foto, para que la tarjeta no se coma el riel— y
- * lo que sobra lo pinta el color del club.
+ * Sin foto a propósito: la del proveedor a veces retrata otro estadio —para el Monumental de Lima
+ * manda una toma del Estadio Nacional— y una imagen que puede estar equivocada vale menos que el
+ * dato. Queda la banda con el color del club, el nombre y las tres cifras, que es lo que se viene a
+ * saber: dónde juega, cuánta gente entra y en qué campo.
  *
- * El nombre va debajo de la foto y no encima: con la imagen completa, cualquier texto superpuesto
- * tapa justo lo que se vino a ver.
- *
- * La escalera de degradación es la de siempre: sin foto queda la banda de color con el icono marcado,
- * y sin estadio la tarjeta no se dibuja.
+ * Sin estadio —uno de cada siete equipos— la tarjeta no se dibuja: un hueco con "sin datos" anuncia
+ * el vacío más fuerte que el vacío mismo.
  */
 interface Props {
   venue: VenueSummary;
@@ -27,7 +24,6 @@ const { venue, vars } = Astro.props;
 
 const capacidad = aforo(venue.capacity);
 const superficie = superficieEnEspanol(venue.surface);
-const foto = fotoDeEstadio(venue);
 
 /* Solo lo que existe: una fila con huecos se lee como un formulario a medio llenar. */
 const datos = [
@@ -40,31 +36,21 @@ const datos = [
   class="overflow-hidden rounded-xl border border-border bg-surface"
   aria-label={`Estadio de local: ${venue.name}`}
 >
-  <div class="relative bg-board" style={vars}>
-    {
-      foto ? (
-        <img
-          src={foto.url}
-          alt={`Estadio ${venue.name}`}
-          width="640"
-          height="480"
-          loading="lazy"
-          decoding="async"
-          class="aspect-[16/10] w-full object-contain"
-        />
-      ) : (
-        <span class="grid h-28 place-items-center text-(--tinta-tenue)" aria-hidden="true">
-          <Icon name="estadio" size={72} />
-        </span>
-      )
-    }
+  <div class="relative overflow-hidden bg-board px-3 py-3.5" style={vars}>
+    <!-- El estadio, entero y a la derecha del nombre: cortado contra el borde no se leía como nada. -->
+    <span
+      class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--tinta-suave) opacity-45"
+      aria-hidden="true"
+    >
+      <Icon name="estadio" size={56} />
+    </span>
 
-    <div class="border-t border-(--linea) px-3 py-2.5">
+    <div class="relative">
       <p class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-label text-(--tinta-suave)">
         <Icon name="estadio" size={11} />
         La casa
       </p>
-      <h2 class="mt-0.5 font-display text-base font-semibold uppercase leading-tight text-(--tinta)">
+      <h2 class="mt-0.5 max-w-[70%] font-display text-base font-semibold uppercase leading-tight text-(--tinta)">
         {venue.name}
       </h2>
     </div>
@@ -84,13 +70,7 @@ const datos = [
       )
     }
     {venue.city && <p class="text-2xs text-ink-muted">{venue.city}</p>}
-
-    <!--
-      Cada cosa dice de dónde salió: los datos son del proveedor —que a veces se equivoca de ciudad—
-      y la foto propia lleva el crédito que su licencia exige.
-    -->
-    <p class="text-[10px] leading-relaxed text-ink-muted/70">
-      {foto?.credito ? `${foto.credito} · datos del proveedor` : 'dato del proveedor'}
-    </p>
+    <!-- Cada cifra lleva su origen, también cuando el origen a veces se equivoca de ciudad. -->
+    <p class="text-[10px] text-ink-muted/70">dato del proveedor</p>
   </div>
 </section>

@@ -345,9 +345,13 @@ model MatchLineup {
   coachName   String?  @map("coach_name")
   startXi     Json     @map("start_xi")
   substitutes Json
+  /// La camiseta de ese partido: de la moda de los partidos de local sale el color del club.
+  kitColor       String? @map("kit_color")
+  kitNumberColor String? @map("kit_number_color")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@unique([matchId, teamId])
+  @@index([teamId, kitColor])
   @@map("match_lineups")
 }
 

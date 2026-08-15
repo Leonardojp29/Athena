@@ -27,7 +27,17 @@ export class SyncMatchDetailUseCase {
    * Existe para rellenar lo viejo: los colores viajan en las alineaciones y nunca se habían
    * guardado. `execute` pide además las estadísticas, que para esto no hacen falta.
    */
-  async refreshColors(matchProviderRef: string): Promise<number> {
+  /**
+   * Guarda con qué camiseta jugó cada equipo en un partido que ya está sincronizado.
+   *
+   * Sirve para sembrar lo viejo: las alineaciones guardadas antes de que existiera la columna no
+   * tienen el color y no hay forma de recuperarlo sin volver a pedirlas. Pide **solo** las
+   * alineaciones —un request, no los dos de `execute`— y no toca el once ni el banco, que ya están.
+   */
+  async muestrearKits(matchProviderRef: string): Promise<number> {
+    const matchId = await this.refs.resolve(this.provider.name, 'match', matchProviderRef);
+    if (!matchId) return 0;
+
     const lineups = await this.provider.getMatchLineups(matchProviderRef);
     const teams = await this.refs.resolveMany(
       this.provider.name,
@@ -38,16 +48,12 @@ export class SyncMatchDetailUseCase {
     let escritos = 0;
     for (const lineup of lineups) {
       const teamId = teams.get(lineup.teamRef);
-      if (!teamId) continue;
-      if (lineup.colors.primary === null && lineup.colors.secondary === null) continue;
-      await this.prisma.team.update({
-        where: { id: teamId },
-        data: {
-          ...(lineup.colors.primary !== null ? { primaryColor: lineup.colors.primary } : {}),
-          ...(lineup.colors.secondary !== null ? { secondaryColor: lineup.colors.secondary } : {}),
-        },
+      if (!teamId || lineup.colors.primary === null) continue;
+      const { count } = await this.prisma.matchLineup.updateMany({
+        where: { matchId, teamId },
+        data: { kitColor: lineup.colors.primary, kitNumberColor: lineup.colors.secondary },
       });
-      escritos++;
+      escritos += count;
     }
     return escritos;
   }
@@ -85,6 +91,9 @@ export class SyncMatchDetailUseCase {
       const data = {
         formation: lineup.formation,
         coachName: lineup.coachName,
+        /* La camiseta de este partido: de la moda de los partidos de local sale el color del club. */
+        kitColor: lineup.colors.primary,
+        kitNumberColor: lineup.colors.secondary,
         startXi: (await this.withPlayerIds(lineup.startXi)) as unknown as Prisma.InputJsonValue,
         substitutes: (await this.withPlayerIds(
           lineup.substitutes,
@@ -95,20 +104,6 @@ export class SyncMatchDetailUseCase {
         update: data,
         create: { matchId, teamId, ...data },
       });
-
-      /*
-       * Los colores de la camiseta viajan en este mismo payload y en ningún otro endpoint, así que
-       * es acá o nunca. Solo se escriben si el proveedor los manda: no se borra lo que ya había.
-       */
-      if (lineup.colors.primary !== null || lineup.colors.secondary !== null) {
-        await this.prisma.team.update({
-          where: { id: teamId },
-          data: {
-            ...(lineup.colors.primary !== null ? { primaryColor: lineup.colors.primary } : {}),
-            ...(lineup.colors.secondary !== null ? { secondaryColor: lineup.colors.secondary } : {}),
-          },
-        });
-      }
       lineupsWritten++;
     }
 

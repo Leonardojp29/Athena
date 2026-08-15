@@ -13,6 +13,7 @@ import { REDIS } from '../../shared/redis.provider.js';
 import { GenerateMatchInsightUseCase } from '../insights/generate-match-insight.usecase.js';
 import { SyncEmbeddingsUseCase } from '../search/sync-embeddings.usecase.js';
 import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
+import { RecalcularColoresUseCase } from '../sync/recalcular-colores.usecase.js';
 import { OutboxService } from '../sync/outbox.service.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
@@ -85,6 +86,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly syncMatchDetail: SyncMatchDetailUseCase,
     private readonly syncMatchPlayers: SyncMatchPlayersUseCase,
     private readonly syncSquad: SyncSquadUseCase,
+    private readonly colores: RecalcularColoresUseCase,
     private readonly matchInsight: GenerateMatchInsightUseCase,
     private readonly embeddings: SyncEmbeddingsUseCase,
     private readonly schedules: SyncScheduleService,
@@ -349,6 +351,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   private async dailyRefresh(): Promise<void> {
     /* Red de seguridad: si el worker estuvo caído, acá se cierran los que quedaron colgados. */
     await this.syncFixtures.reconcileStale();
+    await this.colores.execute();
 
     const recentlyFinishedIds = (
       await this.prisma.match.findMany({
