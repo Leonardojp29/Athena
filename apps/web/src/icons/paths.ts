@@ -89,6 +89,10 @@ const REGISTRO = {
   trofeo: {
     body: '<path d="M8 4.5h8v4.2a4 4 0 0 1-8 0z"/><path d="M8 5.5H5.2v1.8A3.2 3.2 0 0 0 8.4 10.5M16 5.5h2.8v1.8a3.2 3.2 0 0 1-3.2 3.2"/><path d="M12 12.7v3.3"/><path d="M8.5 19.5h7"/><path d="M10 16h4l.8 3.5h-5.6z"/>',
   },
+  // La bandera del asta: una selección es una bandera (Tabler, MIT)
+  bandera: {
+    body: '<path d="M5 5a5 5 0 0 1 7 0a5 5 0 0 0 7 0v9a5 5 0 0 1 -7 0a5 5 0 0 0 -7 0z"/><path d="M5 21v-7"/>',
+  },
   // Las llaves de una copa: dos ramas que confluyen
   cuadro: {
     body: '<path d="M3.5 6.5h4.2v5h4.6M3.5 17.5h4.2v-6"/><path d="M20.5 6.5h-4.2v5h-4.3M20.5 17.5h-4.2v-6"/>',

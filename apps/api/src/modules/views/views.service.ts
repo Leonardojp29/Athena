@@ -9,11 +9,14 @@ import {
 } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
+  CONFEDERATION_LABEL,
+  CONFEDERATION_ORDER,
   CONTINENT_LABEL,
   CONTINENT_ORDER,
   competitionRank,
   continentalRank,
   countryRank,
+  nationalRank,
   type Continent,
 } from './regions.js';
 
@@ -135,16 +138,28 @@ export class ViewsService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * El catálogo entero, ya ordenado continente → país → torneos.
+   * El catálogo entero, ya ordenado continente → país → torneos, en dos ramas.
    *
    * Se arma en el API y no en la web porque el orden es una decisión de producto —Perú primero,
    * la liga antes que sus copas— y así el header, el índice y el buscador leen exactamente lo
    * mismo. Antes la web recibía una lista plana y agrupaba con un mapa de países propio.
+   *
+   * Las selecciones van en su propia rama: el Mundial y la Copa América llegan del proveedor sin
+   * país, igual que la Libertadores, y mezclarlos escondía a la selección adentro del árbol de
+   * clubes. En su rama no hay nivel de país, porque una selección no cuelga de un país: **es** uno.
    */
   async competitions() {
+    const [clubes, selecciones] = await Promise.all([
+      this.catalogoDe('clubs'),
+      this.catalogoDe('national'),
+    ]);
+    return { clubes, selecciones };
+  }
+
+  private async catalogoDe(scope: 'clubs' | 'national') {
     const rows = await this.prisma.competition.findMany({
       relationLoadStrategy: JOIN,
-      where: { isActive: true },
+      where: { isActive: true, scope },
       orderBy: { name: 'asc' },
       select: {
         id: true,
@@ -173,30 +188,38 @@ export class ViewsService {
       competitionRank(a.format, a.name) - competitionRank(b.format, b.name) ||
       a.name.localeCompare(b.name, 'es');
 
-    return CONTINENT_ORDER.filter((c) => porContinente.has(c)).map((continent) => {
-      const paises = porContinente.get(continent) as Map<string, typeof rows>;
-      return {
-        continent,
-        label: CONTINENT_LABEL[continent],
-        /*
-         * Las copas de la confederación van sueltas y arriba de los países: la Libertadores es
-         * fútbol sudamericano, no "internacional", y quien busca fútbol sudamericano la busca ahí.
-         */
-        competitions: [...(paises.get('') ?? [])].sort(
-          (a, b) =>
-            continentalRank(a.name) - continentalRank(b.name) || a.name.localeCompare(b.name, 'es'),
-        ),
-        countries: [...paises.entries()]
-          .filter(([code]) => code !== '')
-          .map(([code, competitions]) => ({
-            code,
-            name: competitions[0]?.country ?? null,
-            flagUrl: competitions[0]?.flagUrl ?? null,
-            competitions: [...competitions].sort(porNombre),
-          }))
-          .sort((a, b) => countryRank(a.code) - countryRank(b.code)),
-      };
-    });
+    /* En selecciones el grupo es la confederación y el Mundial abre; en clubes, el continente. */
+    const orden = scope === 'national' ? CONFEDERATION_ORDER : CONTINENT_ORDER;
+    const etiqueta = scope === 'national' ? CONFEDERATION_LABEL : CONTINENT_LABEL;
+
+    return orden
+      .filter((c) => porContinente.has(c))
+      .map((continent) => {
+        const paises = porContinente.get(continent) as Map<string, typeof rows>;
+        return {
+          continent,
+          label: etiqueta[continent],
+          /*
+           * Las copas de la confederación van sueltas y arriba de los países: la Libertadores es
+           * fútbol sudamericano, no "internacional", y quien busca fútbol sudamericano la busca ahí.
+           */
+          competitions: [...(paises.get('') ?? [])].sort((a, b) =>
+            scope === 'national'
+              ? nationalRank(a.name) - nationalRank(b.name) || a.name.localeCompare(b.name, 'es')
+              : continentalRank(a.name) - continentalRank(b.name) ||
+                a.name.localeCompare(b.name, 'es'),
+          ),
+          countries: [...paises.entries()]
+            .filter(([code]) => code !== '')
+            .map(([code, competitions]) => ({
+              code,
+              name: competitions[0]?.country ?? null,
+              flagUrl: competitions[0]?.flagUrl ?? null,
+              competitions: [...competitions].sort(porNombre),
+            }))
+            .sort((a, b) => countryRank(a.code) - countryRank(b.code)),
+        };
+      });
   }
 
   async home() {
@@ -259,7 +282,13 @@ export class ViewsService {
 
     for (const [i, players] of resultados.entries()) {
       if (players.length > 0) {
-        return { continent: continente, scorers, date: dias[i] as string, esDeHoy: i === 0, players };
+        return {
+          continent: continente,
+          scorers,
+          date: dias[i] as string,
+          esDeHoy: i === 0,
+          players,
+        };
       }
     }
     return { continent: continente, scorers, date, esDeHoy: true, players: [] };
@@ -314,9 +343,7 @@ export class ViewsService {
      * arriba a un defensor con 7.6 que no tocó la pelota, y dejaba afuera al que hizo dos goles.
      * Los goles pesan doble, la asistencia una, y la nota decide los empates.
      */
-    return [...filas]
-      .sort((a, b) => puntaje(b) - puntaje(a))
-      .slice(0, limite);
+    return [...filas].sort((a, b) => puntaje(b) - puntaje(a)).slice(0, limite);
   }
 
   /** El índice de partidos: un día calendario de Lima, agrupado por competencia. */
@@ -538,7 +565,13 @@ export class ViewsService {
        * Una liga no tiene etapas: la fase regular es su tabla y la liguilla —si llega— es lo único que
        * se dibuja como cuadro. Sin esto, la Liga MX mostraba "fase de grupos" en lugar de su tabla.
        */
-      etapas: this.fasesDe(todos, rondas, enCurso, competition.format === 'league'),
+      etapas: this.fasesDe(
+        todos,
+        rondas,
+        enCurso,
+        competition.format === 'league',
+        estado === 'terminado',
+      ),
       etapaEnJuego: rondas.find((r) => r.round === enCurso)?.etapa ?? null,
       estado,
       /* Los partidos agrupados por ronda, para navegarlos de una en una en lugar de dos listas. */
@@ -716,7 +749,8 @@ export class ViewsService {
     if (filas.length < 6) return null;
 
     /* El mejor del torneo es el de mejor nota entre los once, no el goleador: eso ya se muestra aparte. */
-    const mejor = [...filas].sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0))[0] ?? null;
+    const mejor =
+      [...filas].sort((a, b) => Number(b.rating ?? 0) - Number(a.rating ?? 0))[0] ?? null;
     return { players: filas, best: mejor };
   }
 
@@ -743,7 +777,8 @@ export class ViewsService {
     for (const ronda of rondas) {
       const columna = columnas.get(ronda.label);
       if (columna) columna.rounds.push(ronda.round);
-      else columnas.set(ronda.label, { label: ronda.label, rank: ronda.rank, rounds: [ronda.round] });
+      else
+        columnas.set(ronda.label, { label: ronda.label, rank: ronda.rank, rounds: [ronda.round] });
     }
 
     /* Para cada columna, los equipos que juegan alguna posterior: esos son los que pasaron. */
@@ -780,8 +815,8 @@ export class ViewsService {
           enJuego: columna.rounds.includes(enCurso ?? ''),
           ties: [...llaves.values()]
             .map((legs) => {
-              const ordenados = [...legs].sort((a, b) =>
-                a.kickoffUtc.getTime() - b.kickoffUtc.getTime(),
+              const ordenados = [...legs].sort(
+                (a, b) => a.kickoffUtc.getTime() - b.kickoffUtc.getTime(),
               );
               const primero = ordenados[0] as PartidoDeCuadro;
               const local = primero.homeTeam;
@@ -792,8 +827,12 @@ export class ViewsService {
               );
               const global = jugados.reduce(
                 (acc, m) => ({
-                  local: acc.local + (m.homeTeam.id === local.id ? (m.homeScore ?? 0) : (m.awayScore ?? 0)),
-                  visita: acc.visita + (m.homeTeam.id === visita.id ? (m.homeScore ?? 0) : (m.awayScore ?? 0)),
+                  local:
+                    acc.local +
+                    (m.homeTeam.id === local.id ? (m.homeScore ?? 0) : (m.awayScore ?? 0)),
+                  visita:
+                    acc.visita +
+                    (m.homeTeam.id === visita.id ? (m.homeScore ?? 0) : (m.awayScore ?? 0)),
                 }),
                 { local: 0, visita: 0 },
               );
@@ -827,7 +866,9 @@ export class ViewsService {
       })
       .filter((ronda) => ronda.ties.length > 0);
 
-    return etapa === 'final' ? [...dibujadas, ...this.escaleraPendiente(dibujadas, rondas)] : dibujadas;
+    return etapa === 'final'
+      ? [...dibujadas, ...this.escaleraPendiente(dibujadas, rondas)]
+      : dibujadas;
   }
 
   /**
@@ -876,7 +917,10 @@ export class ViewsService {
     enCurso: string | null,
     grupoDe: Map<string, string>,
   ): RondaDePartidos[] {
-    const columnas = new Map<string, { label: string; etapa: Etapa | null; eliminatoria: boolean; partidos: PartidoDeCuadro[] }>();
+    const columnas = new Map<
+      string,
+      { label: string; etapa: Etapa | null; eliminatoria: boolean; partidos: PartidoDeCuadro[] }
+    >();
     for (const ronda of rondas) {
       const suyos = partidos.filter((m) => m.round === ronda.round);
       if (suyos.length === 0) continue;
@@ -979,12 +1023,16 @@ export class ViewsService {
    * grupos manda la fase de grupos. La etapa de grupos no trae llaves —sus tablas ya viajan en
    * `standingGroups`— y la final aparece vacía mientras haya grupos por terminar, para poder decir
    * que el cuadro todavía no está definido.
+   *
+   * Con el torneo terminado esa promesa ya no corresponde: unas eliminatorias son todas fechas y
+   * nunca tienen llaves, así que anunciar un cuadro que no va a existir es peor que no decir nada.
    */
   private fasesDe(
     partidos: PartidoDeCuadro[],
     rondas: Ronda[],
     rondaActual: string | null,
     esLiga: boolean,
+    terminado = false,
   ) {
     const enJuego = rondas.find((r) => r.round === rondaActual)?.etapa ?? null;
     const hayGrupos = !esLiga && rondas.some((r) => r.etapa === 'grupos');
@@ -998,7 +1046,7 @@ export class ViewsService {
       .filter((bloque) =>
         bloque.etapa === 'grupos'
           ? hayGrupos
-          : bloque.rondas.length > 0 || (bloque.etapa === 'final' && hayGrupos),
+          : bloque.rondas.length > 0 || (bloque.etapa === 'final' && hayGrupos && !terminado),
       );
   }
 
@@ -1109,163 +1157,165 @@ export class ViewsService {
     const ultimoJugado = { team: { slug }, match: { status: 'finished' } };
     const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas] =
       await Promise.all([
-      this.prisma.team.findUnique({
-        where: { slug },
-        select: {
-          id: true,
-          name: true,
-          shortName: true,
-          slug: true,
-          country: true,
-          founded: true,
-          logoUrl: true,
-          primaryColor: true,
-          secondaryColor: true,
-          /* La casa del club: un JOIN sobre un findUnique, y sirve a la página y a la home. */
-          venue: {
-            select: {
-              id: true,
-              name: true,
-              city: true,
-              capacity: true,
-              surface: true,
-              imageUrl: true,
-              address: true,
+        this.prisma.team.findUnique({
+          where: { slug },
+          select: {
+            id: true,
+            name: true,
+            shortName: true,
+            slug: true,
+            country: true,
+            founded: true,
+            logoUrl: true,
+            primaryColor: true,
+            secondaryColor: true,
+            /* La casa del club: un JOIN sobre un findUnique, y sirve a la página y a la home. */
+            venue: {
+              select: {
+                id: true,
+                name: true,
+                city: true,
+                capacity: true,
+                surface: true,
+                imageUrl: true,
+                address: true,
+              },
             },
           },
-        },
-      }),
-      this.prisma.standing.findMany({
-        relationLoadStrategy: JOIN,
-        where: { team: { slug }, season: { isCurrent: true } },
-        select: {
-          position: true,
-          points: true,
-          played: true,
-          won: true,
-          drawn: true,
-          lost: true,
-          goalsFor: true,
-          goalsAgainst: true,
-          form: true,
-          groupLabel: true,
-          season: {
-            select: {
-              year: true,
-              competition: { select: { name: true, slug: true, logoUrl: true } },
+        }),
+        this.prisma.standing.findMany({
+          relationLoadStrategy: JOIN,
+          where: { team: { slug }, season: { isCurrent: true } },
+          select: {
+            position: true,
+            points: true,
+            played: true,
+            won: true,
+            drawn: true,
+            lost: true,
+            goalsFor: true,
+            goalsAgainst: true,
+            form: true,
+            groupLabel: true,
+            season: {
+              select: {
+                year: true,
+                competition: { select: { name: true, slug: true, logoUrl: true } },
+              },
             },
           },
-        },
-      }),
-      this.prisma.match.findMany({
-        relationLoadStrategy: JOIN,
-        where: { status: 'finished', OR: [{ homeTeam: { slug } }, { awayTeam: { slug } }] },
-        select: matchCard,
-        orderBy: { kickoffUtc: 'desc' },
-        take: 10,
-      }),
-      this.prisma.match.findMany({
-        relationLoadStrategy: JOIN,
-        where: {
-          status: { in: ['scheduled', 'in_play', 'paused'] },
-          kickoffUtc: { gte: new Date(Date.now() - 3 * 3600_000) },
-          OR: [{ homeTeam: { slug } }, { awayTeam: { slug } }],
-        },
-        select: matchCard,
-        orderBy: { kickoffUtc: 'asc' },
-        take: 10,
-      }),
-      /*
-       * El año no se puede fijar: la Liga 1 corre 2026 y la Premier 2025 al mismo tiempo.
-       * Se piden todos y se conserva la campaña más reciente que tenga el equipo.
-       */
-      this.prisma.squadMembership.findMany({
-        relationLoadStrategy: JOIN,
-        where: { team: { slug } },
-        orderBy: [{ year: 'desc' }, { shirtNumber: 'asc' }],
-        select: {
-          year: true,
-          shirtNumber: true,
-          position: true,
-          player: { select: { id: true, name: true, slug: true, photoUrl: true, position: true } },
-        },
-      }),
-      /*
-       * Los goleadores del club en la temporada. La plantilla dice quiénes están; esto dice quiénes
-       * juegan, que es la pregunta siguiente.
-       */
-      this.prisma.playerSeasonStatistics.findMany({
-        relationLoadStrategy: JOIN,
-        where: { team: { slug }, season: { isCurrent: true } },
-        orderBy: [{ goals: 'desc' }, { assists: 'desc' }, { appearances: 'desc' }],
-        take: 10,
-        select: {
-          ...goleador,
-          rating: true,
-          season: { select: { year: true, competition: { select: { name: true, slug: true } } } },
-        },
-      }),
-      /*
-       * Las alineaciones de los últimos partidos jugados. Es lo que un hincha quiere ver del equipo
-       * —con qué salió— y ya estaba en la base sin que ninguna vista la mostrara fuera del partido.
-       * Vienen las cinco para que la tarjeta pueda moverse entre fechas sin volver a pedir nada.
-       */
-      this.prisma.matchLineup.findMany({
-        relationLoadStrategy: JOIN,
-        where: ultimoJugado,
-        orderBy: { match: { kickoffUtc: 'desc' } },
-        /* De más: hay filas cáscara con el once vacío —copas que el proveedor nunca completó— y se
-           descartan después, así que pedir justo cinco dejaría huecos en las flechas. */
-        take: ALINEACIONES + 4,
-        select: {
-          teamId: true,
-          formation: true,
-          coachName: true,
-          startXi: true,
-          substitutes: true,
-          match: {
-            select: {
-              ...matchCard,
-              /* Los cambios salen del mismo select: quién entró, quién salió y en qué minuto. */
-              events: {
-                where: { kind: 'substitution' },
-                /*
-         * En Postgres `asc` es `nulls last`, así que un gol al 45' —sin minuto agregado— salía
-         * **después** de uno al 45+3'. Y sin un tercer criterio, dos eventos del mismo minuto salen
-         * en orden arbitrario y pueden intercambiarse entre dos consultas, con lo que el marcador
-         * corriente del relato parpadearía. El id desempata y no cambia.
+        }),
+        this.prisma.match.findMany({
+          relationLoadStrategy: JOIN,
+          where: { status: 'finished', OR: [{ homeTeam: { slug } }, { awayTeam: { slug } }] },
+          select: matchCard,
+          orderBy: { kickoffUtc: 'desc' },
+          take: 10,
+        }),
+        this.prisma.match.findMany({
+          relationLoadStrategy: JOIN,
+          where: {
+            status: { in: ['scheduled', 'in_play', 'paused'] },
+            kickoffUtc: { gte: new Date(Date.now() - 3 * 3600_000) },
+            OR: [{ homeTeam: { slug } }, { awayTeam: { slug } }],
+          },
+          select: matchCard,
+          orderBy: { kickoffUtc: 'asc' },
+          take: 10,
+        }),
+        /*
+         * El año no se puede fijar: la Liga 1 corre 2026 y la Premier 2025 al mismo tiempo.
+         * Se piden todos y se conserva la campaña más reciente que tenga el equipo.
          */
-        orderBy: [
-          { minute: 'asc' },
-          { extraMinute: { sort: 'asc', nulls: 'first' } },
-          { id: 'asc' },
-        ],
-                select: {
-                  minute: true,
-                  extraMinute: true,
-                  team: { select: { id: true } },
-                  player: playerLink,
-                  relatedPlayer: playerLink,
-                  detail: true,
+        this.prisma.squadMembership.findMany({
+          relationLoadStrategy: JOIN,
+          where: { team: { slug } },
+          orderBy: [{ year: 'desc' }, { shirtNumber: 'asc' }],
+          select: {
+            year: true,
+            shirtNumber: true,
+            position: true,
+            player: {
+              select: { id: true, name: true, slug: true, photoUrl: true, position: true },
+            },
+          },
+        }),
+        /*
+         * Los goleadores del club en la temporada. La plantilla dice quiénes están; esto dice quiénes
+         * juegan, que es la pregunta siguiente.
+         */
+        this.prisma.playerSeasonStatistics.findMany({
+          relationLoadStrategy: JOIN,
+          where: { team: { slug }, season: { isCurrent: true } },
+          orderBy: [{ goals: 'desc' }, { assists: 'desc' }, { appearances: 'desc' }],
+          take: 10,
+          select: {
+            ...goleador,
+            rating: true,
+            season: { select: { year: true, competition: { select: { name: true, slug: true } } } },
+          },
+        }),
+        /*
+         * Las alineaciones de los últimos partidos jugados. Es lo que un hincha quiere ver del equipo
+         * —con qué salió— y ya estaba en la base sin que ninguna vista la mostrara fuera del partido.
+         * Vienen las cinco para que la tarjeta pueda moverse entre fechas sin volver a pedir nada.
+         */
+        this.prisma.matchLineup.findMany({
+          relationLoadStrategy: JOIN,
+          where: ultimoJugado,
+          orderBy: { match: { kickoffUtc: 'desc' } },
+          /* De más: hay filas cáscara con el once vacío —copas que el proveedor nunca completó— y se
+           descartan después, así que pedir justo cinco dejaría huecos en las flechas. */
+          take: ALINEACIONES + 4,
+          select: {
+            teamId: true,
+            formation: true,
+            coachName: true,
+            startXi: true,
+            substitutes: true,
+            match: {
+              select: {
+                ...matchCard,
+                /* Los cambios salen del mismo select: quién entró, quién salió y en qué minuto. */
+                events: {
+                  where: { kind: 'substitution' },
+                  /*
+                   * En Postgres `asc` es `nulls last`, así que un gol al 45' —sin minuto agregado— salía
+                   * **después** de uno al 45+3'. Y sin un tercer criterio, dos eventos del mismo minuto salen
+                   * en orden arbitrario y pueden intercambiarse entre dos consultas, con lo que el marcador
+                   * corriente del relato parpadearía. El id desempata y no cambia.
+                   */
+                  orderBy: [
+                    { minute: 'asc' },
+                    { extraMinute: { sort: 'asc', nulls: 'first' } },
+                    { id: 'asc' },
+                  ],
+                  select: {
+                    minute: true,
+                    extraMinute: true,
+                    team: { select: { id: true } },
+                    player: playerLink,
+                    relatedPlayer: playerLink,
+                    detail: true,
+                  },
                 },
               },
             },
           },
-        },
-      }),
-      /*
-       * Las notas de esos partidos, en la misma tanda paralela: pedirlas después de saber cuáles son
-       * costaría un viaje entero a Supabase. Se piden por fecha y se agrupan por partido; con ciento
-       * veinte filas entran los cinco últimos con sus suplentes.
-       */
-      this.prisma.matchPlayerStatistics.findMany({
-        relationLoadStrategy: JOIN,
-        where: ultimoJugado,
-        orderBy: [{ match: { kickoffUtc: 'desc' } }],
-        take: ALINEACIONES * 30,
-        select: { ...matchPlayerStats, matchId: true, player: playerLink },
-      }),
-    ]);
+        }),
+        /*
+         * Las notas de esos partidos, en la misma tanda paralela: pedirlas después de saber cuáles son
+         * costaría un viaje entero a Supabase. Se piden por fecha y se agrupan por partido; con ciento
+         * veinte filas entran los cinco últimos con sus suplentes.
+         */
+        this.prisma.matchPlayerStatistics.findMany({
+          relationLoadStrategy: JOIN,
+          where: ultimoJugado,
+          orderBy: [{ match: { kickoffUtc: 'desc' } }],
+          take: ALINEACIONES * 30,
+          select: { ...matchPlayerStats, matchId: true, player: playerLink },
+        }),
+      ]);
     if (!team) throw new NotFoundException('Equipo no encontrado');
 
     /*
@@ -1287,7 +1337,9 @@ export class ViewsService {
 
     const vigentes = new Set(
       [...etiquetasPorTorneo.entries()].flatMap(([clave, etiquetas]) =>
-        gruposVigentes(jornadaPorTorneo.get(clave) ?? null, etiquetas).map((label) => `${clave}:${label}`),
+        gruposVigentes(jornadaPorTorneo.get(clave) ?? null, etiquetas).map(
+          (label) => `${clave}:${label}`,
+        ),
       ),
     );
 
@@ -1716,8 +1768,20 @@ export interface PartidoDeCuadro {
   homeScore: number | null;
   awayScore: number | null;
   round: string | null;
-  homeTeam: { id: string; name: string; shortName: string | null; slug: string; logoUrl: string | null };
-  awayTeam: { id: string; name: string; shortName: string | null; slug: string; logoUrl: string | null };
+  homeTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    slug: string;
+    logoUrl: string | null;
+  };
+  awayTeam: {
+    id: string;
+    name: string;
+    shortName: string | null;
+    slug: string;
+    logoUrl: string | null;
+  };
 }
 
 export type EstadoDeTemporada = 'en-juego' | 'terminado' | 'por-empezar';
@@ -1822,7 +1886,10 @@ type Grouped<T extends { season: { competition: { id: string } } }> = Array<{
 function groupByCompetition<T extends { season: { competition: { id: string } } }>(
   matches: T[],
 ): Grouped<T> {
-  const byCompetition = new Map<string, { competition: T['season']['competition']; matches: T[] }>();
+  const byCompetition = new Map<
+    string,
+    { competition: T['season']['competition']; matches: T[] }
+  >();
   for (const match of matches) {
     const key = match.season.competition.id;
     let bucket = byCompetition.get(key);
@@ -1851,7 +1918,9 @@ const LINE_LABEL: Record<(typeof LINE_ORDER)[number], string> = {
 };
 
 /** La plantilla se lee por líneas, no como una lista de treinta nombres. */
-function groupSquadByLine<T extends SquadRow>(rows: T[]): Array<{ line: string; label: string; players: T[] }> {
+function groupSquadByLine<T extends SquadRow>(
+  rows: T[],
+): Array<{ line: string; label: string; players: T[] }> {
   return LINE_ORDER.map((line) => ({
     line,
     label: LINE_LABEL[line],

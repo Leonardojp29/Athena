@@ -20,7 +20,8 @@
     "resync:events": "node --env-file-if-exists=../../.env dist/scripts/resync-events.js",
     "backfill:venues": "node --env-file-if-exists=../../.env dist/scripts/backfill-venues.js",
     "backfill:kits": "node --env-file-if-exists=../../.env dist/scripts/backfill-kits.js",
-    "colores": "node --env-file-if-exists=../../.env dist/scripts/recalcular-colores.js"
+    "colores": "node --env-file-if-exists=../../.env dist/scripts/recalcular-colores.js",
+    "selecciones:nombres": "node --env-file-if-exists=../../.env dist/scripts/renombrar-selecciones.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",

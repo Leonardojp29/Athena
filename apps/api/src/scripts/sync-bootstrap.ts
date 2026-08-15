@@ -25,7 +25,17 @@ async function main(): Promise<void> {
   const syncStandings = app.get(SyncStandingsUseCase);
   const budget = app.get(ApiBudgetService);
 
-  for (const { providerRef, label } of CONFIGURED_COMPETITIONS) {
+  /*
+   * `AMBITO=national` limita la corrida a los torneos de selecciones, que es como se incorporan sin
+   * volver a pedir el catálogo entero de clubes: son cuatro pedidos por competencia.
+   */
+  const ambito = process.env.AMBITO;
+  const catalogo = CONFIGURED_COMPETITIONS.filter(
+    (c) => !ambito || (c.scope ?? 'clubs') === ambito,
+  );
+  console.log(`${catalogo.length} competencias por sincronizar${ambito ? ` (ámbito ${ambito})` : ''}`);
+
+  for (const { providerRef, label } of catalogo) {
     console.log(`\n▶ ${label}`);
     const competitionId = await syncCompetition.execute(providerRef);
     const currentSeasons = await prisma.season.findMany({

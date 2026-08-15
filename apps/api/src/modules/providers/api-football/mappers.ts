@@ -15,6 +15,7 @@ import type {
   ProviderStanding,
   ProviderTeam,
 } from '@athena/domain';
+import { paisEnEspanol } from '@athena/domain';
 import type {
   ApiFootballEvent,
   ApiFootballFixture,
@@ -83,7 +84,12 @@ export function mapTeam(raw: ApiFootballTeam): ProviderRef<ProviderTeam> {
   return {
     providerRef: String(raw.team.id),
     data: {
-      name: raw.team.name,
+      /*
+       * A la selección se la nombra como al país, y el proveedor la manda en inglés: "Spain",
+       * "South Africa". Se traduce acá y no en la vista porque de este nombre sale el slug —
+       * `/equipos/espana`— y porque si no, cada pantalla tendría que acordarse de traducir.
+       */
+      name: raw.team.national ? (paisEnEspanol(raw.team.name) ?? raw.team.name) : raw.team.name,
       shortName: raw.team.code,
       country: raw.team.country,
       founded: raw.team.founded,

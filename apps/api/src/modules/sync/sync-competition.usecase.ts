@@ -32,13 +32,21 @@ export class SyncCompetitionUseCase {
       countryCode: data.countryCode ?? catalogo?.countryCode ?? null,
       flagUrl: data.flagUrl,
       continent: catalogo?.continent ?? null,
+      /* De clubes o de selecciones: el proveedor no distingue un Mundial de una Champions. */
+      scope: catalogo?.scope ?? 'clubs',
     };
+
+    /*
+     * El nombre del catálogo gana cuando existe: el proveedor manda "World Cup" y "Euro Championship"
+     * y esto se lee en español. Solo lo llevan los torneos donde el nombre del proveedor no sirve.
+     */
+    const name = catalogo?.nombre ?? data.name;
 
     const competition = existingId
       ? await this.prisma.competition.update({
           where: { id: existingId },
           data: {
-            name: data.name,
+            name,
             country: data.country,
             format: data.format,
             logoUrl: data.logoUrl,
@@ -47,8 +55,8 @@ export class SyncCompetitionUseCase {
         })
       : await this.prisma.competition.create({
           data: {
-            name: data.name,
-            slug: await this.uniqueSlug(data),
+            name,
+            slug: await this.uniqueSlug({ name, country: data.country }),
             country: data.country,
             format: data.format,
             logoUrl: data.logoUrl,
@@ -79,7 +87,7 @@ export class SyncCompetitionUseCase {
       });
     }
 
-    this.logger.log(`Synced ${data.name} (${data.seasons.length} seasons)`);
+    this.logger.log(`Synced ${name} (${data.seasons.length} seasons)`);
     return competition.id;
   }
 

@@ -10,7 +10,14 @@
  * nacionales. Las regionales, las divisiones de ascenso, las juveniles y las femeninas quedan
  * fuera de esta versión.
  */
-export type Continent = 'sudamerica' | 'europa' | 'norteamerica' | 'africa' | 'asia' | 'mundial';
+export type Continent =
+  | 'sudamerica'
+  | 'europa'
+  | 'norteamerica'
+  | 'africa'
+  | 'asia'
+  | 'oceania'
+  | 'mundial';
 
 export interface ConfiguredCompetition {
   providerRef: string;
@@ -18,6 +25,16 @@ export interface ConfiguredCompetition {
   /** Código ISO del país, o null en los torneos internacionales. */
   countryCode: string | null;
   continent: Continent;
+  /** clubes por omisión; `national` son los torneos de selecciones. */
+  scope?: 'clubs' | 'national';
+  /**
+   * El nombre en español, cuando el del proveedor no sirve.
+   *
+   * Los de clubes llegan bien —"Premier League", "Copa del Rey"— pero los de selecciones vienen en
+   * inglés: "World Cup", "Euro Championship", "World Cup - Qualification South America". Puesto acá,
+   * el sync lo escribe como nombre y el slug nace de él: `/competencias/mundial`.
+   */
+  nombre?: string;
 }
 
 export const CONFIGURED_COMPETITIONS: readonly ConfiguredCompetition[] = [
@@ -98,4 +115,33 @@ export const CONFIGURED_COMPETITIONS: readonly ConfiguredCompetition[] = [
   { providerRef: '17', label: 'AFC Champions League Elite', countryCode: null, continent: 'asia' },
   { providerRef: '12', label: 'CAF Champions League', countryCode: null, continent: 'africa' },
   { providerRef: '15', label: 'Mundial de Clubes', countryCode: null, continent: 'mundial' },
+  // ---------- Selecciones ----------
+  /*
+   * El fútbol de selecciones vive en su propia rama del catálogo (`scope: 'national'`) y no mezclado
+   * con las copas de clubes de cada confederación: quien entra a ver a Perú no está buscando la
+   * Libertadores. Salvo eso, es fútbol igual —cuadro, grupos, tabla— y usa las mismas vistas.
+   *
+   * Los ids y la cobertura se verificaron contra `/leagues?country=World` el 2026-08-15. Dos avisos
+   * que el diseño no puede esconder: la **Nations League** y la **Finalissima** no traen jugadas ni
+   * alineaciones —solo marcador y tabla—, y la **Copa Asia 2027** todavía no se juega.
+   *
+   * Por ahora solo mayores. Las juveniles —Mundial Sub-20, Sudamericano Sub-20, Euro Sub-21— entran
+   * después y por eso el ámbito es un campo y no un booleano.
+   */
+  { providerRef: '1', label: 'Mundial', nombre: 'Mundial', countryCode: null, continent: 'mundial', scope: 'national' },
+  { providerRef: '37', label: 'Repechaje intercontinental', nombre: 'Repechaje Intercontinental', countryCode: null, continent: 'mundial', scope: 'national' },
+  { providerRef: '913', label: 'Finalissima', nombre: 'Finalissima', countryCode: null, continent: 'mundial', scope: 'national' },
+  { providerRef: '9', label: 'Copa América', nombre: 'Copa América', countryCode: null, continent: 'sudamerica', scope: 'national' },
+  { providerRef: '34', label: 'Eliminatorias Sudamérica', nombre: 'Eliminatorias Sudamérica', countryCode: null, continent: 'sudamerica', scope: 'national' },
+  { providerRef: '4', label: 'Eurocopa', nombre: 'Eurocopa', countryCode: null, continent: 'europa', scope: 'national' },
+  { providerRef: '5', label: 'Nations League', nombre: 'Nations League', countryCode: null, continent: 'europa', scope: 'national' },
+  { providerRef: '32', label: 'Eliminatorias Europa', nombre: 'Eliminatorias Europa', countryCode: null, continent: 'europa', scope: 'national' },
+  { providerRef: '22', label: 'Copa Oro', nombre: 'Copa Oro', countryCode: null, continent: 'norteamerica', scope: 'national' },
+  { providerRef: '536', label: 'Nations League de Concacaf', nombre: 'Nations League Concacaf', countryCode: null, continent: 'norteamerica', scope: 'national' },
+  { providerRef: '31', label: 'Eliminatorias Concacaf', nombre: 'Eliminatorias Concacaf', countryCode: null, continent: 'norteamerica', scope: 'national' },
+  { providerRef: '6', label: 'Copa África', nombre: 'Copa África', countryCode: null, continent: 'africa', scope: 'national' },
+  { providerRef: '29', label: 'Eliminatorias África', nombre: 'Eliminatorias África', countryCode: null, continent: 'africa', scope: 'national' },
+  { providerRef: '7', label: 'Copa Asia', nombre: 'Copa Asia', countryCode: null, continent: 'asia', scope: 'national' },
+  { providerRef: '30', label: 'Eliminatorias Asia', nombre: 'Eliminatorias Asia', countryCode: null, continent: 'asia', scope: 'national' },
+  { providerRef: '33', label: 'Eliminatorias Oceanía', nombre: 'Eliminatorias Oceanía', countryCode: null, continent: 'oceania', scope: 'national' },
 ] as const;

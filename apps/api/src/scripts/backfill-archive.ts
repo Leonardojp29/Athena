@@ -40,9 +40,10 @@ async function main(): Promise<void> {
 
   const anios = Number(process.env.ARCHIVE_YEARS ?? 5);
   const soloCopas = process.env.ARCHIVE_SCOPE === 'copas';
-  const copas = soloCopas
-    ? CONFIGURED_COMPETITIONS.filter((c) => c.countryCode === null)
-    : CONFIGURED_COMPETITIONS;
+  const ambito = process.env.AMBITO;
+  const copas = (
+    soloCopas ? CONFIGURED_COMPETITIONS.filter((c) => c.countryCode === null) : CONFIGURED_COMPETITIONS
+  ).filter((c) => !ambito || (c.scope ?? 'clubs') === ambito);
 
   console.log(`${copas.length} competencias · hasta ${anios} temporadas vacías cada una`);
 

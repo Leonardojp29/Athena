@@ -1,0 +1,70 @@
+---
+import EscudoTorneo from '../EscudoTorneo.astro';
+import CountryFlag from '../CountryFlag.astro';
+import Icon from '../Icon.astro';
+import type { NavCompetition } from '../../lib/nav-types';
+import { nombreTorneo } from '../../lib/paises';
+
+/*
+ * Una tarjeta del índice: un grupo de torneos con su cabecera.
+ *
+ * Sirve para los tres grupos que tiene el catálogo —el país, las copas de la confederación y las
+ * selecciones— porque los tres se leen igual: un título con su emblema y la lista de torneos. Antes
+ * el índice solo dibujaba los países, así que la Libertadores y la Champions no aparecían en ninguna
+ * parte de `/competencias` aunque estuvieran contadas en el total.
+ */
+interface Props {
+  titulo: string;
+  /** El emblema de la cabecera: la bandera del país o el escudo del torneo que representa al grupo. */
+  flagUrl?: string | null;
+  code?: string | null;
+  logoUrl?: string | null;
+  competitions: NavCompetition[];
+}
+
+const { titulo, flagUrl = null, code = null, logoUrl = null, competitions } = Astro.props;
+---
+
+<section class="rounded-lg border border-border bg-surface">
+  <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
+    {
+      logoUrl ? (
+        <EscudoTorneo url={logoUrl} size={22} />
+      ) : (
+        <CountryFlag url={flagUrl} code={code} name={titulo} size={22} />
+      )
+    }
+    <h3 class="truncate text-sm font-semibold">{titulo}</h3>
+    <span class="ml-auto tabular text-2xs text-ink-muted">{competitions.length}</span>
+  </div>
+
+  <ul class="grid gap-0.5 p-1.5">
+    {
+      competitions.map((competition) => (
+        <li>
+          <a
+            href={`/competencias/${competition.slug}`}
+            class="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-canvas-subtle"
+          >
+            <span class="flex size-7 shrink-0 items-center justify-center rounded bg-canvas-subtle">
+              {competition.logoUrl ? (
+                <EscudoTorneo url={competition.logoUrl} size={18} />
+              ) : (
+                <Icon name="estadio" size={14} class="text-ink-muted" />
+              )}
+            </span>
+            <span class="min-w-0 flex-1 truncate text-sm">{nombreTorneo(competition.name)}</span>
+            {competition.format === 'cup' && (
+              <span class="shrink-0 text-2xs text-ink-muted">copa</span>
+            )}
+            <Icon
+              name="chevron-derecha"
+              size={14}
+              class="shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
+            />
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</section>

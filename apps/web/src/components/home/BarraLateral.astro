@@ -20,8 +20,10 @@ import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
  * costar perder el contexto.
  */
 interface Props {
-  /** El árbol completo del catálogo: todas las competencias, jueguen hoy o no. */
+  /** El árbol completo del catálogo de clubes: todas las competencias, jueguen hoy o no. */
   catalogo: NavContinent[];
+  /** La otra rama: los torneos de selecciones, agrupados por confederación y sin nivel de país. */
+  selecciones?: NavContinent[];
   /** Los partidos de hoy, para los contadores de la sección Hoy. */
   geography: GeographyContinent[];
   /** Qué hay seleccionado: nada, un país, una liga o un equipo. */
@@ -31,8 +33,15 @@ interface Props {
   conCuenta?: boolean;
 }
 
-const { catalogo, geography, paisActivo, ligaActiva, equipoActivo = null, conCuenta = false } =
-  Astro.props;
+const {
+  catalogo,
+  selecciones = [],
+  geography,
+  paisActivo,
+  ligaActiva,
+  equipoActivo = null,
+  conCuenta = false,
+} = Astro.props;
 
 const partidosPorPais = new Map(
   geography.flatMap((c) =>
@@ -251,6 +260,72 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
         </div>
       </details>
     ))
+  }
+
+  <!--
+    Selecciones: una rama aparte y no un país más. El Mundial y la Copa América llegan sin país,
+    igual que la Libertadores, y metidos en el árbol de clubes quedaban escondidos dentro de
+    "Internacional". Acá el grupo es la confederación —así se habla del fútbol de selecciones— y la
+    FIFA abre la lista, que para eso es el Mundial. Un nivel menos que en clubes: una selección no
+    cuelga de un país, es uno.
+  -->
+  {
+    selecciones.length > 0 && (
+      <>
+        <p class="flex items-center gap-2 px-2.5 pt-3 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+          <Icon name="bandera" size={13} />
+          Selecciones
+        </p>
+
+        {selecciones.map((confederacion) => (
+          <details
+            class="group/conf"
+            data-rama={`conf:${confederacion.continent}`}
+            open={confederacion.competitions.some((c) => c.slug === ligaActiva)}
+          >
+            <summary class="flex cursor-pointer list-none items-center gap-2 rounded-md px-2.5 py-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink">
+              <ContinentIcon name={confederacion.continent} size={16} />
+              <span class="truncate">{confederacion.label}</span>
+              <Icon
+                name="chevron-derecha"
+                size={12}
+                class="ml-auto shrink-0 transition-transform group-open/conf:rotate-90"
+              />
+            </summary>
+
+            <ul class="ml-2 grid gap-0.5 border-l border-border py-0.5 pl-1.5">
+              {confederacion.competitions.map((competition) => (
+                <li class="group/liga flex items-center gap-1">
+                  <a
+                    href={`/?liga=${competition.slug}`}
+                    aria-current={ligaActiva === competition.slug ? 'page' : undefined}
+                    class:list={[
+                      'flex min-w-0 flex-1 items-center gap-1.5 truncate rounded px-1.5 py-1 text-2xs transition-colors',
+                      ligaActiva === competition.slug
+                        ? 'bg-primary/12 font-medium text-ink'
+                        : 'text-ink-muted hover:bg-canvas-subtle hover:text-ink',
+                    ]}
+                  >
+                    <EscudoTorneo url={competition.logoUrl} size={13} />
+                    <span class="truncate">{nombreTorneo(competition.name)}</span>
+                  </a>
+                  <BotonFavorito
+                    tipo="liga"
+                    id={competition.id}
+                    slug={competition.slug}
+                    nombre={nombreTorneo(competition.name)}
+                    logoUrl={competition.logoUrl}
+                    pais={confederacion.label}
+                    conCuenta={conCuenta}
+                    class="opacity-0 focus-visible:opacity-100 group-hover/liga:opacity-100 aria-pressed:opacity-100"
+                  />
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </>
+    )
   }
 </nav>
 

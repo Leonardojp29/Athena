@@ -115,7 +115,12 @@ const pendienteDe = (ronda: RondaDePartidos) =>
         alto lo pone el once, que es la tarjeta más alta, y acá adentro se desplaza. Debajo de 2xl cada
         tarjeta es su propia fila, así que ahí la caja lleva un alto propio.
       */}
-      <div class="relative min-h-[26rem] flex-1 2xl:min-h-0">
+      <!--
+        El piso de alto también en 2xl: los paneles son absolutos y sin hermanos que estiren la fila
+        —una competencia sin goleadores ni once— la tarjeta se quedaba en cero y no se veía un solo
+        partido. Con hermanos, la grilla la estira igual y el piso no molesta.
+      -->
+      <div class="relative min-h-[26rem] flex-1 2xl:min-h-[22rem]">
       {rondas.map((ronda, i) => (
         <div data-ronda-panel hidden={i !== inicial} class="absolute inset-0 flex flex-col">
           <!-- La ronda en curso es la que abre y va en color; no hace falta decir "en juego", que se

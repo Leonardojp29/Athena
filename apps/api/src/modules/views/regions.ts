@@ -6,7 +6,14 @@
  * competencias pasaba; con sesenta era una lista que había que editar en cada liga nueva y que
  * mandaba a "otras" todo lo que no estuviera escrito.
  */
-export type Continent = 'sudamerica' | 'europa' | 'norteamerica' | 'africa' | 'asia' | 'mundial';
+export type Continent =
+  | 'sudamerica'
+  | 'europa'
+  | 'norteamerica'
+  | 'africa'
+  | 'asia'
+  | 'oceania'
+  | 'mundial';
 
 export const CONTINENT_LABEL: Record<Continent, string> = {
   sudamerica: 'Sudamérica',
@@ -14,8 +21,34 @@ export const CONTINENT_LABEL: Record<Continent, string> = {
   norteamerica: 'Norteamérica',
   africa: 'África',
   asia: 'Asia',
+  oceania: 'Oceanía',
   mundial: 'Mundial',
 };
+
+/*
+ * En el fútbol de selecciones la región **es** la confederación: nadie dice "el torneo sudamericano
+ * de selecciones", dice la Copa América de Conmebol. Y el Mundial va primero, que para eso es el
+ * Mundial: en el árbol de clubes el mismo grupo va último porque ahí es el de clubes, una vez al año.
+ */
+export const CONFEDERATION_LABEL: Record<Continent, string> = {
+  mundial: 'FIFA',
+  sudamerica: 'Conmebol',
+  europa: 'UEFA',
+  norteamerica: 'Concacaf',
+  africa: 'CAF',
+  asia: 'AFC',
+  oceania: 'OFC',
+};
+
+export const CONFEDERATION_ORDER: Continent[] = [
+  'mundial',
+  'sudamerica',
+  'europa',
+  'norteamerica',
+  'africa',
+  'asia',
+  'oceania',
+];
 
 /*
  * El orden de la navegación: primero lo que mira este público. El Mundial de Clubes va al final
@@ -27,6 +60,7 @@ export const CONTINENT_ORDER: Continent[] = [
   'norteamerica',
   'asia',
   'africa',
+  'oceania',
   'mundial',
 ];
 
@@ -51,6 +85,20 @@ export function continentalRank(name: string): number {
   if (/conference|leagues cup/i.test(name)) return 2;
   if (/super ?copa|super cup|recopa/i.test(name)) return 3;
   return 4;
+}
+
+/**
+ * En selecciones el orden es el peso del torneo, no el alfabeto: el Mundial abre, después la copa
+ * de la confederación, después las eliminatorias —que son el camino al primero— y al final lo
+ * ocasional. Alfabéticamente, la Finalissima le ganaba el primer renglón al Mundial.
+ */
+export function nationalRank(name: string): number {
+  if (/^mundial$/i.test(name)) return 0;
+  if (/^(copa américa|eurocopa|copa áfrica|copa oro|copa asia)/i.test(name)) return 1;
+  if (/nations league/i.test(name)) return 2;
+  if (/eliminatorias/i.test(name)) return 3;
+  if (/repechaje/i.test(name)) return 4;
+  return 5;
 }
 
 /* Perú primero: es el público de esta versión. Después, peso futbolístico del continente. */

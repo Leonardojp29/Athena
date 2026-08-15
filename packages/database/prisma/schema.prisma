@@ -49,6 +49,8 @@ model Competition {
   /// sudamerica | europa | norteamerica | africa | asia | mundial. Lo decide el catálogo.
   continent String?
   format   String // league | cup
+  /// clubs | national. Lo decide el catálogo: el proveedor no distingue un Mundial de una Champions.
+  scope    String  @default("clubs")
   logoUrl  String?  @map("logo_url")
   seasons  Season[]
   isActive Boolean  @default(false) @map("is_active") // toggles sync scope by data, not code

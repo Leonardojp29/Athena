@@ -200,6 +200,30 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * Las selecciones tienen su propia rama en la barra: el Mundial y la Copa América llegan sin país,
+   * igual que la Libertadores, y metidos en el árbol de clubes quedaban escondidos dentro de
+   * "Internacional". El grupo es la confederación y la FIFA abre la lista.
+   */
+  test('la barra lateral tiene su sección de selecciones y lleva al Mundial', async ({ page }) => {
+    await page.goto('/');
+
+    const barra = page.getByRole('navigation', { name: /navegación de la home/i });
+    await expect(barra.getByText('Selecciones', { exact: true })).toBeVisible();
+
+    const fifa = barra.locator('[data-rama="conf:mundial"]');
+    test.skip((await fifa.count()) === 0, 'todavía no hay torneos de selecciones sincronizados');
+    await fifa.locator('summary').click();
+
+    const alMundial = fifa.getByRole('link', { name: 'Mundial', exact: true });
+    await expect(alMundial).toBeVisible();
+    await alMundial.click();
+
+    /* El Mundial es una copa: su cuadro se dibuja como el de cualquier otra. */
+    await expect(page).toHaveURL(/liga=mundial/);
+    await expect(page.getByRole('heading', { name: /mundial/i }).first()).toBeVisible();
+  });
+
+  /*
    * Un partido de copa se abre dentro de su copa y es el centro de partido entero, no un resumen
    * recortado: las mismas cuatro pestañas que su página, con la cabecera del torneo todavía arriba.
    * El motivo es simple: el partido de los octavos es del torneo, y verlo no debería sacarte de él.
@@ -429,7 +453,13 @@ test.describe('shell del sitio', () => {
     await fichas.first().click();
     await expect(ficha).toBeVisible();
     await expect(ficha.locator('#ficha-nombre')).not.toBeEmpty();
-    expect(await ficha.locator('[data-ficha-detalle] > *').count()).toBeGreaterThan(2);
+    /*
+     * Los tres destacados —minutos, nota y goles— y al menos una fila de detalle. Contar más de dos
+     * filas era medir una casualidad: a un arquero el proveedor le manda dos estadísticas, así que
+     * la prueba se caía cuando el once de la fecha lo abría un arquero.
+     */
+    expect(await ficha.locator('[data-ficha-destacados] > *').count()).toBe(3);
+    expect(await ficha.locator('[data-ficha-detalle] > *').count()).toBeGreaterThan(0);
   });
 
   /*

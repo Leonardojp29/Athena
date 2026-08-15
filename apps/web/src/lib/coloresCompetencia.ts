@@ -1,12 +1,13 @@
 import { colorEquipo, type ColorEquipo } from './color';
 
 /*
- * La identidad de cada copa internacional.
+ * La identidad de cada copa internacional y de cada torneo de selecciones.
  *
- * Son doce y son especiales: una noche de Libertadores no se ve como una fecha de liga, y el
- * proveedor no manda nada de esto —solo el logo—. Así que la lista está curada a mano con los dos
- * colores de cada marca: el `base` para el fondo de la cabecera y el `acento` para los detalles que
- * llevan la mirada (el rótulo de la ronda, la barra del campeón, el borde de la llave en juego).
+ * Son veinte y son especiales: una noche de Libertadores no se ve como una fecha de liga, y un
+ * Mundial menos todavía. El proveedor no manda nada de esto —solo el logo—, así que la lista está
+ * curada a mano con los dos colores de cada marca: el `base` para el fondo de la cabecera y el
+ * `acento` para los detalles que llevan la mirada (el rótulo de la ronda, la barra del campeón, el
+ * borde de la llave en juego).
  *
  * Se usa como acento y como fondo de cabecera, nunca detrás de un texto largo, y el par se elige de
  * modo que el acento pase contraste sobre el base. Una liga no entra acá: devuelve null y la página
@@ -32,6 +33,21 @@ const CURADAS: Record<string, [base: string, acento: string, tono: string]> = {
   'afc-champions-league-elite': ['13235e', 'e0483f', 'La élite de Asia'],
   'caf-champions-league': ['0f4d2a', 'e0b93c', 'La corona africana'],
   'leagues-cup': ['3b1b5e', 'e4519b', 'MLS contra Liga MX'],
+
+  /*
+   * Selecciones. Las eliminatorias no llevan paleta a propósito: son de formato liga, se leen en una
+   * tabla y una cabecera de color las haría parecer lo que no son. El contraste del acento sobre el
+   * base está verificado —el más justo es el de la Copa América, 4.7—.
+   */
+  mundial: ['2b1b57', 'f4c542', 'El torneo de todos'],
+  'copa-america': ['0f4c81', 'f2b134', 'La más antigua del mundo'],
+  eurocopa: ['0a2e5c', '5fd0e3', 'El continente en un mes'],
+  'nations-league': ['0e2f4f', '8fd6ff', 'El invento de la UEFA'],
+  'nations-league-concacaf': ['0d3b66', '7fd1b9', 'El norte se mide'],
+  'copa-africa': ['0b4d33', 'f0b429', 'La fiesta africana'],
+  'copa-oro': ['0d3b66', 'f6c445', 'El norte y el Caribe'],
+  'copa-asia': ['19365e', 'f0a08a', 'El continente más grande'],
+  finalissima: ['1c2a4f', 'c9c9d1', 'Campeón contra campeón'],
 };
 
 export function paletaCompetencia(slug: string): PaletaCompetencia | null {

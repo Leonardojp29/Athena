@@ -66,22 +66,37 @@ const RESPALDO: NavContinent[] = [
   },
 ];
 
-/* El catálogo cambia una vez por temporada y el API lo declara con s-maxage=3600. */
-let ultimoBueno: NavContinent[] | null = null;
+/**
+ * El catálogo en dos ramas: los clubes y las selecciones.
+ *
+ * Van separadas porque el Mundial y la Copa América llegan sin país —igual que la Libertadores— y
+ * mezclados escondían a la selección adentro del árbol de clubes. En la rama de selecciones no hay
+ * nivel de país: una selección no cuelga de un país, es uno.
+ */
+export interface NavArbol {
+  clubes: NavContinent[];
+  selecciones: NavContinent[];
+}
 
-export async function getNavTree(): Promise<NavContinent[]> {
+/* El catálogo cambia una vez por temporada y el API lo declara con s-maxage=3600. */
+let ultimoBueno: NavArbol | null = null;
+
+export async function getNavTree(): Promise<NavArbol> {
   try {
-    const tree = await api<NavContinent[]>('/views/competitions');
-    if (tree.length > 0) ultimoBueno = tree;
-    return tree.length > 0 ? tree : (ultimoBueno ?? RESPALDO);
+    const arbol = await api<NavArbol>('/views/competitions');
+    if (arbol.clubes?.length > 0) ultimoBueno = arbol;
+    return arbol.clubes?.length > 0 ? arbol : (ultimoBueno ?? { clubes: RESPALDO, selecciones: [] });
   } catch {
-    return ultimoBueno ?? RESPALDO;
+    return ultimoBueno ?? { clubes: RESPALDO, selecciones: [] };
   }
 }
 
-/** Plano, para el pie y el buscador. */
-export function todasLasCompetencias(tree: NavContinent[]): NavCompetition[] {
-  return tree.flatMap((c) => [...c.competitions, ...c.countries.flatMap((p) => p.competitions)]);
+/** Plano, para el pie y el buscador. Las dos ramas: una competencia es una competencia. */
+export function todasLasCompetencias(arbol: NavArbol | NavContinent[]): NavCompetition[] {
+  const ramas = Array.isArray(arbol) ? [arbol] : [arbol.clubes, arbol.selecciones];
+  return ramas.flatMap((rama) =>
+    rama.flatMap((c) => [...c.competitions, ...c.countries.flatMap((p) => p.competitions)]),
+  );
 }
 
 /**
@@ -96,8 +111,8 @@ const DESTACADAS = [
   'premier-league',
 ];
 
-export function destacadas(tree: NavContinent[], limite = 4): NavCompetition[] {
-  const todas = todasLasCompetencias(tree);
+export function destacadas(arbol: NavArbol | NavContinent[], limite = 4): NavCompetition[] {
+  const todas = todasLasCompetencias(arbol);
   const elegidas = DESTACADAS.map((slug) => todas.find((c) => c.slug === slug)).filter(
     (c): c is NavCompetition => c !== undefined,
   );

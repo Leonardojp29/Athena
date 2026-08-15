@@ -1,15 +1,18 @@
 ---
-import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
 import ContinentIcon from '../../components/ContinentIcon.astro';
-import CountryFlag from '../../components/CountryFlag.astro';
 import Icon from '../../components/Icon.astro';
+import TarjetaDeCompetencias from '../../components/competencia/TarjetaDeCompetencias.astro';
 import { getNavTree, todasLasCompetencias } from '../../lib/nav';
-import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import { paisEnEspanol } from '../../lib/paises';
 
-const tree = await getNavTree();
-const total = todasLasCompetencias(tree).length;
-const paises = tree.reduce((n, c) => n + c.countries.filter((p) => p.code !== null).length, 0);
+const arbol = await getNavTree();
+const total = todasLasCompetencias(arbol).length;
+const paises = arbol.clubes.reduce(
+  (n, c) => n + c.countries.filter((p) => p.code !== null).length,
+  0,
+);
+const torneosDeSelecciones = arbol.selecciones.reduce((n, c) => n + c.competitions.length, 0);
 ---
 
 <Base
@@ -22,72 +25,71 @@ const paises = tree.reduce((n, c) => n + c.countries.filter((p) => p.code !== nu
     <h1 class="font-display text-3xl font-semibold uppercase">Competencias</h1>
     <p class="mt-1 text-sm text-ink-muted">
       {total} torneos de {paises} países, con tabla, calendario y análisis al día.
+      {torneosDeSelecciones > 0 && ` Y ${torneosDeSelecciones} de selecciones.`}
     </p>
   </header>
 
   <div class="grid gap-10">
     {
-      tree.map((continente) => (
+      arbol.clubes.map((continente) => (
         <section>
           <div class="mb-4 flex items-center gap-3">
             <ContinentIcon name={continente.continent} size={20} class="text-primary-ink" />
             <h2 class="font-display text-xl font-semibold uppercase">{continente.label}</h2>
             <span class="h-px flex-1 bg-border" />
             <span class="tabular text-2xs text-ink-muted">
-              {continente.countries.reduce((n, p) => n + p.competitions.length, 0)}
+              {continente.competitions.length +
+                continente.countries.reduce((n, p) => n + p.competitions.length, 0)}
             </span>
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {/*
+              Las copas de la confederación primero: la Libertadores es fútbol sudamericano y hasta
+              ahora no aparecía en este índice, aunque estuviera contada en el total de arriba.
+            */}
+            {continente.competitions.length > 0 && (
+              <TarjetaDeCompetencias
+                titulo={`Copas de ${continente.label}`}
+                logoUrl={continente.competitions[0]?.logoUrl ?? null}
+                competitions={continente.competitions}
+              />
+            )}
             {continente.countries.map((pais) => (
-              <section class="rounded-lg border border-border bg-surface">
-                <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
-                  <CountryFlag
-                    url={pais.flagUrl}
-                    code={pais.code}
-                    name={paisEnEspanol(pais.name)}
-                    size={22}
-                  />
-                  <h3 class="truncate text-sm font-semibold">
-                    {paisEnEspanol(pais.name) ?? 'Internacional'}
-                  </h3>
-                  <span class="ml-auto tabular text-2xs text-ink-muted">
-                    {pais.competitions.length}
-                  </span>
-                </div>
-
-                <ul class="grid gap-0.5 p-1.5">
-                  {pais.competitions.map((competition) => (
-                    <li>
-                      <a
-                        href={`/competencias/${competition.slug}`}
-                        class="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-canvas-subtle"
-                      >
-                        <span class="flex size-7 shrink-0 items-center justify-center rounded bg-canvas-subtle">
-                          {competition.logoUrl ? (
-                            <EscudoTorneo url={competition.logoUrl} size={18} />
-                          ) : (
-                            <Icon name="estadio" size={14} class="text-ink-muted" />
-                          )}
-                        </span>
-                        <span class="min-w-0 flex-1 truncate text-sm">{nombreTorneo(competition.name)}</span>
-                        {competition.format === 'cup' && (
-                          <span class="shrink-0 text-2xs text-ink-muted">copa</span>
-                        )}
-                        <Icon
-                          name="chevron-derecha"
-                          size={14}
-                          class="shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
-                        />
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <TarjetaDeCompetencias
+                titulo={paisEnEspanol(pais.name) ?? 'Internacional'}
+                flagUrl={pais.flagUrl}
+                code={pais.code}
+                competitions={pais.competitions}
+              />
             ))}
           </div>
         </section>
       ))
+    }
+
+    <!-- Las selecciones, al final y agrupadas por confederación: es como se habla de ellas. -->
+    {
+      arbol.selecciones.length > 0 && (
+        <section>
+          <div class="mb-4 flex items-center gap-3">
+            <Icon name="bandera" size={20} class="text-primary-ink" />
+            <h2 class="font-display text-xl font-semibold uppercase">Selecciones</h2>
+            <span class="h-px flex-1 bg-border" />
+            <span class="tabular text-2xs text-ink-muted">{torneosDeSelecciones}</span>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {arbol.selecciones.map((confederacion) => (
+              <TarjetaDeCompetencias
+                titulo={confederacion.label}
+                logoUrl={confederacion.competitions[0]?.logoUrl ?? null}
+                competitions={confederacion.competitions}
+              />
+            ))}
+          </div>
+        </section>
+      )
     }
   </div>
 </Base>
