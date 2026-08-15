@@ -21,7 +21,11 @@ let view: PlayerView;
 try {
   view = await pedidoVista;
 } catch (error) {
-  if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
+  if (error instanceof ApiError && error.status === 404) {
+    /* El slug cambió: se redirige al nuevo en lugar de decir que no existe. */
+    const mudado = error.body?.movedTo;
+    return Astro.redirect(mudado ? `/jugadores/${mudado}` : '/404', mudado ? 301 : 302);
+  }
   throw error;
 }
 

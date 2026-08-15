@@ -33,7 +33,11 @@ let view: TeamView;
 try {
   view = await pedidoVista;
 } catch (error) {
-  if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
+  if (error instanceof ApiError && error.status === 404) {
+    /* El slug cambió: se redirige al nuevo en lugar de decir que no existe. */
+    const mudado = error.body?.movedTo;
+    return Astro.redirect(mudado ? `/equipos/${mudado}` : '/404', mudado ? 301 : 302);
+  }
   throw error;
 }
 
@@ -335,7 +339,10 @@ const jsonLd = {
           )
         }
 
-        {team.venue && <FichaEstadio venue={team.venue} vars={varsCabecera} />}
+        {/* Una selección no tiene casa: el estadio que manda el proveedor es donde jugó la última vez. */}
+        {team.venue && !team.isNationalTeam && (
+          <FichaEstadio venue={team.venue} vars={varsCabecera} />
+        )}
 
         <AvisoFavoritos />
       </div>

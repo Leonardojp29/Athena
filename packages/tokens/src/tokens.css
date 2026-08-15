@@ -44,6 +44,9 @@
 
   /* --- estados del fútbol --- */
   --a-color-live: oklch(0.598 0.17 150);
+  /* El vivo escrito sobre superficie clara: el verde de la señal se queda en 3.2 como texto, y
+     sobre su propia pastilla lavada hace falta bajar hasta acá para pasar el 4.5. */
+  --a-color-live-ink: oklch(0.5 0.15 150);
   /* Sobre la pizarra el verde tiene que ser el claro: el de superficie ahí no se ve. */
   --a-color-live-on-board: oklch(0.723 0.196 150);
   --a-color-card-yellow: oklch(0.762 0.145 78);
@@ -53,7 +56,8 @@
    */
   --a-color-rating-good: oklch(0.72 0.16 122);
   --a-color-card-red: oklch(0.582 0.202 24);
-  --a-color-card-red-ink: oklch(0.532 0.198 24);
+  /* 0.532 daba 4.49 sobre su propia pastilla lavada: dos centésimas por debajo del mínimo. */
+  --a-color-card-red-ink: oklch(0.515 0.198 24);
   --a-color-focus: oklch(0.462 0.128 128);
   --a-color-overlay: oklch(0.185 0.008 286 / 0.42);
   --a-color-selection: oklch(0.906 0.191 118 / 0.3);
@@ -154,6 +158,8 @@
   --a-color-magnet: oklch(0.268 0.01 286);
 
   --a-color-live: oklch(0.723 0.196 150);
+  /* En oscuro el verde de la señal ya se lee: el texto no necesita otro. */
+  --a-color-live-ink: oklch(0.723 0.196 150);
   --a-color-live-on-board: oklch(0.723 0.196 150);
   --a-color-card-yellow: oklch(0.845 0.148 82);
   --a-color-card-red: oklch(0.63 0.2 22);

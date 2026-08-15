@@ -42,7 +42,19 @@ async function main(): Promise<void> {
     ocupados.delete(equipo.slug);
     ocupados.add(slug);
 
-    await prisma.team.update({ where: { id: equipo.id }, data: { name: nombre, slug } });
+    /* El slug viejo queda apuntando acá: los enlaces a /equipos/spain no pueden morir. */
+    await prisma.$transaction([
+      ...(slug === equipo.slug
+        ? []
+        : [
+            prisma.slugAlias.upsert({
+              where: { entityType_slug: { entityType: 'team', slug: equipo.slug } },
+              update: { entityId: equipo.id },
+              create: { entityType: 'team', slug: equipo.slug, entityId: equipo.id },
+            }),
+          ]),
+      prisma.team.update({ where: { id: equipo.id }, data: { name: nombre, slug } }),
+    ]);
     cambiados++;
     console.log(`  ${equipo.name} → ${nombre} (/${slug})`);
   }

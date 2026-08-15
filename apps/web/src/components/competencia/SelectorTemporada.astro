@@ -44,7 +44,9 @@ const visibles = temporadas.slice(0, 6);
                   ? 'bg-chalk text-board'
                   : 'bg-ink text-canvas'
                 : onBoard
-                  ? 'bg-chalk/10 text-chalk-dim hover:bg-chalk/20 hover:text-chalk'
+                  ? /* Tiza entera y no apagada: sobre el parche aclarado, el gris de tiza se
+                       queda en 4.1 de contraste. */
+                    'bg-chalk/10 text-chalk hover:bg-chalk/20'
                   : 'bg-canvas-subtle text-ink-muted hover:text-ink',
             ]}
           >

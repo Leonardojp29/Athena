@@ -146,7 +146,8 @@ function Scoreboard({ match }: { match: MatchView }) {
           className={
             live
               ? 'flex items-center gap-1.5 rounded-full bg-live-board/16 px-3 py-1 text-xs font-medium text-live-board'
-              : 'rounded-full bg-chalk/10 px-3 py-1 text-xs font-medium text-chalk-dim'
+              : /* Sobre el parche de tiza al 10%, la tiza apagada se queda en 4.1. */
+                'rounded-full bg-chalk/10 px-3 py-1 text-xs font-medium text-chalk'
           }
         >
           {live && <span className="size-1.5 rounded-full bg-live-board animate-live-pulse" />}

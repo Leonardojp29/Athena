@@ -9,6 +9,7 @@ import CountryFlag from '../../components/CountryFlag.astro';
 import BandaDelPartido from '../../components/match/BandaDelPartido.astro';
 import BloqueGrupos from '../../components/competencia/BloqueGrupos.astro';
 import CentroDelPartido from '../../components/match/CentroDelPartido.astro';
+import EquipoEnLaCopa from '../../components/competencia/EquipoEnLaCopa.astro';
 import Cuadro from '../../components/competencia/Cuadro.astro';
 import PartidosPorRonda from '../../components/competencia/PartidosPorRonda.astro';
 import PlayerSheet from '../../components/pitch/PlayerSheet.astro';
@@ -18,7 +19,7 @@ import SelectorTemporada from '../../components/competencia/SelectorTemporada.as
 import StandingsTable from '../../components/StandingsTable.astro';
 import OnceDeLaFecha from '../../components/home/OnceDeLaFecha.astro';
 import TablaLideres from '../../components/TablaLideres.astro';
-import { api, ApiError, type CompetitionView, type MatchView } from '../../lib/api';
+import { api, ApiError, type CompetitionView, type MatchView, type TeamView } from '../../lib/api';
 import { isLive } from '../../lib/format';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { getSession } from '../../lib/supabase';
@@ -48,6 +49,16 @@ const pedidoPartido =
     ? api<MatchView>(`/views/match/${partidoPedido}`).catch(() => null)
     : Promise.resolve(null);
 
+/*
+ * El equipo abierto dentro de la copa. Su camino en el torneo sale de la vista de la competencia
+ * —los partidos ya viajan ahí—, y esta consulta es por el escudo, los colores y la plantilla.
+ */
+const equipoPedido = Astro.url.searchParams.get('equipo');
+const pedidoEquipo =
+  equipoPedido && /^[a-z0-9-]{2,80}$/.test(equipoPedido)
+    ? api<TeamView>(`/views/team/${equipoPedido}`).catch(() => null)
+    : Promise.resolve(null);
+
 let view: CompetitionView;
 try {
   view = await pedidoVista;
@@ -57,6 +68,7 @@ try {
 }
 const session = await pedidoSesion;
 const partido = await pedidoPartido;
+const equipo = await pedidoEquipo;
 
 /*
  * Con un partido abierto, la vista se suma a la consulta que ya lo nombra: el partido es el estado
@@ -77,6 +89,7 @@ const {
   etapas,
   estado,
   porRonda,
+  rondasDeGrupos,
   onceDelTorneo,
   seasons,
 } = view;
@@ -86,6 +99,27 @@ const {
  * seguía necesitando su tabla de posiciones, que es lo que se viene a ver.
  */
 const esCopa = competition.format !== 'league';
+
+/*
+ * El equipo abierto tiene que jugar este torneo: con un enlace a un club que no está, su página es
+ * mejor respuesta que una pantalla vacía dentro de una copa que no es la suya.
+ */
+const juegaAcá =
+  equipo !== null &&
+  (porRonda.some((r) =>
+    r.partidos.some((p) => p.homeTeam.id === equipo.team.id || p.awayTeam.id === equipo.team.id),
+  ) ||
+    standingGroups.some((g) => g.rows.some((r) => r.team.id === equipo.team.id)));
+if (equipo && !juegaAcá) return Astro.redirect(`/equipos/${equipo.team.slug}`);
+if (equipoPedido && equipo === null && !partido) return Astro.redirect(`/competencias/${slug}`);
+
+/* Su grupo, cuando el torneo los tiene: la tabla donde está su fila. */
+const grupoDelEquipo =
+  equipo && standingGroups.find((g) => g.rows.some((r) => r.team.id === equipo.team.id))
+    ? (standingGroups.find((g) =>
+        g.rows.some((r) => r.team.id === equipo.team.id),
+      ) as (typeof standingGroups)[number])
+    : null;
 
 const TITULO_ETAPA: Record<string, string> = {
   final: 'Camino al título',
@@ -312,6 +346,21 @@ const jsonLd = {
         Con un partido abierto, la página es ese partido: mostrarlo arriba del cuadro dejaría dos
         temas a la vez y el doble de alto.
       -->
+      <!-- Un equipo abierto manda igual que un partido: la página es ese equipo dentro del torneo. -->
+      {
+        !partido && equipo && (
+          <EquipoEnLaCopa
+            rondas={porRonda}
+            view={equipo}
+            grupo={grupoDelEquipo}
+            volver={`/competencias/${competition.slug}`}
+            hrefPartido={enlacePartidoEnCopa}
+            hrefEquipo={enlaceEquipoCopa}
+            conCuenta={session !== null}
+          />
+        )
+      }
+
       {
         partido && (
           <CentroDelPartido
@@ -324,7 +373,7 @@ const jsonLd = {
       }
 
       {
-        !partido && (
+        !partido && !equipo && (
           <>
             <!--
               Arriba, en fila: los partidos ronda por ronda, quiénes deciden y el once. Las tres
@@ -396,6 +445,8 @@ const jsonLd = {
                   juntos={gruposJuntos}
                   hrefFase={enlaceFase}
                   hrefEquipo={enlaceEquipoCopa}
+                  rondas={rondasDeGrupos}
+                  hrefPartido={enlacePartidoEnCopa}
                 />
               ) : fase.rondas.length > 0 ? (
                 <Cuadro

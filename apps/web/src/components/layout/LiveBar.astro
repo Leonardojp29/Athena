@@ -51,7 +51,7 @@ const matches: MatchCard[] = [
 
                 <span
                   data-marcador
-                  class:list={['font-display font-semibold tabular', vivo ? 'text-live' : 'text-ink']}
+                  class:list={['font-display font-semibold tabular', vivo ? 'text-live-ink' : 'text-ink']}
                 >
                   {marcador ? `${match.homeScore}–${match.awayScore}` : formatKickoff(match.kickoffUtc)}
                 </span>
@@ -65,7 +65,11 @@ const matches: MatchCard[] = [
                   )}
                 </span>
 
-                <span data-estado class:list={['tabular text-live/90', vivo ? '' : 'hidden']}>
+                <span
+                  data-estado
+                  data-solo-en-vivo
+                  class:list={['tabular text-live-ink', vivo ? '' : 'hidden']}
+                >
                   {vivo ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail) : ''}
                 </span>
               </a>

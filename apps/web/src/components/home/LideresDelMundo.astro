@@ -199,7 +199,7 @@ const resto: Goleador[] = top.scorers.slice(1, 8);
                   <span class="block truncate text-sm">{p.player.name}</span>
                   <span class="block truncate text-2xs text-ink-muted">
                     {hazana(p) || (p.team.shortName ?? p.team.name)}
-                    <span class="text-ink-muted/70"> · {p.match.season.competition.name}</span>
+                    <span class="text-ink-muted"> · {p.match.season.competition.name}</span>
                   </span>
                 </span>
                 {p.rating !== null && (

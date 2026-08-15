@@ -92,6 +92,9 @@ const RANCIO_MS = 14 * 24 * 3600_000;
 /* Cuántas rondas se mandan a cada lado de la que se juega. */
 const VENTANA = 3;
 
+/* La etapa sirve para separar las columnas acá adentro; afuera nadie la usa y no viaja. */
+const sinEtapa = <T extends { etapa: unknown }>({ etapa: _etapa, ...resto }: T) => resto;
+
 const matchCard = {
   id: true,
   kickoffUtc: true,
@@ -542,6 +545,21 @@ export class ViewsService {
     /* La ronda en curso solo existe mientras el torneo lo esté: después, nada está "en juego". */
     const enCurso = estado === 'en-juego' ? jornada : null;
 
+    /*
+     * A qué grupo pertenece cada equipo. Un mismo equipo puede estar en dos tablas —su grupo y la de
+     * mejores terceros de un Mundial—, así que manda la más chica, que es su grupo de verdad: con la
+     * otra, un partido entre dos terceros terminaba contado en la tabla de terceros y su grupo se
+     * quedaba sin él.
+     */
+    const grupoDe = new Map<string, string>();
+    for (const fila of [...standings].sort(
+      (a, b) => (groups.get(a.groupLabel)?.length ?? 0) - (groups.get(b.groupLabel)?.length ?? 0),
+    )) {
+      if (!grupoDe.has(fila.team.id)) grupoDe.set(fila.team.id, fila.groupLabel);
+    }
+
+    const rondasDePartidos = this.partidosPorRonda(todos, rondas, jornada, enCurso, grupoDe);
+
     const standingGroups = [...groups.entries()]
       .map(([label, rows]) => ({ label, rows, current: vigentes.has(label) }))
       .sort((a, b) => Number(b.current) - Number(a.current));
@@ -575,13 +593,9 @@ export class ViewsService {
       etapaEnJuego: rondas.find((r) => r.round === enCurso)?.etapa ?? null,
       estado,
       /* Los partidos agrupados por ronda, para navegarlos de una en una en lugar de dos listas. */
-      porRonda: this.partidosPorRonda(
-        todos,
-        rondas,
-        jornada,
-        enCurso,
-        new Map(standings.map((fila) => [fila.team.id, fila.groupLabel])),
-      ),
+      porRonda: rondasDePartidos.ventana,
+      /* La fase de grupos completa: el bloque de grupos necesita las tres fechas, no la ventana. */
+      rondasDeGrupos: rondasDePartidos.grupos,
       /*
        * El nombre de la jornada en español, para no traducirlo en cada vista. Solo cuando el dominio
        * la reconoce como ronda de copa: la jornada de una liga —"Clausura - 5"— la rotula la web con
@@ -916,7 +930,7 @@ export class ViewsService {
     jornada: string | null,
     enCurso: string | null,
     grupoDe: Map<string, string>,
-  ): RondaDePartidos[] {
+  ): { ventana: RondaDePartidos[]; grupos: RondaDePartidos[] } {
     const columnas = new Map<
       string,
       { label: string; etapa: Etapa | null; eliminatoria: boolean; partidos: PartidoDeCuadro[] }
@@ -942,6 +956,7 @@ export class ViewsService {
         );
         return {
           label: columna.label,
+          etapa: columna.etapa,
           enJuego: false,
           partidos: suyos,
           bloques: this.bloquesDe(columna, suyos, grupoDe),
@@ -960,7 +975,14 @@ export class ViewsService {
       ordenadas.findIndex((c) => c.label === (enJuego ?? rotuloDe(jornada))),
     );
     const desde = Math.max(0, Math.min(centro - VENTANA, ordenadas.length - (VENTANA * 2 + 1)));
-    return ordenadas.slice(desde, desde + VENTANA * 2 + 1);
+    return {
+      ventana: ordenadas.slice(desde, desde + VENTANA * 2 + 1).map(sinEtapa),
+      /*
+       * La fase de grupos, entera y sin ventana: el bloque de grupos muestra los partidos de cada
+       * grupo y con las siete rondas de la ventana un Mundial mostraba una sola de sus tres fechas.
+       */
+      grupos: ordenadas.filter((c) => c.etapa === 'grupos').map(sinEtapa),
+    };
   }
 
   /**
@@ -1153,6 +1175,34 @@ export class ViewsService {
    * Todo por slug y en paralelo. Pedir el equipo primero para tener su id costaba un viaje entero
    * a Supabase; filtrar por la relación cuesta un join, que del lado de la base no se nota.
    */
+  /**
+   * El 404 de un slug, con la mudanza si la hubo.
+   *
+   * Un slug cambia cuando el jugador nació abreviado —"j-vidales"— y llegó su nombre completo, o
+   * cuando una selección dejó de llamarse "spain". El enlace viejo no puede morir por eso, así que el
+   * 404 viaja con el slug nuevo y la página redirige en lugar de mandar a la de "no existe".
+   */
+  private async noEncontrado(
+    entityType: 'player' | 'team',
+    slug: string,
+    mensaje: string,
+  ): Promise<NotFoundException> {
+    const alias = await this.prisma.slugAlias.findUnique({
+      where: { entityType_slug: { entityType, slug } },
+      select: { entityId: true },
+    });
+    if (!alias) return new NotFoundException(mensaje);
+
+    const destino =
+      entityType === 'player'
+        ? await this.prisma.player.findUnique({ where: { id: alias.entityId }, select: { slug: true } })
+        : await this.prisma.team.findUnique({ where: { id: alias.entityId }, select: { slug: true } });
+
+    return destino
+      ? new NotFoundException({ message: mensaje, movedTo: destino.slug })
+      : new NotFoundException(mensaje);
+  }
+
   async team(slug: string) {
     const ultimoJugado = { team: { slug }, match: { status: 'finished' } };
     const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas] =
@@ -1318,7 +1368,7 @@ export class ViewsService {
           select: { ...matchPlayerStats, matchId: true, player: playerLink },
         }),
       ]);
-    if (!team) throw new NotFoundException('Equipo no encontrado');
+    if (!team) throw await this.noEncontrado('team', slug, 'Equipo no encontrado');
 
     /*
      * Un equipo puede tener dos tablas del mismo torneo —el Apertura cerrado y el Clausura en
@@ -1627,7 +1677,7 @@ export class ViewsService {
         select: { year: true, shirtNumber: true, team: teamSummary },
       }),
     ]);
-    if (!player) throw new NotFoundException('Jugador no encontrado');
+    if (!player) throw await this.noEncontrado('player', slug, 'Jugador no encontrado');
 
     /* Los acumulados de todas las temporadas: el hincha quiere "cuántos hizo", no un desglose. */
     const totals = seasons.reduce(

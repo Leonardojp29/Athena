@@ -22,7 +22,9 @@
     "backfill:kits": "node --env-file-if-exists=../../.env dist/scripts/backfill-kits.js",
     "colores": "node --env-file-if-exists=../../.env dist/scripts/recalcular-colores.js",
     "selecciones:nombres": "node --env-file-if-exists=../../.env dist/scripts/renombrar-selecciones.js",
-    "sync:tablas": "node --env-file-if-exists=../../.env dist/scripts/sync-tablas.js"
+    "sync:tablas": "node --env-file-if-exists=../../.env dist/scripts/sync-tablas.js",
+    "sync:plantillas": "node --env-file-if-exists=../../.env dist/scripts/sync-plantillas.js",
+    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",

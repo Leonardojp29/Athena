@@ -1,7 +1,9 @@
 ---
+import Icon from '../Icon.astro';
+import MatchRow from '../MatchRow.astro';
 import SelectorFase from '../SelectorFase.astro';
 import StandingsTable from '../StandingsTable.astro';
-import type { StandingRow } from '../../lib/api';
+import type { RondaDePartidos, StandingRow } from '../../lib/api';
 import { nombreFase } from '../../lib/paises';
 
 /*
@@ -10,6 +12,11 @@ import { nombreFase } from '../../lib/paises';
  * Con ocho grupos de cuatro equipos, el selector mostraba un grupo por vez y dejaba el resto de la
  * columna vacío: en una copa se quiere leer la fase entera de un golpe. Con dos o menos —una fase
  * liga, dos conferencias— vuelve el selector y la tabla completa, que ahí sí tiene qué mostrar.
+ *
+ * Cada grupo lleva además **sus partidos, fecha por fecha**: una tabla dice cómo quedó, pero no con
+ * quién ni cuándo, y en un Mundial esos tres partidos son la fase entera. Van plegados —abiertos en
+ * el grupo que se está jugando— porque doce grupos abiertos son una página de dos pantallas. No
+ * cuestan un pedido: la vista de la competencia ya parte cada fecha en bloques por grupo.
  */
 interface Props {
   grupos: Array<{ label: string; rows: StandingRow[]; current: boolean }>;
@@ -17,9 +24,38 @@ interface Props {
   juntos: boolean;
   hrefFase: (label: string) => string;
   hrefEquipo: (slug: string) => string;
+  /** Todas las rondas del torneo: de acá salen los partidos de cada grupo. */
+  rondas?: RondaDePartidos[];
+  hrefPartido?: (id: string) => string;
 }
 
-const { grupos, abierto, juntos, hrefFase, hrefEquipo } = Astro.props;
+const { grupos, abierto, juntos, hrefFase, hrefEquipo, rondas = [], hrefPartido } = Astro.props;
+
+/*
+ * Los partidos de un grupo, por fecha. Solo las rondas de la fase de grupos traen un bloque con su
+ * nombre, así que buscarlo por título alcanza para no confundirlo con la ida y vuelta de una llave.
+ */
+/*
+ * La tabla que el proveedor llama "Group Stage" junto a doce grupos no es la fase de grupos: es el
+ * ranking de los que salieron terceros, que en un Mundial de 48 decide ocho clasificados. Se lo
+ * comprueba —todos son terceros de su grupo— antes de ponerle el nombre.
+ */
+const esDeTerceros = (label: string, rows: StandingRow[]) =>
+  grupos.length > 1 &&
+  rows.length > 2 &&
+  rows.every((fila) =>
+    grupos.some(
+      (g) => g.label !== label && g.rows.some((r) => r.team.id === fila.team.id && r.position === 3),
+    ),
+  );
+
+const tituloDe = (g: { label: string; rows: StandingRow[] }) =>
+  esDeTerceros(g.label, g.rows) ? 'Mejores terceros' : nombreFase(g.label);
+
+const fechasDe = (label: string) =>
+  rondas
+    .map((ronda) => ({ ronda: ronda.label, bloque: ronda.bloques.find((b) => b.titulo === label) }))
+    .filter((f): f is { ronda: string; bloque: NonNullable<typeof f.bloque> } => f.bloque !== undefined);
 ---
 
 {
@@ -41,19 +77,70 @@ const { grupos, abierto, juntos, hrefFase, hrefEquipo } = Astro.props;
         <!-- A todo el ancho entran cuatro grupos por fila: en dos, la tabla de cuatro equipos se
              estiraba y el nombre quedaba lejos de los puntos. -->
         <div class="grid gap-x-6 gap-y-5 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {grupos.map((g) => (
-            <div>
-              <p class="mb-1 font-display text-sm font-semibold uppercase leading-none">
-                {nombreFase(g.label)}
-              </p>
-              <StandingsTable rows={g.rows} compacto hrefEquipo={hrefEquipo} />
-            </div>
-          ))}
+          {grupos.map((g) => {
+            const fechas = fechasDe(g.label);
+            return (
+              <div>
+                <p class="mb-1 font-display text-sm font-semibold uppercase leading-none">
+                  {tituloDe(g)}
+                </p>
+                <StandingsTable rows={g.rows} compacto hrefEquipo={hrefEquipo} />
+
+                {fechas.length > 0 && (
+                  <details class="group/partidos mt-1.5" open={g.current}>
+                    <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink">
+                      <Icon
+                        name="chevron-derecha"
+                        size={11}
+                        class="shrink-0 transition-transform group-open/partidos:rotate-90"
+                      />
+                      Sus partidos
+                      <span class="tabular">
+                        ({fechas.reduce((n, f) => n + f.bloque.partidos.length, 0)})
+                      </span>
+                    </summary>
+                    <div class="grid gap-1 pt-1">
+                      {fechas.map((f) => (
+                        <div>
+                          <p class="px-1 text-[10px] font-medium tracking-label text-ink-muted uppercase">
+                            {f.ronda}
+                          </p>
+                          {f.bloque.partidos.map((partido) => (
+                            <MatchRow
+                              match={partido}
+                              showDate
+                              hrefEquipo={hrefEquipo}
+                              hrefPartido={hrefPartido}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </div>
       ) : (
         abierto && (
-          <div class="p-3">
+          <div class="grid gap-3 p-3">
             <StandingsTable rows={abierto.rows} hrefEquipo={hrefEquipo} />
+            {fechasDe(abierto.label).map((f) => (
+              <div>
+                <p class="px-1 pb-0.5 text-2xs font-medium tracking-label text-ink-muted uppercase">
+                  {f.ronda}
+                </p>
+                {f.bloque.partidos.map((partido) => (
+                  <MatchRow
+                    match={partido}
+                    showDate
+                    hrefEquipo={hrefEquipo}
+                    hrefPartido={hrefPartido}
+                  />
+                ))}
+              </div>
+            ))}
           </div>
         )
       )}

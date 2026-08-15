@@ -114,7 +114,7 @@ const estado = live
           data-marcador
           class:list={[
             'font-display tabular text-base font-semibold px-2 py-0.5 rounded',
-            live ? 'bg-live/15 text-live' : '',
+            live ? 'bg-live/15 text-live-ink' : '',
           ]}
           style={`view-transition-name: marcador-${match.id}`}
         >
@@ -128,7 +128,7 @@ const estado = live
     }
     <span
       data-estado
-      class:list={['text-2xs', live ? 'font-medium text-live' : 'text-ink-muted']}
+      class:list={['text-2xs', live ? 'font-medium text-live-ink' : 'text-ink-muted']}
     >
       {estado}
     </span>

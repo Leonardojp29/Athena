@@ -48,7 +48,7 @@ const diaCorto = (iso: string): string =>
             <span
               class:list={[
                 'grid text-2xs leading-tight tabular',
-                isLive(match.status) ? 'text-live' : 'text-ink-muted',
+                isLive(match.status) ? 'text-live-ink' : 'text-ink-muted',
               ]}
             >
               {isLive(match.status) ? (

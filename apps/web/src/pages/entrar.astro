@@ -60,7 +60,7 @@ function traducir(message: string): string {
     ) : (
       <Card>
         {notice && (
-          <p class:list={['text-sm mb-4', notice.kind === 'ok' ? 'text-live' : 'text-card-red-ink']}>
+          <p class:list={['text-sm mb-4', notice.kind === 'ok' ? 'text-live-ink' : 'text-card-red-ink']}>
             {notice.text}
           </p>
         )}

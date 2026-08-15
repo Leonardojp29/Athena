@@ -249,7 +249,7 @@ const comparar = `/comparar?tipo=equipo&a=${homeTeam.slug}&b=${awayTeam.slug}`;
                       <span class="col-span-2 col-start-1 row-start-4 flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted sm:col-span-1 sm:col-start-5 sm:row-auto sm:justify-end">
                         <EscudoTorneo url={cruce.competition_logo} size={14} />
                         <span class="truncate">{cruce.competition_name}</span>
-                        {jornada && <span class="hidden shrink-0 text-ink-muted/70 lg:inline">· {jornada}</span>}
+                        {jornada && <span class="hidden shrink-0 text-ink-muted lg:inline">· {jornada}</span>}
                         <span
                           class:list={[
                             'grid size-4 shrink-0 place-items-center rounded-[3px] text-[9px] font-bold',

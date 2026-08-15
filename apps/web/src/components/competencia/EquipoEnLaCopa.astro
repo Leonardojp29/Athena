@@ -1,0 +1,169 @@
+---
+import BotonFavorito from '../BotonFavorito.astro';
+import Icon from '../Icon.astro';
+import MatchRow from '../MatchRow.astro';
+import PlantillaCompacta from '../home/PlantillaCompacta.astro';
+import StandingsTable from '../StandingsTable.astro';
+import type { PartidoDeCuadro, RondaDePartidos, StandingRow, TeamView } from '../../lib/api';
+import { coloresDeClub, temaEquipo } from '../../lib/color';
+import { paisEnEspanol } from '../../lib/paises';
+
+/*
+ * Un equipo, dentro de su torneo.
+ *
+ * El escudo de una llave ya enlazaba acá y la página no leía el parámetro: el clic no hacía nada.
+ * Y la ficha del club tampoco servía, porque responde otra pregunta —cómo le va en todo— cuando lo
+ * que se está mirando es esta copa.
+ *
+ * Así que el centro es **su camino en el torneo**: todos sus partidos de esta competencia en orden
+ * de ronda, de la fase previa a donde haya llegado. No cuesta un pedido: los partidos ya viajan en
+ * la vista de la competencia y acá solo se filtran.
+ */
+interface Props {
+  rondas: RondaDePartidos[];
+  /** La ficha del club: de ahí salen el escudo, los colores y la plantilla. */
+  view: TeamView;
+  grupo: { label: string; rows: StandingRow[] } | null;
+  volver: string;
+  hrefPartido: (id: string) => string;
+  hrefEquipo: (slug: string) => string;
+  conCuenta?: boolean;
+}
+
+const { rondas, view, grupo, volver, hrefPartido, hrefEquipo, conCuenta = false } = Astro.props;
+const { team, squad } = view;
+
+/* Su camino: una fila por partido, con la ronda al lado porque acá se mezclan todas. */
+const camino: Array<{ ronda: string; partido: PartidoDeCuadro }> = rondas.flatMap((ronda) =>
+  ronda.partidos
+    .filter((p) => p.homeTeam.id === team.id || p.awayTeam.id === team.id)
+    .map((partido) => ({ ronda: ronda.label, partido })),
+);
+
+const jugados = camino.filter((c) => c.partido.status === 'finished');
+const ganados = jugados.filter((c) => {
+  const local = c.partido.homeTeam.id === team.id;
+  const suyos = local ? c.partido.homeScore : c.partido.awayScore;
+  const otros = local ? c.partido.awayScore : c.partido.homeScore;
+  return suyos !== null && otros !== null && suyos > otros;
+}).length;
+const empatados = jugados.filter((c) => c.partido.homeScore === c.partido.awayScore).length;
+
+/* El mismo tema que su ficha: el color del club sale de su camiseta titular. */
+const tema = temaEquipo(...coloresDeClub(team.slug, team.primaryColor, team.secondaryColor));
+const puesto = grupo?.rows.find((r) => r.team.id === team.id)?.position ?? null;
+const pais = paisEnEspanol(team.country);
+---
+
+<section class="overflow-hidden rounded-xl border border-border bg-surface">
+  <!-- La cabecera toma el color del club, como su ficha: entrar acá tiene que sentirse su casa. -->
+  <header
+    class="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-border p-4"
+    style={tema ? `background:${tema.lavado(0.1)}` : undefined}
+  >
+    <a
+      href={volver}
+      class="flex items-center gap-1.5 rounded-md bg-canvas-subtle px-2 py-1 text-2xs font-medium text-ink-muted transition-colors hover:text-ink"
+    >
+      <Icon name="flecha-izquierda" size={12} />
+      Volver al cuadro
+    </a>
+
+    <span class="flex min-w-0 items-center gap-3">
+      {team.logoUrl && <img src={team.logoUrl} alt="" width="40" height="40" class="size-10 shrink-0" />}
+      <span class="min-w-0">
+        <a
+          href={`/equipos/${team.slug}`}
+          class="block truncate font-display text-xl font-semibold uppercase leading-none hover:text-primary-ink"
+        >
+          {team.name}
+        </a>
+        <span class="mt-1 flex flex-wrap items-center gap-x-2 text-2xs text-ink-muted">
+          {pais && <span>{pais}</span>}
+          {puesto !== null && (
+            <>
+              <span class="text-border-strong">·</span>
+              <span class="font-medium text-ink">
+                {puesto}º de su grupo
+              </span>
+            </>
+          )}
+          {jugados.length > 0 && (
+            <>
+              <span class="text-border-strong">·</span>
+              <span class="tabular">
+                {jugados.length} jugados · {ganados}G {empatados}E {jugados.length - ganados - empatados}P
+              </span>
+            </>
+          )}
+        </span>
+      </span>
+    </span>
+
+    <BotonFavorito
+      tipo="equipo"
+      id={team.id}
+      slug={team.slug}
+      nombre={team.name}
+      logoUrl={team.logoUrl}
+      pais={pais}
+      variante="boton"
+      conCuenta={conCuenta}
+      class="ml-auto shrink-0"
+    />
+  </header>
+
+  <div class="grid gap-4 p-3 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <section class="min-w-0">
+      <h3 class="mb-1 flex items-center gap-1.5 px-1 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+        <Icon name="cuadro" size={13} />
+        Su camino en el torneo
+      </h3>
+      {
+        camino.length > 0 ? (
+          <!-- Acotada: una fila de partido estirada a mil cien píxeles deja a los dos equipos
+               mirándose desde dos provincias. -->
+          <ul class="mx-auto grid w-full max-w-3xl">
+            {camino.map(({ ronda, partido }) => (
+              <li class="grid gap-0.5 border-b border-border/60 py-1 last:border-0">
+                <span class="px-2 text-[10px] font-medium tracking-label text-ink-muted uppercase">
+                  {ronda}
+                </span>
+                <MatchRow
+                  match={partido}
+                  showDate
+                  destacado={team.slug}
+                  hrefPartido={hrefPartido}
+                  hrefEquipo={hrefEquipo}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="px-1 text-sm text-ink-muted">
+            Todavía no tiene partidos en esta edición del torneo.
+          </p>
+        )
+      }
+    </section>
+
+    <div class="grid min-w-0 content-start gap-4">
+      {
+        grupo && (
+          <section class="rounded-lg border border-border">
+            <h3 class="border-b border-border px-3 py-2 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+              Su grupo
+            </h3>
+            <StandingsTable
+              rows={grupo.rows}
+              highlightTeamId={team.id}
+              hrefEquipo={hrefEquipo}
+              compacto
+            />
+          </section>
+        )
+      }
+      <PlantillaCompacta squad={squad} />
+    </div>
+  </div>
+</section>

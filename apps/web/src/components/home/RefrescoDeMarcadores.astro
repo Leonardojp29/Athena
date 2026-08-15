@@ -54,7 +54,7 @@ const { dia, segundos = 30 } = Astro.props;
       const separador = nodo.textContent?.includes(' – ') ? ' – ' : '–';
       nodo.textContent = `${m.homeScore}${separador}${m.awayScore}`;
       nodo.classList.toggle('bg-live/15', isLive(m.status) && nodo.classList.contains('rounded'));
-      nodo.classList.toggle('text-live', isLive(m.status));
+      nodo.classList.toggle('text-live-ink', isLive(m.status));
     };
 
     const aplicar = (partidos: FilaViva[]): void => {
@@ -75,8 +75,8 @@ const { dia, segundos = 30 } = Astro.props;
               ? 'Final'
               : statusLabel(m.status);
           /* En la tira de arriba el minuto solo existe si el partido está en juego. */
-          estado.classList.toggle('hidden', !vivo && estado.classList.contains('text-live/90'));
-          estado.classList.toggle('text-live', vivo && !estado.classList.contains('text-live/90'));
+          estado.classList.toggle('hidden', !vivo && estado.dataset.soloEnVivo !== undefined);
+          estado.classList.toggle('text-live-ink', vivo);
           estado.classList.toggle('font-medium', vivo);
           estado.classList.toggle('text-ink-muted', !vivo);
         }

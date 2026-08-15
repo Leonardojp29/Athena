@@ -74,7 +74,7 @@ const lados = [homeTeam, awayTeam]
             {banco.map(({ jugador, entrada, nota }) => (
               <li class="flex items-center gap-1.5 rounded px-1 py-1 transition-colors hover:bg-canvas-subtle">
                 {entrada ? (
-                  <span class="flex w-9 shrink-0 items-center gap-0.5 text-2xs font-medium tabular text-live">
+                  <span class="flex w-9 shrink-0 items-center gap-0.5 text-2xs font-medium tabular text-live-ink">
                     <EventIcon kind="sub_in" size={10} detail={`minuto ${entrada.minuto}`} />
                     {entrada.minuto}'
                   </span>

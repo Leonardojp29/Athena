@@ -187,7 +187,7 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                   <CountryFlag url={pais.flagUrl} code={pais.code} name={nombrePais} size={16} />
                   <span class="min-w-0 flex-1 truncate">{nombrePais}</span>
                   {vivos > 0 ? (
-                    <span class="flex items-center gap-1 text-2xs font-medium text-live">
+                    <span class="flex items-center gap-1 text-2xs font-medium text-live-ink">
                       <span class="size-1.5 rounded-full bg-live animate-live-pulse" />
                       {vivos}
                     </span>

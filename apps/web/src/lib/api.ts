@@ -4,6 +4,12 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    /*
+     * El cuerpo del error, cuando el API tiene algo que decir además del código. Lo usa el 404 de un
+     * slug que cambió: viaja con `movedTo` y la página redirige en lugar de mandar a la de "no
+     * existe".
+     */
+    readonly body?: { movedTo?: string } | null,
   ) {
     super(message);
   }
@@ -71,7 +77,10 @@ async function pedir<T>(
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
   });
   alResponder?.(res);
-  if (!res.ok) throw new ApiError(res.status, `${path} → ${res.status}`);
+  if (!res.ok) {
+    const cuerpo = res.status === 404 ? await res.json().catch(() => null) : null;
+    throw new ApiError(res.status, `${path} → ${res.status}`, cuerpo);
+  }
   return res.json() as Promise<T>;
 }
 
@@ -260,6 +269,8 @@ export interface CompetitionView {
    * las listas de próximos y últimos, que eran el mismo calendario partido en dos.
    */
   porRonda: RondaDePartidos[];
+  /** La fase de grupos entera, sin la ventana de siete rondas que acota `porRonda`. */
+  rondasDeGrupos: RondaDePartidos[];
   /** La jornada en curso ya traducida: "Octavos de final", "Fase de grupos · fecha 6". */
   roundLabel: string | null;
   /** El once y el mejor de toda la temporada; null cuando no hay notas suficientes. */
@@ -448,6 +459,8 @@ export interface TeamView {
     slug: string;
     country: string | null;
     founded: number | null;
+    /** Una selección no es un club: no tiene casa ni se compara con clubes. */
+    isNationalTeam: boolean;
     logoUrl: string | null;
     /** Hex sin almohadilla, como los publica el proveedor en las alineaciones. */
     primaryColor: string | null;
