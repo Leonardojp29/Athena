@@ -118,8 +118,8 @@ const jsonLd = {
           width="260"
           height="260"
           aria-hidden="true"
-          class="pointer-events-none absolute -top-12 right-4 hidden size-64 opacity-10 md:block"
-          style="mask-image:linear-gradient(115deg, transparent 25%, black 85%)"
+          class="pointer-events-none absolute -top-16 right-6 hidden size-80 opacity-[0.18] md:block lg:size-96"
+          style="mask-image:linear-gradient(115deg, transparent 20%, black 80%)"
         />
       )
     }
@@ -128,8 +128,8 @@ const jsonLd = {
         <div class="flex min-w-0 flex-1 items-center gap-4">
           {
             team.logoUrl && (
-              <span class="grid size-16 shrink-0 place-items-center rounded-2xl bg-chalk shadow-card sm:size-20">
-                <img src={team.logoUrl} alt="" width="56" height="56" class="size-12 sm:size-14" />
+              <span class="grid size-20 shrink-0 place-items-center rounded-2xl bg-chalk shadow-card ring-1 ring-(--linea) sm:size-28">
+                <img src={team.logoUrl} alt="" width="88" height="88" class="size-14 sm:size-20" />
               </span>
             )
           }

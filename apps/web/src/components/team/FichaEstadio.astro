@@ -1,19 +1,21 @@
 ---
 import Icon from '../Icon.astro';
 import type { VenueSummary } from '../../lib/api';
-import { aforo, superficieEnEspanol } from '../../lib/estadio';
+import { aforo, fotoDeEstadio, superficieEnEspanol } from '../../lib/estadio';
 
 /*
  * La casa del club, en el riel.
  *
- * La foto ocupa el ancho de la tarjeta y el nombre se apoya sobre ella, pero nunca sobre el píxel
- * crudo: entre los dos hay un velo con el color del club, el mismo de la cabecera, así que el
- * contraste está garantizado con cualquier imagen que mande el proveedor —y manda de todo, desde
- * tribunas al sol hasta cielos blancos—.
+ * La foto va **entera**: recortada al ancho de la tarjeta se perdía media tribuna y el estadio dejaba
+ * de reconocerse, que es lo único que una foto de estadio tiene que lograr. Va en su proporción, sin
+ * cortar, y lo que sobra lo pinta el color del club, así que la tarjeta se ve completa con cualquier
+ * imagen —el proveedor manda de todo, apaisadas y cuadradas—.
+ *
+ * El nombre va debajo de la foto y no encima: con la imagen completa, cualquier texto superpuesto
+ * tapa justo lo que se vino a ver.
  *
  * La escalera de degradación es la de siempre: sin foto queda la banda de color con el icono marcado,
- * y sin estadio la tarjeta no se dibuja. Un hueco con "sin datos" anuncia el vacío más fuerte que el
- * vacío mismo.
+ * y sin estadio la tarjeta no se dibuja.
  */
 interface Props {
   venue: VenueSummary;
@@ -25,7 +27,7 @@ const { venue, vars } = Astro.props;
 
 const capacidad = aforo(venue.capacity);
 const superficie = superficieEnEspanol(venue.surface);
-const foto = venue.imageUrl;
+const foto = fotoDeEstadio(venue);
 
 /* Solo lo que existe: una fila con huecos se lee como un formulario a medio llenar. */
 const datos = [
@@ -38,37 +40,26 @@ const datos = [
   class="overflow-hidden rounded-xl border border-border bg-surface"
   aria-label={`Estadio de local: ${venue.name}`}
 >
-  <div class="relative h-28 bg-board" style={vars}>
+  <div class="relative bg-board" style={vars}>
     {
       foto ? (
         <img
-          src={foto}
-          alt=""
+          src={foto.url}
+          alt={`Estadio ${venue.name}`}
           width="640"
-          height="360"
+          height="480"
           loading="lazy"
           decoding="async"
-          aria-hidden="true"
-          class="absolute inset-0 h-full w-full object-cover"
+          class="aspect-[4/3] w-full object-contain"
         />
       ) : (
-        <span
-          class="absolute -right-4 top-1/2 -translate-y-1/2 text-(--tinta-tenue)"
-          aria-hidden="true"
-        >
-          <Icon name="estadio" size={110} />
+        <span class="grid h-28 place-items-center text-(--tinta-tenue)" aria-hidden="true">
+          <Icon name="estadio" size={72} />
         </span>
       )
     }
 
-    <!-- El velo del club: el texto se apoya en su propio color y no en la foto. -->
-    <span
-      class="pointer-events-none absolute inset-0"
-      style="background:linear-gradient(0deg, var(--fondo-solido) 0%, color-mix(in oklab, var(--fondo-solido) 82%, transparent) 42%, transparent 72%)"
-      aria-hidden="true"
-    ></span>
-
-    <div class="absolute inset-x-0 bottom-0 p-3">
+    <div class="border-t border-(--linea) px-3 py-2.5">
       <p class="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-label text-(--tinta-suave)">
         <Icon name="estadio" size={11} />
         La casa
@@ -93,7 +84,13 @@ const datos = [
       )
     }
     {venue.city && <p class="text-2xs text-ink-muted">{venue.city}</p>}
-    <!-- Cada cifra lleva su origen, también cuando el origen a veces se equivoca de ciudad. -->
-    <p class="text-[10px] text-ink-muted/70">dato del proveedor</p>
+
+    <!--
+      Cada cosa dice de dónde salió: los datos son del proveedor —que a veces se equivoca de ciudad—
+      y la foto propia lleva el crédito que su licencia exige.
+    -->
+    <p class="text-[10px] leading-relaxed text-ink-muted/70">
+      {foto?.credito ? `${foto.credito} · datos del proveedor` : 'dato del proveedor'}
+    </p>
   </div>
 </section>
