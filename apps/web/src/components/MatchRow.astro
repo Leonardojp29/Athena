@@ -55,8 +55,8 @@ const hasScore = match.homeScore !== null && match.awayScore !== null;
 /* Con la fecha pedida, un partido terminado la muestra: el marcador ya dice que terminó. */
 const ronda = mostrarRonda ? etiquetaDeRonda(match.round) : null;
 
-const estado = live && match.elapsedMinutes !== null
-  ? `${match.elapsedMinutes}'`
+const estado = live
+  ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)
   : showDate
     ? formatDate(match.kickoffUtc)
     : finished

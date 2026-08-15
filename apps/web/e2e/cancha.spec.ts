@@ -219,7 +219,7 @@ test.describe('pestañas del partido', () => {
     const id = await partidoConAlineacion(page);
     test.skip(id === null, 'ningún partido del día tiene alineación sincronizada');
 
-    for (const vista of ['resumen', 'alineaciones', 'estadisticas', 'analisis']) {
+    for (const vista of ['resumen', 'alineaciones', 'analisis', 'historial']) {
       await page.goto(`/partidos/${id}?vista=${vista}`);
       await expect(page.locator('main')).toContainText(/–|:/);
     }

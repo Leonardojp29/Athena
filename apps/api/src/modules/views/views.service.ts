@@ -1229,7 +1229,17 @@ export class ViewsService {
               /* Los cambios salen del mismo select: quién entró, quién salió y en qué minuto. */
               events: {
                 where: { kind: 'substitution' },
-                orderBy: [{ minute: 'asc' }, { extraMinute: 'asc' }],
+                /*
+         * En Postgres `asc` es `nulls last`, así que un gol al 45' —sin minuto agregado— salía
+         * **después** de uno al 45+3'. Y sin un tercer criterio, dos eventos del mismo minuto salen
+         * en orden arbitrario y pueden intercambiarse entre dos consultas, con lo que el marcador
+         * corriente del relato parpadearía. El id desempata y no cambia.
+         */
+        orderBy: [
+          { minute: 'asc' },
+          { extraMinute: { sort: 'asc', nulls: 'first' } },
+          { id: 'asc' },
+        ],
                 select: {
                   minute: true,
                   extraMinute: true,

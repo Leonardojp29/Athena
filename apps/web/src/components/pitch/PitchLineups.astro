@@ -1,6 +1,12 @@
 ---
 import { layout, type PlacedPlayer } from '@athena/domain';
-import type { LineupPlayer, MatchPlayerStats, TeamLineup, TeamSummary } from '../../lib/api';
+import type {
+  LineupPlayer,
+  MatchEventView,
+  MatchPlayerStats,
+  TeamLineup,
+  TeamSummary,
+} from '../../lib/api';
 import Icon from '../Icon.astro';
 import Pitch from './Pitch.astro';
 import PlayerToken from './PlayerToken.astro';
@@ -18,9 +24,21 @@ interface Props {
   playerStatistics: MatchPlayerStats[];
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
+  /** Los cambios del partido: quién salió y en qué minuto, sacado de los eventos. */
+  cambios?: MatchEventView[];
 }
 
-const { lineups, playerStatistics, homeTeam, awayTeam } = Astro.props;
+const { lineups, playerStatistics, homeTeam, awayTeam, cambios = [] } = Astro.props;
+
+/*
+ * El minuto en que salió cada titular. El dato no viaja en la alineación —el API manda el once y el
+ * banco— pero sí en los eventos del partido, donde `player` es el que sale y `relatedPlayer` el que
+ * entra. Sin esto la cancha no decía nada de los cambios, que es lo primero que se busca al final.
+ */
+const salioEn = new Map<string, number>();
+for (const cambio of cambios) {
+  if (cambio.player?.id) salioEn.set(cambio.player.id, cambio.minute);
+}
 
 const lado = (team: TeamSummary) => lineups.find((l) => l.teamId === team.id) ?? null;
 const local = lado(homeTeam);
@@ -91,6 +109,7 @@ const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' 
                 ancho={slot.x}
                 fila={slot.row}
                 figura={slot.player.playerId !== null && slot.player.playerId === figura?.id}
+                salioEn={slot.player.playerId ? (salioEn.get(slot.player.playerId) ?? null) : null}
               />
             )),
           )}

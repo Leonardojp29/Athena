@@ -29,15 +29,21 @@ export default defineConfig({
     defaultStrategy: 'hover',
   },
   security: {
-    // Sin esto Astro descarta el Host recibido y calcula el origen como "http://localhost"
-    // (sin puerto), con lo que la protección CSRF rechaza TODO POST de formulario.
+    /*
+     * Sin esto Astro descarta el Host recibido y calcula el origen como "http://localhost" (sin
+     * puerto), con lo que la protección CSRF rechaza TODO POST de formulario.
+     *
+     * Los dos loopbacks van juntos: `127.0.0.1` y `localhost` son el mismo servidor y orígenes
+     * distintos, así que entrar por uno mientras la lista dice el otro rechazaba cada POST —el
+     * botón de favoritos— como si fuera un ataque.
+     */
     allowedDomains: [
-      {
-        hostname: siteUrl.hostname,
-        protocol: siteUrl.protocol.replace(':', ''),
-        ...(siteUrl.port ? { port: siteUrl.port } : {}),
-      },
-    ],
+      ...new Set([siteUrl.hostname, 'localhost', '127.0.0.1']),
+    ].map((hostname) => ({
+      hostname,
+      protocol: siteUrl.protocol.replace(':', ''),
+      ...(siteUrl.port ? { port: siteUrl.port } : {}),
+    })),
   },
   vite: {
     envDir: ENV_DIR,

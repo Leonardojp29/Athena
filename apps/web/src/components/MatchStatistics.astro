@@ -5,9 +5,15 @@ interface Props {
   statistics: TeamStatistics[];
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
+  /**
+   * La tarjeta como protagonista, para cuando tiene media pantalla en lugar de una pista de 22rem:
+   * cifras en tipografía de marcador y barras más altas. Una tarjeta chica estirada al doble de
+   * ancho no dice nada nuevo, solo alarga las barras.
+   */
+  grande?: boolean;
 }
 
-const { statistics, homeTeam, awayTeam } = Astro.props;
+const { statistics, homeTeam, awayTeam, grande = false } = Astro.props;
 const home = statistics.find((s) => s.teamId === homeTeam.id);
 const away = statistics.find((s) => s.teamId === awayTeam.id);
 
@@ -34,15 +40,18 @@ const share = (a: number | null, b: number | null): number => {
 
 {
   rows.length > 0 && (
-    <section class="mt-4 rounded-lg border border-border bg-surface p-4">
-      <div class="mb-4 flex items-center justify-between gap-3">
+    <section class="rounded-lg border border-border bg-surface p-4">
+      <!-- Grilla y no `justify-between`: con nombres de largo distinto el título quedaba corrido. -->
+      <div class="mb-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
         <span class="flex min-w-0 items-center gap-2">
           <span class="size-2.5 shrink-0 rounded-sm bg-primary" />
           {homeTeam.logoUrl && <img src={homeTeam.logoUrl} alt="" width="18" height="18" />}
           <span class="truncate text-sm font-medium">{homeTeam.shortName ?? homeTeam.name}</span>
         </span>
 
-        <h2 class="shrink-0 text-base font-semibold">Estadísticas</h2>
+        <h2 class:list={['shrink-0 font-semibold', grande ? 'font-display text-base uppercase' : 'text-base']}>
+          Estadísticas
+        </h2>
 
         <span class="flex min-w-0 items-center justify-end gap-2">
           <span class="truncate text-sm font-medium">{awayTeam.shortName ?? awayTeam.name}</span>
@@ -51,25 +60,42 @@ const share = (a: number | null, b: number | null): number => {
         </span>
       </div>
 
-      <div class="grid gap-3.5">
+      <div class:list={['grid', grande ? 'gap-5' : 'gap-3.5']}>
         {rows.map((row) => {
           const homeShare = share(row.homeValue, row.awayValue);
           const suffix = row.isPercent ? '%' : '';
           return (
             <div>
-              <div class="mb-1 flex items-baseline justify-between text-sm">
-                <span class="w-12 font-medium tabular">
+              <div class:list={['mb-1 flex items-baseline justify-between', grande ? '' : 'text-sm']}>
+                <span
+                  class:list={[
+                    'tabular',
+                    grande ? 'w-16 font-display text-2xl font-semibold leading-none' : 'w-12 text-sm font-medium',
+                  ]}
+                >
                   {row.homeValue ?? '–'}
                   {row.homeValue !== null ? suffix : ''}
                 </span>
-                <span class="text-2xs text-ink-muted">{row.label}</span>
-                <span class="w-12 text-right font-medium tabular">
+                <span
+                  class:list={[
+                    'text-ink-muted',
+                    grande ? 'text-2xs uppercase tracking-label' : 'text-2xs',
+                  ]}
+                >
+                  {row.label}
+                </span>
+                <span
+                  class:list={[
+                    'text-right tabular',
+                    grande ? 'w-16 font-display text-2xl font-semibold leading-none' : 'w-12 text-sm font-medium',
+                  ]}
+                >
                   {row.awayValue ?? '–'}
                   {row.awayValue !== null ? suffix : ''}
                 </span>
               </div>
 
-              <div class="flex h-2 gap-0.5" role="presentation">
+              <div class:list={['flex gap-0.5', grande ? 'mt-1.5 h-2.5' : 'h-2']} role="presentation">
                 <div class="flex flex-1 justify-end overflow-hidden rounded-l-full bg-canvas-subtle">
                   <div
                     class="h-full origin-right rounded-l-full bg-primary animate-bar-fill"

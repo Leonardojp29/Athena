@@ -1,4 +1,5 @@
 ---
+import EventIcon from '../EventIcon.astro';
 import Icon from '../Icon.astro';
 import type { LineupPlayer, MatchPlayerStats, TeamSummary } from '../../lib/api';
 import { claseDeNota } from '../../lib/nota';
@@ -23,9 +24,11 @@ interface Props {
   fila?: number;
   /** La mejor nota del partido lleva estrella. */
   figura?: boolean;
+  /** El minuto en que lo cambiaron; null si jugó todo. */
+  salioEn?: number | null;
 }
 
-const { player, team, stats, largo, ancho, fila = 0, figura = false } = Astro.props;
+const { player, team, stats, largo, ancho, fila = 0, figura = false, salioEn = null } = Astro.props;
 
 /*
  * El nombre bueno es el de la entidad, no el de la alineación: el proveedor manda "D. Romero"
@@ -129,6 +132,14 @@ const ficha = clickeable
             ) : amarillas > 0 ? (
               <span class="absolute -right-1 bottom-0 h-3 w-2 rounded-[1px] bg-card-yellow" />
             ) : null}
+
+            <!-- Quién salió y cuándo: la cancha sola no lo decía y era lo que se venía a mirar. -->
+            {typeof salioEn === 'number' && (
+              <span class="absolute -right-2.5 bottom-1.5 flex items-center gap-px rounded-full bg-board px-1 text-[10px] font-bold tabular text-card-red ring-1 ring-card-red/40">
+                <EventIcon kind="sub_out" size={9} detail={`minuto ${salioEn}`} />
+                {salioEn}'
+              </span>
+            )}
           </span>
 
           <span class="mt-1 max-w-[9ch] truncate rounded bg-board/85 px-1.5 text-[10px] font-medium leading-tight text-chalk sm:max-w-[12ch] sm:text-xs">

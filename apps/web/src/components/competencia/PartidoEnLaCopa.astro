@@ -120,7 +120,15 @@ const hayAlineaciones = match.lineups.length > 0;
           </p>
         )
       }
-      {hayAlineaciones && <Suplentes lineups={match.lineups} homeTeam={match.homeTeam} awayTeam={match.awayTeam} />}
+      {hayAlineaciones && (
+        <Suplentes
+          lineups={match.lineups}
+          homeTeam={match.homeTeam}
+          awayTeam={match.awayTeam}
+          cambios={match.events.filter((e) => e.kind === 'substitution')}
+          playerStatistics={match.playerStatistics}
+        />
+      )}
     </div>
 
     <div class="grid min-w-0 gap-3">

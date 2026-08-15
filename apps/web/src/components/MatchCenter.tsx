@@ -1,73 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import EventIcon from './EventIcon';
-import type { MatchEventView, MatchView, PlayerLink } from '../lib/api';
+import MinutoAMinuto from './match/MinutoAMinuto';
+import type { MatchView } from '../lib/api';
 import { formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
 
 /*
- * Marcador y minuto a minuto. Es un solo componente y una sola consulta: dos islas
- * separadas significarían dos pollers golpeando el API cada veinte segundos.
+ * El marcador de la cabecera y el minuto a minuto. Es un solo componente y una sola consulta: dos
+ * islas separadas significarían dos pollers golpeando el API cada veinte segundos.
  *
- * Sin `client:*` Astro lo renderiza en el servidor y la página queda en 0 KB; solo los
- * partidos en juego se hidratan.
+ * El relato vive en `match/MinutoAMinuto`, que es puro y no sabe de consultas; acá queda el
+ * marcador y la plomería del vivo.
+ *
+ * Sin `client:*` Astro lo renderiza en el servidor y la página queda en 0 KB; solo los partidos en
+ * juego se hidratan.
  */
-
-function playerName(event: MatchEventView): string {
-  return event.player?.name ?? event.detail?.playerName ?? '';
-}
-
-/* Solo un gol se asiste. El proveedor manda un "assist" en penales errados y en el VAR. */
-const ASISTIBLE = new Set(['goal', 'penalty_goal']);
-
-function relatedName(event: MatchEventView): string | null {
-  return event.relatedPlayer?.name ?? event.detail?.relatedPlayerName ?? null;
-}
-
-/*
- * Un nombre de jugador nunca va solo: siempre con su foto. Es la versión React del componente
- * PlayerName de Astro; el timeline vive en la isla y no puede usar el otro.
- */
-function NombreJugador({
-  player,
-  fallback,
-  className,
-}: {
-  player: PlayerLink | null;
-  fallback: string;
-  className?: string;
-}) {
-  const nombre = player?.name ?? fallback;
-  const contenido = (
-    <>
-      {player?.photoUrl ? (
-        <img
-          src={player.photoUrl}
-          alt=""
-          width={20}
-          height={20}
-          loading="lazy"
-          className="size-5 shrink-0 rounded-full bg-canvas-subtle object-cover"
-        />
-      ) : (
-        <span className="size-5 shrink-0 rounded-full bg-canvas-subtle" aria-hidden="true" />
-      )}
-      <span className="truncate">{nombre}</span>
-    </>
-  );
-
-  return player?.slug ? (
-    <a
-      href={`/jugadores/${player.slug}`}
-      className={`inline-flex min-w-0 items-center gap-1.5 align-middle hover:text-primary-ink hover:underline ${className ?? ''}`}
-    >
-      {contenido}
-    </a>
-  ) : (
-    <span className={`inline-flex min-w-0 items-center gap-1.5 align-middle ${className ?? ''}`}>
-      {contenido}
-    </span>
-  );
-}
 
 function TeamSide({ match, side }: { match: MatchView; side: 'home' | 'away' }) {
   const team = side === 'home' ? match.homeTeam : match.awayTeam;
@@ -166,71 +112,6 @@ function Scoreboard({ match }: { match: MatchView }) {
   );
 }
 
-function Timeline({ match }: { match: MatchView }) {
-  if (match.events.length === 0) {
-    return (
-      <p className="rounded-lg border border-border bg-surface p-4 text-sm text-ink-muted">
-        Todavía no hay eventos registrados en este partido.
-      </p>
-    );
-  }
-
-  return (
-    <ol className="grid gap-0">
-      {match.events.map((event) => {
-        const home = event.team.id === match.homeTeam.id;
-        const related = relatedName(event);
-        const nombre = playerName(event);
-
-        return (
-          <li
-            key={event.id}
-            className={`flex items-center gap-2.5 border-b border-border/50 py-2 text-sm last:border-0 ${
-              home ? '' : 'flex-row-reverse text-right'
-            }`}
-          >
-            <span className="w-9 shrink-0 tabular text-2xs text-ink-muted">
-              {event.minute}
-              {event.extraMinute ? `+${event.extraMinute}` : ''}&apos;
-            </span>
-            <EventIcon kind={event.kind} detail={`${nombre} ${event.minute}'`} />
-            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5">
-              {/*
-                En un cambio el que entra es el destacado, así que va primero y en negrita. El
-                proveedor los manda al revés de lo que sugieren los nombres de sus campos: `player`
-                es **el que sale** —verificado contra los datos: siempre estaba en el once y con los
-                minutos cortados en el minuto del cambio— y `relatedPlayer` el que entra. Antes esta
-                fila los mostraba invertidos y decía "sale" del que acababa de entrar.
-              */}
-              {event.kind === 'substitution' && related ? (
-                <>
-                  <NombreJugador
-                    player={event.relatedPlayer}
-                    fallback={related}
-                    className="font-medium"
-                  />
-                  <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
-                    <span aria-label="por">←</span>
-                    <NombreJugador player={event.player} fallback={nombre} />
-                  </span>
-                </>
-              ) : (
-                <NombreJugador player={event.player} fallback={nombre} className="font-medium" />
-              )}
-              {ASISTIBLE.has(event.kind) && related && (
-                <span className="flex min-w-0 items-center gap-1.5 text-ink-muted">
-                  asiste
-                  <NombreJugador player={event.relatedPlayer} fallback={related} />
-                </span>
-              )}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 interface Props {
   initial: MatchView;
   live: boolean;
@@ -239,7 +120,7 @@ interface Props {
 }
 
 function Render({ match, part }: { match: MatchView; part: Props['part'] }) {
-  return part === 'hero' ? <Scoreboard match={match} /> : <Timeline match={match} />;
+  return part === 'hero' ? <Scoreboard match={match} /> : <MinutoAMinuto match={match} />;
 }
 
 function LiveMatch({ initial, part }: { initial: MatchView; part: Props['part'] }) {
@@ -273,12 +154,35 @@ function LiveMatch({ initial, part }: { initial: MatchView; part: Props['part'] 
   return <Render match={data ?? initial} part={part} />;
 }
 
-const queryClient = new QueryClient();
+/*
+ * En el navegador, uno solo para las dos islas; en el servidor, uno nuevo por render.
+ *
+ * Un cliente a nivel de módulo se compartía **entre todas las peticiones** del proceso web, que es
+ * uno y de larga vida. Desde el segundo render de un mismo partido, react-query devolvía la query
+ * que ya existía e ignoraba `initialData` —y en el servidor el `gcTime` es infinito, así que esa
+ * entrada no caducaba nunca—. Consecuencias medidas: el HTML de un partido en vivo se quedaba
+ * clavado en el marcador y el minuto del primer render hasta reiniciar el proceso, mientras las
+ * props del island viajaban frescas; al hidratar, los dos textos no coincidían y React tiraba el
+ * error 418.
+ */
+let clienteDelNavegador: QueryClient | null = null;
+
+function clienteDeConsultas(): QueryClient {
+  if (typeof window === 'undefined') return new QueryClient();
+  clienteDelNavegador ??= new QueryClient();
+  return clienteDelNavegador;
+}
 
 export default function MatchCenter({ initial, live, part }: Props) {
+  /* Sin vivo no hay isla que hidratar ni cliente que crear: el servidor pinta y se acabó. */
   if (!live) return <Render match={initial} part={part} />;
+  return <EnVivo initial={initial} part={part} />;
+}
+
+function EnVivo({ initial, part }: { initial: MatchView; part: Props['part'] }) {
+  const [cliente] = useState(clienteDeConsultas);
   return (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={cliente}>
       <LiveMatch initial={initial} part={part} />
     </QueryClientProvider>
   );

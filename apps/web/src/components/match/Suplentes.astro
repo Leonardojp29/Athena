@@ -1,62 +1,115 @@
 ---
-import type { TeamLineup, TeamSummary } from '../../lib/api';
-import Icon from '../Icon.astro';
+import EventIcon from '../EventIcon.astro';
 import PlayerName from '../player/PlayerName.astro';
+import type { MatchEventView, MatchPlayerStats, TeamLineup, TeamSummary } from '../../lib/api';
+import { claseDeNota } from '../../lib/nota';
 
 /*
- * Los DT y el banco, en una tira compacta debajo de la cancha.
+ * El banco de cada equipo: quién entró, en qué minuto y por quién.
  *
- * Antes acá había dos listas con los once de cada equipo, y eran seiscientos píxeles diciendo
- * lo que la cancha ya dice mejor: con foto, dorsal, posición y nota. Lo único que la cancha no
- * muestra es el técnico y los suplentes, así que es lo único que queda.
+ * Estaba plegado dentro de un `<details>` cerrado y solo listaba nombres, así que la vista de
+ * alineaciones —la que se abre justamente para ver los cambios— no decía ni quién entró ni cuándo.
+ * La home ya lo resolvía mejor que la página del partido.
+ *
+ * El dato no viene en la alineación: sale de los eventos, donde `player` es el que sale y
+ * `relatedPlayer` el que entra. Los que entraron van primero y por minuto; los que se quedaron
+ * sentados, en gris al final.
  */
 interface Props {
   lineups: TeamLineup[];
   homeTeam: TeamSummary;
   awayTeam: TeamSummary;
+  cambios: MatchEventView[];
+  playerStatistics: MatchPlayerStats[];
 }
 
-const { lineups, homeTeam, awayTeam } = Astro.props;
+const { lineups, homeTeam, awayTeam, cambios, playerStatistics } = Astro.props;
+
+/** Quién entró en qué minuto y en lugar de quién. */
+const entradas = new Map<string, { minuto: number; porQuien: string | null }>();
+for (const cambio of cambios) {
+  const id = cambio.relatedPlayer?.id;
+  if (!id) continue;
+  const sale = cambio.player?.name ?? cambio.detail?.playerName ?? null;
+  entradas.set(id, { minuto: cambio.minute, porQuien: sale });
+}
+
+const notas = new Map(playerStatistics.map((s) => [s.player.id, s]));
+const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
+
 const lados = [homeTeam, awayTeam]
   .map((team) => ({ team, lineup: lineups.find((l) => l.teamId === team.id) }))
-  .filter((e): e is { team: TeamSummary; lineup: TeamLineup } => e.lineup !== undefined);
+  .filter((e): e is { team: TeamSummary; lineup: TeamLineup } => e.lineup !== undefined)
+  .map(({ team, lineup }) => ({
+    team,
+    lineup,
+    banco: [...lineup.substitutes]
+      .map((jugador) => ({
+        jugador,
+        entrada: jugador.playerId ? (entradas.get(jugador.playerId) ?? null) : null,
+        nota: jugador.playerId ? (notas.get(jugador.playerId)?.rating ?? null) : null,
+      }))
+      /* Los que jugaron primero y por minuto: el que entró a los 60 importa más que el que miró. */
+      .sort((a, b) => (a.entrada?.minuto ?? 999) - (b.entrada?.minuto ?? 999)),
+  }));
 ---
 
 {
   lados.length > 0 && (
-    <div class="grid gap-2">
-      {lados.map(({ team, lineup }) => (
-        <details class="group rounded-lg border border-border bg-surface">
-          <summary class="flex cursor-pointer list-none items-center gap-2 px-3 py-2">
+    <div class="grid gap-3">
+      {lados.map(({ team, lineup, banco }) => (
+        <section class="rounded-lg border border-border bg-surface">
+          <header class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2">
             {team.logoUrl && <img src={team.logoUrl} alt="" width="16" height="16" loading="lazy" />}
-            <span class="truncate text-2xs font-medium">{team.shortName ?? team.name}</span>
+            <h3 class="truncate text-2xs font-semibold uppercase tracking-label">El banco</h3>
             {lineup.coachName && (
-              <span class="truncate text-2xs text-ink-muted">· DT {lineup.coachName}</span>
+              <span class="truncate text-2xs text-ink-muted">DT {lineup.coachName}</span>
             )}
             <span class="ml-auto shrink-0 text-2xs text-ink-muted">
-              {lineup.substitutes.length} en el banco
+              {`${banco.filter((b) => b.entrada).length} de ${banco.length} entraron`}
             </span>
-            <Icon
-              name="chevron-derecha"
-              size={12}
-              class="shrink-0 text-ink-muted transition-transform group-open:rotate-90"
-            />
-          </summary>
+          </header>
 
-          <ul class="grid gap-0 border-t border-border px-1.5 py-1">
-            {lineup.substitutes.map((player) => (
-              <li>
+          <ul class="grid gap-0 px-1.5 py-1">
+            {banco.map(({ jugador, entrada, nota }) => (
+              <li class="flex items-center gap-1.5 rounded px-1 py-1 transition-colors hover:bg-canvas-subtle">
+                {entrada ? (
+                  <span class="flex w-9 shrink-0 items-center gap-0.5 text-2xs font-medium tabular text-live">
+                    <EventIcon kind="sub_in" size={10} detail={`minuto ${entrada.minuto}`} />
+                    {entrada.minuto}'
+                  </span>
+                ) : (
+                  <span class="w-9 shrink-0" />
+                )}
+
                 <PlayerName
-                  name={player.name}
-                  slug={player.slug}
-                  photoUrl={player.photoUrl}
-                  number={player.number}
-                  class="rounded px-1 py-0.5 text-2xs text-ink-muted transition-colors hover:bg-canvas-subtle"
+                  name={jugador.name}
+                  slug={jugador.slug}
+                  photoUrl={jugador.photoUrl}
+                  number={jugador.number}
+                  class:list={['min-w-0 flex-1 text-2xs', entrada ? '' : 'text-ink-muted']}
                 />
+
+                {entrada?.porQuien && (
+                  <span class="hidden shrink-0 text-2xs text-ink-muted sm:inline">
+                    por {apellido(entrada.porQuien)}
+                  </span>
+                )}
+
+                {nota !== null && (
+                  <span
+                    class:list={[
+                      'shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular',
+                      claseDeNota(Number(nota)),
+                    ]}
+                  >
+                    {Number(nota).toFixed(1)}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
-        </details>
+        </section>
       ))}
     </div>
   )
