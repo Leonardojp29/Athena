@@ -141,10 +141,14 @@ export default function MinutoAMinuto({ match, nuevos }: Props) {
           ? `El minuto a minuto arranca a las ${formatKickoff(match.kickoffUtc)}.`
           : enJuego
             ? 'El partido arrancó. Todavía no pasó nada.'
-            : match.status === 'finished' && match.homeScore !== null
-              ? `Terminó ${match.homeScore}–${match.awayScore}, pero el proveedor no publicó las jugadas.`
+            : /*
+               * Sin jugadas no se culpa al proveedor: casi siempre es que todavía no se las pedimos
+               * —el archivo se trajo con marcadores y tablas, no con el detalle de cada partido—.
+               */
+              match.status === 'finished' && match.homeScore !== null
+              ? `Terminó ${match.homeScore}–${match.awayScore}. Todavía no tenemos sus jugadas.`
               : match.status === 'finished'
-                ? 'No tenemos el minuto a minuto de este partido.'
+                ? 'Todavía no tenemos el minuto a minuto de este partido.'
                 : `${statusLabel(match.status)}: no hay jugadas registradas.`}
       </p>
     );
