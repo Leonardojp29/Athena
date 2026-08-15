@@ -24,7 +24,9 @@ import {
   type TeamView,
   type TopPerformers,
 } from '../lib/api';
+import { isLive } from '../lib/format';
 import { getHomeView } from '../lib/live';
+import RefrescoDeMarcadores from '../components/home/RefrescoDeMarcadores.astro';
 import { getNavTree, todasLasCompetencias } from '../lib/nav';
 import { getSession } from '../lib/supabase';
 import { paisEnEspanol } from '../lib/paises';
@@ -150,6 +152,13 @@ const nombrePais = pais
   : null;
 
 const todos = home.sections.flatMap((s) => s.matches);
+/*
+ * Con algo en juego la home se mantiene sola: sin esto el minuto y el marcador se quedaban en el
+ * momento en que se abrió la pestaña, que en una página de "qué se juega hoy" es un dato viejo
+ * disfrazado de dato. Sin partidos en vivo no se manda ni un byte de JavaScript.
+ */
+const hayEnVivo = todos.some((m) => isLive(m.status));
+const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 const showFeed =
   feed?.hasFavorites &&
   (feed.live.length > 0 || feed.upcoming.length > 0 || feed.recent.length > 0);
@@ -327,4 +336,7 @@ const destacado = feed?.insights[0]
 
   <!-- La ficha del jugador: solo se monta cuando hay una cancha que la abra. -->
   {(vistaLiga?.once || (vistaEquipo?.lineups.length ?? 0) > 0) && <PlayerSheet />}
+
+  <!-- Y el reloj de los marcadores, solo si hay algo en juego. -->
+  {hayEnVivo && <RefrescoDeMarcadores dia={hoyEnLima} />}
 </Base>

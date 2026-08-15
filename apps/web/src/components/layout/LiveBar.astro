@@ -33,6 +33,7 @@ const matches: MatchCard[] = [
             return (
               <a
                 role="listitem"
+                data-partido={match.id}
                 href={`/partidos/${match.id}`}
                 class:list={[
                   'group flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-2xs transition-colors',
@@ -48,7 +49,10 @@ const matches: MatchCard[] = [
                   </span>
                 </span>
 
-                <span class:list={['font-display font-semibold tabular', vivo ? 'text-live' : 'text-ink']}>
+                <span
+                  data-marcador
+                  class:list={['font-display font-semibold tabular', vivo ? 'text-live' : 'text-ink']}
+                >
                   {marcador ? `${match.homeScore}–${match.awayScore}` : formatKickoff(match.kickoffUtc)}
                 </span>
 
@@ -61,11 +65,9 @@ const matches: MatchCard[] = [
                   )}
                 </span>
 
-                {vivo && (
-                  <span class="tabular text-live/90">
-                    {minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)}
-                  </span>
-                )}
+                <span data-estado class:list={['tabular text-live/90', vivo ? '' : 'hidden']}>
+                  {vivo ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail) : ''}
+                </span>
               </a>
             );
           })}

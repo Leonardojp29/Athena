@@ -72,6 +72,40 @@ export class SyncScheduleService {
     this.logger.log(
       `Cadencia desde la base: ${[...activos.values()].map(describir).join(' · ') || 'ninguna'}`,
     );
+
+    await this.recuperarAtrasados(queue);
+  }
+
+  /**
+   * Los recurrentes que se perdieron su turno, al arrancar.
+   *
+   * Un cron solo dispara si hay alguien escuchando a esa hora. El refresco diario va a las 05:00 UTC
+   * —medianoche en Lima— y en una máquina que no está encendida a esa hora **no corre nunca**: las
+   * tablas de posiciones se quedaron ocho días viejas sin que nada fallara. Así que al levantarse, lo
+   * que hace más de un día que no corre se encola una vez.
+   */
+  private async recuperarAtrasados(queue: Queue): Promise<void> {
+    const UN_DIA = 24 * 3600_000;
+    /* Si la base no responde, se sigue sin recuperar nada: un worker que no arranca es peor. */
+    const filas = await this.prisma.syncSchedule
+      .findMany({
+        where: { enabled: true },
+        select: { jobKind: true, cron: true, lastRunAt: true },
+      })
+      .catch(() => []);
+
+    for (const fila of filas) {
+      /* Solo los de horario fijo: los que corren cada minuto no se pierden nada. */
+      if (!fila.cron || fila.cron.trim() === '') continue;
+      const atraso = Date.now() - (fila.lastRunAt?.getTime() ?? 0);
+      if (atraso < UN_DIA) continue;
+      const dias = fila.lastRunAt ? Math.floor(atraso / UN_DIA) : null;
+      this.logger.warn(
+        `${fila.jobKind} no corre desde hace ${dias ?? 'siempre'} día(s): se encola ahora`,
+      );
+      /* Con un minuto de gracia: que el arranque termine de levantar todo antes de pedir nada. */
+      await queue.add(fila.jobKind, {}, { delay: 60_000, removeOnComplete: 50 });
+    }
   }
 
   /** Marca el último arranque. Sin esto la tabla no sirve para diagnosticar nada. */

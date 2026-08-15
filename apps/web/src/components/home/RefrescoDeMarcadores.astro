@@ -1,0 +1,115 @@
+---
+/*
+ * Los marcadores del día, al minuto, sin recargar la página.
+ *
+ * La home la dibuja el servidor entera y no costaba un solo kilobyte, pero eso significaba que un
+ * partido en juego se quedaba clavado en el minuto en que abriste la pestaña: el reloj no avanzaba y
+ * un gol no aparecía hasta recargar. En una página cuya primera línea es "qué se juega hoy", eso es
+ * un dato viejo disfrazado de dato.
+ *
+ * En vez de recargar como hace la página de partido —acá se perdería el scroll del catálogo y el
+ * árbol abierto—, se pide la lista del día y se parchean tres cosas por fila: el marcador, el estado
+ * y el color de vivo. Es la misma consulta que ya sirve la home, cacheada sesenta segundos, así que
+ * un lector cuesta una lectura de Redis por minuto.
+ *
+ * Solo se dibuja cuando hay algo en juego, así que la home sin fútbol sigue costando 0 KB.
+ */
+interface Props {
+  /** El día que muestra la página, en ISO. Sin esto se pediría siempre el de hoy. */
+  dia: string;
+  segundos?: number;
+}
+
+const { dia, segundos = 30 } = Astro.props;
+---
+
+<span data-refresco-marcadores={dia} data-cada={segundos} hidden></span>
+
+<script>
+  import { isLive, minutoEnVivo, statusLabel } from '../../lib/format';
+
+  interface FilaViva {
+    id: string;
+    status: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    elapsedMinutes: number | null;
+    statusDetail: string | null;
+  }
+
+  /** La vista del día llega agrupada por competencia; acá solo interesan los partidos. */
+  interface DiaDePartidos {
+    sections: Array<{ matches: FilaViva[] }>;
+  }
+
+  const marca = document.querySelector<HTMLElement>('[data-refresco-marcadores]');
+  if (marca) {
+    const dia = marca.dataset.refrescoMarcadores as string;
+    const cada = Math.max(15, Number(marca.dataset.cada ?? '30')) * 1000;
+    const API = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+
+    /* El marcador de la fila y el de la tira de arriba se escriben distinto: "1 – 0" y "1–0". */
+    const pintarMarcador = (nodo: HTMLElement, m: FilaViva): void => {
+      if (m.homeScore === null || m.awayScore === null) return;
+      const separador = nodo.textContent?.includes(' – ') ? ' – ' : '–';
+      nodo.textContent = `${m.homeScore}${separador}${m.awayScore}`;
+      nodo.classList.toggle('bg-live/15', isLive(m.status) && nodo.classList.contains('rounded'));
+      nodo.classList.toggle('text-live', isLive(m.status));
+    };
+
+    const aplicar = (partidos: FilaViva[]): void => {
+      const porId = new Map(partidos.map((m) => [m.id, m]));
+      for (const fila of document.querySelectorAll<HTMLElement>('[data-partido]')) {
+        const m = porId.get(fila.dataset.partido as string);
+        if (!m) continue;
+
+        const marcador = fila.querySelector<HTMLElement>('[data-marcador]');
+        if (marcador) pintarMarcador(marcador, m);
+
+        const estado = fila.querySelector<HTMLElement>('[data-estado]');
+        if (estado) {
+          const vivo = isLive(m.status);
+          estado.textContent = vivo
+            ? minutoEnVivo(m.status, m.elapsedMinutes, m.statusDetail)
+            : m.status === 'finished'
+              ? 'Final'
+              : statusLabel(m.status);
+          /* En la tira de arriba el minuto solo existe si el partido está en juego. */
+          estado.classList.toggle('hidden', !vivo && estado.classList.contains('text-live/90'));
+          estado.classList.toggle('text-live', vivo && !estado.classList.contains('text-live/90'));
+          estado.classList.toggle('font-medium', vivo);
+          estado.classList.toggle('text-ink-muted', !vivo);
+        }
+      }
+    };
+
+    let temporizador: number | undefined;
+
+    const pedir = async (): Promise<void> => {
+      try {
+        const res = await fetch(`${API}/v1/views/matches?dia=${dia}`);
+        if (res.ok) {
+          const datos = (await res.json()) as DiaDePartidos;
+          aplicar(datos.sections.flatMap((s) => s.matches));
+        }
+      } catch {
+        /* Un fallo de red no puede romper la página: en el próximo tic se vuelve a intentar. */
+      }
+      programar();
+    };
+
+    function programar(): void {
+      clearTimeout(temporizador);
+      /* Con la pestaña de fondo no se pide nada: nadie está mirando y la cuota es de todos. */
+      temporizador = window.setTimeout(
+        () => (document.visibilityState === 'visible' ? void pedir() : programar()),
+        cada,
+      );
+    }
+
+    programar();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void pedir();
+    });
+  }
+</script>

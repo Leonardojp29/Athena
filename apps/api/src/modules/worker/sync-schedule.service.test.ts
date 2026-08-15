@@ -10,7 +10,12 @@ import type { PrismaService } from '../../shared/prisma.service.js';
 function fakeQueue() {
   const upserts: Array<{ key: string; repeat: unknown }> = [];
   const removidos: string[] = [];
+  const encolados: string[] = [];
   const queue = {
+    add: vi.fn(async (nombre: string) => {
+      encolados.push(nombre);
+      return {};
+    }),
     upsertJobScheduler: vi.fn(async (key: string, repeat: unknown) => {
       upserts.push({ key, repeat });
     }),
@@ -19,7 +24,7 @@ function fakeQueue() {
       return true;
     }),
   } as unknown as Queue;
-  return { queue, upserts, removidos };
+  return { queue, upserts, removidos, encolados };
 }
 
 function fakePrisma(filas: unknown[] | Error) {
@@ -108,6 +113,33 @@ describe('SyncScheduleService', () => {
     const { queue, upserts } = fakeQueue();
     await new SyncScheduleService(prisma).apply(queue);
     expect(upserts).toHaveLength(0);
+  });
+
+  /*
+   * Un cron solo dispara si hay alguien escuchando a esa hora: el refresco diario va a las 05:00
+   * UTC y en una máquina apagada a esa hora no corre nunca. Las tablas de posiciones se quedaron
+   * ocho días viejas sin que nada fallara, así que al arrancar se recupera lo atrasado.
+   */
+  it('encola al arrancar lo que hace más de un día que no corre', async () => {
+    const ayer = new Date(Date.now() - 30 * 3600_000);
+    const { prisma } = fakePrisma([
+      fila({ jobKind: 'daily-refresh', cron: '0 5 * * *', lastRunAt: ayer }),
+      fila({ jobKind: 'live-tick', lastRunAt: new Date() }),
+    ]);
+    const { queue, encolados } = fakeQueue();
+    await new SyncScheduleService(prisma).apply(queue);
+
+    expect(encolados).toEqual(['daily-refresh']);
+  });
+
+  it('no encola de más lo que corrió hace un rato', async () => {
+    const { prisma } = fakePrisma([
+      fila({ jobKind: 'daily-refresh', cron: '0 5 * * *', lastRunAt: new Date(Date.now() - 3600_000) }),
+    ]);
+    const { queue, encolados } = fakeQueue();
+    await new SyncScheduleService(prisma).apply(queue);
+
+    expect(encolados).toEqual([]);
   });
 
   it('cae a la cadencia por defecto si la base no responde', async () => {

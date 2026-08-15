@@ -319,7 +319,10 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   private async onMatchFinished(matchId: string): Promise<void> {
     const match = await this.prisma.match.findUnique({
       where: { id: matchId },
-      select: { kickoffUtc: true },
+      select: {
+        kickoffUtc: true,
+        season: { select: { year: true, competitionId: true, isCurrent: true } },
+      },
     });
     if (!match) return;
 
@@ -346,6 +349,34 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       await this.enqueue('match-players', { matchRef: ref.providerRef });
     }
     await this.enqueue('match-insight', { matchId }, { delay: INSIGHT_DELAY_MS });
+    await this.refrescarTabla(match.season);
+  }
+
+  /**
+   * La tabla, cuando termina un partido de la temporada en curso.
+   *
+   * Antes solo se pedía en el refresco diario de las 05:00, así que la tabla iba una jornada y media
+   * atrasada durante todo el fin de semana: el Clausura peruano mostraba tres partidos jugados
+   * mientras se jugaba la quinta fecha. Cuesta un pedido por competencia y solo cuando algo terminó.
+   */
+  private async refrescarTabla(season: {
+    year: number;
+    competitionId: string;
+    isCurrent: boolean;
+  }): Promise<void> {
+    if (!season.isCurrent) return;
+    const ref = await this.prisma.externalReference.findUnique({
+      where: {
+        provider_entityType_entityId: {
+          provider: 'api-football',
+          entityType: 'competition',
+          entityId: season.competitionId,
+        },
+      },
+      select: { providerRef: true },
+    });
+    if (ref)
+      await this.enqueue('standings', { competitionRef: ref.providerRef, seasonYear: season.year });
   }
 
   private async dailyRefresh(): Promise<void> {

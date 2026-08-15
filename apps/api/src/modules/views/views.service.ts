@@ -1166,6 +1166,8 @@ export class ViewsService {
             slug: true,
             country: true,
             founded: true,
+            /* La vista lo necesita: una selección no tiene casa ni club parecido. */
+            isNationalTeam: true,
             logoUrl: true,
             primaryColor: true,
             secondaryColor: true,
