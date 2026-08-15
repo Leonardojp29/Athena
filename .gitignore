@@ -37,3 +37,6 @@ skills-lock.json
 apps/web/test-results/
 apps/web/playwright-report/
 *.tmp.mjs
+
+# scripts de medición de una sesión
+tmp-*.mjs
