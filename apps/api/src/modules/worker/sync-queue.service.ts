@@ -29,6 +29,8 @@ const QUEUE = 'sync';
 
 /* El análisis espera a que aterricen los eventos y las estadísticas que lo respaldan. */
 const INSIGHT_DELAY_MS = 3 * 60_000;
+/* Lo que tarda el proveedor en recalcular su tabla después del pitazo final, con margen. */
+const TABLA_REINTENTO_MS = 12 * 60_000;
 
 /*
  * Hasta cuándo un partido terminado merece que le pidamos su detalle. Lo del archivo llega marcado
@@ -118,14 +120,21 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     await this.queue?.close();
   }
 
+  /*
+   * La prioridad decide quién pasa primero cuando la cola tiene cientos de trabajos: menor número,
+   * antes. Una tabla de posiciones cuesta un pedido y es lo que más se mira; un `fixtures` de
+   * temporada escribe cientos de filas y tarda minutos. Sin esto, el refresco diario dejaba las
+   * tablas al final de la fila y la del Clausura peruano seguía una jornada atrasada horas después.
+   */
   async enqueue<T extends SyncJob>(
     name: T['name'],
     data: T['data'],
-    opts?: { attempts?: number; delay?: number },
+    opts?: { attempts?: number; delay?: number; priority?: number },
   ): Promise<void> {
     await this.queue.add(name, data, {
       attempts: opts?.attempts ?? 3,
       ...(opts?.delay ? { delay: opts.delay } : {}),
+      ...(opts?.priority ? { priority: opts.priority } : {}),
       backoff: { type: 'exponential', delay: 5_000 },
       removeOnComplete: 500,
       removeOnFail: 1_000,
@@ -375,8 +384,10 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       },
       select: { providerRef: true },
     });
-    if (ref)
-      await this.enqueue('standings', { competitionRef: ref.providerRef, seasonYear: season.year });
+    if (!ref) return;
+    const tabla = { competitionRef: ref.providerRef, seasonYear: season.year };
+    await this.enqueue('standings', tabla, { priority: 1 });
+    await this.enqueue('standings', tabla, { priority: 1, delay: TABLA_REINTENTO_MS });
   }
 
   private async dailyRefresh(): Promise<void> {
@@ -425,9 +436,17 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         select: { providerRef: true },
       });
       if (!ref) continue;
+      /*
+       * Las tablas primero y con prioridad: son un pedido cada una y es lo que la gente abre. Los
+       * equipos y los partidos de la temporada pueden esperar su turno detrás.
+       */
+      await this.enqueue(
+        'standings',
+        { competitionRef: ref.providerRef, seasonYear: season.year },
+        { priority: 1 },
+      );
       await this.enqueue('teams', { competitionRef: ref.providerRef, seasonYear: season.year });
       await this.enqueue('fixtures', { competitionRef: ref.providerRef, seasonYear: season.year });
-      await this.enqueue('standings', { competitionRef: ref.providerRef, seasonYear: season.year });
     }
 
     // previas de los partidos que se juegan en las próximas 24 horas

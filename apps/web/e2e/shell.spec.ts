@@ -92,11 +92,14 @@ test.describe('shell del sitio', () => {
 
       const abierta = control.locator('a[aria-current="true"]');
       await expect(abierta).toHaveCount(1);
-      /* La fase abierta es la que está en juego, no la primera que devolvió la base. */
-      await expect(abierta).toHaveAttribute(
-        'href',
-        new RegExp(encodeURIComponent(enJuego!.label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-      );
+      /*
+       * La fase abierta es la que está en juego, no la primera que devolvió la base. Se compara el
+       * valor y no la URL cruda: el proveedor pasó a etiquetar "Primera Division: Clausura" —con
+       * espacios— y `+` y `%20` son la misma cosa en una consulta.
+       */
+      const href = await abierta.getAttribute('href');
+      const tabla = new URL(href as string, 'http://localhost:4321').searchParams.get('tabla');
+      expect(tabla).toBe(enJuego!.label);
     }
   });
 

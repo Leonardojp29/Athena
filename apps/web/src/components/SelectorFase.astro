@@ -27,10 +27,15 @@ const { grupos, activo, href, class: className } = Astro.props;
 ---
 
 {
+  /*
+   * `w-fit` y no ancho completo: es un control segmentado y tiene que medir lo que miden sus
+   * pestañas. Estirado al ancho de la tarjeta —358px en el riel para 216 de contenido— dejaba una
+   * barra gris con las pastillas amontonadas a la izquierda y un hueco muerto a la derecha.
+   */
   grupos.length > 1 && (
     <div
       class:list={[
-        'flex flex-wrap items-center gap-1 rounded-lg bg-canvas-subtle p-1',
+        'flex w-fit max-w-full flex-wrap items-center gap-1 rounded-lg bg-canvas-subtle p-1',
         className,
       ]}
       role="group"
