@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import EventIcon from './EventIcon';
 import MinutoAMinuto from './match/MinutoAMinuto';
-import type { MatchView } from '../lib/api';
+import type { MatchEventView, MatchView } from '../lib/api';
 import { formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
+import { goleadoresDelPartido, type Goleador } from '../lib/relato';
 
 /*
  * El marcador de la cabecera y el minuto a minuto. Es un solo componente y una sola consulta: dos
@@ -20,19 +22,21 @@ function TeamSide({ match, side }: { match: MatchView; side: 'home' | 'away' }) 
   return (
     <a
       href={`/equipos/${team.slug}`}
-      className="group flex min-w-0 flex-col items-center gap-2 text-center sm:gap-3"
+      className="group flex min-w-0 flex-col items-center gap-2 text-center sm:gap-2.5"
     >
       {team.logoUrl && (
         <img
           src={team.logoUrl}
           alt=""
-          width={72}
-          height={72}
-          className="size-10 transition-transform group-hover:scale-105 sm:size-12"
+          width={80}
+          height={80}
+          className="size-12 transition-transform group-hover:scale-105 sm:size-14 lg:size-16"
         />
       )}
-      <span className="font-display text-sm font-semibold uppercase leading-tight text-chalk group-hover:text-primary sm:text-base lg:text-lg">
-        {team.name}
+      {/* Dos renglones reservados y centrados: en el teléfono "Juan Pablo II College" ocupa dos
+          líneas y "Cusco" una, y sin caja fija la cabecera medía distinto según el rival. */}
+      <span className="grid h-[2.3em] items-center font-display text-base font-semibold uppercase leading-[1.15] text-chalk group-hover:text-primary sm:text-lg lg:h-[1.15em] lg:text-xl">
+        <span className="line-clamp-2 lg:truncate">{team.name}</span>
       </span>
     </a>
   );
@@ -63,22 +67,69 @@ function Cifra({ valor }: { valor: number }) {
   );
 }
 
+/**
+ * Los goles de un equipo, debajo de su escudo.
+ *
+ * Una línea por goleador y no por gol: los minutos de quien hizo dos van juntos —"Yótun 45+2', 82'"—,
+ * que es como se escribe en fútbol. La caja tiene **alto fijo de tres renglones y siempre está**,
+ * aunque el partido vaya 0-0: es lo que hace que la cabecera de un 5-0 mida lo mismo que la de un
+ * 0-0. Lo que no entra en tres renglones no se recorta ni se esconde detrás de un "+2": arma una
+ * segunda columna al lado, porque un gol que no se ve es un gol que falta.
+ */
+function Goles({ goleadores }: { goleadores: Array<Goleador<MatchEventView>> }) {
+  return (
+    <ul
+      /* Centrada bajo el escudo, como el nombre: pegada al borde de la columna se leía como si
+         fuera del marcador y no del equipo. */
+      className="flex h-[3.75rem] flex-col flex-wrap content-center items-start gap-x-5 overflow-hidden text-xs leading-5 text-chalk-dim"
+    >
+      {goleadores.map((goleador) => {
+        const enContra = goleador.goles.some((g) => g.enContra);
+        const minutos = goleador.goles
+          .map((g) => `${g.minuto}${g.extra ? `+${g.extra}` : ''}'${g.penal ? ' (p)' : ''}`)
+          .join(', ');
+        const apellido = goleador.nombre.split(' ').at(-1) ?? goleador.nombre;
+        const jugador = goleador.evento.player;
+
+        return (
+          <li key={goleador.evento.id} className="flex max-w-full items-center gap-2">
+            <EventIcon kind={enContra ? 'own_goal' : 'goal'} size={13} detail={apellido} />
+            {jugador?.slug ? (
+              <a href={`/jugadores/${jugador.slug}`} className="truncate text-chalk hover:text-primary">
+                {apellido}
+              </a>
+            ) : (
+              <span className="truncate text-chalk">{apellido}</span>
+            )}
+            <span className="shrink-0 tabular">{minutos}</span>
+            {enContra && <span className="shrink-0">(e/c)</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Scoreboard({ match }: { match: MatchView }) {
   const live = isLive(match.status);
   const hasScore = match.homeScore !== null && match.awayScore !== null;
+  const goles = goleadoresDelPartido(match);
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-3 sm:gap-8 sm:py-3.5">
-      <TeamSide match={match} side="home" />
+    <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 py-3 sm:gap-10 sm:py-3.5">
+      <div className="grid min-w-0 gap-2.5">
+        <TeamSide match={match} side="home" />
+        <Goles goleadores={goles.local} />
+      </div>
 
-      <div className="flex flex-col items-center gap-1.5">
+      <div className="flex flex-col items-center gap-2">
         {hasScore ? (
           <span
             className="font-display font-semibold tabular leading-none text-chalk"
             /* el mismo nombre que la fila del listado: el marcador se transforma, no se corta */
             /* Más chico que el token de marcador: el hero completo tiene que entrar en 1080p. */
             style={{
-              fontSize: 'clamp(2.25rem, 4vw, 3.25rem)',
+              fontSize: 'clamp(2.5rem, 4.4vw, 3.75rem)',
               viewTransitionName: `marcador-${match.id}`,
             }}
             data-marcador
@@ -86,7 +137,7 @@ function Scoreboard({ match }: { match: MatchView }) {
             <Cifra valor={match.homeScore as number} /> – <Cifra valor={match.awayScore as number} />
           </span>
         ) : (
-          <span className="font-display text-2xl font-semibold tabular text-chalk sm:text-3xl">
+          <span className="font-display text-2xl font-semibold tabular text-chalk sm:text-4xl">
             {formatKickoff(match.kickoffUtc)}
           </span>
         )}
@@ -94,8 +145,8 @@ function Scoreboard({ match }: { match: MatchView }) {
         <span
           className={
             live
-              ? 'flex items-center gap-1.5 rounded-full bg-live-board/16 px-2.5 py-1 text-2xs font-medium text-live-board'
-              : 'rounded-full bg-chalk/10 px-2.5 py-1 text-2xs font-medium text-chalk-dim'
+              ? 'flex items-center gap-1.5 rounded-full bg-live-board/16 px-3 py-1 text-xs font-medium text-live-board'
+              : 'rounded-full bg-chalk/10 px-3 py-1 text-xs font-medium text-chalk-dim'
           }
         >
           {live && <span className="size-1.5 rounded-full bg-live-board animate-live-pulse" />}
@@ -107,7 +158,10 @@ function Scoreboard({ match }: { match: MatchView }) {
         </span>
       </div>
 
-      <TeamSide match={match} side="away" />
+      <div className="grid min-w-0 gap-2.5">
+        <TeamSide match={match} side="away" />
+        <Goles goleadores={goles.visita} />
+      </div>
     </div>
   );
 }

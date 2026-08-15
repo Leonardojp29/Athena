@@ -16,7 +16,7 @@ export interface EventoDeRelato {
   minute: number;
   extraMinute: number | null;
   team: { id: string };
-  player?: { id: string } | null;
+  player?: { id: string; name?: string } | null;
   detail?: { label?: string | null; comments?: string | null; playerName?: string | null } | null;
 }
 
@@ -99,9 +99,13 @@ export function relatoDelPartido<E extends EventoDeRelato>(
   for (const evento of eventos) {
     const local = evento.team.id === match.homeTeam.id;
     if (SUMA_PROPIA.has(evento.kind) || evento.kind === 'own_goal') {
-      /* El autogol lo firma el que lo hizo, pero el gol es del rival. */
-      const paraElLocal = evento.kind === 'own_goal' ? !local : local;
-      if (paraElLocal) marcador.local++;
+      /*
+       * El autogol NO se voltea: el proveedor ya lo manda con el equipo al que le contó. Medido
+       * sobre los 285 partidos con autogol de la base, la suma reconstruye el marcador oficial en
+       * 279 leyéndolo tal cual y en 6 volteándolo. Voltearlo dejaba mudo el marcador corriente
+       * justo en los partidos más difíciles de seguir.
+       */
+      if (local) marcador.local++;
       else marcador.visita++;
       conMarcador.push({ ...marcador });
     } else {
@@ -240,4 +244,58 @@ export function revisionDeVar(label: string | null | undefined): string {
 /** Por qué la amonestación; sin traducción conocida no se dice nada, que ya informa el icono. */
 export function motivoDeTarjeta(comments: string | null | undefined): string | null {
   return comments ? (MOTIVO[comments.trim().toLowerCase()] ?? null) : null;
+}
+
+/* ---------- quiénes hicieron los goles ---------- */
+
+export interface GolDeGoleador {
+  minuto: number;
+  extra: number | null;
+  /** En contra: se anota del lado al que le contó, con el nombre del que se lo hizo. */
+  enContra: boolean;
+  penal: boolean;
+}
+
+export interface Goleador<E extends EventoDeRelato = EventoDeRelato> {
+  /** El evento del primer gol: de ahí salen el jugador, su ficha y su foto. */
+  evento: E;
+  nombre: string;
+  goles: GolDeGoleador[];
+}
+
+/**
+ * Los goleadores de cada equipo, agrupados por jugador.
+ *
+ * Una línea por goleador y no por gol: los minutos de quien hizo dos van juntos —"Yótun 45+2', 82'"—,
+ * que es como se escribe en fútbol y es lo que permite que la cabecera muestre todos los goles sin
+ * crecer. El autogol va del lado del equipo al que le contó, que es como viene del proveedor y como
+ * lo suma el marcador corriente; se marca `enContra` para que la vista lo distinga.
+ */
+export function goleadoresDelPartido<E extends EventoDeRelato>(match: {
+  homeTeam: { id: string };
+  events: E[];
+}): { local: Array<Goleador<E>>; visita: Array<Goleador<E>> } {
+  const lados = { local: new Map<string, Goleador<E>>(), visita: new Map<string, Goleador<E>>() };
+
+  for (const evento of match.events) {
+    if (!SUMA_PROPIA.has(evento.kind) && evento.kind !== 'own_goal') continue;
+
+    const enContra = evento.kind === 'own_goal';
+    const lado = evento.team.id === match.homeTeam.id ? lados.local : lados.visita;
+
+    const nombre = evento.player?.name ?? evento.detail?.playerName ?? 'Sin dato';
+    const clave = evento.player?.id ?? nombre;
+    const gol: GolDeGoleador = {
+      minuto: Math.max(0, evento.minute),
+      extra: evento.extraMinute ?? null,
+      enContra,
+      penal: evento.kind === 'penalty_goal',
+    };
+
+    const anterior = lado.get(clave);
+    if (anterior) anterior.goles.push(gol);
+    else lado.set(clave, { evento, nombre, goles: [gol] });
+  }
+
+  return { local: [...lados.local.values()], visita: [...lados.visita.values()] };
 }

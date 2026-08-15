@@ -266,8 +266,11 @@
 /*
  * La ficha del jugador entra desde el tablero: crece un poco y se asienta. `@starting-style` es
  * lo que permite animar la apertura de un <dialog> sin tocar una clase desde JavaScript.
+ *
+ * Va por atributo y no por id porque hay una ficha por bloque: se puede tener abierta la de un
+ * equipo y la del otro a la vez, y las clonadas no llevan el id.
  */
-#ficha-jugador {
+[data-ficha-dialogo] {
   transition:
     opacity var(--a-motion-base) var(--a-ease-out-expo),
     transform var(--a-motion-base) var(--a-ease-out-expo),
@@ -277,25 +280,30 @@
   transform: scale(1);
 }
 
-#ficha-jugador:not([open]) {
+[data-ficha-dialogo]:not([open]) {
   opacity: 0;
   transform: scale(0.96);
 }
 
 @starting-style {
-  #ficha-jugador[open] {
+  [data-ficha-dialogo][open] {
     opacity: 0;
     transform: scale(0.96);
   }
 }
 
 /*
- * Ficha contenida: se dibuja encima de la cancha que la abrió y solo esa cancha se difumina. El
- * diálogo vive en la capa superior, así que el `filter` de la cancha no lo toca; el ancho se topea
- * en 30rem para que en la cancha grande del partido no quede una ficha de mil píxeles.
+ * Ficha contenida: se dibuja encima del bloque que la abrió —la cancha o la tabla de rendimiento— y
+ * solo ese bloque se difumina. El ancho se topea en 30rem para que sobre un bloque ancho no quede
+ * una ficha de mil píxeles.
+ *
+ * Estas no son modales —dos modales se vuelven inertes entre sí—, así que no están en la capa
+ * superior y necesitan su `z-index`. El `filter` del anfitrión no las alcanza porque el diálogo
+ * vive fuera de él, colgado del cuerpo.
  */
-#ficha-jugador[data-contenida] {
+[data-ficha-dialogo][data-contenida] {
   position: fixed;
+  z-index: 60;
   margin: 0;
   width: min(30rem, var(--ficha-ancho));
   max-height: var(--ficha-alto);
@@ -305,16 +313,16 @@
   translate: -50% -50%;
 }
 
-#ficha-jugador[data-contenida]::backdrop {
+[data-ficha-dialogo][data-contenida]::backdrop {
   background-color: transparent;
   backdrop-filter: none;
 }
 
-[data-cancha][data-difuminada] {
+[data-difuminada] {
   filter: blur(3px) saturate(0.8) brightness(0.85);
 }
 
-#ficha-jugador::backdrop {
+[data-ficha-dialogo]::backdrop {
   transition:
     background-color var(--a-motion-base) var(--a-ease),
     backdrop-filter var(--a-motion-base) var(--a-ease),
@@ -323,7 +331,7 @@
 }
 
 @starting-style {
-  #ficha-jugador[open]::backdrop {
+  [data-ficha-dialogo][open]::backdrop {
     background-color: transparent;
     backdrop-filter: blur(0);
   }

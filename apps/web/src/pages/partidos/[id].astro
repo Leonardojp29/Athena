@@ -85,25 +85,31 @@ const jsonLd = {
   <!-- El marcador a sangre sobre la pizarra: vive fuera de las pestañas porque nunca cambia de sección. -->
   <section class="w-full border-b border-board-edge bg-board">
     <Container width="wide">
-      <div class="flex flex-wrap items-center justify-between gap-2 pt-4 text-2xs text-chalk-dim">
+      <!-- En el teléfono siempre dos renglones: envolver solo cuando hay estadio hacía que la
+           cabecera midiera distinto de un partido a otro. -->
+      <div
+        class="flex flex-col gap-1 pt-5 text-xs text-chalk-dim sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2"
+      >
         <a
           href={`/competencias/${match.season.competition.slug}`}
           class="flex items-center gap-1.5 transition-colors hover:text-primary"
         >
-          <EscudoTorneo url={match.season.competition.logoUrl} size={13} />
+          <EscudoTorneo url={match.season.competition.logoUrl} size={16} />
           {match.season.competition.name}
           {jornada && <span>· {jornada}</span>}
         </a>
-        <span class="flex items-center gap-3">
-          <span class="flex items-center gap-1.5">
-            <Icon name="reloj" size={12} />
+        <span class="flex min-w-0 items-center gap-3">
+          <span class="flex shrink-0 items-center gap-1.5">
+            <Icon name="reloj" size={14} />
             <span class="first-letter:uppercase">{formatDateLong(match.kickoffUtc)}</span>
           </span>
           {match.venue && (
-            <span class="flex items-center gap-1.5">
-              <Icon name="estadio" size={12} />
-              {match.venue.name}
-              {match.venue.city && <span>· {match.venue.city}</span>}
+            <span class="flex min-w-0 items-center gap-1.5">
+              <Icon name="estadio" size={14} />
+              <span class="truncate">
+                {match.venue.name}
+                {match.venue.city && ` · ${match.venue.city}`}
+              </span>
             </span>
           )}
         </span>

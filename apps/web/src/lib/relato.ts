@@ -3,6 +3,7 @@
  * con los tipos de la vista, para que los componentes no tengan que saber de dónde sale.
  */
 export {
+  goleadoresDelPartido,
   relatoDelPartido,
   minutoDeJugada,
   motivoDeTarjeta,
@@ -10,5 +11,7 @@ export {
   type Banda,
   type FilaDelRelato,
   type Jugada,
+  type GolDeGoleador,
+  type Goleador,
   type Marcador,
 } from '@athena/domain';

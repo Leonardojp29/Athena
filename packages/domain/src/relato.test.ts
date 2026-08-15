@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  goleadoresDelPartido,
   minutoDeJugada,
   motivoDeTarjeta,
   relatoDelPartido,
@@ -40,21 +41,25 @@ const bandas = (filas: ReturnType<typeof relatoDelPartido>) =>
   filas.filter((f) => f.clase === 'banda');
 
 describe('relatoDelPartido', () => {
-  it('lleva el marcador corriente y pone el autogol del otro lado', () => {
+  /*
+   * El autogol viene con el equipo al que le contó, no con el del jugador: sobre los 285 partidos
+   * con autogol de la base, la suma cuadra con el marcador oficial 279 veces leyéndolo tal cual y 6
+   * volteándolo. Acá el autogol lo sufre el visitante y suma para el local.
+   */
+  it('lleva el marcador corriente sumando el autogol al equipo al que le contó', () => {
     const filas = relatoDelPartido(
       partido(
         [
           evento('goal', 12, LOCAL),
           evento('own_goal', 41, LOCAL),
-          evento('penalty_goal', 77, LOCAL),
+          evento('penalty_goal', 77, VISITA),
         ],
         [2, 1],
       ),
     );
-    /* El autogol lo firma el local y el gol es del visitante: 1-0, 1-1, 2-1. */
     expect(jugadas(filas).map((j) => j.marcador)).toEqual([
       { local: 1, visita: 0 },
-      { local: 1, visita: 1 },
+      { local: 2, visita: 0 },
       { local: 2, visita: 1 },
     ]);
   });
@@ -160,5 +165,55 @@ describe('lo que el proveedor cuenta, en español', () => {
     /* Antes que mostrar el inglés crudo, no se dice nada: el icono ya informa. */
     expect(motivoDeTarjeta('Excessive celebration')).toBeNull();
     expect(motivoDeTarjeta(null)).toBeNull();
+  });
+});
+
+describe('goleadoresDelPartido', () => {
+  it('agrupa los goles de un mismo jugador en una línea', () => {
+    const yotun = { id: 'yotun', name: 'Yoshimar Yotún' };
+    const { visita } = goleadoresDelPartido({
+      homeTeam: LOCAL,
+      events: [
+        evento('goal', 45, VISITA, { player: yotun, extraMinute: 2 }),
+        evento('penalty_goal', 82, VISITA, { player: yotun }),
+      ],
+    });
+    expect(visita).toHaveLength(1);
+    expect(visita[0]!.nombre).toBe('Yoshimar Yotún');
+    expect(visita[0]!.goles).toEqual([
+      { minuto: 45, extra: 2, enContra: false, penal: false },
+      { minuto: 82, extra: null, enContra: false, penal: true },
+    ]);
+  });
+
+  /* El gol en contra se muestra en la columna del equipo que sumó, marcado y con quien se lo hizo. */
+  it('cuenta el autogol del lado al que le contó y lo marca', () => {
+    const { local, visita } = goleadoresDelPartido({
+      homeTeam: LOCAL,
+      events: [evento('own_goal', 30, LOCAL, { player: { id: 'almiron', name: 'Matías Almirón' } })],
+    });
+    expect(visita).toHaveLength(0);
+    expect(local[0]?.nombre).toBe('Matías Almirón');
+    expect(local[0]?.goles[0]?.enContra).toBe(true);
+  });
+
+  /*
+   * Cuatro de cada diez goles llegan sin jugador resuelto, pero casi todos traen el nombre en el
+   * detalle. Sin este respaldo la cabecera quedaría vacía en el 42% de los goles.
+   */
+  it('usa el nombre del detalle cuando el proveedor no resolvió al jugador', () => {
+    const { local } = goleadoresDelPartido({
+      homeTeam: LOCAL,
+      events: [evento('goal', 12, LOCAL, { detail: { playerName: 'Facundo Callejo' } })],
+    });
+    expect(local[0]?.nombre).toBe('Facundo Callejo');
+  });
+
+  it('un partido sin goles no tiene goleadores de ningún lado', () => {
+    const { local, visita } = goleadoresDelPartido({
+      homeTeam: LOCAL,
+      events: [evento('yellow_card', 30, LOCAL), evento('missed_penalty', 60, VISITA)],
+    });
+    expect([local.length, visita.length]).toEqual([0, 0]);
   });
 });

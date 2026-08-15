@@ -5,6 +5,9 @@ import PlayerName from '../player/PlayerName.astro';
 /*
  * Rendimiento individual de los dos equipos. Cada fila abre la misma ficha que los imanes de
  * la cancha: el atributo data-ficha es lo que las hermana, sin una línea de JavaScript extra.
+ *
+ * Cada tabla se declara anfitriona de la ficha: la ficha se dibuja encima de ella y solo ella se
+ * difumina, en vez de oscurecer la pantalla entera y perder de vista el partido.
  */
 interface Props {
   playerStatistics: MatchPlayerStats[];
@@ -46,7 +49,7 @@ const goles = (s: MatchPlayerStats) =>
     porEquipo
       .filter(({ rows }) => rows.length > 0)
       .map(({ team, rows }) => (
-        <section>
+        <section data-ficha-anfitrion>
           <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold">
             {team.logoUrl && <img src={team.logoUrl} alt="" width="18" height="18" loading="lazy" />}
             {team.name}

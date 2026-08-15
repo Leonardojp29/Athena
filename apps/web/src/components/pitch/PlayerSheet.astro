@@ -2,21 +2,24 @@
 import Icon from '../Icon.astro';
 
 /*
- * Ficha del jugador en un <dialog> nativo: trampa de foco, Escape, backdrop y capa superior
- * salen gratis del navegador. Se rellena desde el data-ficha del imán, así que abrirla no
+ * Ficha del jugador en un <dialog>: se rellena desde el data-ficha del imán, así que abrirla no
  * cuesta ni una llamada; el estado va al hash para que el enlace sea compartible.
  *
- * Cuando el imán está en una cancha, la ficha se dibuja **encima de esa cancha** y solo la cancha se
- * difumina: el resto de la página queda a la vista, que es lo que uno quiere mientras compara. Sigue
- * siendo `showModal()` —el foco, el Escape y la vuelta del foco al imán son del navegador— y por eso
- * el diálogo se queda en el nivel de página: al vivir en la capa superior, el `filter` de la cancha
- * no lo alcanza. Se posiciona con variables leídas del rectángulo de la cancha, y si la cancha es
- * chica o el imán no está en una —la tabla de rendimiento—, se comporta como siempre.
+ * La ficha se dibuja **encima del bloque que la abrió** —la cancha, o la tabla de rendimiento de un
+ * equipo— y solo ese bloque se difumina: el resto de la página queda a la vista, que es lo que uno
+ * quiere mientras compara. Y por eso hay **una ficha por bloque**: se puede tener abierta la de un
+ * equipo junto a la del otro, que es la comparación que la vista invita a hacer.
+ *
+ * Eso obliga a que las contenidas no sean modales: dos `showModal()` se vuelven inertes entre sí y la
+ * primera deja de responder al clic. A cambio hay que devolver a mano lo que el navegador regalaba
+ * —Escape, el foco de vuelta al imán y el cierre al tocar afuera—, que es lo que hace el guion de
+ * abajo. Sin bloque anfitrión, o si es muy chico, sigue siendo un modal de pantalla completa.
  */
 ---
 
 <dialog
   id="ficha-jugador"
+  data-ficha-dialogo
   class="m-auto w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-modal backdrop:bg-canvas/70 backdrop:backdrop-blur-sm"
   aria-labelledby="ficha-nombre"
 >
@@ -30,6 +33,7 @@ import Icon from '../Icon.astro';
       </p>
       <h2
         id="ficha-nombre"
+        data-ficha-nombre
         class="truncate font-display text-base font-semibold uppercase leading-tight"
       >
       </h2>
@@ -108,19 +112,10 @@ import Icon from '../Icon.astro';
     stats: FichaStats | null;
   }
 
-  const dialogo = document.getElementById('ficha-jugador') as HTMLDialogElement | null;
-  if (dialogo) {
-    const $ = <T extends Element>(sel: string) => dialogo.querySelector<T>(sel);
-    const foto = $<HTMLElement>('[data-ficha-foto]');
-    const escudo = $<HTMLElement>('[data-ficha-escudo]');
-    const equipo = $<HTMLElement>('[data-ficha-equipo]');
-    const dorsal = $<HTMLElement>('[data-ficha-dorsal]');
-    const nombre = document.getElementById('ficha-nombre');
-    const posicion = $<HTMLElement>('[data-ficha-posicion]');
-    const destacados = $<HTMLElement>('[data-ficha-destacados]');
-    const detalle = $<HTMLElement>('[data-ficha-detalle]');
-    const vacio = $<HTMLElement>('[data-ficha-vacio]');
-    const perfiles = dialogo.querySelectorAll<HTMLAnchorElement>('[data-ficha-perfil-pie]');
+  const original = document.getElementById('ficha-jugador') as HTMLDialogElement | null;
+  if (original) {
+    /* El molde se saca antes de rellenar nada: una copia limpia de la que salen las demás fichas. */
+    const molde = original.cloneNode(true) as HTMLDialogElement;
 
     const num = (valor: number | null | undefined) =>
       valor === null || valor === undefined ? '–' : String(valor);
@@ -155,7 +150,16 @@ import Icon from '../Icon.astro';
       contenedor.append(img);
     }
 
-    function pintar(ficha: Ficha): void {
+    function pintar(dialogo: HTMLDialogElement, ficha: Ficha): void {
+      const $ = <T extends Element>(sel: string) => dialogo.querySelector<T>(sel);
+      const nombre = $<HTMLElement>('[data-ficha-nombre]');
+      const equipo = $<HTMLElement>('[data-ficha-equipo]');
+      const dorsal = $<HTMLElement>('[data-ficha-dorsal]');
+      const posicion = $<HTMLElement>('[data-ficha-posicion]');
+      const destacados = $<HTMLElement>('[data-ficha-destacados]');
+      const detalle = $<HTMLElement>('[data-ficha-detalle]');
+      const vacio = $<HTMLElement>('[data-ficha-vacio]');
+
       if (nombre) nombre.textContent = ficha.name;
       if (equipo) equipo.textContent = ficha.team.name;
       if (dorsal) dorsal.textContent = ficha.number !== null ? `· #${ficha.number}` : '';
@@ -166,9 +170,14 @@ import Icon from '../Icon.astro';
        * caja rota esperando que alguien le quite el `hidden`. Y se arman con createElement en
        * lugar de innerHTML porque la URL viene de un proveedor.
        */
-      pintarImagen(foto, ficha.photoUrl, 40, 'size-10 rounded-full bg-canvas-subtle object-cover');
-      pintarImagen(escudo, ficha.team.logoUrl, 14, '');
-      for (const enlace of perfiles) {
+      pintarImagen(
+        $<HTMLElement>('[data-ficha-foto]'),
+        ficha.photoUrl,
+        40,
+        'size-10 rounded-full bg-canvas-subtle object-cover',
+      );
+      pintarImagen($<HTMLElement>('[data-ficha-escudo]'), ficha.team.logoUrl, 14, '');
+      for (const enlace of dialogo.querySelectorAll<HTMLAnchorElement>('[data-ficha-perfil-pie]')) {
         enlace.href = ficha.slug ? `/jugadores/${ficha.slug}` : `/equipos/${ficha.team.slug}`;
       }
 
@@ -229,92 +238,161 @@ import Icon from '../Icon.astro';
       if (detalle) detalle.innerHTML = filas.join('');
     }
 
-    /* Debajo de esto la ficha taparía la cancha entera y no habría nada que mirar detrás. */
+    /* Debajo de esto la ficha taparía el bloque entero y no habría nada que mirar detrás. */
     const MINIMO_ANCHO = 260;
     const MINIMO_ALTO = 300;
 
-    let cancha: HTMLElement | null = null;
+    interface Abierta {
+      anfitrion: HTMLElement | null;
+      disparador: HTMLElement;
+    }
 
-    const ubicar = () => {
-      if (!cancha) return;
-      const caja = cancha.getBoundingClientRect();
+    const fichas: HTMLDialogElement[] = [original];
+    const abiertas = new Map<HTMLDialogElement, Abierta>();
+
+    const ubicar = (dialogo: HTMLDialogElement, anfitrion: HTMLElement) => {
+      const caja = anfitrion.getBoundingClientRect();
       /*
-       * Acotada a la parte visible de la cancha: en un teléfono la cancha mide más que la pantalla y
-       * la ficha, centrada en la cancha entera, quedaba con la mitad fuera de cuadro.
+       * Acotada a la parte visible del anfitrión: en un teléfono la cancha mide más que la pantalla y
+       * la ficha, centrada en el bloque entero, quedaba con la mitad fuera de cuadro.
        */
       const arriba = Math.max(caja.top, 8);
       const abajo = Math.min(caja.bottom, window.innerHeight - 8);
-      const d = dialogo!.style;
+      const d = dialogo.style;
       d.setProperty('--ficha-x', `${caja.left + caja.width / 2}px`);
       d.setProperty('--ficha-y', `${(arriba + abajo) / 2}px`);
       d.setProperty('--ficha-ancho', `${caja.width}px`);
       d.setProperty('--ficha-alto', `${Math.max(0, abajo - arriba)}px`);
     };
 
-    /*
-     * `data-contenida` no se quita acá: al cerrar, el diálogo tarda su transición en irse y sin el
-     * atributo su `::backdrop` recupera el oscurecido de pantalla completa a mitad de camino —se veía
-     * como un fogonazo que difuminaba toda la página—. Se decide al abrir, cada vez.
-     */
-    const soltarCancha = () => {
-      cancha?.removeAttribute('data-difuminada');
-      cancha = null;
-      window.removeEventListener('scroll', ubicar);
-      window.removeEventListener('resize', ubicar);
+    /* Mientras hay alguna abierta, cada ficha sigue a su bloque: el diálogo es fijo a la pantalla. */
+    const seguir = () => {
+      for (const [dialogo, estado] of abiertas) {
+        if (estado.anfitrion) ubicar(dialogo, estado.anfitrion);
+      }
+    };
+    window.addEventListener('scroll', seguir, { passive: true });
+    window.addEventListener('resize', seguir);
+
+    const contenida = (dialogo: HTMLDialogElement) => dialogo.hasAttribute('data-contenida');
+    const cerrarContenidas = () => {
+      for (const dialogo of [...abiertas.keys()]) if (contenida(dialogo)) dialogo.close();
     };
 
-    function abrir(boton: HTMLElement): void {
-      const crudo = boton.dataset.ficha;
-      if (!crudo) return;
-      pintar(JSON.parse(crudo) as Ficha);
+    function preparar(dialogo: HTMLDialogElement): HTMLDialogElement {
+      dialogo.querySelector('[data-ficha-cerrar]')?.addEventListener('click', () => dialogo.close());
+      /* Clic en el backdrop del modal: el <dialog> es el objetivo solo cuando se toca afuera. */
+      dialogo.addEventListener('click', (event) => {
+        if (event.target === dialogo) dialogo.close();
+      });
+      dialogo.addEventListener('close', () => {
+        const estado = abiertas.get(dialogo);
+        abiertas.delete(dialogo);
+        estado?.anfitrion?.removeAttribute('data-difuminada');
+        /*
+         * El foco vuelve al imán a mano: eso lo hacía el navegador mientras la ficha era modal, y sin
+         * esto el teclado quedaba al principio de la página cada vez que se cierra una.
+         */
+        if (estado?.anfitrion && estado.disparador.isConnected) estado.disparador.focus();
+        if (abiertas.size === 0 && location.hash.startsWith('#jugador-')) {
+          history.replaceState(null, '', location.pathname + location.search);
+        }
+      });
+      return dialogo;
+    }
 
-      soltarCancha();
-      /*
-       * El imán puede estar en el césped o en el banco, que vive fuera para no inventarle una casilla
-       * a quien entró desde el banco. En los dos casos la ficha pertenece a esa cancha, y el ámbito
-       * es lo que las une.
-       */
-      const suya =
+    /*
+     * Una ficha por bloque: la del bloque si ya está abierta —así el clic en otro jugador de la misma
+     * tabla la reemplaza en lugar de amontonar—, la primera libre, o una copia nueva. Las copias se
+     * quedan en el documento para reusarse: son dos o tres y así la transición de cierre se ve entera.
+     */
+    function fichaDe(anfitrion: HTMLElement | null): HTMLDialogElement {
+      for (const [dialogo, estado] of abiertas) {
+        if (estado.anfitrion === anfitrion) return dialogo;
+      }
+      const libre = fichas.find((f) => !f.open);
+      if (libre) return libre;
+
+      const copia = molde.cloneNode(true) as HTMLDialogElement;
+      copia.removeAttribute('id');
+      const nombre = copia.querySelector('[data-ficha-nombre]');
+      const id = `ficha-nombre-${fichas.length}`;
+      if (nombre) {
+        nombre.id = id;
+        copia.setAttribute('aria-labelledby', id);
+      }
+      original!.parentElement?.append(copia);
+      fichas.push(copia);
+      return preparar(copia);
+    }
+
+    /*
+     * El imán puede estar en el césped o en el banco, que vive fuera para no inventarle una casilla
+     * a quien entró desde el banco. En los dos casos la ficha pertenece a esa cancha, y el ámbito es
+     * lo que las une. Fuera de la cancha manda el anfitrión declarado más cercano: la tabla de
+     * rendimiento del equipo al que se le hizo clic, y no la del rival.
+     */
+    function anfitrionDe(boton: HTMLElement): HTMLElement | null {
+      const suyo =
         boton.closest<HTMLElement>('[data-cancha]') ??
         boton
           .closest<HTMLElement>('[data-cancha-ambito]')
           ?.querySelector<HTMLElement>('[data-cancha]') ??
-        null;
-      const caja = suya?.getBoundingClientRect();
-      if (suya && caja && caja.width >= MINIMO_ANCHO && caja.height >= MINIMO_ALTO) {
-        cancha = suya;
-        cancha.setAttribute('data-difuminada', '');
-        dialogo!.setAttribute('data-contenida', '');
-        ubicar();
-        /* Mientras está abierta, la ficha sigue a su cancha: el diálogo es fijo a la pantalla. */
-        window.addEventListener('scroll', ubicar, { passive: true });
-        window.addEventListener('resize', ubicar);
+        boton.closest<HTMLElement>('[data-ficha-anfitrion]');
+      const caja = suyo?.getBoundingClientRect();
+      if (!suyo || !caja || caja.width < MINIMO_ANCHO || caja.height < MINIMO_ALTO) return null;
+      return suyo;
+    }
+
+    function abrir(boton: HTMLElement): void {
+      const crudo = boton.dataset.ficha;
+      if (!crudo) return;
+
+      const anfitrion = anfitrionDe(boton);
+      const dialogo = fichaDe(anfitrion);
+      pintar(dialogo, JSON.parse(crudo) as Ficha);
+
+      abiertas.get(dialogo)?.anfitrion?.removeAttribute('data-difuminada');
+      abiertas.set(dialogo, { anfitrion, disparador: boton });
+
+      if (anfitrion) {
+        anfitrion.setAttribute('data-difuminada', '');
+        dialogo.setAttribute('data-contenida', '');
+        ubicar(dialogo, anfitrion);
+        /* `show()` y no `showModal()`: dos modales se vuelven inertes entre sí. */
+        if (!dialogo.open) dialogo.show();
       } else {
-        dialogo!.removeAttribute('data-contenida');
+        dialogo.removeAttribute('data-contenida');
+        if (!dialogo.open) dialogo.showModal();
       }
 
-      if (!dialogo!.open) dialogo!.showModal();
       const id = boton.dataset.jugador;
       if (id) history.replaceState(null, '', `#jugador-${id}`);
     }
 
     /* Delegación: sirve igual para los imanes del servidor y para los que reemplace la isla. */
     document.addEventListener('click', (event) => {
-      const boton = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-ficha]');
-      if (boton) abrir(boton);
+      const objetivo = event.target as HTMLElement | null;
+      const boton = objetivo?.closest<HTMLElement>('[data-ficha]');
+      if (boton) {
+        abrir(boton);
+        return;
+      }
+      /* Tocar afuera cierra: sin backdrop que reciba el clic, lo decide el documento. */
+      if (abiertas.size > 0 && !objetivo?.closest('[data-ficha-dialogo]')) cerrarContenidas();
     });
 
-    dialogo.querySelector('[data-ficha-cerrar]')?.addEventListener('click', () => dialogo.close());
-    /* Clic en el backdrop: el propio <dialog> es el objetivo solo cuando se toca afuera. */
-    dialogo.addEventListener('click', (event) => {
-      if (event.target === dialogo) dialogo.close();
+    /* Escape: la contenida no es modal, así que el navegador ya no la cierra sola. */
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || abiertas.size === 0) return;
+      const dentro = (event.target as HTMLElement | null)?.closest<HTMLDialogElement>(
+        '[data-ficha-dialogo]',
+      );
+      if (dentro && contenida(dentro)) dentro.close();
+      else if (!dentro) cerrarContenidas();
     });
-    dialogo.addEventListener('close', () => {
-      soltarCancha();
-      if (location.hash.startsWith('#jugador-')) {
-        history.replaceState(null, '', location.pathname + location.search);
-      }
-    });
+
+    preparar(original);
 
     /* Enlace compartido: si el hash nombra a un jugador, se abre su ficha al cargar. */
     const desdeHash = () => {
