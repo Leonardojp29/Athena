@@ -18,6 +18,51 @@ export interface ColorEquipo {
 
 const HEX = /^[0-9a-fA-F]{6}$/;
 
+/*
+ * Clubes donde el color del proveedor no es el del club.
+ *
+ * Alianza Lima quedó guardado como blanco con dorsal naranja, y es blanquiazul. No es un error de
+ * mapeo: el proveedor manda **el kit de ese partido**, no la identidad del club —en el partido del 2
+ * de agosto Alianza figura de negro— y el muestreo se queda con el que le tocó. Cuando el club es
+ * conocido y el dato está mal, gana esta lista; cuando no, manda la regla de abajo.
+ *
+ * Es una lista de casos, no un mecanismo: la solución de fondo es deducir el color del escudo.
+ */
+const COLORES_DE_CLUB: Record<string, [string, string]> = {
+  'alianza-lima': ['00285c', 'ffffff'],
+};
+
+/**
+ * Qué colores usar para un club.
+ *
+ * Un kit casi blanco o casi negro no es una identidad: son 424 de los 835 equipos que tienen color, y
+ * pintan una cabecera lavada —o una franja blanco a naranja, como la de Alianza— que dice del club
+ * algo que no es cierto. En esos casos no se muestra ninguno y la página usa la pizarra de siempre:
+ * no saber es honesto, inventar no. El secundario tampoco sirve de reemplazo, porque es el color del
+ * dorsal y no el de la camiseta alternativa.
+ */
+export function coloresDeClub(
+  slug: string,
+  primario: string | null | undefined,
+  secundario: string | null | undefined,
+): [string | null, string | null] {
+  const propio = COLORES_DE_CLUB[slug];
+  if (propio) return propio;
+
+  const color = colorEquipo(primario);
+  if (!color) return [null, null];
+
+  const l = luminanciaDe(primario as string);
+  return l > 0.85 || l < 0.06 ? [null, null] : [primario ?? null, secundario ?? null];
+}
+
+function luminanciaDe(hex: string): number {
+  const r = Number.parseInt(hex.slice(0, 2), 16) / 255;
+  const g = Number.parseInt(hex.slice(2, 4), 16) / 255;
+  const b = Number.parseInt(hex.slice(4, 6), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 export function colorEquipo(hex: string | null | undefined): ColorEquipo | null {
   if (!hex || !HEX.test(hex)) return null;
 

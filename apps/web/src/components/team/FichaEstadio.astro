@@ -7,9 +7,9 @@ import { aforo, fotoDeEstadio, superficieEnEspanol } from '../../lib/estadio';
  * La casa del club, en el riel.
  *
  * La foto va **entera**: recortada al ancho de la tarjeta se perdía media tribuna y el estadio dejaba
- * de reconocerse, que es lo único que una foto de estadio tiene que lograr. Va en su proporción, sin
- * cortar, y lo que sobra lo pinta el color del club, así que la tarjeta se ve completa con cualquier
- * imagen —el proveedor manda de todo, apaisadas y cuadradas—.
+ * de reconocerse, que es lo único que una foto de estadio tiene que lograr. Va sin cortar dentro de
+ * una caja apaisada —más baja que la proporción de la foto, para que la tarjeta no se coma el riel— y
+ * lo que sobra lo pinta el color del club.
  *
  * El nombre va debajo de la foto y no encima: con la imagen completa, cualquier texto superpuesto
  * tapa justo lo que se vino a ver.
@@ -50,7 +50,7 @@ const datos = [
           height="480"
           loading="lazy"
           decoding="async"
-          class="aspect-[4/3] w-full object-contain"
+          class="aspect-[16/10] w-full object-contain"
         />
       ) : (
         <span class="grid h-28 place-items-center text-(--tinta-tenue)" aria-hidden="true">

@@ -8,7 +8,7 @@ import PlantillaCompacta from './PlantillaCompacta.astro';
 import TablaLideres from '../TablaLideres.astro';
 import type { TeamView } from '../../lib/api';
 import { mezclaRondas } from '../../lib/rondas';
-import { temaEquipo } from '../../lib/color';
+import { coloresDeClub, temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
@@ -33,7 +33,7 @@ const pais = paisEnEspanol(team.country);
  * La camiseta como superficie de la cabecera, con la tinta elegida por luminancia. El lavado
  * tímido no funcionaba: el azul casi negro de Alianza al 28% sobre la pizarra era invisible.
  */
-const tema = temaEquipo(team.primaryColor, team.secondaryColor);
+const tema = temaEquipo(...coloresDeClub(team.slug, team.primaryColor, team.secondaryColor));
 const varsCabecera = tema
   ? `background-image:${tema.fondo};--tinta:${tema.tinta};--tinta-suave:${tema.tintaSuave};--tinta-tenue:${tema.tintaTenue};--linea:${tema.linea};--chip:${tema.chip}`
   : '--tinta:var(--color-chalk);--tinta-suave:var(--color-chalk-dim);--tinta-tenue:color-mix(in oklab, var(--color-chalk) 30%, transparent);--linea:color-mix(in oklab, var(--color-chalk) 16%, transparent);--chip:color-mix(in oklab, var(--color-chalk) 10%, transparent)';

@@ -13,7 +13,7 @@ import SquadGrid from '../../components/team/SquadGrid.astro';
 import TablaPlantel from '../../components/team/TablaPlantel.astro';
 import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { getSession } from '../../lib/supabase';
-import { temaEquipo } from '../../lib/color';
+import { coloresDeClub, temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 const { slug } = Astro.params;
@@ -48,7 +48,7 @@ const pais = paisEnEspanol(team.country);
  * luminancia. El lavado tiñe el resto de la página, así que estar en Alianza se nota desde
  * cualquier scroll, no solo en el título.
  */
-const tema = temaEquipo(team.primaryColor, team.secondaryColor);
+const tema = temaEquipo(...coloresDeClub(team.slug, team.primaryColor, team.secondaryColor));
 
 /* Las variables alimentan las clases de la cabecera; sin tema, los valores de la pizarra. */
 const varsCabecera = tema
@@ -128,8 +128,10 @@ const jsonLd = {
         <div class="flex min-w-0 flex-1 items-center gap-4">
           {
             team.logoUrl && (
-              <span class="grid size-20 shrink-0 place-items-center rounded-2xl bg-chalk shadow-card ring-1 ring-(--linea) sm:size-28">
-                <img src={team.logoUrl} alt="" width="88" height="88" class="size-14 sm:size-20" />
+              <!-- El escudo casi llena la plaquita: con más aire adentro se veía un cuadrado blanco
+                   con un escudo perdido en el medio. -->
+              <span class="grid size-[4.5rem] shrink-0 place-items-center rounded-2xl bg-chalk p-1.5 shadow-card ring-1 ring-(--linea) sm:size-24 sm:p-2">
+                <img src={team.logoUrl} alt="" width="80" height="80" class="size-full object-contain" />
               </span>
             )
           }
