@@ -200,6 +200,41 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * Un partido de copa se abre dentro de su copa y es el centro de partido entero, no un resumen
+   * recortado: las mismas cuatro pestañas que su página, con la cabecera del torneo todavía arriba.
+   * El motivo es simple: el partido de los octavos es del torneo, y verlo no debería sacarte de él.
+   */
+  test('un partido de copa se abre dentro de la copa con sus cuatro pestañas', async ({ page }) => {
+    await page.goto('/competencias/copa-del-rey');
+
+    /* `:visible` porque el cuadro dibuja todas las rondas y muestra una: la oculta no se clickea. */
+    const alPartido = page.locator('main a[href*="partido="]:visible').first();
+    test.skip((await alPartido.count()) === 0, 'esta copa no tiene partidos con cuadro');
+    await alPartido.click();
+
+    /* La copa sigue siendo la dueña de la página, y el marcador vive en su misma pizarra. */
+    await expect(page.getByRole('heading', { level: 1, name: /copa del rey/i })).toBeVisible();
+    await expect(page.locator('main section.bg-board [data-marcador]')).toBeVisible();
+
+    const pestanas = page.getByRole('navigation', { name: /secciones del partido/i });
+    for (const nombre of ['Resumen', 'Alineaciones', 'Análisis IA', 'Historial']) {
+      await expect(pestanas.getByText(nombre, { exact: true })).toBeVisible();
+    }
+
+    /* Cambiar de pestaña no saca de la copa ni pierde el partido de la URL. */
+    const alineaciones = pestanas.getByRole('link', { name: 'Alineaciones' });
+    test.skip((await alineaciones.count()) === 0, 'este partido no tiene alineaciones publicadas');
+    await alineaciones.click();
+    await expect(page).toHaveURL(/\?partido=[0-9a-f-]+&vista=alineaciones/);
+    await expect(page.getByRole('heading', { level: 1, name: /copa del rey/i })).toBeVisible();
+    await expect(page.locator('[data-cancha]')).toBeVisible();
+
+    /* Y la salida devuelve al cuadro, sin partido en la URL. */
+    await page.getByRole('link', { name: /volver al cuadro/i }).click();
+    await expect(page).toHaveURL(/\/competencias\/copa-del-rey$/);
+  });
+
+  /*
    * El riel del equipo muestra con qué salió en su último partido, no los goleadores del mundo:
    * quien abrió a Alianza no vino a ver quién la rompe en Europa. Se dibuja con el `grid` del
    * proveedor, así que cada ficha queda donde jugó y abre las estadísticas de ese partido.

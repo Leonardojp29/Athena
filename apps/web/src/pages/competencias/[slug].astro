@@ -6,9 +6,10 @@ import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
+import BandaDelPartido from '../../components/match/BandaDelPartido.astro';
 import BloqueGrupos from '../../components/competencia/BloqueGrupos.astro';
+import CentroDelPartido from '../../components/match/CentroDelPartido.astro';
 import Cuadro from '../../components/competencia/Cuadro.astro';
-import PartidoEnLaCopa from '../../components/competencia/PartidoEnLaCopa.astro';
 import PartidosPorRonda from '../../components/competencia/PartidosPorRonda.astro';
 import PlayerSheet from '../../components/pitch/PlayerSheet.astro';
 import OnceDelTorneo from '../../components/competencia/OnceDelTorneo.astro';
@@ -18,6 +19,7 @@ import StandingsTable from '../../components/StandingsTable.astro';
 import OnceDeLaFecha from '../../components/home/OnceDeLaFecha.astro';
 import TablaLideres from '../../components/TablaLideres.astro';
 import { api, ApiError, type CompetitionView, type MatchView } from '../../lib/api';
+import { isLive } from '../../lib/format';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { getSession } from '../../lib/supabase';
 import { nombreFase, paisEnEspanol } from '../../lib/paises';
@@ -55,6 +57,15 @@ try {
 }
 const session = await pedidoSesion;
 const partido = await pedidoPartido;
+
+/*
+ * Con un partido abierto, la vista se suma a la consulta que ya lo nombra: el partido es el estado
+ * principal de la URL y la pestaña cuelga de él.
+ */
+const vistaPedida = Astro.url.searchParams.get('vista') ?? 'resumen';
+const enlaceDeVista = (vista: string) =>
+  `/competencias/${slug}?partido=${partido?.id}${vista === 'resumen' ? '' : `&vista=${vista}`}`;
+const partidoEnVivo = partido !== null && isLive(partido.status);
 
 const {
   competition,
@@ -257,15 +268,31 @@ const jsonLd = {
         />
       </div>
 
-      <!-- El archivo, pegado a la cabecera: es una propiedad de la competencia, no de la tabla. -->
-      <SelectorTemporada
-        temporadas={seasons}
-        activa={season.year}
-        slug={competition.slug}
-        etiqueta={etiquetaTemporada}
-        onBoard
-        class="-mt-1 pb-4"
-      />
+      <!--
+        Con un partido abierto, la pizarra se prolonga con su marcador: el torneo arriba y el partido
+        debajo, sobre el mismo fondo y con el mismo color, se leen como una sola pieza. El archivo de
+        temporadas no se dibuja ahí —cambiar de año con un partido abierto no lleva a ningún lado—.
+      -->
+      {
+        partido ? (
+          <div class="border-t border-board-edge/60 pb-1">
+            <BandaDelPartido
+              match={partido}
+              live={partidoEnVivo}
+              volver={`/competencias/${competition.slug}`}
+            />
+          </div>
+        ) : (
+          <SelectorTemporada
+            temporadas={seasons}
+            activa={season.year}
+            slug={competition.slug}
+            etiqueta={etiquetaTemporada}
+            onBoard
+            class="-mt-1 pb-4"
+          />
+        )
+      }
     </Container>
   </section>
 
@@ -285,7 +312,16 @@ const jsonLd = {
         Con un partido abierto, la página es ese partido: mostrarlo arriba del cuadro dejaría dos
         temas a la vez y el doble de alto.
       -->
-      {partido && <PartidoEnLaCopa match={partido} volver={`/competencias/${competition.slug}`} />}
+      {
+        partido && (
+          <CentroDelPartido
+            match={partido}
+            vistaPedida={vistaPedida}
+            live={partidoEnVivo}
+            enlaceDeVista={enlaceDeVista}
+          />
+        )
+      }
 
       {
         !partido && (
@@ -424,6 +460,6 @@ const jsonLd = {
   </Container>
   </div>
 
-  <!-- La ficha del jugador: solo cuando hay una cancha en la página que la abra. -->
-  {partido && partido.lineups.length > 0 && <PlayerSheet />}
+  <!-- La ficha del jugador: la abren la cancha y la tabla de rendimiento del partido abierto. -->
+  {partido && <PlayerSheet />}
 </Base>

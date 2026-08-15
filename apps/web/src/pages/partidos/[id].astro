@@ -1,23 +1,11 @@
 ---
-import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
+import BandaDelPartido from '../../components/match/BandaDelPartido.astro';
+import CentroDelPartido from '../../components/match/CentroDelPartido.astro';
 import Container from '../../components/layout/Container.astro';
-import HistorialCompacto from '../../components/match/HistorialCompacto.astro';
-import HistorialCompleto from '../../components/match/HistorialCompleto.astro';
-import RefrescoEnVivo from '../../components/match/RefrescoEnVivo.astro';
-import Icon from '../../components/Icon.astro';
-import InsightCard from '../../components/InsightCard.astro';
-import MatchCenter from '../../components/MatchCenter';
-import Suplentes from '../../components/match/Suplentes.astro';
-import MatchStatistics from '../../components/MatchStatistics.astro';
-import MatchTabs, { type Tab } from '../../components/match/MatchTabs.astro';
-import PlayerStatsTable from '../../components/match/PlayerStatsTable.astro';
-import PitchLineups from '../../components/pitch/PitchLineups.astro';
 import PlayerSheet from '../../components/pitch/PlayerSheet.astro';
-import PreviewCard from '../../components/PreviewCard.astro';
 import { api, ApiError, type MatchView } from '../../lib/api';
-import { formatDateLong, isLive } from '../../lib/format';
-import { etiquetaDeRonda } from '../../lib/rondas';
+import { isLive } from '../../lib/format';
 
 const { id } = Astro.params;
 let match: MatchView;
@@ -39,29 +27,10 @@ const startsSoon =
   new Date(match.kickoffUtc).getTime() - Date.now() > -4 * 3600_000;
 const live = isLive(match.status) || startsSoon;
 
-/* La jornada en español: el proveedor la manda en inglés y acá salía cruda. */
-const jornada = etiquetaDeRonda(match.round);
-
-const hayAlineaciones = match.lineups.length > 0;
-/* Los cambios salen de los eventos: la alineación del API trae el once y el banco, no quién entró. */
-const cambios = match.events.filter((e) => e.kind === 'substitution');
-const analisis = match.insight ?? match.preview;
-
-/*
- * El historial va al final y **nunca deshabilitado**: el cero de las alineaciones es un hueco de
- * datos, pero el cero del historial es una respuesta —"es la primera vez que se enfrentan"— y merece
- * su pantalla igual.
- */
-const TABS: Tab[] = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'alineaciones', label: 'Alineaciones', disabled: !hayAlineaciones },
-  { id: 'analisis', label: 'Análisis IA', disabled: analisis === null },
-  { id: 'historial', label: 'Historial' },
-];
-
-const pedida = Astro.url.searchParams.get('vista') ?? 'resumen';
-const vista = TABS.find((t) => t.id === pedida && !t.disabled) ? pedida : 'resumen';
+const vistaPedida = Astro.url.searchParams.get('vista') ?? 'resumen';
 const baseUrl = `/partidos/${match.id}`;
+const enlaceDeVista = (vista: string) =>
+  vista === 'resumen' ? baseUrl : `${baseUrl}?vista=${vista}`;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -85,283 +54,18 @@ const jsonLd = {
   <!-- El marcador a sangre sobre la pizarra: vive fuera de las pestañas porque nunca cambia de sección. -->
   <section class="w-full border-b border-board-edge bg-board">
     <Container width="wide">
-      <!-- En el teléfono siempre dos renglones: envolver solo cuando hay estadio hacía que la
-           cabecera midiera distinto de un partido a otro. -->
-      <div
-        class="flex flex-col gap-1 pt-5 text-xs text-chalk-dim sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2"
-      >
-        <a
-          href={`/competencias/${match.season.competition.slug}`}
-          class="flex items-center gap-1.5 transition-colors hover:text-primary"
-        >
-          <EscudoTorneo url={match.season.competition.logoUrl} size={16} />
-          {match.season.competition.name}
-          {jornada && <span>· {jornada}</span>}
-        </a>
-        <span class="flex min-w-0 items-center gap-3">
-          <span class="flex shrink-0 items-center gap-1.5">
-            <Icon name="reloj" size={14} />
-            <span class="first-letter:uppercase">{formatDateLong(match.kickoffUtc)}</span>
-          </span>
-          {match.venue && (
-            <span class="flex min-w-0 items-center gap-1.5">
-              <Icon name="estadio" size={14} />
-              <span class="truncate">
-                {match.venue.name}
-                {match.venue.city && ` · ${match.venue.city}`}
-              </span>
-            </span>
-          )}
-        </span>
-      </div>
-
-      {
-        live ? (
-          <MatchCenter client:load initial={match} live part="hero" />
-        ) : (
-          <MatchCenter initial={match} live={false} part="hero" />
-        )
-      }
+      <BandaDelPartido match={match} live={live} conCompetencia />
     </Container>
   </section>
 
   <Container width="wide" class="pt-3">
     <h1 class="sr-only">{title}</h1>
-    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-      <MatchTabs tabs={TABS} active={vista} baseUrl={baseUrl} />
-      {live && <RefrescoEnVivo />}
-    </div>
-
-    <!--
-      En la vista de alineaciones la cancha define su propio ancho (la altura la limita), así
-      que la columna se ajusta a ella y el par se centra. Con `1fr` quedaba un hueco muerto de
-      200px a la izquierda de la cancha.
-    -->
-    <div
-      class:list={[
-        'mt-4 grid items-start gap-4',
-        vista === 'alineaciones'
-          ? 'lg:grid-cols-[auto_20rem] lg:justify-center'
-          : 'lg:grid-cols-[minmax(0,1fr)_20rem]',
-      ]}
-    >
-      <div class="grid min-w-0 gap-4">
-        {
-          vista === 'resumen' && (
-            <>
-              {/*
-                Dos mitades: las cifras del partido a la izquierda y el relato a la derecha. Antes
-                eran dos pestañas —una con el minuto a minuto estirado a mil quinientos píxeles y la
-                otra con las barras apretadas en veintidós rem— y las dos juntas entran en una
-                pantalla.
-              */}
-              <div class="grid gap-4 2xl:grid-cols-2">
-                <MatchStatistics
-                  statistics={match.statistics}
-                  homeTeam={match.homeTeam}
-                  awayTeam={match.awayTeam}
-                  grande
-                />
-                <!--
-                  La tarjeta mide lo que mide la de estadísticas: el relato va en una caja absoluta
-                  para que su largo no estire la fila, y desplaza por dentro. Es el mismo recurso de
-                  los paneles de ronda de una competencia.
-                -->
-                <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
-                  <!-- Los escudos a los costados son la leyenda del eje: qué lado es cuál. -->
-                  <div class="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-                    <span class="flex min-w-0 items-center gap-2">
-                      {match.homeTeam.logoUrl && (
-                        <img src={match.homeTeam.logoUrl} alt="" width="18" height="18" />
-                      )}
-                      <span class="truncate text-sm font-medium">
-                        {match.homeTeam.shortName ?? match.homeTeam.name}
-                      </span>
-                    </span>
-                    <h2 class="shrink-0 font-display text-base font-semibold uppercase">
-                      Minuto a minuto
-                    </h2>
-                    <span class="flex min-w-0 items-center justify-end gap-2">
-                      <span class="truncate text-sm font-medium">
-                        {match.awayTeam.shortName ?? match.awayTeam.name}
-                      </span>
-                      {match.awayTeam.logoUrl && (
-                        <img src={match.awayTeam.logoUrl} alt="" width="18" height="18" />
-                      )}
-                    </span>
-                  </div>
-                  <div class="relative min-h-0 flex-1 2xl:min-h-[24rem]">
-                    <div class="barra-fina 2xl:absolute 2xl:inset-0 2xl:overflow-y-auto 2xl:pr-1">
-                      {live ? (
-                        <MatchCenter client:load initial={match} live part="timeline" />
-                      ) : (
-                        <MatchCenter initial={match} live={false} part="timeline" />
-                      )}
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              {/*
-                El rendimiento individual, a todo el ancho: cada tabla necesita 30rem y en la
-                pestaña de estadísticas recibía 396px a 1600, con ochenta píxeles de scroll lateral.
-              */}
-              {match.playerStatistics.length > 0 && (
-                <section>
-                  <h2 class="mb-2 font-display text-base font-semibold uppercase">
-                    Rendimiento individual
-                  </h2>
-                  <PlayerStatsTable
-                    playerStatistics={match.playerStatistics}
-                    homeTeam={match.homeTeam}
-                    awayTeam={match.awayTeam}
-                  />
-                </section>
-              )}
-            </>
-          )
-        }
-
-        {
-          vista === 'alineaciones' && (
-            <PitchLineups
-              lineups={match.lineups}
-              playerStatistics={match.playerStatistics}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-              cambios={cambios}
-            />
-          )
-        }
-
-        {
-          vista === 'analisis' && (
-            <>
-              {match.insight && <InsightCard insight={match.insight} />}
-              {!match.insight && match.preview && <PreviewCard preview={match.preview} />}
-            </>
-          )
-        }
-
-        {
-          vista === 'historial' && (
-            <HistorialCompleto
-              historial={match.historial}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-            />
-          )
-        }
-      </div>
-
-      <!-- El riel: el análisis es la tesis del producto, no puede vivir al final de la página. -->
-      <aside class="grid gap-3 lg:sticky lg:top-20">
-        {
-          /* El banco vive en el riel: debajo de la cancha empujaba la vista fuera de pantalla. */
-          vista === 'alineaciones' && (
-            <Suplentes
-              lineups={match.lineups}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-              cambios={cambios}
-              playerStatistics={match.playerStatistics}
-            />
-          )
-        }
-        {
-          analisis ? (
-            <section class="rounded-lg border border-data/25 bg-surface p-4">
-              <p class="mb-2 flex items-center gap-1.5 text-2xs font-medium tracking-label text-data-ink uppercase">
-                <Icon name="destello" size={13} />
-                Análisis IA
-              </p>
-              <p class="text-sm font-semibold leading-snug">{analisis.titular}</p>
-              <ul class="mt-3 grid gap-1.5">
-                {('claves' in analisis ? analisis.claves : analisis.aSeguir)
-                  .slice(0, 3)
-                  .map((item) => (
-                    <li class="flex gap-2 text-2xs text-ink-muted">
-                      <Icon name="vineta" size={12} class="mt-0.5 shrink-0 text-data-ink" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-              </ul>
-              {vista !== 'analisis' && (
-                <a
-                  href={`${baseUrl}?vista=analisis`}
-                  class="mt-3 flex items-center gap-1 text-2xs text-primary-ink hover:underline"
-                >
-                  Leer el análisis con su evidencia
-                  <Icon name="chevron-derecha" size={12} />
-                </a>
-              )}
-            </section>
-          ) : (
-            <section class="rounded-lg border border-border bg-surface p-4">
-              <p class="text-sm text-ink-muted">
-                El análisis de este partido se genera cuando termina.
-              </p>
-            </section>
-          )
-        }
-
-        <!--
-          En su propia pestaña la tarjeta no se repite: la balanza dos veces en la misma pantalla es
-          peor que no tenerla en el riel.
-        -->
-        {vista !== 'historial' && (
-          <HistorialCompacto
-            historial={match.historial}
-            homeTeam={match.homeTeam}
-            awayTeam={match.awayTeam}
-            href={`${baseUrl}?vista=historial`}
-          />
-        )}
-
-        <section class="rounded-lg border border-border bg-surface p-4">
-          <h2 class="mb-2 text-2xs font-medium tracking-label text-ink-muted uppercase">
-            Datos del partido
-          </h2>
-          <dl class="grid gap-1.5 text-sm">
-            <div class="flex justify-between gap-3">
-              <dt class="text-ink-muted">Competencia</dt>
-              <dd class="text-right">
-                <a
-                  href={`/competencias/${match.season.competition.slug}`}
-                  class="hover:text-primary-ink hover:underline"
-                >
-                  {match.season.competition.name}
-                </a>
-              </dd>
-            </div>
-            <div class="flex justify-between gap-3">
-              <dt class="text-ink-muted">Temporada</dt>
-              <dd class="tabular">{match.season.year}</dd>
-            </div>
-            {match.round && (
-              <div class="flex justify-between gap-3">
-                <dt class="text-ink-muted">Jornada</dt>
-                <dd class="text-right">{jornada}</dd>
-              </div>
-            )}
-            {match.venue && (
-              <>
-                <div class="flex justify-between gap-3">
-                  <dt class="text-ink-muted">Estadio</dt>
-                  <dd class="text-right">{match.venue.name}</dd>
-                </div>
-                {match.venue.capacity !== null && (
-                  <div class="flex justify-between gap-3">
-                    <dt class="text-ink-muted">Capacidad</dt>
-                    <dd class="tabular">{match.venue.capacity.toLocaleString('es-PE')}</dd>
-                  </div>
-                )}
-              </>
-            )}
-          </dl>
-        </section>
-      </aside>
-    </div>
+    <CentroDelPartido
+      match={match}
+      vistaPedida={vistaPedida}
+      live={live}
+      enlaceDeVista={enlaceDeVista}
+    />
   </Container>
 
   <PlayerSheet />

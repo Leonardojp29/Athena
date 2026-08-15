@@ -1,0 +1,81 @@
+---
+import EscudoTorneo from '../EscudoTorneo.astro';
+import Icon from '../Icon.astro';
+import MatchCenter from '../MatchCenter';
+import type { MatchView } from '../../lib/api';
+import { formatDateLong } from '../../lib/format';
+import { etiquetaDeRonda } from '../../lib/rondas';
+
+/*
+ * La banda del marcador sobre la pizarra: los dos escudos, las cifras y los goleadores.
+ *
+ * Mide siempre lo mismo —un 0-0 y un 4-3 dan el mismo alto— y por eso puede vivir pegada debajo de
+ * la cabecera de una competencia sin que la página salte de un partido a otro.
+ *
+ * En su página muestra a qué torneo pertenece; dentro de una competencia eso ya está arriba, así que
+ * ahí la línea se queda con la fecha y el estadio y suma la salida al cuadro.
+ */
+interface Props {
+  match: MatchView;
+  live: boolean;
+  /** El enlace al torneo: sobra cuando la banda ya está dentro de ese torneo. */
+  conCompetencia?: boolean;
+  /** A dónde vuelve, cuando la banda vive dentro de una competencia. */
+  volver?: string;
+}
+
+const { match, live, conCompetencia = false, volver } = Astro.props;
+const jornada = etiquetaDeRonda(match.round);
+---
+
+<!-- En el teléfono siempre dos renglones: envolver solo cuando hay estadio hacía que la
+     cabecera midiera distinto de un partido a otro. -->
+<div
+  class="flex flex-col gap-1 pt-5 text-xs text-chalk-dim sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2"
+>
+  {
+    conCompetencia ? (
+      <a
+        href={`/competencias/${match.season.competition.slug}`}
+        class="flex items-center gap-1.5 transition-colors hover:text-primary"
+      >
+        <EscudoTorneo url={match.season.competition.logoUrl} size={16} />
+        {match.season.competition.name}
+        {jornada && <span>· {jornada}</span>}
+      </a>
+    ) : volver ? (
+      <a
+        href={volver}
+        class="flex w-fit items-center gap-1.5 rounded-md bg-chalk/10 px-2 py-1 font-medium text-chalk-dim transition-colors hover:text-chalk"
+      >
+        <Icon name="flecha-izquierda" size={12} />
+        Volver al cuadro
+      </a>
+    ) : (
+      <span />
+    )
+  }
+  <span class="flex min-w-0 items-center gap-3">
+    <span class="flex shrink-0 items-center gap-1.5">
+      <Icon name="reloj" size={14} />
+      <span class="first-letter:uppercase">{formatDateLong(match.kickoffUtc)}</span>
+    </span>
+    {match.venue && (
+      <span class="flex min-w-0 items-center gap-1.5">
+        <Icon name="estadio" size={14} />
+        <span class="truncate">
+          {match.venue.name}
+          {match.venue.city && ` · ${match.venue.city}`}
+        </span>
+      </span>
+    )}
+  </span>
+</div>
+
+{
+  live ? (
+    <MatchCenter client:load initial={match} live part="hero" />
+  ) : (
+    <MatchCenter initial={match} live={false} part="hero" />
+  )
+}

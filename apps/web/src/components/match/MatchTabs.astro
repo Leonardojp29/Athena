@@ -2,6 +2,10 @@
 /*
  * Pestañas con enlaces reales. Un panel por URL cuesta 0 KB, es indexable y se comparte;
  * lo mismo con JavaScript costaría un bundle y rompería el botón de atrás.
+ *
+ * El enlace lo arma quien llama: la página del partido cuelga la vista de `?vista=`, pero dentro de
+ * una competencia el partido ya ocupa la consulta y hay que sumar `&vista=`. Componer la URL acá
+ * adentro obligaba a adivinar cuál de las dos.
  */
 export interface Tab {
   id: string;
@@ -12,10 +16,10 @@ export interface Tab {
 interface Props {
   tabs: Tab[];
   active: string;
-  baseUrl: string;
+  enlace: (id: string) => string;
 }
 
-const { tabs, active, baseUrl } = Astro.props;
+const { tabs, active, enlace } = Astro.props;
 ---
 
 <nav
@@ -33,7 +37,7 @@ const { tabs, active, baseUrl } = Astro.props;
         </span>
       ) : (
         <a
-          href={tab.id === 'resumen' ? baseUrl : `${baseUrl}?vista=${tab.id}`}
+          href={enlace(tab.id)}
           aria-current={tab.id === active ? 'page' : undefined}
           class:list={[
             'shrink-0 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors',
