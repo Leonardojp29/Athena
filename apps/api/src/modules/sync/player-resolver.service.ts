@@ -25,6 +25,19 @@ function esChoqueDeUnicidad(error: unknown): boolean {
 /** "J. Mosqueira", "Á. Di María": inicial con punto, que es como vienen las alineaciones. */
 const ABREVIADO = /(?:^|\s)\p{L}\.(?:\s|$)/u;
 
+/** "j-alarcon": el slug que dejó una alineación, con la inicial por delante. */
+const SLUG_ABREVIADO = /^\p{L}-/u;
+
+/**
+ * Si el slug guardado hay que corregirlo con el nombre que acaba de llegar.
+ *
+ * Solo se toca el que nació abreviado, y solo cuando el nombre nuevo ya no lo es: un slug es una
+ * URL y se cambia por una razón concreta, no porque el proveedor haya escrito distinto un acento.
+ */
+export function slugDesactualizado(slug: string, nombre: string): boolean {
+  return SLUG_ABREVIADO.test(slug) && !ABREVIADO.test(nombre);
+}
+
 /**
  * El nombre no se degrada. `/players` trae "Joaquín Mosqueira" y `/fixtures/players` el mismo
  * jugador como "J. Mosqueira": si la alineación gana, la web entera pierde los nombres de pila.
@@ -43,9 +56,10 @@ export function mejorNombre(actual: string, entrante: string): string {
  * huérfanos que la corrida siguiente volvía a crear duplicados. Acá van en la misma
  * transacción.
  *
- * El slug se asigna una sola vez y no se cambia nunca porque es una URL: por eso conviene
- * que el jugador nazca de /players (nombre completo) y no de una alineación, donde el
- * proveedor manda "J. Alarcón".
+ * El slug lo asigna esta clase y conviene que el jugador nazca de /players (nombre completo) y no
+ * de una alineación, donde el proveedor manda "J. Alarcón". Cuando el nombre completo llega
+ * después, el slug se corrige y el viejo queda como alias: una URL compartida no puede morir
+ * porque nosotros mejoramos un dato.
  */
 @Injectable()
 export class PlayerResolverService {
@@ -152,6 +166,7 @@ export class PlayerResolverService {
           where: { id: { in: [...ids.values()] } },
           select: {
             id: true,
+            slug: true,
             name: true,
             fullName: true,
             birthDate: true,
@@ -198,6 +213,35 @@ export class PlayerResolverService {
     if (cambiados.length === 0) return;
     await bulkUpdatePlayers(this.prisma, cambiados);
     this.logger.log(`${cambiados.length} jugadores actualizados`);
+
+    /*
+     * Y el slug sigue al nombre cuando deja de ser una inicial. Un futbolista que nace de una
+     * alineación queda como `j-alarcon`, y hasta acá eso era para siempre porque un slug es una URL.
+     * Con la tabla de alias ya no: el viejo queda apuntando al jugador y la ficha redirige, así que
+     * el nombre completo puede llegar tarde sin condenar la dirección.
+     */
+    const aRenombrar = cambiados.filter((fila) => {
+      const actual = actuales.get(fila.id as string);
+      return actual !== undefined && slugDesactualizado(actual.slug, fila.name as string);
+    });
+    for (const fila of aRenombrar) {
+      const actual = actuales.get(fila.id as string);
+      if (!actual) continue;
+      const nuevo = slugify((fila.full_name as string | null) ?? (fila.name as string));
+      if (nuevo === '' || nuevo === actual.slug) continue;
+      const tomado = await this.prisma.player.findUnique({ where: { slug: nuevo }, select: { id: true } });
+      if (tomado) continue;
+
+      await this.prisma.$transaction([
+        this.prisma.slugAlias.upsert({
+          where: { entityType_slug: { entityType: 'player', slug: actual.slug } },
+          update: { entityId: actual.id },
+          create: { entityType: 'player', slug: actual.slug, entityId: actual.id },
+        }),
+        this.prisma.player.update({ where: { id: actual.id }, data: { slug: nuevo } }),
+      ]);
+    }
+    if (aRenombrar.length > 0) this.logger.log(`${aRenombrar.length} slugs al día con su nombre`);
   }
 
   /**
