@@ -84,6 +84,16 @@ const conDetalle = grupos
   .map((g) => ({ ...g, fechas: fechasDe(g.label), terceros: esDeTerceros(g.label, g.rows) }))
   .map((g) => ({ ...g, abrible: !g.terceros && g.fechas.length > 0 }));
 
+/*
+ * Ocho por página: dos filas de cuatro, que es lo que entra sin que la fase de grupos se coma la
+ * pantalla. Los trece del Mundial pasan a dos páginas con su navegación, y la altura del bloque deja
+ * de depender de cuántos grupos tenga el torneo —ni de si hay un grupo abierto—.
+ */
+const POR_PAGINA = 8;
+const paginas = Array.from({ length: Math.ceil(conDetalle.length / POR_PAGINA) }, (_, i) =>
+  conDetalle.slice(i * POR_PAGINA, (i + 1) * POR_PAGINA),
+);
+
 /* Con uno o dos grupos no hay grilla que valga: se abre el detalle, que es lo que hay que mostrar. */
 const soloUno = conDetalle.filter((g) => g.abrible).length <= 2;
 const activo =
@@ -105,16 +115,61 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
         </h2>
       </header>
 
-      <!-- La grilla: la puerta a cada grupo. Cada tarjeta entera es el botón. -->
-      <div
-        data-panel-grilla
-        hidden={activo !== undefined}
-        class="grid gap-x-6 gap-y-5 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-      >
-        {conDetalle.map((g) => (
+      <!--
+        El cuerpo mide siempre lo mismo: el alto de dos filas de grupos. Antes la grilla medía 557px
+        y el detalle 532, así que abrir un grupo encogía el bloque y la página daba un salto. Los dos
+        estados viven acá adentro y lo llenan; lo que sobra desplaza por dentro.
+      -->
+      <div class="lg:h-[34rem]">
+      <div data-panel-grilla hidden={activo !== undefined} class="flex h-full flex-col p-3">
+        {paginas.length > 1 && (
+          <div class="mb-2 flex items-center gap-1.5">
+            <button
+              type="button"
+              data-pagina-anterior
+              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              aria-label="Grupos anteriores"
+            >
+              <Icon name="chevron-derecha" size={14} class="rotate-180" />
+            </button>
+            <p data-pagina-titulo class="text-2xs font-medium text-ink-muted">
+              Grupos 1 a {Math.min(POR_PAGINA, conDetalle.length)}
+            </p>
+            <button
+              type="button"
+              data-pagina-siguiente
+              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              aria-label="Más grupos"
+            >
+              <Icon name="chevron-derecha" size={14} />
+            </button>
+            <span class="ml-auto text-2xs text-ink-muted">
+              {conDetalle.length} grupos
+            </span>
+          </div>
+        )}
+
+        {paginas.map((pagina, i) => (
+          <div
+            data-pagina-grupos={i}
+            data-pagina-rotulo={`Grupos ${i * POR_PAGINA + 1} a ${i * POR_PAGINA + pagina.length}`}
+            hidden={i !== 0}
+            class="barra-fina grid min-h-0 flex-1 content-start gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4 lg:overflow-y-auto"
+          >
+        {pagina.map((g) => (
           <div class="grid content-start gap-1">
             <p class="font-display text-sm font-semibold uppercase leading-none">{tituloDe(g)}</p>
-            <StandingsTable rows={g.rows} compacto hrefEquipo={hrefEquipo} />
+            <!--
+              La de mejores terceros trae doce filas y rompía el ritmo de dos filas de grupos: se
+              queda con el alto de un grupo y desplaza por dentro, que es mejor que empujar la
+              grilla o que cortarse a la mitad.
+            -->
+            <StandingsTable
+              rows={g.rows}
+              compacto
+              maxAlto={g.rows.length > 6 ? '10.5rem' : undefined}
+              hrefEquipo={hrefEquipo}
+            />
             {g.abrible && (
               <a
                 href={hrefGrupo(g.label)}
@@ -123,7 +178,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
               >
                 Ver el grupo
                 <span class="tabular text-ink-muted">
-                  · {g.fechas.length} {g.fechas.length === 1 ? 'fecha' : 'fechas'}
+                  {`· ${g.fechas.length} ${g.fechas.length === 1 ? 'fecha' : 'fechas'}`}
                 </span>
                 <Icon
                   name="chevron-derecha"
@@ -134,13 +189,19 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             )}
           </div>
         ))}
+          </div>
+        ))}
       </div>
 
-      <!-- Un panel por grupo: tabla y partidos, en dos columnas iguales. -->
+      <!-- Un panel por grupo: tabla y partidos, en dos columnas iguales y del mismo alto. -->
       {conDetalle
         .filter((g) => g.abrible)
         .map((g) => (
-          <div data-panel-grupo={g.label} hidden={activo?.label !== g.label}>
+          <div
+            data-panel-grupo={g.label}
+            hidden={activo?.label !== g.label}
+            class="flex h-full flex-col"
+          >
             <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2">
               {!soloUno && (
                 <a
@@ -171,8 +232,8 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
               )}
             </div>
 
-            <div class="grid gap-4 p-3 lg:grid-cols-2">
-              <div class="min-w-0">
+            <div class="grid min-h-0 flex-1 gap-4 p-3 lg:grid-cols-2">
+              <div class="barra-fina min-w-0 lg:overflow-y-auto">
                 <p class="mb-1.5 font-display text-sm font-semibold uppercase leading-none">
                   {tituloDe(g)}
                 </p>
@@ -180,7 +241,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
               </div>
 
               <!-- La fecha, con las flechas del carrusel de rondas: mismo gesto en toda la página. -->
-              <div class="min-w-0" data-fechas>
+              <div class="barra-fina flex min-w-0 flex-col lg:overflow-y-auto" data-fechas>
                 <div class="mb-1.5 flex items-center gap-1.5">
                   <button
                     type="button"
@@ -215,11 +276,13 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
                 </div>
 
                 {g.fechas.map((fecha, i) => (
+                  <!-- `content-center`: con dos partidos y el alto de dos filas de grupos, pegarlos
+                       arriba dejaba media tarjeta vacía; centrados se leen contra la tabla. -->
                   <div
                     data-fecha-panel={i}
                     data-fecha-rotulo={fecha.label}
                     hidden={i !== fechaInicial(g.fechas)}
-                    class="grid gap-2"
+                    class="grid min-h-0 flex-1 content-center gap-2"
                   >
                     {fecha.partidos.map((partido) => (
                       <PartidoDeGrupo
@@ -234,6 +297,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             </div>
           </div>
         ))}
+      </div>
     </section>
   )
 }
@@ -280,6 +344,32 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
         mostrarGrupo(null);
         history.pushState({ grupo: null }, '', url(null, null));
       });
+    }
+
+    /*
+     * Las páginas de la grilla: ocho grupos por vez. Con trece grupos, la segunda página no puede
+     * ser un scroll infinito hacia abajo —el bloque tiene que medir siempre lo mismo—.
+     */
+    const paginas = [...caja.querySelectorAll<HTMLElement>('[data-pagina-grupos]')];
+    if (paginas.length > 1) {
+      const rotulo = caja.querySelector<HTMLElement>('[data-pagina-titulo]');
+      const atras = caja.querySelector<HTMLButtonElement>('[data-pagina-anterior]');
+      const adelante = caja.querySelector<HTMLButtonElement>('[data-pagina-siguiente]');
+      let pagina = 0;
+
+      const verPagina = (indice: number): void => {
+        pagina = Math.min(paginas.length - 1, Math.max(0, indice));
+        paginas.forEach((p, i) => {
+          p.hidden = i !== pagina;
+        });
+        if (rotulo) rotulo.textContent = paginas[pagina]?.dataset.paginaRotulo ?? '';
+        if (atras) atras.disabled = pagina === 0;
+        if (adelante) adelante.disabled = pagina === paginas.length - 1;
+      };
+
+      atras?.addEventListener('click', () => verPagina(pagina - 1));
+      adelante?.addEventListener('click', () => verPagina(pagina + 1));
+      verPagina(0);
     }
 
     /* Las fechas de cada grupo, cada una con su propio carrusel. */
