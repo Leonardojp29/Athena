@@ -49,7 +49,7 @@ const lados = [
   <a href={hrefPartido(partido.id)} class="absolute inset-0 rounded-lg" aria-label="Ver el partido"
   ></a>
 
-  <p class="flex items-center justify-between gap-2 text-2xs text-ink-muted">
+  <p class="flex items-center justify-between gap-2 text-xs text-ink-muted">
     <span class="first-letter:uppercase">{formatDateLong(partido.kickoffUtc)}</span>
     <span data-estado class:list={['shrink-0', vivo ? 'font-medium text-live-ink' : '']}>
       {estado}
@@ -127,10 +127,10 @@ const lados = [
                 .join(', ');
               const apellido = goleador.nombre.split(' ').at(-1) ?? goleador.nombre;
               return (
-                <li class="flex max-w-full items-center gap-1.5 text-2xs text-ink-muted">
-                  <EventIcon kind={enContra ? 'own_goal' : 'goal'} size={11} detail={apellido} />
-                  <span class="truncate text-ink">{apellido}</span>
-                  <span class="shrink-0 tabular">{minutos}</span>
+                <li class="flex max-w-full items-center gap-1.5 text-sm text-ink-muted">
+                  <EventIcon kind={enContra ? 'own_goal' : 'goal'} size={13} detail={apellido} />
+                  <span class="truncate font-medium text-ink">{apellido}</span>
+                  <span class="shrink-0 tabular text-xs">{minutos}</span>
                   {enContra && <span class="shrink-0">(e/c)</span>}
                 </li>
               );

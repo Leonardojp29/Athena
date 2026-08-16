@@ -128,25 +128,23 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             <button
               type="button"
               data-pagina-anterior
-              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-border text-ink-muted transition-colors hover:border-border-strong hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:border-border/60 disabled:opacity-30"
               aria-label="Grupos anteriores"
             >
-              <Icon name="chevron-derecha" size={14} class="rotate-180" />
+              <Icon name="chevron-derecha" size={16} class="rotate-180" />
             </button>
-            <p data-pagina-titulo class="text-2xs font-medium text-ink-muted">
+            <p data-pagina-titulo class="text-sm font-medium text-ink">
               Grupos 1 a {Math.min(POR_PAGINA, conDetalle.length)}
             </p>
             <button
               type="button"
               data-pagina-siguiente
-              class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+              class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-border text-ink-muted transition-colors hover:border-border-strong hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:border-border/60 disabled:opacity-30"
               aria-label="Más grupos"
             >
-              <Icon name="chevron-derecha" size={14} />
+              <Icon name="chevron-derecha" size={16} />
             </button>
-            <span class="ml-auto text-2xs text-ink-muted">
-              {conDetalle.length} grupos
-            </span>
+            <span class="ml-auto text-xs text-ink-muted">{`${conDetalle.length} grupos`}</span>
           </div>
         )}
 
@@ -203,14 +201,14 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             hidden={activo?.label !== g.label}
             class="flex h-full flex-col"
           >
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-canvas-subtle/40 px-3 py-2.5">
               {!soloUno && (
                 <a
                   href={hrefGrupo(null)}
                   data-cerrar-grupo
-                  class="flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+                  class="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:bg-surface hover:text-ink"
                 >
-                  <Icon name="flecha-izquierda" size={12} />
+                  <Icon name="flecha-izquierda" size={14} />
                   Todos los grupos
                 </a>
               )}
@@ -224,7 +222,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
                         href={hrefGrupo(otro.label)}
                         data-abrir-grupo={otro.label}
                         aria-current={otro.label === g.label ? 'true' : undefined}
-                        class="rounded-md px-2 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink aria-[current]:bg-primary/12 aria-[current]:text-ink"
+                        class="min-w-8 rounded-md px-2.5 py-1.5 text-center text-xs font-semibold text-ink-muted transition-colors hover:bg-surface hover:text-ink aria-[current]:bg-primary/15 aria-[current]:text-ink aria-[current]:shadow-card"
                       >
                         {tituloDe(otro).replace(/^Grupo\s+/i, '')}
                       </a>
@@ -257,34 +255,36 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
 
               <!-- La fecha, con las flechas del carrusel de rondas: mismo gesto en toda la página. -->
               <div class="barra-fina flex min-w-0 flex-col lg:overflow-y-auto" data-fechas>
-                <div class="mb-1.5 flex items-center gap-1.5">
+                <!-- La navegación de fechas se tenía que buscar: ahora los botones tienen cuerpo y
+                     el rótulo el peso de un título. -->
+                <div class="mb-2 flex items-center gap-2">
                   <button
                     type="button"
                     data-fecha-anterior
-                    class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+                    class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-border text-ink-muted transition-colors hover:border-border-strong hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:border-border/60 disabled:opacity-30"
                     aria-label="Fecha anterior"
                   >
-                    <Icon name="chevron-derecha" size={14} class="rotate-180" />
+                    <Icon name="chevron-derecha" size={16} class="rotate-180" />
                   </button>
-                  <p data-fecha-titulo class="font-display text-base font-semibold uppercase leading-none">
+                  <p data-fecha-titulo class="font-display text-lg font-semibold uppercase leading-none">
                     {g.fechas[fechaInicial(g.fechas)]?.label ?? ''}
                   </p>
                   <button
                     type="button"
                     data-fecha-siguiente
-                    class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+                    class="grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border border-border text-ink-muted transition-colors hover:border-border-strong hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:border-border/60 disabled:opacity-30"
                     aria-label="Fecha siguiente"
                   >
-                    <Icon name="chevron-derecha" size={14} />
+                    <Icon name="chevron-derecha" size={16} />
                   </button>
-                  <span class="ml-auto flex items-center gap-1">
+                  <span class="ml-auto flex items-center gap-1.5">
                     {g.fechas.map((_, i) => (
                       <button
                         type="button"
                         data-fecha-punto={i}
                         aria-current={i === fechaInicial(g.fechas) ? 'true' : undefined}
                         aria-label={`Fecha ${i + 1}`}
-                        class="size-1.5 cursor-pointer rounded-full bg-border-strong transition-colors hover:bg-ink-muted aria-[current]:bg-primary-ink"
+                        class="size-2 cursor-pointer rounded-full bg-border-strong transition-colors hover:bg-ink-muted aria-[current]:bg-primary-ink"
                       />
                     ))}
                   </span>
