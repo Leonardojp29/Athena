@@ -72,7 +72,7 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
    | `OPENAI_API_KEY` | igual que local |
    | `OPENAI_DAILY_TOKEN_CAP` | `2000000` |
    | `CRON_SECRET` | el secreto generado en el paso 0 |
-   | `WEB_ORIGIN` | la URL de la web (paso 3); se puede volver a editar después |
+   | `WEB_ORIGIN` | la URL de la web (paso 3), **sin barra final**; se puede volver a editar después |
    | `NODE_ENV` | `production` |
 
 5. **Deploy**. Al terminar, Vercel muestra la URL del proyecto, algo como
@@ -96,7 +96,7 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
 
    | Variable | Valor |
    |---|---|
-   | `PUBLIC_API_URL` | `https://athena-api.vercel.app/v1` (la URL real del paso 2) |
+   | `PUBLIC_API_URL` | la URL real del paso 2, **sin `/v1` y sin barra final**: `https://athena-api.vercel.app` — el código agrega `/v1` solo, y una barra de más arma `//v1/...`, que es 404 |
    | `PUBLIC_SITE_URL` | `https://athena.vercel.app` (la URL real de este proyecto) |
    | `PUBLIC_SUPABASE_URL` | igual que local |
    | `PUBLIC_SUPABASE_ANON_KEY` | igual que local |
@@ -119,7 +119,10 @@ marcadores no avanzan.
 1. En [supabase.com/dashboard](https://supabase.com/dashboard), abrir el
    proyecto → **Database → Extensions** → buscar y habilitar **pg_cron** y
    **pg_net** (schema `extensions` está bien).
-2. Ir a **SQL Editor** y ejecutar, reemplazando la URL y el secreto reales:
+2. Ir a **SQL Editor** y ejecutar. **Antes de correrlo, reemplazar los dos
+   marcadores**: `TU-API.vercel.app` por la URL real del paso 2 y
+   `TU_CRON_SECRET` por el secreto del paso 0 — pegado tal cual, el cron llama
+   a una URL que no existe y queda registrando 404 en silencio:
 
    ```sql
    -- El tic del vivo: cada minuto.
@@ -128,8 +131,8 @@ marcadores no avanzan.
      '* * * * *',
      $$
      select net.http_post(
-       url     := 'https://athena-api.vercel.app/v1/internal/tick',
-       headers := '{"x-cron-secreto": "EL_CRON_SECRET_DEL_PASO_0"}'::jsonb
+       url     := 'https://TU-API.vercel.app/v1/internal/tick',
+       headers := '{"x-cron-secreto": "TU_CRON_SECRET"}'::jsonb
      )
      $$
    );
@@ -140,8 +143,8 @@ marcadores no avanzan.
      '0 10 * * *',
      $$
      select net.http_post(
-       url     := 'https://athena-api.vercel.app/v1/internal/daily',
-       headers := '{"x-cron-secreto": "EL_CRON_SECRET_DEL_PASO_0"}'::jsonb
+       url     := 'https://TU-API.vercel.app/v1/internal/daily',
+       headers := '{"x-cron-secreto": "TU_CRON_SECRET"}'::jsonb
      )
      $$
    );
@@ -152,12 +155,30 @@ marcadores no avanzan.
    ```sql
    select jobname, schedule, active from cron.job;
    -- y un par de minutos después, las últimas corridas:
-   select jobname, status, return_message, start_time
-   from cron.job_run_details order by start_time desc limit 5;
+   select j.jobname, d.status, d.return_message, d.start_time
+   from cron.job_run_details d join cron.job j on j.jobid = d.jobid
+   order by d.start_time desc limit 5;
    ```
 
-   `status = succeeded` y listo: el mismo `tick()` que corre en local está
-   corriendo en producción cada minuto.
+   Ojo: `succeeded` ahí solo dice que el pedido HTTP salió. La respuesta real
+   del API está en otra tabla — esta es la comprobación que vale:
+
+   ```sql
+   select status_code, content::text, created
+   from net._http_response order by created desc limit 5;
+   ```
+
+   `status_code = 200` con `{"vivos":...,"tareas":...}` y listo: el mismo
+   `tick()` que corre en local está corriendo en producción cada minuto. Un
+   404 es la URL mal puesta; un 401, el secreto distinto al de Vercel.
+
+   Si un job quedó creado con valores equivocados, se borra y se vuelve a
+   crear:
+
+   ```sql
+   select cron.unschedule('athena-tick');
+   select cron.unschedule('athena-daily');
+   ```
 
 ---
 

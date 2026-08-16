@@ -1,9 +1,8 @@
 /*
  * El puente de Vercel: cada request del proyecto cae acá y se entrega al API ya compilado.
- * Es JavaScript plano a propósito: el build real lo hace `tsc` en el buildCommand, y este archivo
- * solo enchufa; así lo que corre en Vercel es el mismo dist que corre en cualquier otro lado.
+ * Import estático a propósito: el paquete es ESM ("type": "module"), y además así el trazador
+ * de Vercel sigue la cadena completa de dependencias desde el build real, no adivina.
  */
-module.exports = async (req, res) => {
-  const { default: handler } = await import('../dist/serverless.js');
-  return handler(req, res);
-};
+import handler from '../dist/serverless.js';
+
+export default handler;
