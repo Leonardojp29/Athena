@@ -22,6 +22,7 @@ colors:
   pitch-dark: "oklch(0.522 0.088 156)"
   magnet: "oklch(1 0 0)"
   live: "oklch(0.598 0.17 150)"
+  live-ink: "oklch(0.5 0.15 150)"
   live-on-board: "oklch(0.723 0.196 150)"
   card-yellow: "oklch(0.762 0.145 78)"
   card-red: "oklch(0.582 0.202 24)"
@@ -135,6 +136,13 @@ logo, el resaltado del rendimiento alto. **Es relleno, nunca texto sobre blanco:
 `data` `oklch(0.792 0.121 208)` es cian de dato: marca todo lo que dice la IA y nada más. Su
 par de texto es `data-ink`. Si el cian apareciera en un botón dejaría de significar "esto lo
 dedujo Athena".
+
+### En vivo
+`live` `oklch(0.598 0.17 150)` es el verde de la señal: el punto que late, el relleno de la
+pastilla, la barra de un partido en juego. **Es relleno, no texto:** sobre blanco da 3,7:1 y sobre
+su propia pastilla lavada, 3,2:1. Para el texto existe `live-ink` `oklch(0.5 0.15 150)`, que pasa
+4,5:1 en los dos fondos; en tema oscuro vuelve a ser el verde claro. Sobre la pizarra manda
+`live-on-board`, que es otra cosa.
 
 ### Tertiary
 Los materiales de la pizarra no son acentos, son sustrato: `board` para el encabezado a
@@ -262,7 +270,7 @@ pico calados por `fill-rule="evenodd"`.
 - **Sobre el tablero:** variante `onBoard` con borde `chalk/30` y tinta `chalk`.
 
 ### Chips
-- **Estado en vivo:** `bg-live/12`, texto `live`, `rounded-full`, con un punto de 6px que late
+- **Estado en vivo:** `bg-live/12`, texto `live-ink`, `rounded-full`, con un punto de 6px que late
   con `live-pulse` (un anillo que se expande, no un fade: un fade parece "cargando").
 - **Forma de un equipo:** cuadrados de 16px con la letra V/E/D; lima para victoria,
   `border-strong` para empate, `card-red/85` para derrota.

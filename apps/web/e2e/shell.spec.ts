@@ -203,6 +203,29 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * Y un equipo también se abre dentro de su copa: el escudo de una llave enlazaba a `?equipo=` y
+   * la página ignoraba el parámetro, así que el clic no hacía nada. Lo que importa es su camino en
+   * el torneo —de la fase previa hasta donde llegó—, que no existe en su ficha de club.
+   */
+  test('un equipo de copa se abre dentro de la copa con su camino', async ({ page }) => {
+    await page.goto('/competencias/copa-del-rey');
+
+    const alEquipo = page.locator('main a[href*="?equipo="]:visible').first();
+    test.skip((await alEquipo.count()) === 0, 'esta copa no tiene cuadro con equipos');
+    await alEquipo.click();
+    await expect(page).toHaveURL(/\?equipo=/);
+
+    /* Su camino: al menos un partido, y todos son de este equipo. */
+    await expect(page.getByText(/su camino en el torneo/i)).toBeVisible();
+    const filas = page.locator('main [data-partido]');
+    expect(await filas.count()).toBeGreaterThan(0);
+
+    /* Y la salida devuelve al cuadro, sin equipo en la URL. */
+    await page.getByRole('link', { name: /volver al cuadro/i }).click();
+    await expect(page).toHaveURL(/\/competencias\/copa-del-rey$/);
+  });
+
+  /*
    * Las selecciones tienen su propia rama en la barra: el Mundial y la Copa América llegan sin país,
    * igual que la Libertadores, y metidos en el árbol de clubes quedaban escondidos dentro de
    * "Internacional". El grupo es la confederación y la FIFA abre la lista.
