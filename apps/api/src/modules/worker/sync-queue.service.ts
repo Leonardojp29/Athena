@@ -311,7 +311,7 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         ],
         lineups: { none: {} },
       },
-      select: { id: true },
+      select: { id: true, status: true },
       take: 40,
     });
     if (sinDetalle.length === 0) return 0;
@@ -322,15 +322,38 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         entityType: 'match',
         entityId: { in: sinDetalle.map((m) => m.id) },
       },
-      select: { providerRef: true },
+      select: { entityId: true, providerRef: true },
     });
-    for (const { providerRef } of refs) {
+    const refPorId = new Map(refs.map((r) => [r.entityId, r.providerRef]));
+
+    let encolados = 0;
+    for (const match of sinDetalle) {
+      const providerRef = refPorId.get(match.id);
+      if (!providerRef) continue;
+      /*
+       * A un terminado se le pregunta cada quince minutos, no cada tic. Cuando el proveedor tiene
+       * una caída parcial —pasó: eventos sí, alineaciones no, durante horas— reinsistir cada
+       * minuto con cada partido reciente eran hasta ochenta pedidos por minuto de una cuota que se
+       * comparte. Un dato que llega horas tarde no se pierde por esperarlo quince minutos. Los que
+       * están en juego o por empezar sí van en cada tic: ahí la alineación vale ahora o no vale.
+       */
+      if (match.status === 'finished') {
+        const primeraVez = await this.redis.set(
+          `detalle:espera:${match.id}`,
+          '1',
+          'EX',
+          900,
+          'NX',
+        );
+        if (primeraVez === null) continue;
+      }
       await this.enqueue('match-detail', { matchRef: providerRef });
+      encolados++;
     }
-    if (refs.length > 0) {
-      this.logger.log(`${refs.length} partidos en curso o por empezar sin alineación: encolados`);
+    if (encolados > 0) {
+      this.logger.log(`${encolados} partidos sin alineación: encolados`);
     }
-    return refs.length;
+    return encolados;
   }
 
   private async processOutbox(): Promise<number> {
