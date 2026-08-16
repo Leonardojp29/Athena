@@ -1,4 +1,5 @@
 ---
+import GoleadoresDelGrupo from './GoleadoresDelGrupo.astro';
 import Icon from '../Icon.astro';
 import PartidoDeGrupo from './PartidoDeGrupo.astro';
 import StandingsTable from '../StandingsTable.astro';
@@ -233,11 +234,25 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             </div>
 
             <div class="grid min-h-0 flex-1 gap-4 p-3 lg:grid-cols-2">
-              <div class="barra-fina min-w-0 lg:overflow-y-auto">
-                <p class="mb-1.5 font-display text-sm font-semibold uppercase leading-none">
-                  {tituloDe(g)}
-                </p>
-                <StandingsTable rows={g.rows} hrefEquipo={hrefEquipo} />
+              <!--
+                La tabla arriba y los goleadores abajo: con una tabla de cuatro equipos, media
+                columna quedaba vacía, y lo que faltaba al lado de una tabla es justamente quién hizo
+                los goles. Salen de los mismos partidos que ya están acá, sin un pedido más.
+              -->
+              <div class="barra-fina flex min-w-0 flex-col gap-3 lg:overflow-y-auto">
+                <div class="min-w-0">
+                  <p class="mb-2 font-display text-base font-semibold uppercase leading-none">
+                    {tituloDe(g)}
+                  </p>
+                  <!-- Grande: acá la tabla tiene media página para ella y con las filas de la grilla
+                       se veía diminuta dentro de su propio espacio. -->
+                  <StandingsTable rows={g.rows} grande hrefEquipo={hrefEquipo} />
+                </div>
+
+                <GoleadoresDelGrupo
+                  partidos={g.fechas.flatMap((f) => f.partidos)}
+                  hrefEquipo={hrefEquipo}
+                />
               </div>
 
               <!-- La fecha, con las flechas del carrusel de rondas: mismo gesto en toda la página. -->
@@ -251,7 +266,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
                   >
                     <Icon name="chevron-derecha" size={14} class="rotate-180" />
                   </button>
-                  <p data-fecha-titulo class="font-display text-sm font-semibold uppercase leading-none">
+                  <p data-fecha-titulo class="font-display text-base font-semibold uppercase leading-none">
                     {g.fechas[fechaInicial(g.fechas)]?.label ?? ''}
                   </p>
                   <button
@@ -282,7 +297,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
                     data-fecha-panel={i}
                     data-fecha-rotulo={fecha.label}
                     hidden={i !== fechaInicial(g.fechas)}
-                    class="grid min-h-0 flex-1 content-center gap-2"
+                    class="grid min-h-0 flex-1 gap-3"
                   >
                     {fecha.partidos.map((partido) => (
                       <PartidoDeGrupo

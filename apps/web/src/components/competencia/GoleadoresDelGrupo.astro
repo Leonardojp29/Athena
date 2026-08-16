@@ -1,0 +1,118 @@
+---
+import EventIcon from '../EventIcon.astro';
+import type { PartidoDeGrupo } from '../../lib/api';
+
+/*
+ * Quién hace los goles de este grupo.
+ *
+ * Sale de los mismos goles que ya viajan para las tarjetas de partido, así que no cuesta un pedido
+ * ni una consulta: se agrupan por futbolista y listo. Y es lo que falta al lado de una tabla —la
+ * tabla dice quién ganó, no quién lo resolvió— además de ser lo que llena el alto de la columna sin
+ * inventar relleno.
+ *
+ * Los autogoles no cuentan: nadie es goleador por eso.
+ */
+interface Props {
+  partidos: PartidoDeGrupo[];
+  limite?: number;
+  hrefEquipo?: (slug: string) => string;
+}
+
+const { partidos, limite = 5, hrefEquipo = (slug: string) => `/equipos/${slug}` } = Astro.props;
+
+interface Anotador {
+  nombre: string;
+  slug: string | null;
+  photoUrl: string | null;
+  equipo: { name: string; shortName: string | null; slug: string; logoUrl: string | null } | null;
+  goles: number;
+  penales: number;
+}
+
+const porJugador = new Map<string, Anotador>();
+for (const partido of partidos) {
+  for (const gol of partido.eventos) {
+    if (gol.kind === 'own_goal') continue;
+    const nombre = gol.player?.name ?? gol.detail?.playerName ?? null;
+    if (!nombre) continue;
+    const clave = gol.player?.id ?? nombre;
+    const equipo =
+      gol.team.id === partido.homeTeam.id
+        ? partido.homeTeam
+        : gol.team.id === partido.awayTeam.id
+          ? partido.awayTeam
+          : null;
+
+    const anterior = porJugador.get(clave);
+    porJugador.set(clave, {
+      nombre,
+      slug: gol.player?.slug ?? null,
+      photoUrl: gol.player?.photoUrl ?? null,
+      equipo: anterior?.equipo ?? equipo,
+      goles: (anterior?.goles ?? 0) + 1,
+      penales: (anterior?.penales ?? 0) + (gol.kind === 'penalty_goal' ? 1 : 0),
+    });
+  }
+}
+
+/* Más goles primero; a igualdad, el que los hizo con menos penales y después por nombre. */
+const anotadores = [...porJugador.values()]
+  .sort((a, b) => b.goles - a.goles || a.penales - b.penales || a.nombre.localeCompare(b.nombre, 'es'))
+  .slice(0, limite);
+---
+
+{
+  anotadores.length > 0 && (
+    <section class="grid content-start gap-1.5">
+      <h4 class="flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+        <EventIcon kind="goal" size={12} />
+        Goleadores del grupo
+      </h4>
+
+      <ul class="grid">
+        {anotadores.map((a) => (
+          <li class="flex items-center gap-2 border-b border-border/60 py-1 last:border-0">
+            {a.photoUrl ? (
+              <img
+                src={a.photoUrl}
+                alt=""
+                width="24"
+                height="24"
+                loading="lazy"
+                class="size-6 shrink-0 rounded-full bg-canvas-subtle object-cover"
+              />
+            ) : (
+              <span class="grid size-6 shrink-0 place-items-center rounded-full bg-canvas-subtle text-[10px] font-semibold text-ink-muted">
+                {a.nombre.slice(0, 1)}
+              </span>
+            )}
+
+            {a.slug ? (
+              <a href={`/jugadores/${a.slug}`} class="min-w-0 flex-1 truncate text-xs hover:text-primary-ink">
+                {a.nombre}
+              </a>
+            ) : (
+              <span class="min-w-0 flex-1 truncate text-xs">{a.nombre}</span>
+            )}
+
+            {a.equipo && (
+              <a
+                href={hrefEquipo(a.equipo.slug)}
+                class="flex shrink-0 items-center gap-1 text-2xs text-ink-muted hover:text-ink"
+              >
+                {a.equipo.logoUrl && (
+                  <img src={a.equipo.logoUrl} alt="" width="14" height="14" loading="lazy" class="size-3.5" />
+                )}
+                <span class="hidden sm:inline">{a.equipo.shortName ?? a.equipo.name}</span>
+              </a>
+            )}
+
+            <span class="w-6 shrink-0 text-right font-display text-sm font-semibold tabular">
+              {a.goles}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
