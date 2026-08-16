@@ -2,17 +2,20 @@
 /*
  * Los marcadores del día, al minuto, sin recargar la página.
  *
- * La home la dibuja el servidor entera y no costaba un solo kilobyte, pero eso significaba que un
- * partido en juego se quedaba clavado en el minuto en que abriste la pestaña: el reloj no avanzaba y
- * un gol no aparecía hasta recargar. En una página cuya primera línea es "qué se juega hoy", eso es
- * un dato viejo disfrazado de dato.
+ * Las páginas las dibuja el servidor enteras y no costaban un solo kilobyte, pero eso significaba
+ * que un partido en juego se quedaba clavado en el minuto en que abriste la pestaña: el reloj no
+ * avanzaba y un gol no aparecía hasta recargar. En una página cuya primera línea es "qué se juega
+ * hoy", eso es un dato viejo disfrazado de dato.
+ *
+ * Vive en tres lugares —la home, la competencia y el equipo—, que son los que listan partidos que
+ * pueden estar en juego. La página del partido tiene el suyo, que además rehace la cancha.
  *
  * En vez de recargar como hace la página de partido —acá se perdería el scroll del catálogo y el
  * árbol abierto—, se pide la lista del día y se parchean tres cosas por fila: el marcador, el estado
  * y el color de vivo. Es la misma consulta que ya sirve la home, cacheada sesenta segundos, así que
  * un lector cuesta una lectura de Redis por minuto.
  *
- * Solo se dibuja cuando hay algo en juego, así que la home sin fútbol sigue costando 0 KB.
+ * Solo se dibuja cuando hay algo en juego, así que una página sin fútbol en curso sigue costando 0 KB.
  */
 interface Props {
   /** El día que muestra la página, en ISO. Sin esto se pediría siempre el de hoy. */
@@ -26,7 +29,7 @@ const { dia, segundos = 30 } = Astro.props;
 <span data-refresco-marcadores={dia} data-cada={segundos} hidden></span>
 
 <script>
-  import { isLive, minutoEnVivo, statusLabel } from '../../lib/format';
+  import { isLive, minutoEnVivo, statusLabel } from '../lib/format';
 
   interface FilaViva {
     id: string;

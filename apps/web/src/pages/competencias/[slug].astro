@@ -13,6 +13,7 @@ import EquipoEnLaCopa from '../../components/competencia/EquipoEnLaCopa.astro';
 import Cuadro from '../../components/competencia/Cuadro.astro';
 import PartidosPorRonda from '../../components/competencia/PartidosPorRonda.astro';
 import PlayerSheet from '../../components/pitch/PlayerSheet.astro';
+import RefrescoDeMarcadores from '../../components/RefrescoDeMarcadores.astro';
 import OnceDelTorneo from '../../components/competencia/OnceDelTorneo.astro';
 import SelectorFase from '../../components/SelectorFase.astro';
 import SelectorTemporada from '../../components/competencia/SelectorTemporada.astro';
@@ -99,6 +100,10 @@ const {
  * seguía necesitando su tabla de posiciones, que es lo que se viene a ver.
  */
 const esCopa = competition.format !== 'league';
+
+/* Con algo en juego, los marcadores de esta página se mantienen solos. Sin eso, 0 KB. */
+const hayEnVivo = porRonda.some((r) => r.partidos.some((m) => isLive(m.status)));
+const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 
 /*
  * El equipo abierto tiene que jugar este torneo: con un enlace a un club que no está, su página es
@@ -513,4 +518,5 @@ const jsonLd = {
 
   <!-- La ficha del jugador: la abren la cancha y la tabla de rendimiento del partido abierto. -->
   {partido && <PlayerSheet />}
+  {hayEnVivo && <RefrescoDeMarcadores dia={hoyEnLima} />}
 </Base>
