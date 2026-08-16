@@ -18,7 +18,8 @@ const CONCURRENCY = Number(process.env.BACKFILL_CONCURRENCY ?? 5);
  * después los partidos. Al revés los jugadores nacerían de una alineación con el nombre
  * abreviado y el slug quedaría "j-alarcon" para siempre, porque una URL no se cambia.
  *
- * Con FASE=temporadas o FASE=partidos se corre una sola.
+ * Con FASE=temporadas o FASE=partidos se corre una sola, y con AMBITO=national solo las
+ * competencias de selecciones.
  */
 async function main(): Promise<void> {
   const app = await NestFactory.createApplicationContext(BackfillModule, {
@@ -32,8 +33,13 @@ async function main(): Promise<void> {
   const fase = process.env.FASE ?? 'todo';
 
   if (fase === 'todo' || fase === 'temporadas') {
+    /* `AMBITO=national` deja la corrida en los torneos de selecciones, que entraron después. */
+    const ambito = process.env.AMBITO;
     const seasons = await prisma.season.findMany({
-      where: { isCurrent: true, competition: { isActive: true } },
+      where: {
+        isCurrent: true,
+        competition: { isActive: true, ...(ambito ? { scope: ambito } : {}) },
+      },
       select: { year: true, competition: { select: { id: true, name: true } } },
     });
     const refs = await prisma.externalReference.findMany({

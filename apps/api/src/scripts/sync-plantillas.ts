@@ -86,9 +86,17 @@ async function main(): Promise<void> {
       if (!ref) continue;
       try {
         jugadores += await syncSquad.execute(ref, anio);
-      } catch (error) {
-        fallos++;
-        console.error(`  ✗ ${equipo.name}: ${String(error).slice(0, 100)}`);
+      } catch {
+        /*
+         * Dos selecciones que comparten un futbolista pueden escribirlo a la vez y una pierde contra
+         * el índice único. Es una carrera, no un dato malo: se reintenta una vez y recién ahí cuenta.
+         */
+        try {
+          jugadores += await syncSquad.execute(ref, anio);
+        } catch (segundo) {
+          fallos++;
+          console.error(`  ✗ ${equipo.name}: ${String(segundo).slice(0, 100)}`);
+        }
       }
       hechos++;
       if (hechos % 25 === 0) console.log(`  ${hechos}/${equipos.length} · ${jugadores} jugadores`);
