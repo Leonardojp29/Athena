@@ -141,7 +141,17 @@ const pendienteDe = (ronda: RondaDePartidos) =>
             El scroll vive acá: `flex-1` con `min-h-0` le da a la lista el alto que sobra en la tarjeta
             —el de la fila, que lo fija el once— en lugar de estirar la tarjeta con la ronda más larga.
           */}
-          <div class="barra-fina min-h-0 flex-1 overflow-y-auto overscroll-contain" data-lista>
+          <!--
+            Con una ronda corta —la final de una copa terminada es un partido— el contenido se
+            centra: pegado arriba, la tarjeta se leía como si le faltara algo por cargar.
+          -->
+          <div
+            class:list={[
+              'barra-fina min-h-0 flex-1 overflow-y-auto overscroll-contain',
+              ronda.partidos.length <= 2 ? 'flex flex-col justify-center' : '',
+            ]}
+            data-lista
+          >
             {tramosDe(ronda).map((tramo) => (
               <>
                 {tramo.titulo !== '' && (

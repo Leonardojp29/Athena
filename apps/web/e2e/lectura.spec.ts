@@ -207,7 +207,17 @@ test.describe('comparar', () => {
     /* Con un solo lado, la página es el buscador del segundo. */
     await expect(page.getByRole('button', { name: /buscar/i })).toBeVisible();
 
-    await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}&b=e-castillo`);
+    /* El segundo también sale del buscador: un slug escrito a mano se rompe cuando el jugador
+       pasa a llamarse con su nombre completo, que es justo lo que hace el renombrado. */
+    const otro = await (
+      await request.get('http://localhost:3001/v1/search?q=castillo&limit=6')
+    ).json();
+    const segundo = otro.results.find((h: { type: string }) => h.type === 'player')?.slug as
+      | string
+      | undefined;
+    test.skip(!segundo, 'no hay un segundo jugador para comparar');
+
+    await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}&b=${segundo}`);
     const filas = page.locator('main section li');
     expect(await filas.count()).toBeGreaterThan(8);
     /* El que gana la fila queda marcado, y nunca los dos a la vez. */

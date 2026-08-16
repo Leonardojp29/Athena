@@ -31,13 +31,19 @@ const q = (params.get('q') ?? '').trim();
 const SLUG = /^[a-z0-9-]{2,80}$/;
 const ruta = tipo === 'equipo' ? 'team' : 'player';
 
+/*
+ * Un slug que cambió no puede vaciar la comparación: se reintenta una vez con el nuevo, que el API
+ * manda en el 404. Es el mismo enlace viejo que en la ficha se redirige.
+ */
 async function traer(slug: string | null): Promise<PlayerView | TeamView | null> {
   if (!slug || !SLUG.test(slug)) return null;
   try {
     return await api<PlayerView | TeamView>(`/views/${ruta}/${slug}`);
   } catch (error) {
     if (!(error instanceof ApiError)) throw error;
-    return null;
+    const mudado = error.body?.movedTo;
+    if (!mudado || !SLUG.test(mudado)) return null;
+    return await api<PlayerView | TeamView>(`/views/${ruta}/${mudado}`).catch(() => null);
   }
 }
 
