@@ -298,6 +298,8 @@ export interface PartidoDeCuadro {
   round: string | null;
   homeTeam: EquipoDeCuadro;
   awayTeam: EquipoDeCuadro;
+  /** Solo en las rondas cortas —final, semis— y en la fase de grupos: quién hizo los goles. */
+  eventos?: GolDeGrupo[];
 }
 
 export interface LlaveDeCuadro {

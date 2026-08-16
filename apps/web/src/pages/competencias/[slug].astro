@@ -227,6 +227,13 @@ const onceDelTorneoVisible = esCopa ? onceDelTorneo : null;
  * fase entera de un golpe, que es lo que se quiere saber en una copa.
  */
 const gruposJuntos = esCopa && standingGroups.length > 2;
+
+/*
+ * Unas eliminatorias son todos contra todos: un solo grupo sin nombre. Eso no es una "fase de
+ * grupos", es una tabla de posiciones, y se muestra como la de una liga: a todo el ancho y en
+ * grande. El bloque de grupos queda para los torneos que de verdad se parten en grupos.
+ */
+const tablaUnica = esCopa && standingGroups.length === 1;
 const onceDeLaFechaVisible = onceDelTorneoVisible ? null : once;
 
 const jsonLd = {
@@ -460,15 +467,17 @@ const jsonLd = {
             -->
             {etapas.map((fase) =>
               fase.etapa === 'grupos' ? (
-                <BloqueGrupos
-                  grupos={standingGroups}
-                  rondas={rondasDeGrupos}
-                  abierto={grupoPedido}
-                  fechaPedida={fechaDeGrupo}
-                  hrefGrupo={enlaceGrupo}
-                  hrefEquipo={enlaceEquipoCopa}
-                  hrefPartido={enlacePartidoEnCopa}
-                />
+                tablaUnica ? null : (
+                  <BloqueGrupos
+                    grupos={standingGroups}
+                    rondas={rondasDeGrupos}
+                    abierto={grupoPedido}
+                    fechaPedida={fechaDeGrupo}
+                    hrefGrupo={enlaceGrupo}
+                    hrefEquipo={enlaceEquipoCopa}
+                    hrefPartido={enlacePartidoEnCopa}
+                  />
+                )
               ) : fase.rondas.length > 0 ? (
                 <Cuadro
                   rondas={fase.rondas}
@@ -491,7 +500,7 @@ const jsonLd = {
               así que se queda con todo el ancho y con el tamaño grande —filas más altas, escudos más
               grandes, puntos que se leen de lejos—.
             -->
-            {!esCopa &&
+            {(!esCopa || tablaUnica) &&
               (grupo ? (
                 <section class="w-full rounded-xl border border-border bg-surface">
                   <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">

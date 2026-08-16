@@ -1,6 +1,6 @@
 ---
 import EventIcon from '../EventIcon.astro';
-import type { PartidoDeGrupo } from '../../lib/api';
+import type { PartidoDeCuadro } from '../../lib/api';
 import { formatDateLong, formatKickoff, isLive, minutoEnVivo, statusLabel } from '../../lib/format';
 import { goleadoresDelPartido } from '../../lib/relato';
 
@@ -15,7 +15,7 @@ import { goleadoresDelPartido } from '../../lib/relato';
  * agrupa los minutos de quien hizo dos y pone el autogol del lado al que le contó.
  */
 interface Props {
-  partido: PartidoDeGrupo;
+  partido: PartidoDeCuadro;
   hrefPartido?: (id: string) => string;
   hrefEquipo?: (slug: string) => string;
 }
@@ -28,7 +28,7 @@ const {
 
 const vivo = isLive(partido.status);
 const hayMarcador = partido.homeScore !== null && partido.awayScore !== null;
-const goles = goleadoresDelPartido({ homeTeam: partido.homeTeam, events: partido.eventos });
+const goles = goleadoresDelPartido({ homeTeam: partido.homeTeam, events: partido.eventos ?? [] });
 
 const estado = vivo
   ? minutoEnVivo(partido.status, partido.elapsedMinutes, partido.statusDetail)

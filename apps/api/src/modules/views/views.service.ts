@@ -578,7 +578,17 @@ export class ViewsService {
      * Libertadores, no los trescientos ochenta de una liga. El resto de la vista no los lleva —una
      * fila de resultados no muestra goleadores— así que no se pagan donde no se usan.
      */
-    const idsDeGrupos = rondasDePartidos.grupos.flatMap((r) => r.partidos.map((m) => m.id));
+    const idsDeGrupos = [
+      ...rondasDePartidos.grupos.flatMap((r) => r.partidos.map((m) => m.id)),
+      /*
+       * Y las rondas cortas de la ventana: una final es un partido solo en un panel entero, y sin
+       * sus goleadores es una tarjeta vacía. Cuatro partidos por ronda como tope mantiene esto en
+       * los cruces decisivos y fuera de las jornadas de liga.
+       */
+      ...rondasDePartidos.ventana
+        .filter((r) => r.partidos.length <= 4)
+        .flatMap((r) => r.partidos.map((m) => m.id)),
+    ];
     const golesPorPartido = new Map<string, GolDeGrupo[]>();
     if (idsDeGrupos.length > 0) {
       const goles = await this.prisma.matchEvent.findMany({
@@ -647,7 +657,7 @@ export class ViewsService {
       etapaEnJuego: rondas.find((r) => r.round === enCurso)?.etapa ?? null,
       estado,
       /* Los partidos agrupados por ronda, para navegarlos de una en una en lugar de dos listas. */
-      porRonda: rondasDePartidos.ventana,
+      porRonda: rondasDePartidos.ventana.map(conGoles),
       /* La fase de grupos completa, con los goles de cada partido: el bloque de grupos necesita las
          tres fechas —no la ventana— y quién marcó en cada una. */
       rondasDeGrupos: rondasDePartidos.grupos.map(conGoles),
@@ -1063,11 +1073,14 @@ export class ViewsService {
         if (grupo === undefined) return [];
         porGrupo.set(grupo, [...(porGrupo.get(grupo) ?? []), partido]);
       }
-      return porGrupo.size > 1
-        ? [...porGrupo.entries()]
-            .sort(([a], [b]) => a.localeCompare(b, 'es'))
-            .map(([titulo, suyos]) => ({ titulo, partidos: suyos }))
-        : [];
+      /*
+       * También con un solo grupo: la Eurocopa parte sus rondas por grupo —"Group A - 1"— así que
+       * cada ronda trae un grupo entero y nada más. Sin este bloque, el detalle del grupo no tenía
+       * de dónde sacar sus fechas y la fase de grupos entera quedaba sin abrir.
+       */
+      return [...porGrupo.entries()]
+        .sort(([a], [b]) => a.localeCompare(b, 'es'))
+        .map(([titulo, suyos]) => ({ titulo, partidos: suyos }));
     }
 
     if (!columna.eliminatoria) return [];

@@ -86,20 +86,27 @@ const conDetalle = grupos
   .map((g) => ({ ...g, abrible: !g.terceros && g.fechas.length > 0 }));
 
 /*
+ * El ranking de terceros no es un grupo y no vive entre los grupos: nadie jugó "el grupo de los
+ * terceros". Va en su propia sección, después de la fase, con su regla explicada.
+ */
+const soloGrupos = conDetalle.filter((g) => !g.terceros);
+const terceros = conDetalle.find((g) => g.terceros) ?? null;
+
+/*
  * Ocho por página: dos filas de cuatro, que es lo que entra sin que la fase de grupos se coma la
  * pantalla. Los trece del Mundial pasan a dos páginas con su navegación, y la altura del bloque deja
  * de depender de cuántos grupos tenga el torneo —ni de si hay un grupo abierto—.
  */
 const POR_PAGINA = 8;
-const paginas = Array.from({ length: Math.ceil(conDetalle.length / POR_PAGINA) }, (_, i) =>
-  conDetalle.slice(i * POR_PAGINA, (i + 1) * POR_PAGINA),
+const paginas = Array.from({ length: Math.ceil(soloGrupos.length / POR_PAGINA) }, (_, i) =>
+  soloGrupos.slice(i * POR_PAGINA, (i + 1) * POR_PAGINA),
 );
 
 /* Con uno o dos grupos no hay grilla que valga: se abre el detalle, que es lo que hay que mostrar. */
-const soloUno = conDetalle.filter((g) => g.abrible).length <= 2;
+const soloUno = soloGrupos.filter((g) => g.abrible).length <= 2;
 const activo =
-  conDetalle.find((g) => g.abrible && g.label === abierto) ??
-  (soloUno ? conDetalle.find((g) => g.abrible) : undefined);
+  soloGrupos.find((g) => g.abrible && g.label === abierto) ??
+  (soloUno ? soloGrupos.find((g) => g.abrible) : undefined);
 const tituloDe = (g: (typeof conDetalle)[number]) =>
   g.terceros ? 'Mejores terceros' : nombreFase(g.label);
 ---
@@ -111,7 +118,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
         <h2 class="flex items-center gap-2 font-display text-base font-semibold uppercase">
           Fase de grupos
           <span class="font-sans text-2xs font-medium normal-case text-ink-muted">
-            {grupos.length > 1 ? `${grupos.length} grupos` : nombreFase(grupos[0]?.label ?? '')}
+            {soloGrupos.length > 1 ? `${soloGrupos.length} grupos` : nombreFase(grupos[0]?.label ?? '')}
           </span>
         </h2>
       </header>
@@ -134,7 +141,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
               <Icon name="chevron-derecha" size={16} class="rotate-180" />
             </button>
             <p data-pagina-titulo class="text-sm font-medium text-ink">
-              Grupos 1 a {Math.min(POR_PAGINA, conDetalle.length)}
+              Grupos 1 a {Math.min(POR_PAGINA, soloGrupos.length)}
             </p>
             <button
               type="button"
@@ -144,7 +151,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             >
               <Icon name="chevron-derecha" size={16} />
             </button>
-            <span class="ml-auto text-xs text-ink-muted">{`${conDetalle.length} grupos`}</span>
+            <span class="ml-auto text-xs text-ink-muted">{`${soloGrupos.length} grupos`}</span>
           </div>
         )}
 
@@ -193,7 +200,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
       </div>
 
       <!-- Un panel por grupo: tabla y partidos, en dos columnas iguales y del mismo alto. -->
-      {conDetalle
+      {soloGrupos
         .filter((g) => g.abrible)
         .map((g) => (
           <div
@@ -215,7 +222,7 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
 
               {!soloUno && (
                 <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Grupos">
-                  {conDetalle
+                  {soloGrupos
                     .filter((otro) => otro.abrible)
                     .map((otro) => (
                       <a
@@ -312,6 +319,23 @@ const tituloDe = (g: (typeof conDetalle)[number]) =>
             </div>
           </div>
         ))}
+      </div>
+    </section>
+  )
+}
+
+{
+  terceros && (
+    <section class="rounded-xl border border-border bg-surface">
+      <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border p-3">
+        <h2 class="font-display text-base font-semibold uppercase">Mejores terceros</h2>
+        <p class="text-2xs text-ink-muted">
+          Los terceros de cada grupo, comparados entre sí: los mejores completan los clasificados a
+          la fase final.
+        </p>
+      </header>
+      <div class="p-3">
+        <StandingsTable rows={terceros.rows} grande hrefEquipo={hrefEquipo} />
       </div>
     </section>
   )

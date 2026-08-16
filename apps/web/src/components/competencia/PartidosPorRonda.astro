@@ -1,6 +1,7 @@
 ---
 import Icon from '../Icon.astro';
 import MatchRow from '../MatchRow.astro';
+import PartidoDeGrupo from './PartidoDeGrupo.astro';
 import type { PartidoDeCuadro, RondaDePartidos } from '../../lib/api';
 import { formatDayLong, isLive } from '../../lib/format';
 import { nombreFase } from '../../lib/paises';
@@ -56,8 +57,19 @@ function porDia(partidos: PartidoDeCuadro[]): Array<{ dia: string; partidos: Par
 }
 
 /* Sin nada que separar, la ronda es un solo tramo sin título. */
+/*
+ * Un bloque solo no es un tramo: la Eurocopa parte sus rondas por grupo —"Grupo F · fecha 3"— y el
+ * bloque único repetiría lo que el panel ya dice en su encabezado.
+ */
 const tramosDe = (ronda: RondaDePartidos) =>
-  ronda.bloques.length > 0 ? ronda.bloques : [{ titulo: '', partidos: ronda.partidos }];
+  ronda.bloques.length > 1 ? ronda.bloques : [{ titulo: '', partidos: ronda.partidos }];
+
+/*
+ * Con dos partidos o menos, la lista de filas deja un panel casi vacío: una final es un partido solo
+ * en toda la tarjeta. Ahí cada partido pasa a ser la tarjeta grande —escudos, marcador y quién hizo
+ * los goles—, que es lo que uno quiere leer de una final.
+ */
+const esEscasa = (ronda: RondaDePartidos) => ronda.partidos.length <= 2;
 
 /**
  * Dónde se para el scroll al abrir la ronda: en el partido que se está jugando y, si no hay ninguno, en
@@ -152,33 +164,45 @@ const pendienteDe = (ronda: RondaDePartidos) =>
             ]}
             data-lista
           >
-            {tramosDe(ronda).map((tramo) => (
-              <>
-                {tramo.titulo !== '' && (
-                  <p class="flex items-center gap-2 px-3 pt-2.5 text-2xs font-semibold uppercase tracking-label text-ink">
-                    {nombreFase(tramo.titulo)}
-                    <span class="h-px flex-1 bg-border" />
-                  </p>
-                )}
-                {porDia(tramo.partidos).map((dia) => (
-                  <>
-                    <p class="px-3 pb-0.5 pt-2 text-[10px] font-medium text-ink-muted first-letter:uppercase">
-                      {dia.dia}
-                    </p>
-                    <div class="grid gap-0.5 px-1.5 pb-1">
-                      {dia.partidos.map((partido) => (
-                        <MatchRow
-                          match={partido}
-                          hrefPartido={hrefPartido}
-                          hrefEquipo={hrefEquipo}
-                          anclado={partido.id === pendienteDe(ronda)}
-                        />
-                      ))}
-                    </div>
-                  </>
+            {esEscasa(ronda) ? (
+              <div class="mx-auto grid w-full max-w-2xl gap-3 px-3 py-2">
+                {ronda.partidos.map((partido) => (
+                  <PartidoDeGrupo
+                    partido={partido}
+                    hrefPartido={hrefPartido}
+                    hrefEquipo={hrefEquipo}
+                  />
                 ))}
-              </>
-            ))}
+              </div>
+            ) : (
+              tramosDe(ronda).map((tramo) => (
+                <>
+                  {tramo.titulo !== '' && (
+                    <p class="flex items-center gap-2 px-3 pt-2.5 text-2xs font-semibold uppercase tracking-label text-ink">
+                      {nombreFase(tramo.titulo)}
+                      <span class="h-px flex-1 bg-border" />
+                    </p>
+                  )}
+                  {porDia(tramo.partidos).map((dia) => (
+                    <>
+                      <p class="px-3 pb-0.5 pt-2 text-[10px] font-medium text-ink-muted first-letter:uppercase">
+                        {dia.dia}
+                      </p>
+                      <div class="grid gap-0.5 px-1.5 pb-1">
+                        {dia.partidos.map((partido) => (
+                          <MatchRow
+                            match={partido}
+                            hrefPartido={hrefPartido}
+                            hrefEquipo={hrefEquipo}
+                            anclado={partido.id === pendienteDe(ronda)}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  ))}
+                </>
+              ))
+            )}
           </div>
         </div>
       ))}
