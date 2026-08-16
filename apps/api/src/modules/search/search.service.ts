@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { EmbeddingGenerator } from '@athena/domain';
-import type { Redis } from 'ioredis';
+import { Memoria } from '../../shared/memoria.js';
 import { PrismaService } from '../../shared/prisma.service.js';
-import { REDIS } from '../../shared/redis.provider.js';
 import { FeatureFlagService, FLAGS } from '../feature-flags/feature-flag.service.js';
 import { EMBEDDING_GENERATOR } from '../providers/provider.tokens.js';
 import { EmbeddingRepository } from './embedding.repository.js';
@@ -35,13 +34,15 @@ interface NameRow {
 
 @Injectable()
 export class SearchService {
+  /* Embeber cuesta ~3 s contra OpenAI: las consultas repetidas salen de acá. */
+  private readonly embCache = new Memoria<number[]>(200);
+
   private readonly logger = new Logger(SearchService.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly embeddings: EmbeddingRepository,
     private readonly flags: FeatureFlagService,
-    @Inject(REDIS) private readonly redis: Redis,
     @Inject(EMBEDDING_GENERATOR) private readonly embedder: EmbeddingGenerator,
   ) {}
 
@@ -112,8 +113,8 @@ export class SearchService {
    */
   private async embedQuery(query: string): Promise<number[] | null> {
     const key = `athena:embcache:${this.embedder.model}:${createHash('sha1').update(query.toLowerCase()).digest('hex')}`;
-    const cached = await this.redis.get(key);
-    if (cached) return JSON.parse(cached) as number[];
+    const cached = this.embCache.get(key);
+    if (cached) return cached;
 
     const timeout = new Promise<null>((resolve) =>
       setTimeout(() => resolve(null), SEMANTIC_TIMEOUT_MS),
@@ -127,7 +128,7 @@ export class SearchService {
       return null;
     }
 
-    await this.redis.set(key, JSON.stringify(vector), 'EX', QUERY_EMBEDDING_TTL_SECONDS);
+    this.embCache.set(key, vector, QUERY_EMBEDDING_TTL_SECONDS);
     return vector;
   }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# El stack local completo: Redis (Docker), API, worker y web.
+# El stack local completo: API, worker y web. (Postgres y todo el estado viven en Supabase.)
 #
 # Corre los builds de dist/, no los servidores de desarrollo: es lo mismo que se despliega y no
 # ocupa dos terminales vigilando recargas. Después de cambiar código hay que reconstruir.
@@ -35,18 +35,13 @@ estado() {
 case "${1:-}" in
   --stop)
     stop_stack
-    echo "Stack detenido. Redis sigue en Docker; para pararlo: docker compose -f infra/docker-compose.yml down"
+    echo "Stack detenido."
     exit 0
     ;;
   --status)
     echo "Athena:"
     estado "web    " "$WEB_URL"
     estado "api    " "$API_URL/v1/health"
-    if docker compose -f "$ROOT/infra/docker-compose.yml" ps --status running 2>/dev/null | grep -q redis; then
-      echo "  ✓ redis   localhost:6379"
-    else
-      echo "  ✗ redis   localhost:6379 (contenedor parado)"
-    fi
     pgrep -f "dist/main.worker.js" >/dev/null && echo "  ✓ worker  (sync y colas)" || echo "  ✗ worker  (sync y colas)"
     exit 0
     ;;
@@ -62,7 +57,6 @@ done
 
 mkdir -p "$LOGS"
 stop_stack
-docker compose -f "$ROOT/infra/docker-compose.yml" up -d
 
 setsid node --env-file-if-exists="$ROOT/.env" "$ROOT/apps/api/dist/main.api.js" >> "$LOGS/api.log" 2>&1 < /dev/null &
 setsid node --env-file-if-exists="$ROOT/.env" "$ROOT/apps/api/dist/main.worker.js" >> "$LOGS/worker.log" 2>&1 < /dev/null &
@@ -86,4 +80,4 @@ wait_for "$WEB_URL/" "Web" "$LOGS/web.log" || failed=1
 [[ $failed -eq 1 ]] && exit 1
 
 echo "Stack listo → entrá por $WEB_URL"
-echo "  api $API_URL (documentación en /docs) · redis 6379 · logs en .logs/"
+echo "  api $API_URL (documentación en /docs) · logs en .logs/"

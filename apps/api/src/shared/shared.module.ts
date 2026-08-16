@@ -1,20 +1,13 @@
-import { Global, Inject, Module, type OnModuleDestroy } from '@nestjs/common';
-import type { Redis } from 'ioredis';
+import { Global, Module } from '@nestjs/common';
 import { AiBudgetService } from './ai-budget.service.js';
 import { ApiBudgetService } from './api-budget.service.js';
+import { KvService } from './kv.service.js';
 import { PrismaService } from './prisma.service.js';
-import { redisProvider, REDIS } from './redis.provider.js';
 import { ViewCacheService } from './view-cache.service.js';
 
 @Global()
 @Module({
-  providers: [PrismaService, redisProvider, ApiBudgetService, AiBudgetService, ViewCacheService],
-  exports: [PrismaService, REDIS, ApiBudgetService, AiBudgetService, ViewCacheService],
+  providers: [PrismaService, KvService, ApiBudgetService, AiBudgetService, ViewCacheService],
+  exports: [PrismaService, KvService, ApiBudgetService, AiBudgetService, ViewCacheService],
 })
-export class SharedModule implements OnModuleDestroy {
-  constructor(@Inject(REDIS) private readonly redis: Redis) {}
-
-  async onModuleDestroy(): Promise<void> {
-    await this.redis.quit();
-  }
-}
+export class SharedModule {}

@@ -40,3 +40,6 @@ apps/web/playwright-report/
 
 # scripts de medición de una sesión
 tmp-*.mjs
+
+# Vercel
+.vercel

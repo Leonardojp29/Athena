@@ -9,6 +9,8 @@
 // Supabase cada ida y vuelta cuesta cerca de 0,8 s. La vista de partido pasa de tres viajes a uno.
 generator client {
   provider        = "prisma-client-js"
+  // Vercel corre sobre Amazon Linux: sin este binario, Prisma no arranca en producción.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
   previewFeatures = ["relationJoins"]
 }
 
@@ -517,4 +519,31 @@ model SlugAlias {
   @@id([entityType, slug])
   @@index([entityType, entityId])
   @@map("slug_aliases")
+}
+
+/// Una tarea pendiente del sync: lo que antes era un job de BullMQ.
+///
+/// Vive en Postgres porque el despliegue es serverless: no hay proceso escuchando una cola, hay un
+/// tic por minuto (pg_cron → endpoint) que toma lo pendiente con SKIP LOCKED y lo ejecuta.
+model Tarea {
+  id           BigInt    @id @default(autoincrement())
+  tipo         String
+  datos        Json      @default("{}")
+  prioridad    Int       @default(5)
+  correDespues DateTime  @default(now()) @map("corre_despues")
+  intentos     Int       @default(0)
+  tomadaHasta  DateTime? @map("tomada_hasta")
+  creadaEn     DateTime  @default(now()) @map("creada_en")
+
+  @@index([prioridad, correDespues, id])
+  @@map("tareas")
+}
+
+/// Estado compartido chico entre procesos: cuotas y marcas de espera. Antes vivía en Redis.
+model Kv {
+  clave   String    @id
+  numero  BigInt?
+  venceEn DateTime? @map("vence_en")
+
+  @@map("kv")
 }

@@ -1,6 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
-import type { Redis } from 'ioredis';
-import { REDIS } from './redis.provider.js';
+import { Injectable } from '@nestjs/common';
+import { KvService } from './kv.service.js';
 
 // La cuenta de API-Football es compartida con otros sistemas de la empresa:
 // el presupuesto se basa siempre en el "remaining" real que reportan los headers,
@@ -8,8 +7,16 @@ import { REDIS } from './redis.provider.js';
 const DAY_SAFETY_MARGIN = 500;
 const MINUTE_SAFETY_MARGIN = 30;
 
-const DAY_KEY = 'athena:budget:apifootball:day';
-const MINUTE_KEY = 'athena:budget:apifootball:minute';
+const DAY_KEY = 'presupuesto:apifootball:dia';
+const MINUTE_KEY = 'presupuesto:apifootball:minuto';
+
+/*
+ * La cuota es advisoria —los márgenes son de 500 y 30— así que puede estar unos segundos vieja sin
+ * riesgo. Eso permite no pagar un viaje a Postgres por cada pedido al proveedor: se lee y escribe
+ * la memoria del proceso siempre, y Postgres cada tanto para que los demás procesos la vean.
+ */
+const PERSISTIR_CADA_MS = 5_000;
+const CONFIAR_EN_MEMORIA_MS = 10_000;
 
 export class ApiBudgetExhaustedError extends Error {
   constructor(scope: 'day' | 'minute', remaining: number) {
@@ -20,32 +27,43 @@ export class ApiBudgetExhaustedError extends Error {
 
 @Injectable()
 export class ApiBudgetService {
-  constructor(@Inject(REDIS) private readonly redis: Redis) {}
+  private dia: number | null = null;
+  private minuto: number | null = null;
+  private leidoEn = 0;
+  private persistidoEn = 0;
+
+  constructor(private readonly kv: KvService) {}
 
   async recordFromHeaders(headers: Headers): Promise<void> {
     const day = headers.get('x-ratelimit-requests-remaining');
     const minute = headers.get('x-ratelimit-remaining');
-    const ops = this.redis.multi();
-    if (day !== null) ops.set(DAY_KEY, day, 'EX', 86_400);
-    if (minute !== null) ops.set(MINUTE_KEY, minute, 'EX', 60);
-    await ops.exec();
+    if (day !== null) this.dia = Number(day);
+    if (minute !== null) this.minuto = Number(minute);
+    this.leidoEn = Date.now();
+
+    if (Date.now() - this.persistidoEn < PERSISTIR_CADA_MS) return;
+    this.persistidoEn = Date.now();
+    if (this.dia !== null) await this.kv.fijar(DAY_KEY, this.dia, 86_400);
+    if (this.minuto !== null) await this.kv.fijar(MINUTE_KEY, this.minuto, 60);
   }
 
   async assertAvailable(): Promise<void> {
-    const [day, minute] = await this.redis.mget(DAY_KEY, MINUTE_KEY);
-    if (day !== null && Number(day) <= DAY_SAFETY_MARGIN) {
-      throw new ApiBudgetExhaustedError('day', Number(day));
+    const { dayRemaining, minuteRemaining } = await this.snapshot();
+    if (dayRemaining !== null && dayRemaining <= DAY_SAFETY_MARGIN) {
+      throw new ApiBudgetExhaustedError('day', dayRemaining);
     }
-    if (minute !== null && Number(minute) <= MINUTE_SAFETY_MARGIN) {
-      throw new ApiBudgetExhaustedError('minute', Number(minute));
+    if (minuteRemaining !== null && minuteRemaining <= MINUTE_SAFETY_MARGIN) {
+      throw new ApiBudgetExhaustedError('minute', minuteRemaining);
     }
   }
 
   async snapshot(): Promise<{ dayRemaining: number | null; minuteRemaining: number | null }> {
-    const [day, minute] = await this.redis.mget(DAY_KEY, MINUTE_KEY);
-    return {
-      dayRemaining: day === null ? null : Number(day),
-      minuteRemaining: minute === null ? null : Number(minute),
-    };
+    if (Date.now() - this.leidoEn > CONFIAR_EN_MEMORIA_MS) {
+      const valores = await this.kv.leer([DAY_KEY, MINUTE_KEY]);
+      this.dia = valores.get(DAY_KEY) ?? null;
+      this.minuto = valores.get(MINUTE_KEY) ?? null;
+      this.leidoEn = Date.now();
+    }
+    return { dayRemaining: this.dia, minuteRemaining: this.minuto };
   }
 }

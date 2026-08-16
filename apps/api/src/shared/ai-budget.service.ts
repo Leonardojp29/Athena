@@ -1,8 +1,7 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Redis } from 'ioredis';
-import { REDIS } from './redis.provider.js';
+import { Injectable, Logger } from '@nestjs/common';
+import { KvService } from './kv.service.js';
 
-const KEY = 'athena:budget:openai:tokens';
+const KEY = 'presupuesto:openai:tokens';
 
 export class AiBudgetExhaustedError extends Error {
   constructor(spent: number, cap: number) {
@@ -15,30 +14,32 @@ export class AiBudgetExhaustedError extends Error {
  * Tope duro diario de tokens. A diferencia de la cuota de API-Football (que el
  * proveedor reporta), aquí el gasto es ilimitado por defecto: el tope lo ponemos
  * nosotros para que un bug no se traduzca en factura.
+ *
+ * La suma vive en Postgres y es atómica entre procesos: en serverless pueden convivir varias
+ * instancias generando análisis, y el tope no puede depender de quién sumó último.
  */
 @Injectable()
 export class AiBudgetService {
   private readonly logger = new Logger(AiBudgetService.name);
   private readonly dailyCap = Number(process.env.OPENAI_DAILY_TOKEN_CAP ?? 2_000_000);
 
-  constructor(@Inject(REDIS) private readonly redis: Redis) {}
+  constructor(private readonly kv: KvService) {}
 
   async assertAvailable(): Promise<void> {
-    const spent = Number((await this.redis.get(this.key())) ?? 0);
+    const spent = (await this.kv.leer([this.key()])).get(this.key()) ?? 0;
     if (spent >= this.dailyCap) throw new AiBudgetExhaustedError(spent, this.dailyCap);
   }
 
   async record(inputTokens: number, outputTokens: number, model: string): Promise<void> {
     const total = inputTokens + outputTokens;
-    const spent = await this.redis.incrby(this.key(), total);
-    await this.redis.expire(this.key(), 172_800);
+    const spent = await this.kv.incrementar(this.key(), total, 172_800);
     this.logger.log(
       `${model}: +${total} tokens (in ${inputTokens} / out ${outputTokens}) · día ${spent}/${this.dailyCap}`,
     );
   }
 
   async snapshot(): Promise<{ spent: number; cap: number }> {
-    return { spent: Number((await this.redis.get(this.key())) ?? 0), cap: this.dailyCap };
+    return { spent: (await this.kv.leer([this.key()])).get(this.key()) ?? 0, cap: this.dailyCap };
   }
 
   private key(): string {

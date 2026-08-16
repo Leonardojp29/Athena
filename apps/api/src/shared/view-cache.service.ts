@@ -1,25 +1,22 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Redis } from 'ioredis';
-import { REDIS } from './redis.provider.js';
+import { Injectable } from '@nestjs/common';
+import { Memoria } from './memoria.js';
 
 /**
- * Caché de vistas compuestas en Redis.
+ * Caché de vistas compuestas, en la memoria del proceso.
  *
  * Medido: cada endpoint de vista tardaba entre dos y cuatro segundos, no por las consultas en sí
  * sino porque cada una viaja a Supabase desde fuera de su región —cerca de un segundo por ida y
- * vuelta— y una vista compone varias. Los controladores ya declaraban cuánto vale cada respuesta
- * en su `Cache-Control`; acá se cumple del lado del servidor, así que el trabajo se hace una vez
- * y no una vez por visitante.
+ * vuelta— y una vista compone varias. Los controladores ya declaran cuánto vale cada respuesta en
+ * su `Cache-Control`; acá se cumple del lado del servidor, así que el trabajo se hace una vez y no
+ * una vez por visitante.
  *
- * Si Redis no está, se ejecuta la consulta y listo: un caché caído tiene que degradar el
- * rendimiento, nunca la disponibilidad.
+ * Vivió en Redis hasta que el despliegue pasó a serverless: en Vercel no hay Redis, pero sí hay
+ * caché de borde que honra los mismos `s-maxage`, así que la memoria del proceso solo cubre las
+ * invocaciones calientes y el borde cubre el resto. En local hay un solo proceso y es equivalente.
  */
 @Injectable()
 export class ViewCacheService {
-  private readonly logger = new Logger(ViewCacheService.name);
-  private avisado = false;
-
-  constructor(@Inject(REDIS) private readonly redis: Redis) {}
+  private readonly memoria = new Memoria(500);
 
   /**
    * El TTL puede depender de lo calculado: un partido terminado ya no cambia y merece una hora,
@@ -30,32 +27,12 @@ export class ViewCacheService {
     ttl: number | ((valor: T) => number),
     calcular: () => Promise<T>,
   ): Promise<T> {
-    const full = `view:${clave}`;
-
-    try {
-      const guardado = await this.redis.get(full);
-      if (guardado !== null) return JSON.parse(guardado) as T;
-    } catch (error) {
-      this.avisarUnaVez(error);
-    }
+    const guardado = this.memoria.get(`view:${clave}`);
+    if (guardado !== undefined) return guardado as T;
 
     const valor = await calcular();
-
-    try {
-      /* Las fechas ya vienen serializadas por JSON.stringify; el cliente las recibe igual. */
-      const segundos = typeof ttl === 'function' ? ttl(valor) : ttl;
-      await this.redis.set(full, JSON.stringify(valor), 'EX', segundos);
-    } catch (error) {
-      this.avisarUnaVez(error);
-    }
-
+    const segundos = typeof ttl === 'function' ? ttl(valor) : ttl;
+    this.memoria.set(`view:${clave}`, valor, segundos);
     return valor;
-  }
-
-  /** Un Redis caído no puede llenar el log con una línea por request. */
-  private avisarUnaVez(error: unknown): void {
-    if (this.avisado) return;
-    this.avisado = true;
-    this.logger.warn(`Caché de vistas no disponible: ${String(error).slice(0, 120)}`);
   }
 }

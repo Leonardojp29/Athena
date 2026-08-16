@@ -42,8 +42,12 @@ async function partidoConAlineacion(page: Page): Promise<string | null> {
         timeout: TIMEOUT_SONDEO,
       });
       if (!detalle.ok()) continue;
-      const match = (await detalle.json()) as { lineups: unknown[] };
-      if (match.lineups.length > 0) {
+      const match = (await detalle.json()) as { lineups: Array<{ formation: string | null }> };
+      /*
+       * Alineación no alcanza: sin `formation` (y sus posiciones) la cancha se degrada a lista
+       * a propósito, y estos tests son de la cancha. Pasa cuando el proveedor publica a medias.
+       */
+      if (match.lineups.length > 0 && match.lineups.every((l) => l.formation !== null)) {
         memo.id = candidato.id;
         return candidato.id;
       }

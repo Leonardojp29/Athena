@@ -1,6 +1,6 @@
 # ADR-004 — Scheduler/colas para sincronización y derivación
 
-**Estado**: Aceptada · **Fecha**: 2026-08-06
+**Estado**: Reemplazada por ADR-005 · **Fecha**: 2026-08-06
 
 ## Problema
 

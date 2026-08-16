@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @athena/domain build && pnpm --filter @athena/database build && pnpm --filter @athena/api build",
+  "outputDirectory": ".",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "includeFiles": "dist/**"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}

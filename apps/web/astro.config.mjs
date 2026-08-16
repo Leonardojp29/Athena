@@ -1,6 +1,7 @@
 // @ts-check
 import { existsSync } from 'node:fs';
 import node from '@astrojs/node';
+import vercel from '@astrojs/vercel';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
@@ -16,7 +17,12 @@ const siteUrl = new URL(process.env.PUBLIC_SITE_URL ?? 'http://localhost:4321');
 export default defineConfig({
   site: siteUrl.href,
   output: 'server',
-  adapter: node({ mode: 'standalone' }),
+  /*
+   * Dos casas, un solo código: en Vercel manda su adaptador (la plataforma define la variable
+   * VERCEL sola) y en cualquier otro lado la web es un proceso Node de siempre, que es como corre
+   * el stack local. Elegirlo por entorno evita mantener dos configs que divergen.
+   */
+  adapter: process.env.VERCEL ? vercel() : node({ mode: 'standalone' }),
   integrations: [react()],
   /*
    * Prefetch al pasar el cursor. Con las vistas cacheadas, la página ya está descargada cuando

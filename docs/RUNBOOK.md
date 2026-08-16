@@ -6,7 +6,7 @@ después de semanas sin tocarlo.
 ## Levantar el entorno local
 
 ```bash
-./infra/dev-stack.sh          # Redis + API (:3001) + worker + web (:4321)
+./infra/dev-stack.sh          # API (:3001) + worker + web (:4321)
 ./infra/dev-stack.sh --stop   # detiene los tres procesos
 ```
 
@@ -93,7 +93,7 @@ primer arranque del worker y se relee en cada arranque:
 | `cron` | patrón de cinco campos, para lo que se puede expresar en cron |
 | `metadata.everyMs` | intervalos que cron no puede decir (30 s), en milisegundos |
 | `metadata.tz` | zona del patrón; sin ella, UTC |
-| `enabled` | en `false` el scheduler se quita de BullMQ en el siguiente arranque |
+| `enabled` | en `false` el recurrente deja de dispararse en el siguiente tic |
 | `last_run_at` | lo sella el propio job: es la forma de ver si un recurrente dejó de correr |
 
 Exactamente uno de `cron` o `metadata.everyMs`. Una fila sin ninguno, o con un `job_kind` que
@@ -125,28 +125,36 @@ curl -s -H "x-apisports-key: $API_FOOTBALL_KEY" https://v3.football.api-sports.i
 
 - **API-Football**: la cuenta es compartida con otros sistemas, así que el
   presupuesto se calcula con el `remaining` real de los headers, nunca con el
-  límite del plan. Vive en Redis (`athena:budget:apifootball:*`).
+  límite del plan. Vive en la tabla `kv` (`presupuesto:apifootball:*`), con un
+  espejo en memoria para no pagar una consulta por request.
 - **OpenAI**: tope diario propio de tokens en `OPENAI_DAILY_TOKEN_CAP`
   (2.000.000 por defecto). Al alcanzarlo, los jobs de IA fallan a propósito en
   lugar de seguir gastando.
 
-## Redis: la caché y la cola no comparten base
+## Cola y caché: dónde vive cada cosa
 
-La caché de vistas vive en la base 0 (`view:*`) y la cola de trabajos en la 1
-(`bull:sync:*`), o donde diga `REDIS_QUEUE_URL`. **Nunca `FLUSHDB` a mano**: la
-cola guarda partidos esperando su alineación, sus estadísticas y sus notas, y
-borrarla no falla —simplemente deja de haber trabajo—. Pasó: veintiún partidos
-de nueve competencias se quedaron sin alineación en un mes, sin un error en el
-log.
+No hay Redis. La cola de trabajos es la tabla `tareas` de Postgres (los workers
+toman con `FOR UPDATE SKIP LOCKED`, así varias instancias no chocan), el estado
+compartido chico —presupuestos, cooldowns— es la tabla `kv`, y la caché de
+vistas es memoria del proceso con TTL corto. Borrar caché es reiniciar el
+proceso; la cola y los presupuestos no se pueden borrar por accidente porque
+son filas en la base.
+
+**El latido del sync es `tick()`** y corre por dos caminos que son el mismo
+código: en local, el bucle de `main.worker.ts` cada 60 s; en Vercel, pg_cron de
+Supabase llama `POST /v1/internal/tick` cada minuto con el header
+`x-cron-secreto: $CRON_SECRET`. Ver `docs/DEPLOY.md`.
 
 ```bash
-pnpm --filter @athena/api cache:limpiar        # borra solo view:*
-PATRON="view:competition:*" pnpm --filter @athena/api cache:limpiar
+# mirar la cola
+psql "$DIRECT_URL" -c "SELECT tipo, count(*) FROM tareas GROUP BY 1"
+# disparar un tic a mano
+curl -X POST -H "x-cron-secreto: $CRON_SECRET" http://localhost:3001/v1/internal/tick
 ```
 
 ## Apagar funcionalidad sin desplegar
 
-Los feature flags viven en la tabla `feature_flags` y se cachean 45 s en Redis:
+Los feature flags viven en la tabla `feature_flags` y se cachean 45 s en memoria:
 
 ```sql
 UPDATE feature_flags SET enabled = false WHERE key = 'ai_insights';
@@ -159,8 +167,8 @@ Claves: `ai_insights`, `semantic_search`, `live_match_center`, `recommendations`
 
 | Síntoma | Dónde mirar |
 |---|---|
-| Los datos no se actualizan | `.logs/worker.log`; que exista un solo worker; que Redis esté arriba |
-| Faltan alineaciones o estadísticas de partidos recientes | Que la cola tenga trabajos (`redis-cli -n 1 LLEN bull:sync:wait`); el tic recupera lo terminado en las últimas seis horas |
+| Los datos no se actualizan | `.logs/worker.log` (o el cron de Supabase en producción); que el tic corra cada minuto |
+| Faltan alineaciones o estadísticas de partidos recientes | Que la cola tenga trabajos (`SELECT count(*) FROM tareas`); el tic recupera lo terminado en las últimas seis horas |
 | Un job falla siempre | Busca `job_failed` en el log: trae job, intentos y error |
 | Un 500 en la web | La respuesta trae `requestId`; búscalo en `.logs/api.log` |
 | Partidos sin estadísticas | Normal si son viejos: corre `backfill:matches` |

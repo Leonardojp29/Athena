@@ -1,15 +1,7 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  type OnModuleDestroy,
-  type OnModuleInit,
-} from '@nestjs/common';
-import { Queue, Worker, type Job } from 'bullmq';
-import { Redis } from 'ioredis';
+import { Injectable, Logger } from '@nestjs/common';
+import { KvService } from '../../shared/kv.service.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { logJson, reportError } from '../../shared/observability.js';
-import { REDIS } from '../../shared/redis.provider.js';
 import { GenerateMatchInsightUseCase } from '../insights/generate-match-insight.usecase.js';
 import { SyncEmbeddingsUseCase } from '../search/sync-embeddings.usecase.js';
 import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
@@ -23,22 +15,8 @@ import { SyncMatchPlayersUseCase } from '../sync/sync-match-players.usecase.js';
 import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
+import { ColaDeTareas, type Tarea } from './cola-de-tareas.service.js';
 import { SyncScheduleService } from './sync-schedule.service.js';
-
-const QUEUE = 'sync';
-
-/**
- * Dónde vive la cola: su propia base de Redis, separada de la caché.
- *
- * `REDIS_QUEUE_URL` manda si está; si no, se le agrega `/1` a la de siempre, que en Redis es el
- * número de base. Así nadie tiene que configurar nada para quedar a salvo del flush de la caché.
- */
-function colaUrl(): string {
-  const propia = process.env.REDIS_QUEUE_URL;
-  if (propia) return propia;
-  const base = process.env.REDIS_URL ?? 'redis://localhost:6379';
-  return /\/\d+$/.test(base) ? base : `${base.replace(/\/$/, '')}/1`;
-}
 
 /* El análisis espera a que aterricen los eventos y las estadísticas que lo respaldan. */
 const INSIGHT_DELAY_MS = 3 * 60_000;
@@ -81,19 +59,16 @@ type SyncJob =
   | { name: 'match-insight'; data: { matchId: string } }
   | { name: 'match-preview'; data: { matchId: string } }
   | { name: 'embeddings'; data: { entityType: 'team' | 'player' } }
-  | { name: 'live-tick'; data: Record<string, never> }
-  | { name: 'process-outbox'; data: Record<string, never> }
-  | { name: 'daily-refresh'; data: Record<string, never> };
+  | { name: 'colores'; data: Record<string, never> };
 
 @Injectable()
-export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
+export class SyncQueueService {
   private readonly logger = new Logger(SyncQueueService.name);
-  private queue!: Queue;
-  private worker!: Worker;
 
   constructor(
-    @Inject(REDIS) private readonly redis: Redis,
     private readonly prisma: PrismaService,
+    private readonly kv: KvService,
+    private readonly cola: ColaDeTareas,
     private readonly outbox: OutboxService,
     private readonly syncCompetition: SyncCompetitionUseCase,
     private readonly syncTeams: SyncTeamsUseCase,
@@ -109,63 +84,69 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
     private readonly schedules: SyncScheduleService,
   ) {}
 
-  async onModuleInit(): Promise<void> {
-    /*
-     * BullMQ necesita conexiones dedicadas —el Worker bloquea la suya esperando trabajos— y, sobre
-     * todo, **su propia base de Redis**.
-     *
-     * Compartirla con la caché de vistas costó caro: un `FLUSHDB` para ver datos frescos borraba
-     * también los trabajos pendientes, y los partidos que estaban esperando su alineación se
-     * quedaban sin ella para siempre. Veintiún partidos de nueve competencias en un mes, y ni un
-     * error en el log, porque borrar una cola no falla: simplemente no queda nada que hacer.
-     */
-    const conexion = () => new Redis(colaUrl(), { maxRetriesPerRequest: null });
-    this.queue = new Queue(QUEUE, { connection: conexion() });
-    this.worker = new Worker(QUEUE, (job) => this.process(job as Job & SyncJob), {
-      connection: conexion(),
-      concurrency: 4,
-    });
-    this.worker.on('failed', (job, err) => {
-      logJson('error', 'job_failed', {
-        job: job?.name,
-        jobId: job?.id,
-        attempts: job?.attemptsMade,
-        error: err.message,
-      });
-      reportError(err, { job: job?.name, jobId: job?.id });
-    });
+  /**
+   * Un tic del vivo: la única entrada del sync minuto a minuto.
+   *
+   * La llaman dos mundos con el mismo efecto: en local, el worker cada sesenta segundos; en
+   * producción, pg_cron de Supabase contra el endpoint interno del API. Hace lo urgente en línea
+   * —marcadores, eventos, la salida de partidos terminados— y después drena la cola de tareas
+   * hasta agotar su presupuesto de tiempo, que en serverless es el límite de la función.
+   */
+  async tick(presupuestoMs = 50_000): Promise<{ vivos: number; tareas: number }> {
+    const arranque = Date.now();
+    await this.schedules.markRun('live-tick');
+    const vivos = await this.liveTick();
+    await this.schedules.markRun('process-outbox');
+    await this.processOutbox();
 
-    await this.schedules.apply(this.queue);
-    this.logger.log('Sync queue lista');
+    let hechas = 0;
+    while (Date.now() - arranque < presupuestoMs) {
+      const tareas = await this.cola.tomar(3);
+      if (tareas.length === 0) break;
+      for (const tarea of tareas) {
+        try {
+          await this.process(tarea);
+          await this.cola.completar(tarea.id);
+          hechas++;
+        } catch (error) {
+          await this.cola.fallar(tarea, error);
+          logJson('error', 'tarea_fallida', {
+            tipo: tarea.tipo,
+            id: String(tarea.id),
+            intentos: tarea.intentos,
+            error: String(error).slice(0, 200),
+          });
+          reportError(error, { tarea: tarea.tipo });
+        }
+      }
+    }
+    return { vivos, tareas: hechas };
   }
 
-  async onModuleDestroy(): Promise<void> {
-    await this.worker?.close();
-    await this.queue?.close();
+  /**
+   * El refresco diario. Encola casi todo: las tandas largas las va drenando el tic siguiente, así
+   * esta llamada cabe en una función serverless aunque el catálogo tenga sesenta competencias.
+   */
+  async daily(): Promise<void> {
+    await this.schedules.markRun('daily-refresh');
+    await this.dailyRefresh();
   }
 
   /*
    * La prioridad decide quién pasa primero cuando la cola tiene cientos de trabajos: menor número,
    * antes. Una tabla de posiciones cuesta un pedido y es lo que más se mira; un `fixtures` de
-   * temporada escribe cientos de filas y tarda minutos. Sin esto, el refresco diario dejaba las
-   * tablas al final de la fila y la del Clausura peruano seguía una jornada atrasada horas después.
+   * temporada escribe cientos de filas y tarda minutos.
    */
   async enqueue<T extends SyncJob>(
     name: T['name'],
     data: T['data'],
-    opts?: { attempts?: number; delay?: number; priority?: number },
+    opts?: { delay?: number; priority?: number },
   ): Promise<void> {
-    await this.queue.add(name, data, {
-      attempts: opts?.attempts ?? 3,
-      ...(opts?.delay ? { delay: opts.delay } : {}),
-      ...(opts?.priority ? { priority: opts.priority } : {}),
-      backoff: { type: 'exponential', delay: 5_000 },
-      removeOnComplete: 500,
-      removeOnFail: 1_000,
-    });
+    await this.cola.encolar(name, data, { delayMs: opts?.delay, prioridad: opts?.priority });
   }
 
-  private async process(job: Job & SyncJob): Promise<unknown> {
+  private async process(tarea: Tarea): Promise<unknown> {
+    const job = { name: tarea.tipo, data: tarea.datos } as SyncJob;
     switch (job.name) {
       case 'competition':
         return this.syncCompetition.execute(job.data.competitionRef);
@@ -183,6 +164,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return this.syncMatchPlayers.execute(job.data.matchRef);
       case 'squad':
         return this.syncSquad.execute(job.data.teamRef);
+      case 'colores':
+        return this.colores.execute();
       case 'match-insight':
         return this.matchInsight.execute(job.data.matchId);
       case 'match-preview':
@@ -191,18 +174,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
         return job.data.entityType === 'team'
           ? this.embeddings.syncTeams()
           : this.embeddings.syncPlayers();
-      /* Los recurrentes sellan su corrida: sin eso sync_schedules no diagnostica nada. */
-      case 'live-tick':
-        await this.schedules.markRun('live-tick');
-        return this.liveTick();
-      case 'process-outbox':
-        await this.schedules.markRun('process-outbox');
-        return this.processOutbox();
-      case 'daily-refresh':
-        await this.schedules.markRun('daily-refresh');
-        return this.dailyRefresh();
       default:
-        throw new Error(`Unknown job: ${(job as Job).name}`);
+        throw new Error(`Tarea desconocida: ${tarea.tipo}`);
     }
   }
 
@@ -309,9 +282,20 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
             kickoffUtc: { gte: new Date(Date.now() - RECUPERACION_MS) },
           },
         ],
-        lineups: { none: {} },
+        /*
+         * Sin alineación, o con una a medias: en una caída parcial el proveedor publicó los once
+         * sin `formation` ni posiciones —una cancha que no se puede dibujar— y las completó horas
+         * después. Una alineación sin formación se sigue pidiendo hasta que llegue entera.
+         */
+        AND: {
+          OR: [{ lineups: { none: {} } }, { lineups: { some: { formation: null } } }],
+        },
       },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        lineups: { select: { id: true }, take: 1 },
+      },
       take: 40,
     });
     if (sinDetalle.length === 0) return 0;
@@ -331,21 +315,16 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
       const providerRef = refPorId.get(match.id);
       if (!providerRef) continue;
       /*
-       * A un terminado se le pregunta cada quince minutos, no cada tic. Cuando el proveedor tiene
-       * una caída parcial —pasó: eventos sí, alineaciones no, durante horas— reinsistir cada
-       * minuto con cada partido reciente eran hasta ochenta pedidos por minuto de una cuota que se
-       * comparte. Un dato que llega horas tarde no se pierde por esperarlo quince minutos. Los que
-       * están en juego o por empezar sí van en cada tic: ahí la alineación vale ahora o no vale.
+       * A un terminado —o a uno cuya alineación existe pero vino a medias— se le pregunta cada
+       * quince minutos, no cada tic. Cuando el proveedor tiene una caída parcial —pasó: eventos
+       * sí, alineaciones no, durante horas— reinsistir cada minuto con cada partido reciente eran
+       * hasta ochenta pedidos por minuto de una cuota que se comparte. Un dato que llega horas
+       * tarde no se pierde por esperarlo quince minutos. Los que están en juego o por empezar sin
+       * alineación alguna sí van en cada tic: ahí la alineación vale ahora o no vale.
        */
-      if (match.status === 'finished') {
-        const primeraVez = await this.redis.set(
-          `detalle:espera:${match.id}`,
-          '1',
-          'EX',
-          900,
-          'NX',
-        );
-        if (primeraVez === null) continue;
+      if (match.status === 'finished' || match.lineups.length > 0) {
+        const primeraVez = await this.kv.marcar(`detalle:espera:${match.id}`, 900);
+        if (!primeraVez) continue;
       }
       await this.enqueue('match-detail', { matchRef: providerRef });
       encolados++;
@@ -450,7 +429,8 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   private async dailyRefresh(): Promise<void> {
     /* Red de seguridad: si el worker estuvo caído, acá se cierran los que quedaron colgados. */
     await this.syncFixtures.reconcileStale();
-    await this.colores.execute();
+    /* En tarea y no en línea: recorre ochocientos equipos y no cabe en una función serverless. */
+    await this.enqueue('colores', {});
 
     const recentlyFinishedIds = (
       await this.prisma.match.findMany({

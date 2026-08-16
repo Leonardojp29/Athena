@@ -24,8 +24,7 @@
     "selecciones:nombres": "node --env-file-if-exists=../../.env dist/scripts/renombrar-selecciones.js",
     "sync:tablas": "node --env-file-if-exists=../../.env dist/scripts/sync-tablas.js",
     "sync:plantillas": "node --env-file-if-exists=../../.env dist/scripts/sync-plantillas.js",
-    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js",
-    "cache:limpiar": "node --env-file-if-exists=../../.env dist/scripts/limpiar-cache.js"
+    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",
@@ -35,8 +34,6 @@
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/swagger": "^11.0.0",
     "@sentry/node": "^10.69.0",
-    "bullmq": "^5.40.0",
-    "ioredis": "^5.5.0",
     "jose": "^6.2.8",
     "openai": "^7.4.0",
     "reflect-metadata": "^0.2.2",

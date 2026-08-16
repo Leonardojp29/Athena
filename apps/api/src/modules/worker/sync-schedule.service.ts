@@ -1,34 +1,26 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Queue } from 'bullmq';
 import { PrismaService } from '../../shared/prisma.service.js';
 
 /**
- * La cadencia de los jobs recurrentes vive en `sync_schedules`, no en el código.
+ * El registro de los recurrentes: cuándo corrió cada uno por última vez.
  *
- * La tabla existía desde la Fase 0 con ese comentario y nadie la leía: los tres schedulers
- * estaban cableados. Una tabla vacía que promete algo es peor que no tenerla, porque miente
- * sobre la forma del sistema.
- *
- * `cron` lleva un patrón de cinco campos; para intervalos que no se pueden expresar en cron
- * —30 segundos, por ejemplo— va `metadata.everyMs`. Exactamente uno de los dos.
+ * Ya no programa nada —el tic lo dispara pg_cron en producción y el bucle del worker en local—,
+ * pero el sello de cada corrida sigue siendo el diagnóstico más barato del sistema: si
+ * `daily-refresh` tiene más de un día, algo no está corriendo, y `atrasados()` lo dice para que
+ * quien despierte lo recupere. Así fue como un cron de medianoche estuvo ocho días sin correr sin
+ * que fallara nada: desde entonces, esto existe.
  */
 export type JobRecurrente = 'live-tick' | 'process-outbox' | 'daily-refresh';
 
-interface Cadencia {
-  jobKind: JobRecurrente;
-  cron: string | null;
-  everyMs: number | null;
-  tz?: string;
-}
-
-/* Lo que estaba cableado, ahora como semilla: la primera corrida se comporta igual que antes. */
-const SEMILLA: Cadencia[] = [
-  { jobKind: 'live-tick', cron: null, everyMs: 60_000 },
-  { jobKind: 'process-outbox', cron: null, everyMs: 30_000 },
-  { jobKind: 'daily-refresh', cron: '0 5 * * *', everyMs: null, tz: 'UTC' },
+/* La primera corrida siembra la tabla: una tabla vacía que promete algo miente sobre el sistema. */
+const SEMILLA: Array<{ jobKind: JobRecurrente; cron: string | null; metadata: object }> = [
+  { jobKind: 'live-tick', cron: null, metadata: { everyMs: 60_000 } },
+  { jobKind: 'process-outbox', cron: null, metadata: { everyMs: 30_000 } },
+  { jobKind: 'daily-refresh', cron: '0 5 * * *', metadata: { tz: 'UTC' } },
 ];
 
 const CONOCIDOS = new Set<string>(SEMILLA.map((s) => s.jobKind));
+const UN_DIA_MS = 24 * 3600_000;
 
 @Injectable()
 export class SyncScheduleService {
@@ -36,75 +28,17 @@ export class SyncScheduleService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /**
-   * Registra en BullMQ lo que dice la tabla y quita lo que quedó apagado. Si la base no
-   * responde, cae a la semilla: un worker que no arranca porque no pudo leer una cadencia es
-   * peor que un worker con la cadencia por defecto.
-   */
-  async apply(queue: Queue): Promise<void> {
-    let filas: Cadencia[];
+  /** Siembra las cadencias si la tabla está vacía. Se llama al arrancar el worker; es idempotente. */
+  async seed(): Promise<void> {
     try {
-      filas = await this.load();
+      const existentes = await this.prisma.syncSchedule.findMany({ select: { jobKind: true } });
+      if (existentes.length > 0) return;
+      await this.prisma.syncSchedule.createMany({
+        data: SEMILLA.map((s) => ({ jobKind: s.jobKind, cron: s.cron ?? '', metadata: s.metadata })),
+      });
+      this.logger.log('Cadencia sembrada en sync_schedules');
     } catch (error) {
-      this.logger.warn(
-        `No se pudo leer sync_schedules (${String(error).slice(0, 120)}): se usa la cadencia por defecto`,
-      );
-      filas = SEMILLA;
-    }
-
-    const activos = new Map(filas.map((f) => [f.jobKind, f]));
-
-    for (const jobKind of CONOCIDOS as Set<JobRecurrente>) {
-      const cadencia = activos.get(jobKind);
-      if (!cadencia) {
-        await queue.removeJobScheduler(jobKind).catch(() => undefined);
-        continue;
-      }
-      await queue.upsertJobScheduler(
-        jobKind,
-        cadencia.everyMs !== null
-          ? { every: cadencia.everyMs }
-          : { pattern: cadencia.cron as string, tz: cadencia.tz },
-        { name: jobKind },
-      );
-    }
-
-    this.logger.log(
-      `Cadencia desde la base: ${[...activos.values()].map(describir).join(' · ') || 'ninguna'}`,
-    );
-
-    await this.recuperarAtrasados(queue);
-  }
-
-  /**
-   * Los recurrentes que se perdieron su turno, al arrancar.
-   *
-   * Un cron solo dispara si hay alguien escuchando a esa hora. El refresco diario va a las 05:00 UTC
-   * —medianoche en Lima— y en una máquina que no está encendida a esa hora **no corre nunca**: las
-   * tablas de posiciones se quedaron ocho días viejas sin que nada fallara. Así que al levantarse, lo
-   * que hace más de un día que no corre se encola una vez.
-   */
-  private async recuperarAtrasados(queue: Queue): Promise<void> {
-    const UN_DIA = 24 * 3600_000;
-    /* Si la base no responde, se sigue sin recuperar nada: un worker que no arranca es peor. */
-    const filas = await this.prisma.syncSchedule
-      .findMany({
-        where: { enabled: true },
-        select: { jobKind: true, cron: true, lastRunAt: true },
-      })
-      .catch(() => []);
-
-    for (const fila of filas) {
-      /* Solo los de horario fijo: los que corren cada minuto no se pierden nada. */
-      if (!fila.cron || fila.cron.trim() === '') continue;
-      const atraso = Date.now() - (fila.lastRunAt?.getTime() ?? 0);
-      if (atraso < UN_DIA) continue;
-      const dias = fila.lastRunAt ? Math.floor(atraso / UN_DIA) : null;
-      this.logger.warn(
-        `${fila.jobKind} no corre desde hace ${dias ?? 'siempre'} día(s): se encola ahora`,
-      );
-      /* Con un minuto de gracia: que el arranque termine de levantar todo antes de pedir nada. */
-      await queue.add(fila.jobKind, {}, { delay: 60_000, removeOnComplete: 50 });
+      this.logger.warn(`No se pudo sembrar sync_schedules: ${String(error).slice(0, 120)}`);
     }
   }
 
@@ -116,59 +50,27 @@ export class SyncScheduleService {
       .catch(() => undefined);
   }
 
-  private async load(): Promise<Cadencia[]> {
-    const filas = await this.prisma.syncSchedule.findMany({
-      select: { jobKind: true, cron: true, enabled: true, metadata: true },
-    });
-
-    if (filas.length === 0) {
-      await this.seed();
-      return SEMILLA;
-    }
-
-    const salida: Cadencia[] = [];
-    for (const fila of filas) {
-      if (!fila.enabled) continue;
-      if (!CONOCIDOS.has(fila.jobKind)) {
-        this.logger.warn(`sync_schedules tiene un job que este worker no conoce: ${fila.jobKind}`);
-        continue;
-      }
-      const meta = (fila.metadata ?? {}) as { everyMs?: number; tz?: string };
-      const everyMs = typeof meta.everyMs === 'number' && meta.everyMs > 0 ? meta.everyMs : null;
-      const cron = fila.cron.trim() === '' ? null : fila.cron;
-
-      /* Una fila sin ninguno de los dos no se puede programar y no vale apagar el worker. */
-      if (everyMs === null && cron === null) {
-        this.logger.warn(`sync_schedules ${fila.jobKind}: sin cron ni metadata.everyMs, se omite`);
-        continue;
-      }
-      salida.push({
-        jobKind: fila.jobKind as JobRecurrente,
-        cron,
-        everyMs,
-        ...(meta.tz ? { tz: meta.tz } : {}),
+  /**
+   * Los de horario fijo que llevan más de un día sin correr.
+   *
+   * Un cron solo dispara si hay alguien despierto a esa hora: el refresco diario va a las 05:00 UTC
+   * y en una máquina apagada a medianoche no corría nunca. Quien arranca —el worker local o el
+   * primer tic del día en producción— pregunta esto y recupera lo perdido.
+   */
+  async atrasados(): Promise<JobRecurrente[]> {
+    try {
+      const filas = await this.prisma.syncSchedule.findMany({
+        where: { enabled: true },
+        select: { jobKind: true, cron: true, lastRunAt: true },
       });
+      return filas
+        .filter((f) => CONOCIDOS.has(f.jobKind))
+        .filter((f) => f.cron !== null && f.cron.trim() !== '')
+        .filter((f) => Date.now() - (f.lastRunAt?.getTime() ?? 0) > UN_DIA_MS)
+        .map((f) => f.jobKind as JobRecurrente);
+    } catch {
+      /* Sin base no hay diagnóstico, pero tampoco puede ser lo que impida arrancar. */
+      return [];
     }
-    return salida;
   }
-
-  private async seed(): Promise<void> {
-    await this.prisma.syncSchedule.createMany({
-      data: SEMILLA.map((s) => ({
-        jobKind: s.jobKind,
-        cron: s.cron ?? '',
-        enabled: true,
-        metadata: {
-          ...(s.everyMs !== null ? { everyMs: s.everyMs } : {}),
-          ...(s.tz ? { tz: s.tz } : {}),
-        },
-      })),
-      skipDuplicates: true,
-    });
-    this.logger.log('sync_schedules estaba vacía: sembrada con la cadencia por defecto');
-  }
-}
-
-function describir(c: Cadencia): string {
-  return `${c.jobKind} ${c.everyMs !== null ? `cada ${c.everyMs / 1000}s` : `${c.cron} ${c.tz ?? ''}`.trim()}`;
 }
