@@ -1,44 +1,54 @@
 ---
 import Icon from '../Icon.astro';
-import MatchRow from '../MatchRow.astro';
-import SelectorFase from '../SelectorFase.astro';
+import PartidoDeGrupo from './PartidoDeGrupo.astro';
 import StandingsTable from '../StandingsTable.astro';
-import type { RondaDePartidos, StandingRow } from '../../lib/api';
+import type { RondaDeGrupos, StandingRow } from '../../lib/api';
 import { nombreFase } from '../../lib/paises';
 
 /*
- * La fase de grupos de una copa.
+ * La fase de grupos, grupo por grupo.
  *
- * Con ocho grupos de cuatro equipos, el selector mostraba un grupo por vez y dejaba el resto de la
- * columna vacío: en una copa se quiere leer la fase entera de un golpe. Con dos o menos —una fase
- * liga, dos conferencias— vuelve el selector y la tabla completa, que ahí sí tiene qué mostrar.
+ * Antes era una grilla de cuatro columnas con tablas chiquitas y, colgando de cada una, un `<details>`
+ * con sus partidos: ocho grupos de Libertadores eran una pared de números sin un solo partido a la
+ * vista, y había que abrirlos uno por uno. Una tabla dice cómo quedó el grupo; no dice contra quién
+ * ni con qué goles, que es justo lo que se busca al abrir un grupo.
  *
- * Cada grupo lleva además **sus partidos, fecha por fecha**: una tabla dice cómo quedó, pero no con
- * quién ni cuándo, y en un Mundial esos tres partidos son la fase entera. Van plegados —abiertos en
- * el grupo que se está jugando— porque doce grupos abiertos son una página de dos pantallas. No
- * cuestan un pedido: la vista de la competencia ya parte cada fecha en bloques por grupo.
+ * Ahora la grilla es la puerta y el detalle ocupa el mismo contenedor en **dos columnas iguales**: la
+ * tabla completa a la izquierda y, a la derecha, los partidos de una fecha con sus goleadores debajo
+ * de cada equipo. Las pestañas saltan de un grupo a otro sin volver a la grilla.
+ *
+ * Todos los paneles se dibujan en el servidor y el guion solo los muestra: son noventa y seis
+ * partidos en una Libertadores, y a cambio la página tiene su contenido sin depender de JavaScript.
+ * El estado va a la URL —`?grupo=` y `?fecha=`— así que el enlace es compartible.
  */
 interface Props {
   grupos: Array<{ label: string; rows: StandingRow[]; current: boolean }>;
-  abierto: { label: string; rows: StandingRow[] } | undefined;
-  juntos: boolean;
-  hrefFase: (label: string) => string;
+  /** Las fechas de la fase de grupos, cada una partida por grupo. */
+  rondas?: RondaDeGrupos[];
+  /** El grupo pedido por la URL; sin él, la grilla. */
+  abierto?: string | null;
+  /** La fecha pedida por la URL, 1 en adelante. */
+  fechaPedida?: number | null;
+  hrefGrupo: (label: string | null) => string;
   hrefEquipo: (slug: string) => string;
-  /** Todas las rondas del torneo: de acá salen los partidos de cada grupo. */
-  rondas?: RondaDePartidos[];
   hrefPartido?: (id: string) => string;
 }
 
-const { grupos, abierto, juntos, hrefFase, hrefEquipo, rondas = [], hrefPartido } = Astro.props;
+const {
+  grupos,
+  rondas = [],
+  abierto = null,
+  fechaPedida = null,
+  hrefGrupo,
+  hrefEquipo,
+  hrefPartido,
+} = Astro.props;
 
-/*
- * Los partidos de un grupo, por fecha. Solo las rondas de la fase de grupos traen un bloque con su
- * nombre, así que buscarlo por título alcanza para no confundirlo con la ida y vuelta de una llave.
- */
 /*
  * La tabla que el proveedor llama "Group Stage" junto a doce grupos no es la fase de grupos: es el
  * ranking de los que salieron terceros, que en un Mundial de 48 decide ocho clasificados. Se lo
- * comprueba —todos son terceros de su grupo— antes de ponerle el nombre.
+ * comprueba —todos son terceros de su grupo— antes de ponerle el nombre, y no abre detalle porque
+ * no es un grupo: no tiene partidos propios.
  */
 const esDeTerceros = (label: string, rows: StandingRow[]) =>
   grupos.length > 1 &&
@@ -49,18 +59,43 @@ const esDeTerceros = (label: string, rows: StandingRow[]) =>
     ),
   );
 
-const tituloDe = (g: { label: string; rows: StandingRow[] }) =>
-  esDeTerceros(g.label, g.rows) ? 'Mejores terceros' : nombreFase(g.label);
+/* "Fase de grupos · fecha 6" → "fecha 6": el bloque ya se llama Fase de grupos. */
+const soloLaFecha = (label: string) => label.split('·').at(-1)?.trim() ?? label;
 
 const fechasDe = (label: string) =>
   rondas
-    .map((ronda) => ({ ronda: ronda.label, bloque: ronda.bloques.find((b) => b.titulo === label) }))
-    .filter((f): f is { ronda: string; bloque: NonNullable<typeof f.bloque> } => f.bloque !== undefined);
+    .map((ronda) => ({
+      label: soloLaFecha(ronda.label),
+      enJuego: ronda.enJuego,
+      partidos: ronda.bloques.find((b) => b.titulo === label)?.partidos ?? [],
+    }))
+    .filter((f) => f.partidos.length > 0);
+
+/* La que se juega; si el grupo terminó, la última con algo jugado, que es donde quedó. */
+const fechaInicial = (fechas: ReturnType<typeof fechasDe>) => {
+  if (fechaPedida !== null && fechaPedida >= 1 && fechaPedida <= fechas.length) return fechaPedida - 1;
+  const enJuego = fechas.findIndex((f) => f.enJuego);
+  if (enJuego !== -1) return enJuego;
+  const jugada = fechas.map((f) => f.partidos.some((p) => p.status === 'finished')).lastIndexOf(true);
+  return jugada === -1 ? 0 : jugada;
+};
+
+const conDetalle = grupos
+  .map((g) => ({ ...g, fechas: fechasDe(g.label), terceros: esDeTerceros(g.label, g.rows) }))
+  .map((g) => ({ ...g, abrible: !g.terceros && g.fechas.length > 0 }));
+
+/* Con uno o dos grupos no hay grilla que valga: se abre el detalle, que es lo que hay que mostrar. */
+const soloUno = conDetalle.filter((g) => g.abrible).length <= 2;
+const activo =
+  conDetalle.find((g) => g.abrible && g.label === abierto) ??
+  (soloUno ? conDetalle.find((g) => g.abrible) : undefined);
+const tituloDe = (g: (typeof conDetalle)[number]) =>
+  g.terceros ? 'Mejores terceros' : nombreFase(g.label);
 ---
 
 {
   grupos.length > 0 && (
-    <section class="rounded-xl border border-border bg-surface">
+    <section class="rounded-xl border border-border bg-surface" data-grupos>
       <header class="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3">
         <h2 class="flex items-center gap-2 font-display text-base font-semibold uppercase">
           Fase de grupos
@@ -68,82 +103,227 @@ const fechasDe = (label: string) =>
             {grupos.length > 1 ? `${grupos.length} grupos` : nombreFase(grupos[0]?.label ?? '')}
           </span>
         </h2>
-        {!juntos && abierto && (
-          <SelectorFase grupos={grupos} activo={abierto.label} href={hrefFase} />
-        )}
       </header>
 
-      {juntos ? (
-        <!-- A todo el ancho entran cuatro grupos por fila: en dos, la tabla de cuatro equipos se
-             estiraba y el nombre quedaba lejos de los puntos. -->
-        <div class="grid gap-x-6 gap-y-5 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {grupos.map((g) => {
-            const fechas = fechasDe(g.label);
-            return (
-              <div>
-                <p class="mb-1 font-display text-sm font-semibold uppercase leading-none">
+      <!-- La grilla: la puerta a cada grupo. Cada tarjeta entera es el botón. -->
+      <div
+        data-panel-grilla
+        hidden={activo !== undefined}
+        class="grid gap-x-6 gap-y-5 p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+      >
+        {conDetalle.map((g) => (
+          <div class="grid content-start gap-1">
+            <p class="font-display text-sm font-semibold uppercase leading-none">{tituloDe(g)}</p>
+            <StandingsTable rows={g.rows} compacto hrefEquipo={hrefEquipo} />
+            {g.abrible && (
+              <a
+                href={hrefGrupo(g.label)}
+                data-abrir-grupo={g.label}
+                class="group/abrir flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs font-medium text-primary-ink transition-colors hover:bg-canvas-subtle"
+              >
+                Ver el grupo
+                <span class="tabular text-ink-muted">
+                  · {g.fechas.length} {g.fechas.length === 1 ? 'fecha' : 'fechas'}
+                </span>
+                <Icon
+                  name="chevron-derecha"
+                  size={12}
+                  class="ml-auto shrink-0 transition-transform group-hover/abrir:translate-x-0.5"
+                />
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <!-- Un panel por grupo: tabla y partidos, en dos columnas iguales. -->
+      {conDetalle
+        .filter((g) => g.abrible)
+        .map((g) => (
+          <div data-panel-grupo={g.label} hidden={activo?.label !== g.label}>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3 py-2">
+              {!soloUno && (
+                <a
+                  href={hrefGrupo(null)}
+                  data-cerrar-grupo
+                  class="flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+                >
+                  <Icon name="flecha-izquierda" size={12} />
+                  Todos los grupos
+                </a>
+              )}
+
+              {!soloUno && (
+                <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Grupos">
+                  {conDetalle
+                    .filter((otro) => otro.abrible)
+                    .map((otro) => (
+                      <a
+                        href={hrefGrupo(otro.label)}
+                        data-abrir-grupo={otro.label}
+                        aria-current={otro.label === g.label ? 'true' : undefined}
+                        class="rounded-md px-2 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink aria-[current]:bg-primary/12 aria-[current]:text-ink"
+                      >
+                        {tituloDe(otro).replace(/^Grupo\s+/i, '')}
+                      </a>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div class="grid gap-4 p-3 lg:grid-cols-2">
+              <div class="min-w-0">
+                <p class="mb-1.5 font-display text-sm font-semibold uppercase leading-none">
                   {tituloDe(g)}
                 </p>
-                <StandingsTable rows={g.rows} compacto hrefEquipo={hrefEquipo} />
-
-                {fechas.length > 0 && (
-                  <details class="group/partidos mt-1.5" open={g.current}>
-                    <summary class="flex cursor-pointer list-none items-center gap-1.5 rounded px-1 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink">
-                      <Icon
-                        name="chevron-derecha"
-                        size={11}
-                        class="shrink-0 transition-transform group-open/partidos:rotate-90"
-                      />
-                      Sus partidos
-                      <span class="tabular">
-                        ({fechas.reduce((n, f) => n + f.bloque.partidos.length, 0)})
-                      </span>
-                    </summary>
-                    <div class="grid gap-1 pt-1">
-                      {fechas.map((f) => (
-                        <div>
-                          <p class="px-1 text-[10px] font-medium tracking-label text-ink-muted uppercase">
-                            {f.ronda}
-                          </p>
-                          {f.bloque.partidos.map((partido) => (
-                            <MatchRow
-                              match={partido}
-                              showDate
-                              hrefEquipo={hrefEquipo}
-                              hrefPartido={hrefPartido}
-                            />
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                )}
+                <StandingsTable rows={g.rows} hrefEquipo={hrefEquipo} />
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        abierto && (
-          <div class="grid gap-3 p-3">
-            <StandingsTable rows={abierto.rows} hrefEquipo={hrefEquipo} />
-            {fechasDe(abierto.label).map((f) => (
-              <div>
-                <p class="px-1 pb-0.5 text-2xs font-medium tracking-label text-ink-muted uppercase">
-                  {f.ronda}
-                </p>
-                {f.bloque.partidos.map((partido) => (
-                  <MatchRow
-                    match={partido}
-                    showDate
-                    hrefEquipo={hrefEquipo}
-                    hrefPartido={hrefPartido}
-                  />
+
+              <!-- La fecha, con las flechas del carrusel de rondas: mismo gesto en toda la página. -->
+              <div class="min-w-0" data-fechas>
+                <div class="mb-1.5 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    data-fecha-anterior
+                    class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+                    aria-label="Fecha anterior"
+                  >
+                    <Icon name="chevron-derecha" size={14} class="rotate-180" />
+                  </button>
+                  <p data-fecha-titulo class="font-display text-sm font-semibold uppercase leading-none">
+                    {g.fechas[fechaInicial(g.fechas)]?.label ?? ''}
+                  </p>
+                  <button
+                    type="button"
+                    data-fecha-siguiente
+                    class="grid size-6 shrink-0 cursor-pointer place-items-center rounded text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink disabled:cursor-default disabled:opacity-25"
+                    aria-label="Fecha siguiente"
+                  >
+                    <Icon name="chevron-derecha" size={14} />
+                  </button>
+                  <span class="ml-auto flex items-center gap-1">
+                    {g.fechas.map((_, i) => (
+                      <button
+                        type="button"
+                        data-fecha-punto={i}
+                        aria-current={i === fechaInicial(g.fechas) ? 'true' : undefined}
+                        aria-label={`Fecha ${i + 1}`}
+                        class="size-1.5 cursor-pointer rounded-full bg-border-strong transition-colors hover:bg-ink-muted aria-[current]:bg-primary-ink"
+                      />
+                    ))}
+                  </span>
+                </div>
+
+                {g.fechas.map((fecha, i) => (
+                  <div
+                    data-fecha-panel={i}
+                    data-fecha-rotulo={fecha.label}
+                    hidden={i !== fechaInicial(g.fechas)}
+                    class="grid gap-2"
+                  >
+                    {fecha.partidos.map((partido) => (
+                      <PartidoDeGrupo
+                        partido={partido}
+                        hrefPartido={hrefPartido}
+                        hrefEquipo={hrefEquipo}
+                      />
+                    ))}
+                  </div>
                 ))}
               </div>
-            ))}
+            </div>
           </div>
-        )
-      )}
+        ))}
     </section>
   )
 }
+
+<script>
+  /*
+   * Abrir un grupo y moverse por sus fechas sin navegar: los paneles ya están en la página y acá solo
+   * se muestran. La URL se actualiza igual —`?grupo=` y `?fecha=`— para que el enlace siga siendo
+   * compartible y el botón de atrás haga lo que promete.
+   */
+  const caja = document.querySelector<HTMLElement>('[data-grupos]');
+  if (caja) {
+    const grilla = caja.querySelector<HTMLElement>('[data-panel-grilla]');
+    const paneles = [...caja.querySelectorAll<HTMLElement>('[data-panel-grupo]')];
+
+    const url = (grupo: string | null, fecha: number | null) => {
+      const u = new URL(location.href);
+      if (grupo) u.searchParams.set('grupo', grupo);
+      else u.searchParams.delete('grupo');
+      if (fecha) u.searchParams.set('fecha', String(fecha));
+      else u.searchParams.delete('fecha');
+      return u;
+    };
+
+    const mostrarGrupo = (label: string | null): void => {
+      if (grilla) grilla.hidden = label !== null;
+      for (const panel of paneles) panel.hidden = panel.dataset.panelGrupo !== label;
+    };
+
+    for (const boton of caja.querySelectorAll<HTMLAnchorElement>('[data-abrir-grupo]')) {
+      boton.addEventListener('click', (evento) => {
+        if (evento.metaKey || evento.ctrlKey || evento.shiftKey) return;
+        evento.preventDefault();
+        const label = boton.dataset.abrirGrupo as string;
+        mostrarGrupo(label);
+        history.pushState({ grupo: label }, '', url(label, null));
+      });
+    }
+
+    for (const boton of caja.querySelectorAll<HTMLAnchorElement>('[data-cerrar-grupo]')) {
+      boton.addEventListener('click', (evento) => {
+        if (evento.metaKey || evento.ctrlKey || evento.shiftKey) return;
+        evento.preventDefault();
+        mostrarGrupo(null);
+        history.pushState({ grupo: null }, '', url(null, null));
+      });
+    }
+
+    /* Las fechas de cada grupo, cada una con su propio carrusel. */
+    for (const zona of caja.querySelectorAll<HTMLElement>('[data-fechas]')) {
+      const fechas = [...zona.querySelectorAll<HTMLElement>('[data-fecha-panel]')];
+      if (fechas.length === 0) continue;
+      const titulo = zona.querySelector<HTMLElement>('[data-fecha-titulo]');
+      const anterior = zona.querySelector<HTMLButtonElement>('[data-fecha-anterior]');
+      const siguiente = zona.querySelector<HTMLButtonElement>('[data-fecha-siguiente]');
+      const puntos = [...zona.querySelectorAll<HTMLButtonElement>('[data-fecha-punto]')];
+      /* El rótulo de cada fecha ya está escrito en el servidor: acá solo se copia al encabezado. */
+      const rotulos = fechas.map((p) => p.dataset.fechaRotulo ?? titulo?.textContent ?? '');
+      let actual = Math.max(
+        0,
+        fechas.findIndex((p) => !p.hidden),
+      );
+
+      const mostrar = (indice: number): void => {
+        actual = Math.min(fechas.length - 1, Math.max(0, indice));
+        fechas.forEach((panel, i) => {
+          panel.hidden = i !== actual;
+        });
+        puntos.forEach((punto, i) => {
+          if (i === actual) punto.setAttribute('aria-current', 'true');
+          else punto.removeAttribute('aria-current');
+        });
+        if (titulo && rotulos[actual]) titulo.textContent = rotulos[actual] as string;
+        if (anterior) anterior.disabled = actual === 0;
+        if (siguiente) siguiente.disabled = actual === fechas.length - 1;
+
+        const grupo = zona.closest<HTMLElement>('[data-panel-grupo]')?.dataset.panelGrupo ?? null;
+        if (grupo && !zona.closest('[hidden]')) {
+          history.replaceState({ grupo }, '', url(grupo, actual + 1));
+        }
+      };
+
+      anterior?.addEventListener('click', () => mostrar(actual - 1));
+      siguiente?.addEventListener('click', () => mostrar(actual + 1));
+      puntos.forEach((punto, i) => punto.addEventListener('click', () => mostrar(i)));
+      mostrar(actual);
+    }
+
+    addEventListener('popstate', () => {
+      mostrarGrupo(new URL(location.href).searchParams.get('grupo'));
+    });
+  }
+</script>

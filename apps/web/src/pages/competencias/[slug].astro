@@ -175,6 +175,22 @@ const cabecera = paleta
  */
 const fasePedida = Astro.url.searchParams.get('tabla');
 const grupo = standingGroups.find((g) => g.label === fasePedida) ?? standingGroups[0];
+/*
+ * El grupo abierto y su fecha viven en la URL: el enlace se comparte y el servidor lo dibuja abierto
+ * aunque no haya JavaScript.
+ */
+const grupoPedido = Astro.url.searchParams.get('grupo');
+const fechaCruda = Number(Astro.url.searchParams.get('fecha'));
+const fechaDeGrupo = Number.isInteger(fechaCruda) && fechaCruda > 0 ? fechaCruda : null;
+const enlaceGrupo = (label: string | null) => {
+  const params = new URLSearchParams(Astro.url.search);
+  if (label) params.set('grupo', label);
+  else params.delete('grupo');
+  params.delete('fecha');
+  const query = params.toString();
+  return `/competencias/${competition.slug}${query ? `?${query}` : ''}`;
+};
+
 const enlaceFase = (label: string) => {
   const params = new URLSearchParams({ tabla: label });
   if (temporadaPedida) params.set('temporada', temporadaPedida);
@@ -446,11 +462,11 @@ const jsonLd = {
               fase.etapa === 'grupos' ? (
                 <BloqueGrupos
                   grupos={standingGroups}
-                  abierto={grupo}
-                  juntos={gruposJuntos}
-                  hrefFase={enlaceFase}
-                  hrefEquipo={enlaceEquipoCopa}
                   rondas={rondasDeGrupos}
+                  abierto={grupoPedido}
+                  fechaPedida={fechaDeGrupo}
+                  hrefGrupo={enlaceGrupo}
+                  hrefEquipo={enlaceEquipoCopa}
                   hrefPartido={enlacePartidoEnCopa}
                 />
               ) : fase.rondas.length > 0 ? (

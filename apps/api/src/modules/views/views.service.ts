@@ -95,6 +95,17 @@ const VENTANA = 3;
 /* La etapa sirve para separar las columnas acá adentro; afuera nadie la usa y no viaja. */
 const sinEtapa = <T extends { etapa: unknown }>({ etapa: _etapa, ...resto }: T) => resto;
 
+/** Un gol de la fase de grupos: lo mínimo para escribir "Pedro 12'" debajo del partido. */
+export interface GolDeGrupo {
+  id: string;
+  kind: string;
+  minute: number;
+  extraMinute: number | null;
+  detail: unknown;
+  team: { id: string };
+  player: { id: string; name: string; slug: string; photoUrl: string | null } | null;
+}
+
 const matchCard = {
   id: true,
   kickoffUtc: true,
@@ -560,6 +571,49 @@ export class ViewsService {
 
     const rondasDePartidos = this.partidosPorRonda(todos, rondas, jornada, enCurso, grupoDe);
 
+    /*
+     * Los goles de la fase de grupos, para que cada partido pueda mostrar quién los hizo.
+     *
+     * Es una consulta más y solo cuando el torneo tiene grupos: son los cien partidos de una
+     * Libertadores, no los trescientos ochenta de una liga. El resto de la vista no los lleva —una
+     * fila de resultados no muestra goleadores— así que no se pagan donde no se usan.
+     */
+    const idsDeGrupos = rondasDePartidos.grupos.flatMap((r) => r.partidos.map((m) => m.id));
+    const golesPorPartido = new Map<string, GolDeGrupo[]>();
+    if (idsDeGrupos.length > 0) {
+      const goles = await this.prisma.matchEvent.findMany({
+        relationLoadStrategy: JOIN,
+        where: { matchId: { in: idsDeGrupos }, kind: { in: ['goal', 'penalty_goal', 'own_goal'] } },
+        orderBy: [
+          { minute: 'asc' },
+          { extraMinute: { sort: 'asc', nulls: 'first' } },
+          { id: 'asc' },
+        ],
+        select: {
+          id: true,
+          matchId: true,
+          kind: true,
+          minute: true,
+          extraMinute: true,
+          detail: true,
+          team: { select: { id: true } },
+          player: playerLink,
+        },
+      });
+      for (const gol of goles) {
+        const { matchId, ...evento } = gol;
+        golesPorPartido.set(matchId, [...(golesPorPartido.get(matchId) ?? []), evento]);
+      }
+    }
+    const conGoles = (ronda: (typeof rondasDePartidos.grupos)[number]) => ({
+      ...ronda,
+      partidos: ronda.partidos.map((m) => ({ ...m, eventos: golesPorPartido.get(m.id) ?? [] })),
+      bloques: ronda.bloques.map((b) => ({
+        ...b,
+        partidos: b.partidos.map((m) => ({ ...m, eventos: golesPorPartido.get(m.id) ?? [] })),
+      })),
+    });
+
     const standingGroups = [...groups.entries()]
       .map(([label, rows]) => ({ label, rows, current: vigentes.has(label) }))
       .sort((a, b) => Number(b.current) - Number(a.current));
@@ -594,8 +648,9 @@ export class ViewsService {
       estado,
       /* Los partidos agrupados por ronda, para navegarlos de una en una en lugar de dos listas. */
       porRonda: rondasDePartidos.ventana,
-      /* La fase de grupos completa: el bloque de grupos necesita las tres fechas, no la ventana. */
-      rondasDeGrupos: rondasDePartidos.grupos,
+      /* La fase de grupos completa, con los goles de cada partido: el bloque de grupos necesita las
+         tres fechas —no la ventana— y quién marcó en cada una. */
+      rondasDeGrupos: rondasDePartidos.grupos.map(conGoles),
       /*
        * El nombre de la jornada en español, para no traducirlo en cada vista. Solo cuando el dominio
        * la reconoce como ronda de copa: la jornada de una liga —"Clausura - 5"— la rotula la web con

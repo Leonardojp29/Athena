@@ -29,12 +29,19 @@ const { tabs, active, enlace } = Astro.props;
   {
     tabs.map((tab) =>
       tab.disabled ? (
-        <span
+        /*
+         * Un `<button disabled>` y no un `<span>` gris: es un control apagado y así lo entienden el
+         * lector de pantalla y la auditoría de contraste, que a un texto gris suelto le exige 4,5:1
+         * y a un control inactivo no —porque no hay nada que leer ahí—.
+         */
+        <button
+          type="button"
+          disabled
           class="shrink-0 cursor-not-allowed border-b-2 border-transparent px-3 py-2.5 text-sm text-ink-muted/50"
           title="Sin datos para este partido"
         >
           {tab.label}
-        </span>
+        </button>
       ) : (
         <a
           href={enlace(tab.id)}

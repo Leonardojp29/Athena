@@ -203,6 +203,43 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * La fase de grupos se abre grupo por grupo: la tabla dice cómo quedó, pero no contra quién ni con
+   * qué goles. El detalle pone la tabla y los partidos de una fecha en dos columnas, y abre en la
+   * fecha que se juega —o la última jugada, que en un torneo terminado es donde quedó—.
+   */
+  test('un grupo abre su tabla y sus partidos, y se navega sin recargar', async ({ page }) => {
+    await page.goto('/competencias/conmebol-libertadores');
+
+    const abrir = page.locator('[data-abrir-grupo]').first();
+    test.skip((await abrir.count()) === 0, 'esta copa no tiene fase de grupos cargada');
+    const grupo = (await abrir.getAttribute('data-abrir-grupo')) as string;
+    await abrir.click();
+
+    /* Sin recargar: la URL lleva el grupo y el panel ya estaba en la página. */
+    await expect(page).toHaveURL(/\?grupo=/);
+    const panel = page.locator(`[data-panel-grupo="${grupo}"]`);
+    await expect(panel).toBeVisible();
+
+    /* Dos partidos de esa fecha, con su marcador. */
+    const partidos = panel.locator('[data-fecha-panel]:not([hidden]) [data-partido]');
+    expect(await partidos.count()).toBeGreaterThan(0);
+    await expect(partidos.first().locator('[data-marcador]')).toBeVisible();
+
+    /* La flecha mueve de fecha y el título la acompaña. */
+    const titulo = panel.locator('[data-fecha-titulo]');
+    const antes = await titulo.textContent();
+    await panel.locator('[data-fecha-anterior]').click();
+    expect(await titulo.textContent()).not.toBe(antes);
+
+    /* Y se salta a otro grupo sin volver a la grilla. */
+    const otro = panel.locator('[data-abrir-grupo]').nth(1);
+    const etiqueta = (await otro.getAttribute('data-abrir-grupo')) as string;
+    await otro.click();
+    await expect(page.locator(`[data-panel-grupo="${etiqueta}"]`)).toBeVisible();
+    await expect(panel).toBeHidden();
+  });
+
+  /*
    * Y un equipo también se abre dentro de su copa: el escudo de una llave enlazaba a `?equipo=` y
    * la página ignoraba el parámetro, así que el clic no hacía nada. Lo que importa es su camino en
    * el torneo —de la fase previa hasta donde llegó—, que no existe en su ficha de club.

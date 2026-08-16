@@ -269,8 +269,8 @@ export interface CompetitionView {
    * las listas de próximos y últimos, que eran el mismo calendario partido en dos.
    */
   porRonda: RondaDePartidos[];
-  /** La fase de grupos entera, sin la ventana de siete rondas que acota `porRonda`. */
-  rondasDeGrupos: RondaDePartidos[];
+  /** La fase de grupos entera —sin la ventana que acota `porRonda`— y con los goles de cada partido. */
+  rondasDeGrupos: RondaDeGrupos[];
   /** La jornada en curso ya traducida: "Octavos de final", "Fase de grupos · fecha 6". */
   roundLabel: string | null;
   /** El once y el mejor de toda la temporada; null cuando no hay notas suficientes. */
@@ -319,6 +319,29 @@ export interface RondaDeCuadro {
   ties: LlaveDeCuadro[];
   /** Cuántas llaves va a tener cuando se defina; solo en las rondas que todavía no se sortearon. */
   porDefinir?: number;
+}
+
+/** Un gol de la fase de grupos: lo justo para escribir "Pedro 12'" debajo del partido. */
+export interface GolDeGrupo {
+  id: string;
+  kind: string;
+  minute: number;
+  extraMinute: number | null;
+  detail: { playerName?: string | null } | null;
+  team: { id: string };
+  player: { id: string; name: string; slug: string; photoUrl: string | null } | null;
+}
+
+/** El partido de un grupo trae además sus goles: el detalle del grupo los muestra. */
+export interface PartidoDeGrupo extends PartidoDeCuadro {
+  eventos: GolDeGrupo[];
+}
+
+export interface RondaDeGrupos {
+  label: string;
+  enJuego: boolean;
+  partidos: PartidoDeGrupo[];
+  bloques: Array<{ titulo: string; partidos: PartidoDeGrupo[] }>;
 }
 
 /** Una ronda con sus partidos, para navegarlos de una en una. */

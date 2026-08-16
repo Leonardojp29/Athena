@@ -1,0 +1,114 @@
+---
+import EventIcon from '../EventIcon.astro';
+import type { PartidoDeGrupo } from '../../lib/api';
+import { formatDateLong, formatKickoff, isLive, minutoEnVivo, statusLabel } from '../../lib/format';
+import { goleadoresDelPartido } from '../../lib/relato';
+
+/*
+ * Un partido de la fase de grupos, con quién hizo los goles.
+ *
+ * Es la disposición de la cabecera del partido en cuerpo chico: cada equipo de su lado, el marcador
+ * en el medio y **los goleadores debajo de su equipo**. Una tabla dice cómo quedó el grupo; esto
+ * dice cómo se jugó, que es lo que se viene a mirar cuando se abre un grupo.
+ *
+ * Los goleadores salen de `goleadoresDelPartido`, la misma función del dominio que usa la cabecera:
+ * agrupa los minutos de quien hizo dos y pone el autogol del lado al que le contó.
+ */
+interface Props {
+  partido: PartidoDeGrupo;
+  hrefPartido?: (id: string) => string;
+  hrefEquipo?: (slug: string) => string;
+}
+
+const {
+  partido,
+  hrefPartido = (id: string) => `/partidos/${id}`,
+  hrefEquipo = (slug: string) => `/equipos/${slug}`,
+} = Astro.props;
+
+const vivo = isLive(partido.status);
+const hayMarcador = partido.homeScore !== null && partido.awayScore !== null;
+const goles = goleadoresDelPartido({ homeTeam: partido.homeTeam, events: partido.eventos });
+
+const estado = vivo
+  ? minutoEnVivo(partido.status, partido.elapsedMinutes, partido.statusDetail)
+  : partido.status === 'finished'
+    ? 'Final'
+    : statusLabel(partido.status);
+
+const lados = [
+  { equipo: partido.homeTeam, goleadores: goles.local, marcador: partido.homeScore },
+  { equipo: partido.awayTeam, goleadores: goles.visita, marcador: partido.awayScore },
+] as const;
+---
+
+<article
+  data-partido={partido.id}
+  class="group relative rounded-lg border border-border bg-canvas-subtle/40 p-3 transition-colors hover:border-border-strong"
+>
+  <a href={hrefPartido(partido.id)} class="absolute inset-0 rounded-lg" aria-label="Ver el partido"
+  ></a>
+
+  <!-- Todo dentro del mismo ancho: con la fecha en un borde y el marcador en el medio, la tarjeta
+       se leía como dos cosas sueltas. -->
+  <p class="mx-auto mb-2 flex max-w-lg items-center justify-between gap-2 text-[10px] text-ink-muted">
+    <span class="first-letter:uppercase">{formatDateLong(partido.kickoffUtc)}</span>
+    <span data-estado class:list={['shrink-0', vivo ? 'font-medium text-live-ink' : '']}>
+      {estado}
+    </span>
+  </p>
+
+  <div class="mx-auto grid max-w-lg grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-x-3">
+    {
+      lados.map(({ equipo, goleadores }, i) => (
+        <div class:list={['grid min-w-0 gap-1', i === 0 ? 'text-right' : '']}>
+          <a
+            href={hrefEquipo(equipo.slug)}
+            class:list={[
+              'relative flex min-w-0 items-center gap-1.5 text-xs font-medium hover:text-primary-ink',
+              i === 0 ? 'justify-end' : '',
+            ]}
+          >
+            {i === 0 && <span class="truncate">{equipo.name}</span>}
+            {equipo.logoUrl && (
+              <img src={equipo.logoUrl} alt="" width="18" height="18" loading="lazy" class="shrink-0" />
+            )}
+            {i === 1 && <span class="truncate">{equipo.name}</span>}
+          </a>
+
+          {/* Una línea por goleador y no por gol: los minutos de quien hizo dos van juntos. */}
+          {goleadores.length > 0 && (
+            <ul class:list={['grid gap-0.5', i === 0 ? 'justify-items-end' : '']}>
+              {goleadores.map((goleador) => {
+                const enContra = goleador.goles.some((g) => g.enContra);
+                const minutos = goleador.goles
+                  .map((g) => `${g.minuto}${g.extra ? `+${g.extra}` : ''}'${g.penal ? ' (p)' : ''}`)
+                  .join(', ');
+                const apellido = goleador.nombre.split(' ').at(-1) ?? goleador.nombre;
+                return (
+                  <li class="flex max-w-full items-center gap-1 text-[10px] text-ink-muted">
+                    <EventIcon kind={enContra ? 'own_goal' : 'goal'} size={9} detail={apellido} />
+                    <span class="truncate text-ink">{apellido}</span>
+                    <span class="shrink-0 tabular">{minutos}</span>
+                    {enContra && <span class="shrink-0">(e/c)</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      ))
+    }
+
+    <span
+      data-marcador
+      class:list={[
+        'pointer-events-none row-start-1 self-center px-1 font-display text-base font-semibold tabular',
+        vivo ? 'text-live-ink' : '',
+      ]}
+      style={`grid-column:2;view-transition-name:marcador-${partido.id}`}
+    >
+      {hayMarcador ? `${partido.homeScore} – ${partido.awayScore}` : formatKickoff(partido.kickoffUtc)}
+    </span>
+  </div>
+</article>

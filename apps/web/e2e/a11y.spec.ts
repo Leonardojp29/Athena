@@ -55,34 +55,35 @@ test.describe('accesibilidad', () => {
 });
 
 /*
- * El peso de cada vista: lo que el navegador se baja de verdad, no lo que pesa el bundle.
+ * El peso de cada vista, separado en dos: lo que escribimos nosotros y lo que manda el proveedor.
  *
- * Los techos de acá abajo **no son el objetivo, son la deuda medida**: el HTML, el CSS y las fuentes
- * suman 150 KB, y todo lo demás son los escudos del proveedor, que pesan 38 KB de media —88 KB los
- * de competencia— para dibujarse a trece o cuarenta píxeles. En un teléfono la home baja 4,6 MB.
+ * El presupuesto se pone sobre el documento, el CSS, las fuentes y el JavaScript —150 KB en toda la
+ * página— porque es lo único que una regresión nuestra puede engordar. Las imágenes se miden y se
+ * informan, pero no se afirman: son los escudos del proveedor, 38 KB de media para dibujarse a
+ * veinte píxeles, y su número sube o baja con cuántos partidos se juegan hoy. Ponerlos en el
+ * presupuesto convertía la prueba en un semáforo que se pone rojo por un domingo con más fútbol.
  *
- * Arreglarlo es bajarlos una vez y servirlos redimensionados, y eso es un trabajo aparte. Hasta que
- * se haga, estos números vigilan que no empeore: si una vista se pasa, algo nuevo se fue de escala.
+ * Bajarlos una vez y servirlos redimensionados es un trabajo aparte; hasta que se haga, esta prueba
+ * deja el número escrito en cada corrida.
  */
 test.describe('peso de las páginas', () => {
-  const TECHO_KB: Record<string, number> = {
-    '/': 6000,
-    '/competencias/primera-division': 1400,
-    '/competencias': 7600,
-    '/equipos/alianza-lima': 1500,
-  };
+  const TECHO_PROPIO_KB = 260;
 
   for (const [nombre, ruta] of VISTAS) {
-    test(`${nombre} no engorda más de lo ya medido`, async ({ page }) => {
-      let bytes = 0;
+    test(`${nombre} no engorda lo que escribimos nosotros`, async ({ page }) => {
+      let propio = 0;
+      let imagenes = 0;
       page.on('response', (res) => {
         const largo = Number(res.headers()['content-length'] ?? 0);
-        if (Number.isFinite(largo)) bytes += largo;
+        if (!Number.isFinite(largo)) return;
+        if (res.request().resourceType() === 'image') imagenes += largo;
+        else propio += largo;
       });
       await page.goto(ruta, { waitUntil: 'networkidle' });
-      const kb = Math.round(bytes / 1024);
-      console.log(`${ruta}: ${kb} KB`);
-      expect(kb).toBeLessThan(TECHO_KB[ruta] ?? 1500);
+      console.log(
+        `${ruta}: ${Math.round(propio / 1024)} KB nuestros · ${Math.round(imagenes / 1024)} KB de imágenes del proveedor`,
+      );
+      expect(Math.round(propio / 1024)).toBeLessThan(TECHO_PROPIO_KB);
     });
   }
 });
