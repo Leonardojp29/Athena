@@ -100,15 +100,32 @@ const goles = (s: MatchPlayerStats) =>
                           col.clave === 'jugador' ? '' : 'justify-end',
                         ]}
                       >
+                        <!--
+                          En las columnas de números la flecha va **antes** del rótulo: puesta
+                          después empujaba el texto hacia la izquierda y el encabezado dejaba de
+                          estar sobre su columna. Así el borde derecho del rótulo y el de las cifras
+                          son el mismo.
+
+                          Y cuelga de `aria-sort`, con lo que lo que se ve y lo que se anuncia son
+                          el mismo estado y no dos que haya que mantener a mano.
+                        -->
+                        {col.clave !== 'jugador' && (
+                          <span
+                            aria-hidden="true"
+                            class="text-[9px] leading-none opacity-0 [th[aria-sort=ascending]_&]:opacity-100 [th[aria-sort=descending]_&]:rotate-180 [th[aria-sort=descending]_&]:opacity-100"
+                          >
+                            ▲
+                          </span>
+                        )}
                         {col.etiqueta}
-                        <!-- La flecha cuelga de `aria-sort`, así que lo que se ve y lo que se anuncia
-                             son el mismo estado y no dos que hay que mantener a mano. -->
-                        <span
-                          aria-hidden="true"
-                          class="text-[9px] leading-none opacity-0 [th[aria-sort=ascending]_&]:opacity-100 [th[aria-sort=descending]_&]:rotate-180 [th[aria-sort=descending]_&]:opacity-100"
-                        >
-                          ▲
-                        </span>
+                        {col.clave === 'jugador' && (
+                          <span
+                            aria-hidden="true"
+                            class="text-[9px] leading-none opacity-0 [th[aria-sort=ascending]_&]:opacity-100 [th[aria-sort=descending]_&]:rotate-180 [th[aria-sort=descending]_&]:opacity-100"
+                          >
+                            ▲
+                          </span>
+                        )}
                       </button>
                     </th>
                   ))}
