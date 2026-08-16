@@ -24,7 +24,8 @@
     "selecciones:nombres": "node --env-file-if-exists=../../.env dist/scripts/renombrar-selecciones.js",
     "sync:tablas": "node --env-file-if-exists=../../.env dist/scripts/sync-tablas.js",
     "sync:plantillas": "node --env-file-if-exists=../../.env dist/scripts/sync-plantillas.js",
-    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js"
+    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js",
+    "cache:limpiar": "node --env-file-if-exists=../../.env dist/scripts/limpiar-cache.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",

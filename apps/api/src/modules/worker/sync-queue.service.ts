@@ -6,7 +6,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { Queue, Worker, type Job } from 'bullmq';
-import type { Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { logJson, reportError } from '../../shared/observability.js';
 import { REDIS } from '../../shared/redis.provider.js';
@@ -27,6 +27,19 @@ import { SyncScheduleService } from './sync-schedule.service.js';
 
 const QUEUE = 'sync';
 
+/**
+ * Dónde vive la cola: su propia base de Redis, separada de la caché.
+ *
+ * `REDIS_QUEUE_URL` manda si está; si no, se le agrega `/1` a la de siempre, que en Redis es el
+ * número de base. Así nadie tiene que configurar nada para quedar a salvo del flush de la caché.
+ */
+function colaUrl(): string {
+  const propia = process.env.REDIS_QUEUE_URL;
+  if (propia) return propia;
+  const base = process.env.REDIS_URL ?? 'redis://localhost:6379';
+  return /\/\d+$/.test(base) ? base : `${base.replace(/\/$/, '')}/1`;
+}
+
 /* El análisis espera a que aterricen los eventos y las estadísticas que lo respaldan. */
 const INSIGHT_DELAY_MS = 3 * 60_000;
 /* Lo que tarda el proveedor en recalcular su tabla después del pitazo final, con margen. */
@@ -41,6 +54,8 @@ const DETALLE_MAX_ANTIGUEDAD_MS = 7 * 24 * 3600_000;
 
 /* El proveedor publica la alineación unos 40 minutos antes del pitazo. */
 const LINEUP_LEAD_MS = 45 * 60_000;
+/* Cuánto atrás mira el tic para recuperar un partido que terminó sin su detalle. */
+const RECUPERACION_MS = 6 * 3600_000;
 
 /*
  * Cada cuánto se vuelven a pedir las notas de un partido en juego, y cuántos partidos por vuelta.
@@ -95,10 +110,19 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    // BullMQ necesita conexiones dedicadas: el Worker bloquea la suya al esperar jobs
-    this.queue = new Queue(QUEUE, { connection: this.redis.duplicate() });
+    /*
+     * BullMQ necesita conexiones dedicadas —el Worker bloquea la suya esperando trabajos— y, sobre
+     * todo, **su propia base de Redis**.
+     *
+     * Compartirla con la caché de vistas costó caro: un `FLUSHDB` para ver datos frescos borraba
+     * también los trabajos pendientes, y los partidos que estaban esperando su alineación se
+     * quedaban sin ella para siempre. Veintiún partidos de nueve competencias en un mes, y ni un
+     * error en el log, porque borrar una cola no falla: simplemente no queda nada que hacer.
+     */
+    const conexion = () => new Redis(colaUrl(), { maxRetriesPerRequest: null });
+    this.queue = new Queue(QUEUE, { connection: conexion() });
     this.worker = new Worker(QUEUE, (job) => this.process(job as Job & SyncJob), {
-      connection: this.redis.duplicate(),
+      connection: conexion(),
       concurrency: 4,
     });
     this.worker.on('failed', (job, err) => {
@@ -273,6 +297,16 @@ export class SyncQueueService implements OnModuleInit, OnModuleDestroy {
           {
             status: 'scheduled',
             kickoffUtc: { lte: new Date(Date.now() + LINEUP_LEAD_MS), gte: new Date() },
+          },
+          /*
+           * Y los que ya terminaron y se quedaron sin alineación: un trabajo que se pierde —la cola
+           * borrada, el worker caído a mitad— dejaba el partido sin cancha hasta el refresco de las
+           * 05:00. Acá se recupera en el tic siguiente, y la ventana de seis horas evita que esto
+           * se convierta en un rastrillaje del archivo entero.
+           */
+          {
+            status: 'finished',
+            kickoffUtc: { gte: new Date(Date.now() - RECUPERACION_MS) },
           },
         ],
         lineups: { none: {} },

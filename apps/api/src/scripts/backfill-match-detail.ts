@@ -28,6 +28,7 @@ const CONCURRENCY = Number(process.env.BACKFILL_CONCURRENCY ?? 5);
  *   COPAS=si                               suma Libertadores, Champions y compañía
  *   LIGAS=mundial,copa-america             alternativa fina por slug, gana sobre lo anterior
  *   DESDE=2021  HASTA=2024                 rango de temporadas (los dos extremos incluidos)
+ *   HORAS=720                              solo lo jugado en las últimas N horas
  *   LIMITE=2000                            partidos de esta tanda
  *   SIN_NOTAS=si                           ahorra el cuarto pedido (deja sin rendimiento individual)
  *   PISO_CUOTA=20000                       corta si la cuota real del día baja de esto
@@ -56,6 +57,7 @@ async function main(): Promise<void> {
   const conCopas = process.env.COPAS === 'si';
   const desde = Number(process.env.DESDE ?? 0);
   const hasta = Number(process.env.HASTA ?? 0);
+  const horas = Number(process.env.HORAS ?? 0);
   const limite = Number(process.env.LIMITE ?? process.env.BACKFILL_LIMIT ?? 2000);
   const conNotas = process.env.SIN_NOTAS !== 'si';
   const pisoCuota = Number(process.env.PISO_CUOTA ?? 0);
@@ -82,7 +84,13 @@ async function main(): Promise<void> {
 
   const donde: Prisma.MatchWhereInput = {
     status: 'finished',
-    OR: [{ statistics: { none: {} } }, { events: { none: {} } }],
+    /*
+     * Falta cualquiera de las tres y el partido entra: un partido puede tener sus eventos —que los
+     * escribe el vivo, sin pasar por la cola— y haberse quedado sin alineación porque su trabajo se
+     * perdió. Mirar solo estadísticas y eventos dejaba esos afuera.
+     */
+    OR: [{ statistics: { none: {} } }, { events: { none: {} } }, { lineups: { none: {} } }],
+    ...(horas > 0 ? { kickoffUtc: { gte: new Date(Date.now() - horas * 3600_000) } } : {}),
     season: {
       ...(desde > 0 || hasta > 0
         ? { year: { ...(desde > 0 ? { gte: desde } : {}), ...(hasta > 0 ? { lte: hasta } : {}) } }

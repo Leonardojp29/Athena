@@ -130,6 +130,20 @@ curl -s -H "x-apisports-key: $API_FOOTBALL_KEY" https://v3.football.api-sports.i
   (2.000.000 por defecto). Al alcanzarlo, los jobs de IA fallan a propósito en
   lugar de seguir gastando.
 
+## Redis: la caché y la cola no comparten base
+
+La caché de vistas vive en la base 0 (`view:*`) y la cola de trabajos en la 1
+(`bull:sync:*`), o donde diga `REDIS_QUEUE_URL`. **Nunca `FLUSHDB` a mano**: la
+cola guarda partidos esperando su alineación, sus estadísticas y sus notas, y
+borrarla no falla —simplemente deja de haber trabajo—. Pasó: veintiún partidos
+de nueve competencias se quedaron sin alineación en un mes, sin un error en el
+log.
+
+```bash
+pnpm --filter @athena/api cache:limpiar        # borra solo view:*
+PATRON="view:competition:*" pnpm --filter @athena/api cache:limpiar
+```
+
 ## Apagar funcionalidad sin desplegar
 
 Los feature flags viven en la tabla `feature_flags` y se cachean 45 s en Redis:
@@ -146,6 +160,7 @@ Claves: `ai_insights`, `semantic_search`, `live_match_center`, `recommendations`
 | Síntoma | Dónde mirar |
 |---|---|
 | Los datos no se actualizan | `.logs/worker.log`; que exista un solo worker; que Redis esté arriba |
+| Faltan alineaciones o estadísticas de partidos recientes | Que la cola tenga trabajos (`redis-cli -n 1 LLEN bull:sync:wait`); el tic recupera lo terminado en las últimas seis horas |
 | Un job falla siempre | Busca `job_failed` en el log: trae job, intentos y error |
 | Un 500 en la web | La respuesta trae `requestId`; búscalo en `.logs/api.log` |
 | Partidos sin estadísticas | Normal si son viejos: corre `backfill:matches` |

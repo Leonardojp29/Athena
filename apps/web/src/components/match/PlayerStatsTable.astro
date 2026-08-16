@@ -37,6 +37,20 @@ const ficha = (s: MatchPlayerStats, team: TeamSummary) =>
 const nota = (valor: string | null) => (valor === null ? null : Number(valor));
 
 /*
+ * Las columnas y por qué valor ordena cada una. El valor viaja en la fila y no se lee de la celda:
+ * "1/2" en remates o "–" cuando no hay dato no son números, y ordenar por texto pondría a un
+ * suplente sin datos por encima del goleador.
+ */
+const COLUMNAS = [
+  { clave: 'jugador', etiqueta: 'Jugador', titulo: 'Ordenar por nombre' },
+  { clave: 'min', etiqueta: 'Min', titulo: 'Ordenar por minutos' },
+  { clave: 'g', etiqueta: 'G', titulo: 'Ordenar por goles' },
+  { clave: 'a', etiqueta: 'A', titulo: 'Ordenar por asistencias' },
+  { clave: 'rem', etiqueta: 'Rem', titulo: 'Remates al arco / totales · ordenar por remates' },
+  { clave: 'nota', etiqueta: 'Nota', titulo: 'Ordenar por nota' },
+] as const;
+
+/*
  * Cero y "no sabemos" no son lo mismo, y con `|| '–'` se veían igual. En un producto cuya
  * tesis es que cada cifra viene con su origen, confundirlos es peor que dejar la celda vacía.
  */
@@ -64,21 +78,55 @@ const goles = (s: MatchPlayerStats) =>
             <table class="w-full min-w-[30rem] text-sm">
               <thead class="sticky top-0 z-10">
                 <tr class="border-b border-border bg-canvas-subtle text-2xs text-ink-muted uppercase tracking-label">
-                  <th scope="col" class="px-2 py-2 text-left font-semibold">Jugador</th>
-                  <th scope="col" class="px-2 py-2 text-right font-semibold">Min</th>
-                  <th scope="col" class="px-2 py-2 text-right font-semibold">G</th>
-                  <th scope="col" class="px-2 py-2 text-right font-semibold">A</th>
-                  <th scope="col" class="px-2 py-2 text-right font-semibold" title="Remates al arco / totales">
-                    Rem
-                  </th>
-                  <th scope="col" class="px-2 py-2 text-right font-semibold">Nota</th>
+                  {COLUMNAS.map((col) => (
+                    <th
+                      scope="col"
+                      data-orden={col.clave}
+                      aria-sort="none"
+                      title={col.titulo}
+                      class:list={[
+                        'px-2 py-2 font-semibold',
+                        col.clave === 'jugador' ? 'text-left' : 'text-right',
+                      ]}
+                    >
+                      <!--
+                        El botón ocupa el encabezado entero: una flecha de ocho píxeles como única
+                        zona clickeable es una promesa que no se puede cumplir con el dedo.
+                      -->
+                      <button
+                        type="button"
+                        class:list={[
+                          'flex w-full cursor-pointer items-center gap-1 uppercase tracking-label transition-colors hover:text-ink',
+                          col.clave === 'jugador' ? '' : 'justify-end',
+                        ]}
+                      >
+                        {col.etiqueta}
+                        <!-- La flecha cuelga de `aria-sort`, así que lo que se ve y lo que se anuncia
+                             son el mismo estado y no dos que hay que mantener a mano. -->
+                        <span
+                          aria-hidden="true"
+                          class="text-[9px] leading-none opacity-0 [th[aria-sort=ascending]_&]:opacity-100 [th[aria-sort=descending]_&]:rotate-180 [th[aria-sort=descending]_&]:opacity-100"
+                        >
+                          ▲
+                        </span>
+                      </button>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((s) => {
                   const n = nota(s.rating);
                   return (
-                    <tr class="border-b border-border/50 last:border-0 hover:bg-canvas-subtle">
+                    <tr
+                      class="border-b border-border/50 last:border-0 hover:bg-canvas-subtle"
+                      data-jugador-nombre={s.player.name}
+                      data-orden-min={s.minutesPlayed ?? ''}
+                      data-orden-g={s.goals === null && s.penaltyScored === null ? '' : (s.goals ?? 0) + (s.penaltyScored ?? 0)}
+                      data-orden-a={s.assists ?? ''}
+                      data-orden-rem={s.shotsTotal ?? ''}
+                      data-orden-nota={s.rating ?? ''}
+                    >
                       <td class="px-2 py-1.5">
                         <button
                           type="button"
@@ -144,3 +192,64 @@ const goles = (s: MatchPlayerStats) =>
       ))
   }
 </div>
+
+<script>
+  /*
+   * Ordenar por columna, cada tabla por su lado.
+   *
+   * Un clic ordena de mayor a menor —que es la pregunta que uno se hace con una estadística: quién
+   * más—, el segundo invierte y el tercero devuelve el orden del proveedor, que es el de la
+   * alineación y dice otra cosa: quién arrancó.
+   *
+   * Dos reglas que no son de programación sino de fútbol: **un hueco no es un cero**, así que los
+   * "sin dato" van al final en los dos sentidos; y **el que no jugó no compite**, así que los
+   * suplentes sin minutos se quedan al fondo aunque se ordene por nota.
+   */
+  for (const tabla of document.querySelectorAll<HTMLTableElement>('table:has([data-orden])')) {
+    const cuerpo = tabla.tBodies[0];
+    if (!cuerpo) continue;
+    const original = [...cuerpo.rows];
+    let columna: string | null = null;
+    let sentido: 'descending' | 'ascending' | null = null;
+
+    const valor = (fila: HTMLTableRowElement, clave: string): number | string | null => {
+      if (clave === 'jugador') return fila.dataset.jugadorNombre ?? '';
+      const crudo = fila.dataset[`orden${clave.charAt(0).toUpperCase()}${clave.slice(1)}`];
+      return crudo === undefined || crudo === '' ? null : Number(crudo);
+    };
+
+    /* Sin minutos y sin nota: entró a la lista por estar en el banco, no por lo que hizo. */
+    const noJugo = (fila: HTMLTableRowElement) =>
+      (fila.dataset.ordenMin ?? '') === '' && (fila.dataset.ordenNota ?? '') === '';
+
+    const ordenar = (clave: string): void => {
+      if (columna === clave) sentido = sentido === 'descending' ? 'ascending' : null;
+      else sentido = 'descending';
+      columna = sentido === null ? null : clave;
+
+      const filas = sentido === null ? original : [...original].sort((a, b) => {
+        if (noJugo(a) !== noJugo(b)) return noJugo(a) ? 1 : -1;
+        const va = valor(a, clave);
+        const vb = valor(b, clave);
+        if (va === null || vb === null) return va === vb ? 0 : va === null ? 1 : -1;
+        const cmp =
+          typeof va === 'string' && typeof vb === 'string'
+            ? va.localeCompare(vb, 'es')
+            : (va as number) - (vb as number);
+        return sentido === 'ascending' ? cmp : -cmp;
+      });
+
+      for (const fila of filas) cuerpo.append(fila);
+      for (const th of tabla.querySelectorAll<HTMLTableCellElement>('th[data-orden]')) {
+        th.setAttribute(
+          'aria-sort',
+          th.dataset.orden === columna && sentido ? sentido : 'none',
+        );
+      }
+    };
+
+    for (const th of tabla.querySelectorAll<HTMLTableCellElement>('th[data-orden]')) {
+      th.querySelector('button')?.addEventListener('click', () => ordenar(th.dataset.orden as string));
+    }
+  }
+</script>
