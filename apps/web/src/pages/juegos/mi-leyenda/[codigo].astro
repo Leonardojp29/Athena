@@ -2,7 +2,7 @@
 import Base from '../../../layouts/Base.astro';
 import Container from '../../../components/layout/Container.astro';
 import CartaCompartida from '../../../components/juego/CartaCompartida';
-import { decodificarLegado } from '../../../lib/leyenda';
+import { decodificarLegado, fraseDelLegado } from '../../../lib/leyenda';
 import '../../../styles/leyenda.css';
 
 /*
@@ -12,6 +12,7 @@ import '../../../styles/leyenda.css';
  */
 const { codigo } = Astro.params;
 const legado = codigo ? decodificarLegado(codigo) : null;
+const frase = legado ? fraseDelLegado(legado) : '';
 
 if (!legado) {
   Astro.response.status = 404;
@@ -22,7 +23,7 @@ if (!legado) {
   legado ? (
     <Base
       title={`${legado.n} — Mi Leyenda`}
-      description={legado.fr}
+      description={frase}
       width="bleed"
       liveBar={false}
     >
@@ -34,7 +35,7 @@ if (!legado) {
           <h1 class="mt-1 font-display text-3xl font-semibold uppercase leading-tight tracking-label">
             {legado.adn}
           </h1>
-          <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">{legado.fr}</p>
+          <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">{frase}</p>
         </header>
 
         <div class="mt-6 flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:justify-center">

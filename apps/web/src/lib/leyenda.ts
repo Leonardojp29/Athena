@@ -134,7 +134,15 @@ export interface LegadoCompartible {
   as: number;
   te: number;
   adn: string;
-  fr: string;
+}
+
+/**
+ * La frase para compartir, armada de lo que el código ya trae. No viaja en la URL a propósito: era el
+ * campo más largo y un enlace que no cabe en un mensaje no se comparte.
+ */
+export function fraseDelLegado(legado: LegadoCompartible): string {
+  const apellido = legado.n.split(' ').at(-1) ?? legado.n;
+  return `${apellido}: ${legado.te} temporadas, ${legado.g} goles, ${legado.t} títulos. ${legado.adn}.`;
 }
 
 export function codificarLegado(datos: LegadoCompartible): string {

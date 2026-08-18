@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
+import TuCarrera from '../../components/juego/TuCarrera';
 import '../../styles/leyenda.css';
 
 /*
@@ -92,5 +93,8 @@ const JUEGOS = [
         </p>
       </li>
     </ul>
+
+    <!-- Lo tuyo: la carrera abierta y las que terminaron. Sale del navegador, así que se hidrata. -->
+    <TuCarrera client:load />
   </Container>
 </Base>

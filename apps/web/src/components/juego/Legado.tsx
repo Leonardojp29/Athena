@@ -74,9 +74,7 @@ export default function Legado({ carrera, onSeguir, onEmpezarDeNuevo, alGuardar 
               bandera: carrera.futbolista.bandera,
             }}
           />
-          <p className="mt-2 text-center text-2xs text-ink-muted">
-            La carta de toda tu vida · {NOMBRE_DE_NIVEL[veredicto.nivelMaximo]}
-          </p>
+          <p className="mt-1 text-center text-2xs text-ink-muted">La carta de toda tu vida</p>
         </div>
 
         <div className="flex flex-col gap-4">

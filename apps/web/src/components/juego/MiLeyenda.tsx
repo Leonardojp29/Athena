@@ -218,7 +218,6 @@ export default function MiLeyenda({ mundo, anio }: Props) {
             as: veredicto.totales.asistencias,
             te: veredicto.totales.temporadas,
             adn: veredicto.adn.titulo,
-            fr: veredicto.frase,
           });
           guardarEnElSalon(carrera, veredicto, codigo);
           return codigo;
@@ -233,14 +232,25 @@ export default function MiLeyenda({ mundo, anio }: Props) {
 
   return (
     <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[19rem_1fr] lg:gap-6 lg:py-6">
-      {/* La columna de la izquierda es la identidad: la carta y el estado de la vida. */}
-      <aside className="flex flex-col gap-3 lg:sticky lg:top-20 lg:self-start">
-        {datosDeCarta && <Carta datos={datosDeCarta} asciende={ascenso} />}
+      {/*
+        En escritorio la identidad va a la izquierda y la acción a la derecha. En el teléfono el orden
+        se invierte: primero lo que hay que hacer y después quién sos. Con la carta arriba había que
+        pasar seiscientos píxeles de scroll para llegar a patear un penal, y el juego se jugaba de
+        abajo hacia arriba. La carta también entra más chica: en una pantalla de mano es una referencia,
+        no la escena.
+      */}
+      <aside className="order-2 flex flex-col gap-3 lg:order-1 lg:sticky lg:top-20 lg:self-start">
+        {datosDeCarta && (
+          <Carta
+            datos={datosDeCarta}
+            asciende={ascenso}
+            class="mx-auto max-w-[13rem] sm:max-w-[16rem] lg:max-w-[19rem]"
+          />
+        )}
         <Panel carrera={carrera} />
       </aside>
 
-      {/* La derecha es la película y la decisión. */}
-      <section className="min-w-0">
+      <section className="order-1 min-w-0 lg:order-2">
         {momento ? (
           <Momento
             momento={momento.momento}

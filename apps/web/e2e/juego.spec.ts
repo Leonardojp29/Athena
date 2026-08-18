@@ -132,7 +132,13 @@ test.describe('Mi Leyenda', () => {
     await expect(page.locator('[data-carta]').first()).toContainText(/prueba/i);
   });
 
-  test('una carrera llega al retiro y deja un legado compartible', async ({ page }) => {
+  test('una carrera llega al retiro y deja un legado compartible', async ({ page, isMobile }) => {
+    /*
+     * Este recorrido tarda casi dos minutos: jugar la carrera entera en los dos viewports no agrega
+     * información —el móvil ya está cubierto por los otros tests— y saturaba la máquina lo suficiente
+     * para hacer fallar por timeout a tests de otras suites.
+     */
+    test.skip(isMobile, 'el recorrido completo corre una sola vez');
     await crearFutbolista(page, { nombre: 'Legado Prueba' });
 
     let pasos = 0;
