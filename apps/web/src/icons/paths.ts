@@ -97,6 +97,34 @@ const REGISTRO = {
   cuadro: {
     body: '<path d="M3.5 6.5h4.2v5h4.6M3.5 17.5h4.2v-6"/><path d="M20.5 6.5h-4.2v5h-4.3M20.5 17.5h-4.2v-6"/>',
   },
+  /* La sección de juegos: un mando, que es lo que se lee como "jugar" sin pensarlo. */
+  juego: {
+    body: '<path d="M8.5 8.5h7a5 5 0 0 1 4.6 3l.9 4.6a2 2 0 0 1-3.6 1.5l-1.6-2.1H8.2l-1.6 2.1A2 2 0 0 1 3 16.1L3.9 11.5a5 5 0 0 1 4.6-3z"/><path d="M7.2 12.6h2.2M8.3 11.5v2.2"/><circle cx="15.6" cy="12.6" r=".9" fill="currentColor" stroke="none"/>',
+  },
+  // La pelota: el objeto del juego, con sus paneles
+  pelota: {
+    body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2l3.3 2.4-1.3 3.9h-4l-1.3-3.9z"/><path d="M12 3.5v3.7M19.6 9.9l-4.3-.3M17 19.4l-3-6.1M7 19.4l3-6.1M4.4 9.9l4.3-.3"/>',
+  },
+  // El guante del arquero: la carrera bajo los tres palos
+  guante: {
+    body: '<path d="M7.5 20.5v-4.2a4 4 0 0 1-1.8-3.3V8.2a1.6 1.6 0 0 1 3.2 0v3.1"/><path d="M8.9 11.3V5.6a1.6 1.6 0 0 1 3.2 0v5.7"/><path d="M12.1 11.3V6.4a1.6 1.6 0 0 1 3.2 0v4.9"/><path d="M15.3 11.4V8.6a1.6 1.6 0 0 1 3.2 0v4.4a7 7 0 0 1-2.4 5.2v2.3"/>',
+  },
+  // El contrato: la hoja firmada de cada fichaje
+  contrato: {
+    body: '<path d="M6 3.5h8.5L19 8v12.5H6z"/><path d="M14 3.5V8h4.6"/><path d="M9 12.5h6M9 16h3.5"/>',
+  },
+  // La prensa: el micrófono de la zona mixta
+  prensa: {
+    body: '<rect x="9.5" y="3.5" width="5" height="9.5" rx="2.5"/><path d="M6.5 11.5a5.5 5.5 0 0 0 11 0"/><path d="M12 17v3.5M9 20.5h6"/>',
+  },
+  // La vida: lo que no se juega en la cancha
+  corazon: {
+    body: '<path d="M12 20s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 7.5 3C19.5 15.4 12 20 12 20z"/>',
+  },
+  // El dinero: el billete de los contratos
+  dinero: {
+    body: '<rect x="3.5" y="6.5" width="17" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 10v4M17.5 10v4"/>',
+  },
 } as const satisfies Record<string, IconDef>;
 
 /* El registro se declara con `satisfies` para tipar las claves, y se expone con el tipo

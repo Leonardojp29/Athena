@@ -101,6 +101,8 @@
   --animate-goal-flash: goal-flash 900ms var(--a-ease) 1;
   --animate-score-flip: score-flip var(--a-motion-slow) var(--a-ease-out-expo) both;
   --animate-goal-pulse: goal-pulse 1.2s var(--a-ease) 1;
+  /* El keyframe existía y la utilidad no: MinutoAMinuto la usaba y Tailwind nunca la emitía. */
+  --animate-group-enter: group-enter var(--a-motion-slow) var(--a-ease-out-expo) both;
 }
 
 @layer base {

@@ -1,0 +1,81 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Container from '../../../components/layout/Container.astro';
+import CartaCompartida from '../../../components/juego/CartaCompartida';
+import { decodificarLegado } from '../../../lib/leyenda';
+import '../../../styles/leyenda.css';
+
+/*
+ * El legado compartido. Todo lo que la carta necesita viaja en el código de la URL: quien abre el
+ * enlace ve la carta de verdad, interactiva, y no una captura. Nada se guarda en el servidor, así que
+ * un enlace vale para siempre sin costarnos una fila en la base.
+ */
+const { codigo } = Astro.params;
+const legado = codigo ? decodificarLegado(codigo) : null;
+
+if (!legado) {
+  Astro.response.status = 404;
+}
+---
+
+{
+  legado ? (
+    <Base
+      title={`${legado.n} — Mi Leyenda`}
+      description={legado.fr}
+      width="bleed"
+      liveBar={false}
+    >
+      <Container width="content" class="py-8">
+        <header class="text-center">
+          <p class="text-2xs font-medium uppercase tracking-label text-primary-ink">
+            Athena · Mi Leyenda
+          </p>
+          <h1 class="mt-1 font-display text-3xl font-semibold uppercase leading-tight tracking-label">
+            {legado.adn}
+          </h1>
+          <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">{legado.fr}</p>
+        </header>
+
+        <div class="mt-6 flex flex-col items-center gap-5 sm:flex-row sm:items-start sm:justify-center">
+          <CartaCompartida client:load legado={legado} />
+
+          <dl class="grid w-full max-w-xs grid-cols-2 gap-2">
+            {[
+              ['Temporadas', legado.te],
+              ['Goles', legado.g],
+              ['Asistencias', legado.as],
+              ['Títulos', legado.t],
+              ['Premios', legado.pr],
+              ['Último club', legado.c],
+            ].map(([rotulo, valor]) => (
+              <div class="rounded-lg border border-border px-2.5 py-2">
+                <dt class="text-[10px] uppercase tracking-label text-ink-muted">{rotulo}</dt>
+                <dd class="truncate font-display text-lg font-semibold leading-tight tabular">{valor}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
+        <p class="mt-8 text-center">
+          <a
+            href="/juegos/mi-leyenda"
+            class="inline-block rounded-md bg-primary px-5 py-3 font-display text-base font-semibold uppercase tracking-label text-primary-contrast transition-opacity hover:opacity-90"
+          >
+            Crear tu propia leyenda
+          </a>
+        </p>
+      </Container>
+    </Base>
+  ) : (
+    <Base title="Legado no encontrado — Athena" description="El código de esta leyenda no es válido." noindex>
+      <div class="py-12 text-center">
+        <h1 class="font-display text-2xl font-semibold uppercase tracking-label">Este legado no existe</h1>
+        <p class="mt-2 text-sm text-ink-muted">El código está incompleto o cambió.</p>
+        <a href="/juegos/mi-leyenda" class="mt-4 inline-block text-sm font-medium text-primary-ink hover:underline">
+          Crear una carrera nueva
+        </a>
+      </div>
+    </Base>
+  )
+}

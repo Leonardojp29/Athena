@@ -72,6 +72,20 @@ const liveCount = home?.live ?? 0;
           <Icon name="buscar" size={18} />
         </a>
 
+        <!--
+          La entrada a los juegos. Va con el grupo de acciones porque es una sección propia y no un
+          filtro del catálogo; en móvil queda el icono solo, que es lo que cabe en 16 de alto.
+        -->
+        <a
+          href="/juegos"
+          aria-label="Juegos"
+          aria-current={Astro.url.pathname.startsWith('/juegos') ? 'page' : undefined}
+          class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink aria-[current]:bg-primary/12 aria-[current]:text-primary-ink sm:px-2.5"
+        >
+          <Icon name="juego" size={18} />
+          <span class="hidden text-sm font-medium sm:inline">Juegos</span>
+        </a>
+
         <button
           id="theme-toggle"
           type="button"

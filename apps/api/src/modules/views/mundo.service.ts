@@ -1,0 +1,250 @@
+import { Injectable } from '@nestjs/common';
+import { paisEnEspanol } from '@athena/domain';
+import { PrismaService } from '../../shared/prisma.service.js';
+
+/**
+ * El mundo del juego: las ligas jugables con sus clubes reales y la fuerza de cada uno.
+ *
+ * Es la pieza que Athena no tenía: hay catálogo de competencias, pero no de equipos. El juego
+ * necesita, en una sola respuesta, qué ligas se pueden elegir y qué clubes las forman con escudo,
+ * colores y una idea de cuán grandes son.
+ *
+ * **La fuerza no se inventa**: sale de la posición promedio de cada club en sus últimas temporadas
+ * reales, normalizada contra el tamaño de su liga, y corregida por el peso de la liga —salir décimo
+ * en Inglaterra no es salir décimo en Perú—. Un club que siempre pelea arriba queda cerca de 90; uno
+ * que pelea el descenso, cerca de 40. Es lo que hace que en el juego ganar la liga con un equipo
+ * chico se sienta una hazaña y con un grande se sienta una obligación.
+ */
+
+/**
+ * El peso futbolístico de cada liga jugable, 0-100. Es la única tabla a mano del archivo, y tiene que
+ * serlo: no hay ningún dato en la base que diga que la Premier es más fuerte que la Liga 1, y
+ * fingir que se deduce de los partidos sería peor que declararlo. Se revisa a mano cuando cambie el
+ * mapa del fútbol.
+ */
+const PESO_DE_LIGA: Record<string, number> = {
+  'premier-league': 100,
+  'la-liga': 96,
+  'serie-a': 92,
+  bundesliga: 92,
+  'ligue-1': 86,
+  'primeira-liga': 80,
+  eredivisie: 78,
+  'serie-a-brazil': 80,
+  'liga-profesional-argentina': 78,
+  'liga-mx': 72,
+  'major-league-soccer': 66,
+  'pro-league': 64,
+  'primera-a': 62,
+  'primera-division-uruguay': 60,
+  'j1-league': 62,
+  'primera-division-chile': 58,
+  'liga-pro': 56,
+  'primera-division': 54,
+  'canadian-premier-league': 46,
+  'premier-league-egypt': 52,
+};
+
+const PESO_POR_OMISION = 55;
+
+/** Cuántas temporadas atrás se mira para promediar la posición. Tres alcanza y sobra. */
+const TEMPORADAS = 3;
+
+export interface ClubDelMundo {
+  slug: string;
+  nombre: string;
+  corto: string;
+  escudo: string | null;
+  primario: string | null;
+  secundario: string | null;
+  fuerza: number;
+  ligaSlug: string;
+  ligaNombre: string;
+  pais: string;
+  paisCodigo: string | null;
+  continente: string;
+}
+
+export interface LigaDelMundo {
+  slug: string;
+  nombre: string;
+  pais: string;
+  paisCodigo: string | null;
+  bandera: string | null;
+  continente: string;
+  peso: number;
+  clubes: ClubDelMundo[];
+}
+
+export interface CopaDelMundo {
+  slug: string;
+  nombre: string;
+  continente: string;
+  plazas: number;
+  jerarquia: number;
+}
+
+export interface Mundo {
+  ligas: LigaDelMundo[];
+  copas: CopaDelMundo[];
+  generadoEn: string;
+}
+
+@Injectable()
+export class MundoService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async mundo(): Promise<Mundo> {
+    const [ligas, copas] = await Promise.all([this.ligasJugables(), this.copasContinentales()]);
+    return { ligas, copas, generadoEn: new Date().toISOString().slice(0, 10) };
+  }
+
+  private async ligasJugables(): Promise<LigaDelMundo[]> {
+    const competencias = await this.prisma.competition.findMany({
+      where: { isActive: true, scope: 'clubs', format: 'league' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        country: true,
+        countryCode: true,
+        flagUrl: true,
+        continent: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const ligas: LigaDelMundo[] = [];
+    for (const competencia of competencias) {
+      const clubes = await this.clubesDe(competencia.id);
+      /* Una liga sin tabla reciente no es jugable: no hay de dónde sacar plantel ni fuerza. */
+      if (clubes.length < 6) continue;
+
+      const peso = PESO_DE_LIGA[competencia.slug] ?? PESO_POR_OMISION;
+      const nombre = competencia.name;
+      const pais = paisEnEspanol(competencia.country) ?? competencia.country ?? 'Internacional';
+
+      ligas.push({
+        slug: competencia.slug,
+        nombre,
+        pais,
+        paisCodigo: competencia.countryCode,
+        bandera: competencia.flagUrl,
+        continente: competencia.continent ?? 'mundial',
+        peso,
+        clubes: clubes.map((club) => ({
+          slug: club.slug,
+          nombre: club.nombre,
+          /* El corto es para la carta, donde no cabe "Universitario de Deportes". */
+          corto: club.corto ?? club.nombre.slice(0, 3).toUpperCase(),
+          escudo: club.escudo,
+          primario: club.primario,
+          secundario: club.secundario,
+          ligaSlug: competencia.slug,
+          ligaNombre: nombre,
+          pais,
+          paisCodigo: competencia.countryCode,
+          continente: competencia.continent ?? 'mundial',
+          fuerza: this.fuerzaDe(club.posicionMedia, club.equipos, peso),
+        })),
+      });
+    }
+
+    /* Las más fuertes primero: es el orden en que alguien elige dónde quiere jugar. */
+    return ligas.sort((a, b) => b.peso - a.peso || a.nombre.localeCompare(b.nombre, 'es'));
+  }
+
+  /**
+   * Los clubes de una liga con su posición promedio. Se resuelve en SQL porque son veinte ligas por
+   * veinte clubes por tres temporadas: en Prisma serían sesenta viajes y acá es uno por liga.
+   */
+  private async clubesDe(competitionId: string) {
+    return this.prisma.$queryRaw<
+      Array<{
+        slug: string;
+        nombre: string;
+        corto: string | null;
+        escudo: string | null;
+        primario: string | null;
+        secundario: string | null;
+        posicionMedia: number;
+        equipos: number;
+      }>
+    >`
+      WITH temporadas AS (
+        SELECT id FROM seasons
+        WHERE competition_id = ${competitionId}::uuid
+        ORDER BY year DESC
+        LIMIT ${TEMPORADAS}
+      ),
+      tamano AS (
+        SELECT s.season_id, count(DISTINCT s.team_id)::int AS equipos
+        FROM standings s
+        WHERE s.season_id IN (SELECT id FROM temporadas)
+        GROUP BY s.season_id
+      )
+      SELECT t.slug,
+             t.name AS nombre,
+             t.short_name AS corto,
+             t.logo_url AS escudo,
+             t.primary_color AS primario,
+             t.secondary_color AS secundario,
+             avg(s.position)::float AS "posicionMedia",
+             max(z.equipos)::int AS equipos
+      FROM standings s
+      JOIN teams t ON t.id = s.team_id
+      JOIN tamano z ON z.season_id = s.season_id
+      WHERE s.season_id IN (SELECT id FROM temporadas)
+        AND t.is_national_team = false
+      GROUP BY t.slug, t.name, t.short_name, t.logo_url, t.primary_color, t.secondary_color
+      /* Solo los que siguen en la categoría: uno que jugó una sola de las tres se fue o subió. */
+      HAVING count(DISTINCT s.season_id) >= 1
+      ORDER BY avg(s.position) ASC
+      LIMIT 30`;
+  }
+
+  /**
+   * De la posición a la fuerza. Un club que promedia el primer puesto en una liga de veinte queda en
+   * lo más alto de su liga, y el techo de cada liga lo pone su peso: el campeón de una liga de peso
+   * 55 no puede valer lo mismo que el de una de 100, porque en el juego van a competir entre ellos.
+   */
+  private fuerzaDe(posicionMedia: number, equipos: number, pesoDeLiga: number): number {
+    const total = Math.max(8, equipos || 20);
+    /* 1 → 1, último → 0. */
+    const relativa = 1 - (posicionMedia - 1) / (total - 1);
+    /* La franja de la liga: de su piso a su techo. Una liga de 100 va de 62 a 92; una de 50, de 38 a 62. */
+    const techo = 42 + pesoDeLiga * 0.5;
+    const piso = 30 + pesoDeLiga * 0.32;
+    const fuerza = piso + (techo - piso) * Math.max(0, Math.min(1, relativa));
+    return Math.round(Math.max(30, Math.min(95, fuerza)));
+  }
+
+  /** Las copas continentales de clubes, con cuántos clasifican por liga. */
+  private async copasContinentales(): Promise<CopaDelMundo[]> {
+    const copas = await this.prisma.competition.findMany({
+      where: { isActive: true, scope: 'clubs', format: 'cup', countryCode: null },
+      select: { slug: true, name: true, continent: true },
+    });
+
+    return copas
+      .map((copa) => ({
+        slug: copa.slug,
+        nombre: copa.name,
+        continente: copa.continent ?? 'mundial',
+        plazas: jerarquiaDeCopa(copa.name) === 0 ? 4 : 6,
+        jerarquia: jerarquiaDeCopa(copa.name),
+      }))
+      /* Solo las dos primeras de cada continente: el juego no necesita la tercera división continental. */
+      .filter((copa) => copa.jerarquia <= 1)
+      .sort((a, b) => a.jerarquia - b.jerarquia);
+  }
+}
+
+/** La Champions y la Libertadores son 0; la Europa League y la Sudamericana, 1; el resto, más. */
+function jerarquiaDeCopa(nombre: string): number {
+  const n = nombre.toLowerCase();
+  if (n.includes('champions') || n.includes('libertadores')) return 0;
+  if (n.includes('europa league') || n.includes('sudamericana')) return 1;
+  if (n.includes('conference')) return 2;
+  return 3;
+}

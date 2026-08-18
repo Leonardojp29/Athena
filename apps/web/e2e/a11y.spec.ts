@@ -13,6 +13,13 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const GRAVES = new Set(['serious', 'critical']);
 
+/*
+ * Más tiempo que el resto de la suite. Auditar una página con una isla hidratada —el juego— cuesta
+ * varios segundos de análisis, y con los 150 tests corriendo en paralelo los 30 s por omisión se
+ * agotaban por contención de la máquina y no por un problema de la página.
+ */
+test.describe.configure({ timeout: 90_000 });
+
 async function auditar(page: Page, ruta: string) {
   await page.goto(ruta, { waitUntil: 'networkidle' });
   const { violations } = await new AxeBuilder({ page })
@@ -37,6 +44,8 @@ const VISTAS: Array<[string, string]> = [
   ['una competencia', '/competencias/primera-division'],
   ['el catálogo', '/competencias'],
   ['un equipo', '/equipos/alianza-lima'],
+  ['el catálogo de juegos', '/juegos'],
+  ['la creación de Mi Leyenda', '/juegos/mi-leyenda'],
 ];
 
 test.describe('accesibilidad', () => {
@@ -68,6 +77,18 @@ test.describe('accesibilidad', () => {
  */
 test.describe('peso de las páginas', () => {
   const TECHO_PROPIO_KB = 260;
+  /*
+   * El juego tiene su propio techo, y más alto: es una aplicación con estado, no una vista de lectura.
+   * Ahí el JavaScript no es un impuesto sobre el contenido —es el contenido—, así que se le mide con su
+   * propia vara en lugar de dejarlo fuera del presupuesto, que sería no medirlo.
+   *
+   * El número está medido sin comprimir, que es como el servidor de desarrollo sirve los assets: de los
+   * 475 KB de hoy, 182 son React y 114 la isla del juego, y en producción salen comprimidos a menos de
+   * un tercio. El techo deja unos 45 KB de margen: si el juego se come eso, hay que dividir la isla y no
+   * subir el número.
+   */
+  const TECHO_DEL_JUEGO_KB = 520;
+  const techoDe = (ruta: string) => (ruta.startsWith('/juegos') ? TECHO_DEL_JUEGO_KB : TECHO_PROPIO_KB);
 
   for (const [nombre, ruta] of VISTAS) {
     test(`${nombre} no engorda lo que escribimos nosotros`, async ({ page }) => {
@@ -83,7 +104,7 @@ test.describe('peso de las páginas', () => {
       console.log(
         `${ruta}: ${Math.round(propio / 1024)} KB nuestros · ${Math.round(imagenes / 1024)} KB de imágenes del proveedor`,
       );
-      expect(Math.round(propio / 1024)).toBeLessThan(TECHO_PROPIO_KB);
+      expect(Math.round(propio / 1024)).toBeLessThan(techoDe(ruta));
     });
   }
 });

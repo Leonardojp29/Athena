@@ -170,6 +170,14 @@ se mapea en el adaptador del proveedor y se re-corre el backfill correspondiente
 camino, no acumular. Tras borrar mucho, el espacio vuelve con `VACUUM FULL tabla` (bloquea la tabla
 unos segundos; nunca dentro de una migración).
 
+## Juegos
+
+`/juegos` es la sección de juegos y `/juegos/mi-leyenda` el primero. El motor es
+`packages/leyenda` (TypeScript puro, con tests) y el mundo de clubes reales sale
+de `GET /v1/views/mundo`, que se cachea un día. Las partidas viven en el
+navegador: no hay nada que operar del lado del servidor. Detalle en
+`docs/juegos/MI-LEYENDA.md`.
+
 ## Apagar funcionalidad sin desplegar
 
 Los feature flags viven en la tabla `feature_flags` y se cachean 45 s en memoria:

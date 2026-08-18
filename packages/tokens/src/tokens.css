@@ -124,6 +124,13 @@
   --a-motion-slow: 320ms;
   --a-motion-place: 340ms;
   --a-motion-draw: 560ms;
+  /*
+   * Los dos escalones del juego. El resto del producto informa y no necesita más de 560 ms; una
+   * carrera que sube de categoría o un título sí: son los momentos donde la pantalla tiene que
+   * respirar. Se quedan acá, con los demás, para que el reduced-motion los colapse igual.
+   */
+  --a-motion-drama: 520ms;
+  --a-motion-cine: 900ms;
   --a-ease: cubic-bezier(0.2, 0, 0, 1);
   --a-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   /* El imán asienta con un sobrepaso mínimo, y eso vive en los keyframes de escala:
@@ -180,5 +187,7 @@
     --a-motion-slow: 1ms;
     --a-motion-place: 1ms;
     --a-motion-draw: 1ms;
+    --a-motion-drama: 1ms;
+    --a-motion-cine: 1ms;
   }
 }

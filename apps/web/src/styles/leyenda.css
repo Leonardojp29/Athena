@@ -1,0 +1,395 @@
+/*
+ * Mi Leyenda: el material y el movimiento.
+ *
+ * Vive aparte del CSS del sitio y solo lo importan las páginas del juego: una carta con holografía no
+ * tiene por qué pesar en la página de un partido. La regla del mundo se respeta igual —sobre el
+ * tablero solo viven tiza, lima y cian— y los colores del club entran como acento, nunca como texto.
+ *
+ * Todas las animaciones cuelgan de los tokens de duración, así `prefers-reduced-motion` las colapsa
+ * en un solo lugar. Lo que no se puede colapsar (el brillo que sigue al puntero) se apaga con la
+ * media query al final del archivo.
+ */
+
+/* ------------------------------------------------------------------- la carta */
+
+/*
+ * La carta es un objeto con tres capas: el material (fondo), el contenido (números y camiseta) y el
+ * brillo (encima de todo, sin capturar el puntero). El tilt se aplica al contenedor con perspectiva y
+ * las capas se separan en Z, que es lo que produce el paralaje sin JavaScript por cuadro.
+ */
+[data-carta-marco] {
+  perspective: 900px;
+  perspective-origin: center;
+}
+
+[data-carta] {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--a-radius-lg);
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(var(--carta-escala, 1));
+  transition:
+    transform var(--a-motion-slow) var(--a-ease-magnet),
+    box-shadow var(--a-motion-base) var(--a-ease);
+  will-change: transform;
+  /* La sombra del imán: la carta se levanta del tablero, y por eso no lleva borde además. */
+  box-shadow:
+    0 1px 2px oklch(0.15 0.005 285 / 0.28),
+    0 12px 28px -8px oklch(0.15 0.005 285 / 0.45);
+}
+
+[data-carta][data-tomada='si'] {
+  transition: none;
+}
+
+/* El brillo: una banda diagonal que sigue al puntero. Es lo que hace que la carta parezca material. */
+[data-carta-brillo] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--brillo-fuerza, 0);
+  transition: opacity var(--a-motion-base) var(--a-ease);
+  background:
+    radial-gradient(
+      120% 80% at var(--brillo-x, 50%) var(--brillo-y, 50%),
+      oklch(1 0 0 / 0.34) 0%,
+      oklch(1 0 0 / 0.12) 34%,
+      transparent 62%
+    );
+  mix-blend-mode: soft-light;
+}
+
+/* El contenido flota un poco por encima del material: el paralaje del objeto real. */
+[data-carta-capa='contenido'] {
+  transform: translateZ(18px);
+}
+[data-carta-capa='escudo'] {
+  transform: translateZ(30px);
+}
+
+/* --------------------------------------------------------------- los materiales */
+
+/*
+ * Siete materiales, uno por categoría. La progresión es de mate a luminoso: la cantera es pizarra sin
+ * brillo y el inmortal tiene luz propia. Ninguno usa color de marca como relleno de texto; el número
+ * grande siempre va en tiza o en lima según el material.
+ */
+[data-material='cantera'] {
+  background:
+    linear-gradient(168deg, oklch(0.34 0.03 190) 0%, oklch(0.26 0.022 190) 100%);
+  --carta-tinta: var(--a-color-chalk);
+  --carta-tenue: var(--a-color-chalk-dim);
+  --carta-filo: oklch(1 0 0 / 0.14);
+}
+
+[data-material='promesa'] {
+  background:
+    linear-gradient(168deg, oklch(0.36 0.04 168) 0%, oklch(0.25 0.03 175) 100%);
+  --carta-tinta: var(--a-color-chalk);
+  --carta-tenue: var(--a-color-chalk-dim);
+  --carta-filo: oklch(0.906 0.191 118 / 0.5);
+}
+
+[data-material='profesional'] {
+  background:
+    linear-gradient(155deg, oklch(0.72 0.012 250) 0%, oklch(0.5 0.014 255) 46%, oklch(0.62 0.01 250) 100%);
+  --carta-tinta: oklch(0.18 0.01 260);
+  --carta-tenue: oklch(0.32 0.012 260);
+  --carta-filo: oklch(1 0 0 / 0.5);
+}
+
+[data-material='elite'] {
+  background:
+    linear-gradient(155deg, oklch(0.7 0.1 62) 0%, oklch(0.48 0.09 52) 48%, oklch(0.62 0.095 58) 100%);
+  --carta-tinta: oklch(0.99 0.01 80);
+  --carta-tenue: oklch(0.99 0.01 80 / 0.72);
+  --carta-filo: oklch(0.88 0.07 78 / 0.6);
+}
+
+[data-material='clase-mundial'] {
+  background:
+    linear-gradient(155deg, oklch(0.88 0.14 92) 0%, oklch(0.72 0.15 78) 40%, oklch(0.86 0.13 96) 72%, oklch(0.66 0.14 74) 100%);
+  --carta-tinta: oklch(0.2 0.03 70);
+  --carta-tenue: oklch(0.32 0.04 70);
+  --carta-filo: oklch(1 0.02 95 / 0.72);
+}
+
+[data-material='icono'] {
+  background:
+    linear-gradient(160deg, oklch(0.2 0.02 285) 0%, oklch(0.13 0.02 290) 52%, oklch(0.22 0.03 300) 100%);
+  --carta-tinta: oklch(0.98 0.002 285);
+  --carta-tenue: oklch(0.98 0.002 285 / 0.66);
+  --carta-filo: oklch(0.85 0.12 200 / 0.55);
+}
+
+[data-material='inmortal'] {
+  background:
+    linear-gradient(158deg, oklch(0.96 0.008 95) 0%, oklch(0.86 0.012 95) 38%, oklch(0.99 0.004 95) 62%, oklch(0.82 0.016 100) 100%);
+  --carta-tinta: oklch(0.16 0.01 285);
+  --carta-tenue: oklch(0.3 0.012 285);
+  --carta-filo: oklch(0.906 0.191 118 / 0.7);
+}
+
+/* La holografía: solo de clase mundial para arriba, y siempre por debajo del contenido. */
+[data-carta-holo] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 12%,
+    oklch(0.85 0.16 20 / 0.22) 26%,
+    oklch(0.9 0.15 95 / 0.24) 38%,
+    oklch(0.86 0.14 165 / 0.22) 50%,
+    oklch(0.84 0.15 250 / 0.24) 62%,
+    transparent 78%
+  );
+  background-size: 260% 260%;
+  mix-blend-mode: color-dodge;
+}
+
+[data-material='clase-mundial'] [data-carta-holo],
+[data-material='icono'] [data-carta-holo] {
+  opacity: 0.55;
+  background-position: calc(var(--brillo-x, 50%) * -1.2 + 120%) center;
+}
+
+[data-material='inmortal'] [data-carta-holo] {
+  opacity: 0.42;
+  background-position: calc(var(--brillo-x, 50%) * -1.4 + 140%) center;
+  mix-blend-mode: soft-light;
+}
+
+/*
+ * El ícono respira: una luz lenta que recorre el fondo. Es la única animación infinita del juego, y
+ * existe porque una carta de ícono quieta no se distingue de una imagen.
+ */
+@keyframes carta-respira {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.82;
+  }
+}
+
+[data-material='icono'] [data-carta-aura],
+[data-material='inmortal'] [data-carta-aura] {
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, oklch(0.906 0.191 118 / 0.16), transparent 72%);
+  animation: carta-respira 4.5s var(--a-ease-athena, ease-in-out) infinite;
+}
+
+/* --------------------------------------------------- la entrada de la carta */
+
+@keyframes carta-entra {
+  from {
+    opacity: 0;
+    transform: rotateY(-16deg) rotateX(6deg) translateY(14px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0) rotateX(0) translateY(0) scale(1);
+  }
+}
+
+[data-carta-entra] {
+  animation: carta-entra var(--a-motion-cine) var(--a-ease-out-expo) both;
+}
+
+/* La subida de categoría: la carta se da vuelta y vuelve con el material nuevo. */
+@keyframes carta-asciende {
+  0% {
+    transform: rotateY(0) scale(1);
+  }
+  42% {
+    transform: rotateY(90deg) scale(1.06);
+  }
+  58% {
+    transform: rotateY(270deg) scale(1.06);
+  }
+  100% {
+    transform: rotateY(360deg) scale(1);
+  }
+}
+
+[data-carta-asciende] {
+  animation: carta-asciende var(--a-motion-cine) var(--a-ease-magnet) both;
+}
+
+/* ------------------------------------------------------------------- el guion */
+
+/*
+ * Cada beat entra desde abajo y empuja al anterior. La duración la pone el motor con
+ * `--beat-duracion`, así una cinemática respira y un dato pasa rápido, sin dos animaciones distintas.
+ */
+@keyframes beat-entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-beat] {
+  animation: beat-entra var(--beat-duracion, var(--a-motion-base)) var(--a-ease-out-expo) both;
+}
+
+/* El gol: la única vez que la pantalla entera reacciona. */
+@keyframes gol-golpe {
+  0% {
+    transform: scale(0.86);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+[data-beat='gol'] {
+  animation: gol-golpe var(--a-motion-drama) var(--a-ease-magnet) both;
+}
+
+@keyframes trofeo-llega {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+[data-beat='trofeo'],
+[data-beat='premio'] {
+  animation: trofeo-llega var(--a-motion-cine) var(--a-ease-out-expo) both;
+}
+
+/* --------------------------------------------------------------- los momentos */
+
+/*
+ * El momento contrae la interfaz: el resto se va y queda la escena. Es la transición que hace que
+ * jugar un penal se sienta entrar a otra pantalla sin cambiar de página.
+ */
+@keyframes escena-abre {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+[data-escena] {
+  animation: escena-abre var(--a-motion-cine) var(--a-ease-out-expo) both;
+}
+
+/* La retícula del penal barre el arco: el jugador la para donde quiere. */
+@keyframes mira-barre {
+  from {
+    left: 12%;
+  }
+  to {
+    left: 88%;
+  }
+}
+
+[data-mira] {
+  animation: mira-barre 1.15s var(--a-ease-athena, ease-in-out) infinite alternate;
+}
+
+/* La barra de potencia sube y baja: el timing es del jugador, no del azar. */
+@keyframes potencia-late {
+  from {
+    transform: scaleY(0.06);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+[data-potencia-barra] {
+  transform-origin: bottom;
+  animation: potencia-late 0.85s var(--a-ease-athena, ease-in-out) infinite alternate;
+}
+
+/* La ventana de timing corre una vez: quien llega tarde, llega tarde. */
+@keyframes ventana-corre {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(100cqw - 100%));
+  }
+}
+
+[data-ventana] {
+  container-type: inline-size;
+}
+
+[data-ventana-cursor] {
+  animation: ventana-corre var(--ventana-duracion, 1.6s) linear both;
+}
+
+/* La pelota viaja al arco cuando ya se decidió todo. */
+@keyframes pelota-viaja {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(var(--pelota-x, 0), var(--pelota-y, -60%)) scale(0.42);
+  }
+}
+
+[data-pelota-viaja] {
+  animation: pelota-viaja var(--a-motion-drama) cubic-bezier(0.3, 0, 0.5, 1) both;
+}
+
+/* ------------------------------------------------------- reducción de movimiento */
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * El juego sigue siendo jugable sin movimiento: la mira y la potencia dejan de oscilar y pasan a
+   * controles discretos —las flechas del teclado los mueven igual—, y la carta se queda quieta con su
+   * material, que es lo que comunica la categoría.
+   */
+  [data-carta] {
+    transform: none !important;
+  }
+  [data-carta-brillo],
+  [data-carta-holo],
+  [data-carta-aura] {
+    animation: none !important;
+    background-position: 50% 50% !important;
+  }
+  [data-mira],
+  [data-potencia-barra],
+  [data-ventana-cursor] {
+    animation: none !important;
+  }
+  [data-mira] {
+    left: 50%;
+  }
+  [data-potencia-barra] {
+    transform: scaleY(0.55);
+  }
+}

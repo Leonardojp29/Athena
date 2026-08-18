@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const RUTAS = ['/', '/partidos', '/competencias', '/competencias/primera-division'];
+const RUTAS = ['/', '/partidos', '/competencias', '/competencias/primera-division', '/juegos'];
 
 test.describe('shell del sitio', () => {
   /*

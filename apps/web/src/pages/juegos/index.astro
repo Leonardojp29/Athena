@@ -1,0 +1,96 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/layout/Container.astro';
+import Icon from '../../components/Icon.astro';
+import '../../styles/leyenda.css';
+
+/*
+ * El catálogo de juegos. Es la puerta: dice qué hay, invita a entrar y deja lugar para lo que venga.
+ * Va por el servidor como el resto del sitio: el header cuenta los partidos en vivo y el middleware
+ * comprime leyendo la cabecera del pedido, y ninguna de las dos cosas existe en una página prerendida.
+ */
+
+const JUEGOS = [
+  {
+    slug: 'mi-leyenda',
+    nombre: 'Mi Leyenda',
+    lema: 'No te damos una carrera. Te damos la oportunidad de crearla.',
+    descripcion:
+      'Creás un futbolista y vivís su carrera entera: el debut, los goles, las lesiones, la prensa, los ' +
+      'fichajes y el retiro. Con clubes reales de veinte ligas. Al final te queda la carta de toda tu vida.',
+    rasgos: ['Clubes reales', 'Decisiones con memoria', 'Penales y atajadas jugables', 'Carta de colección'],
+    estado: 'disponible' as const,
+  },
+];
+---
+
+<Base
+  title="Juegos — Athena"
+  description="Juegos de fútbol dentro de Athena. Creá un futbolista, viví su carrera y quedate con la carta de toda tu vida."
+  width="bleed"
+  liveBar={false}
+>
+  <section class="border-b border-border bg-board">
+    <Container width="wide" class="py-10 sm:py-14">
+      <p class="text-2xs font-medium uppercase tracking-label text-chalk-dim">Athena</p>
+      <h1 class="mt-1 font-display text-4xl font-semibold uppercase leading-none tracking-label text-chalk">
+        Juegos
+      </h1>
+      <p class="mt-3 max-w-xl text-base leading-relaxed text-chalk-dim">
+        La misma base de datos que explica el fútbol de verdad, puesta a jugar. Clubes reales, ligas
+        reales, decisiones que el juego recuerda.
+      </p>
+    </Container>
+  </section>
+
+  <Container width="wide" class="py-6 sm:py-8">
+    <ul class="grid items-start gap-4 lg:grid-cols-2">
+      {
+        JUEGOS.map((juego) => (
+          <li>
+            <a
+              href={`/juegos/${juego.slug}`}
+              class="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary-ink"
+            >
+              <div class="flex items-start gap-3 border-b border-border p-4">
+                <span class="grid size-11 shrink-0 place-items-center rounded-lg bg-primary text-primary-contrast">
+                  <Icon name="juego" size={22} />
+                </span>
+                <div class="min-w-0">
+                  <h2 class="font-display text-2xl font-semibold uppercase leading-none tracking-label">
+                    {juego.nombre}
+                  </h2>
+                  <p class="mt-1 text-sm text-primary-ink">{juego.lema}</p>
+                </div>
+              </div>
+
+              <p class="px-4 py-3 text-sm leading-relaxed text-ink-muted">{juego.descripcion}</p>
+
+              <ul class="flex flex-wrap gap-1.5 px-4 pb-4">
+                {juego.rasgos.map((rasgo) => (
+                  <li class="rounded-full bg-canvas-subtle px-2.5 py-1 text-2xs font-medium text-ink-muted">
+                    {rasgo}
+                  </li>
+                ))}
+              </ul>
+
+              <p class="mt-auto flex items-center gap-1.5 border-t border-border px-4 py-3 font-display text-sm font-semibold uppercase tracking-label text-primary-ink">
+                Jugar
+                <Icon name="chevron-derecha" size={16} />
+              </p>
+            </a>
+          </li>
+        ))
+      }
+
+      <li class="flex h-full flex-col justify-center rounded-xl border border-dashed border-border p-4">
+        <h2 class="font-display text-lg font-semibold uppercase tracking-label text-ink-muted">
+          Más juegos, en camino
+        </h2>
+        <p class="mt-1 text-sm text-ink-muted">
+          Adivinar el once, el duelo de datos, el desafío del día. Todos con los datos reales de Athena.
+        </p>
+      </li>
+    </ul>
+  </Container>
+</Base>

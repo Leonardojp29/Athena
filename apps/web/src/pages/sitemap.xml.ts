@@ -12,6 +12,8 @@ export const GET: APIRoute = async ({ site }) => {
 
   const urls = [
     { loc: new URL('/', site).toString(), priority: '1.0' },
+    { loc: new URL('/juegos', site).toString(), priority: '0.8' },
+    { loc: new URL('/juegos/mi-leyenda', site).toString(), priority: '0.8' },
     ...competitions.map((c) => ({
       loc: new URL(`/competencias/${c.slug}`, site).toString(),
       priority: '0.9',

@@ -1,5 +1,6 @@
 import { Controller, Get, Header, Param, ParseUUIDPipe, Query, Res } from '@nestjs/common';
 import { ViewCacheService } from '../../shared/view-cache.service.js';
+import { MundoService } from './mundo.service.js';
 import { ViewsService } from './views.service.js';
 
 /*
@@ -19,6 +20,8 @@ const TTL = {
   matchTerminado: 3600,
   topPerformers: 300,
   sitemap: 3600,
+  /* El mundo del juego cambia cuando cambian las tablas: una vez al día alcanza. */
+  mundo: 86400,
 } as const;
 
 /* Lo que el selector puede pedir; cualquier otra cosa cae en la región de este público. */
@@ -28,6 +31,7 @@ const CONTINENTES = new Set(['sudamerica', 'europa', 'norteamerica', 'asia', 'af
 export class ViewsController {
   constructor(
     private readonly views: ViewsService,
+    private readonly mundoDelJuego: MundoService,
     private readonly cache: ViewCacheService,
   ) {}
 
@@ -41,6 +45,13 @@ export class ViewsController {
   @Header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200')
   competitions() {
     return this.cache.wrap('competitions', TTL.competitions, () => this.views.competitions());
+  }
+
+  /* El catálogo que los juegos necesitan: ligas jugables, clubes reales y la fuerza de cada uno. */
+  @Get('mundo')
+  @Header('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800')
+  mundo() {
+    return this.cache.wrap('mundo', TTL.mundo, () => this.mundoDelJuego.mundo());
   }
 
   @Get('matches')

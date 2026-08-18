@@ -1,0 +1,50 @@
+---
+import Base from '../../layouts/Base.astro';
+import MiLeyenda from '../../components/juego/MiLeyenda';
+import { api } from '../../lib/api';
+import type { Mundo } from '@athena/leyenda';
+import '../../styles/leyenda.css';
+
+/*
+ * El juego a pantalla limpia: `chrome="minimal"` quita la banda de partidos y el pie, que acá compiten
+ * con la carrera. El header queda —el juego vive dentro de Athena, no en un iframe— y con él la salida.
+ *
+ * El mundo se pide una vez en el servidor y viaja como prop: son veinte ligas con sus clubes reales, y
+ * el API lo cachea un día. Si el API no responde, la página lo dice en lugar de mostrar un juego roto.
+ */
+let mundo: Mundo | null = null;
+try {
+  mundo = await api<Mundo>('/views/mundo');
+} catch {
+  mundo = null;
+}
+
+const anio = new Date().getFullYear();
+---
+
+<Base
+  title="Mi Leyenda — Athena"
+  description="Creá un futbolista y viví su carrera entera con clubes reales: debut, goles, fichajes, prensa, retiro y la carta de toda tu vida."
+  chrome="minimal"
+  width="bleed"
+  liveBar={false}
+>
+  {
+    mundo && mundo.ligas.length > 0 ? (
+      <MiLeyenda client:load mundo={mundo} anio={anio} />
+    ) : (
+      <div class="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 class="font-display text-2xl font-semibold uppercase tracking-label">Mi Leyenda</h1>
+        <p class="mt-2 text-sm text-ink-muted">
+          No pudimos cargar el mundo de clubes. Probá de nuevo en un momento.
+        </p>
+        <a
+          href="/juegos"
+          class="mt-4 inline-block rounded-md border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-canvas-subtle"
+        >
+          Volver a Juegos
+        </a>
+      </div>
+    )
+  }
+</Base>
