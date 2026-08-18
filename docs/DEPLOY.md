@@ -1,8 +1,10 @@
-# Lanzar Athena en Vercel + Supabase (a $0)
+# Lanzar Athena en Vercel + Supabase
 
 Guía paso a paso, pensada para la primera vez en Vercel. Al final hay dos
 proyectos en Vercel (web y API), la base sigue en Supabase, y el sync del vivo
-late cada minuto gracias a pg_cron. No hay ningún servicio pago nuevo.
+late cada minuto gracias a pg_cron. Vercel va en plan Hobby ($0); Supabase en
+plan Pro ($25/mes, spend cap encendido): el archivo completo con detalle fino
+pesa más de lo que el free tier (500 MB) admite — está medido, no estimado.
 
 **Cómo queda armado**:
 
@@ -22,7 +24,7 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
 
 - La cuenta de GitHub con el repo `Leonardojp29/Athena`.
 - Las credenciales de Supabase del proyecto real (las mismas del `.env` local):
-  `DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, claves anon y service role.
+  `DATABASE_URL` y `DIRECT_URL`. Nada más: sin login, el API solo necesita la base.
 - La clave de API-Football y la de OpenAI.
 - Un secreto nuevo para el cron. Generarlo así y guardarlo:
 
@@ -65,9 +67,6 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
    |---|---|
    | `DATABASE_URL` | la del pooler (puerto 6543, `?pgbouncer=true`) |
    | `DIRECT_URL` | la directa (puerto 5432) |
-   | `SUPABASE_URL` | igual que local |
-   | `SUPABASE_ANON_KEY` | igual que local |
-   | `SUPABASE_SERVICE_ROLE_KEY` | igual que local — **solo acá, jamás en la web** |
    | `API_FOOTBALL_KEY` | igual que local |
    | `OPENAI_API_KEY` | igual que local |
    | `OPENAI_DAILY_TOKEN_CAP` | `2000000` |
@@ -98,10 +97,8 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
    |---|---|
    | `PUBLIC_API_URL` | la URL real del paso 2, **sin `/v1` y sin barra final**: `https://athena-api.vercel.app` — el código agrega `/v1` solo, y una barra de más arma `//v1/...`, que es 404 |
    | `PUBLIC_SITE_URL` | `https://athena.vercel.app` (la URL real de este proyecto) |
-   | `PUBLIC_SUPABASE_URL` | igual que local |
-   | `PUBLIC_SUPABASE_ANON_KEY` | igual que local |
 
-   Nada más: la web nunca lleva service role ni claves de proveedores.
+   Nada más: la web nunca lleva claves de proveedores.
 4. **Deploy** y abrir la URL: la home tiene que cargar con datos reales (la web
    lee Postgres a través del API).
 5. Volver al proyecto `athena-api` → **Settings → Environment Variables** →

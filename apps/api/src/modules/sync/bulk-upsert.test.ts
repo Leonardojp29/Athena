@@ -69,11 +69,11 @@ describe('bulkUpsert', () => {
   it('serializa las columnas jsonb y las castea', async () => {
     const { prisma, llamadas } = fakePrisma();
     await bulkUpsert(prisma, {
-      table: 'match_player_statistics',
-      conflict: ['match_id', 'player_id'],
-      update: ['raw'],
-      rows: [{ match_id: 'm1', player_id: 'p1', raw: { minutes: 90 } }],
-      jsonColumns: ['raw'],
+      table: 'match_lineups',
+      conflict: ['match_id', 'team_id'],
+      update: ['start_xi'],
+      rows: [{ match_id: 'm1', team_id: 't1', start_xi: { minutes: 90 } }],
+      jsonColumns: ['start_xi'],
     });
 
     const { sql, params } = llamadas[0] as { sql: string; params: unknown[] };

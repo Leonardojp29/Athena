@@ -332,6 +332,9 @@ test.describe('shell del sitio', () => {
     const riel = page.locator('main aside').last();
     const cancha = riel.getByRole('heading', { name: /con qué salió/i });
     test.skip((await cancha.count()) === 0, 'este equipo no tiene alineación publicada todavía');
+    /* Con once pero sin posiciones (caída parcial del proveedor), la cancha avisa en vez de dibujar. */
+    const sinPosiciones = riel.getByText(/no alcanza para dibujar/i);
+    test.skip((await sinPosiciones.count()) > 0, 'el último partido vino sin posiciones del proveedor');
     await expect(cancha).toBeVisible();
 
     /* Los goleadores del mundo no aparecen en la vista de equipo. */

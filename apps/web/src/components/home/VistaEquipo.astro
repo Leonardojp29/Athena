@@ -22,10 +22,9 @@ import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
  */
 interface Props {
   view: TeamView;
-  conCuenta?: boolean;
 }
 
-const { view, conCuenta = false } = Astro.props;
+const { view } = Astro.props;
 const { team, standings, recent, upcoming, squad, scorers } = view;
 const pais = paisEnEspanol(team.country);
 
@@ -132,7 +131,6 @@ const conRonda = mezclaRondas(bloques.flatMap((bloque) => bloque.partidos));
         logoUrl={team.logoUrl}
         pais={pais}
         variante="boton"
-        conCuenta={conCuenta}
         onBoard
         class="!border-(--linea) !text-(--tinta) hover:!border-(--tinta-suave) aria-pressed:!border-(--tinta) aria-pressed:!bg-(--chip) aria-pressed:!text-(--tinta)"
       />

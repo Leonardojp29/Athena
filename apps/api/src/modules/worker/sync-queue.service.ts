@@ -93,6 +93,13 @@ export class SyncQueueService {
    * hasta agotar su presupuesto de tiempo, que en serverless es el límite de la función.
    */
   async tick(presupuestoMs = 50_000): Promise<{ vivos: number; tareas: number }> {
+    /*
+     * Un solo tic a la vez. En serverless pg_cron dispara cada minuto sin saber si el anterior
+     * sigue vivo: sin candado, dos tics solapados procesan el mismo outbox y piden el mismo vivo
+     * dos veces. El que llega tarde se va sin trabajar; el candado expira solo antes del minuto.
+     */
+    if (!(await this.kv.marcar('tick:candado', 55))) return { vivos: 0, tareas: 0 };
+
     const arranque = Date.now();
     await this.schedules.markRun('live-tick');
     const vivos = await this.liveTick();
@@ -339,13 +346,20 @@ export class SyncQueueService {
     const events = await this.outbox.pending();
     if (events.length === 0) return 0;
 
-    const handled: string[] = [];
+    /*
+     * Se marca evento por evento, apenas manejado. Marcar el lote al final abría una ventana de
+     * minutos: un tic degollado a mitad del lote dejaba los primeros eventos manejados pero sin
+     * marcar, y el siguiente tic los encolaba de nuevo — doble derivación y doble gasto de IA.
+     * Marcar cada uno acota la repetición al evento en curso, y repetir uno es barato: todo lo
+     * que se encola termina en upserts idempotentes.
+     */
+    let handled = 0;
     for (const event of events) {
       if (event.kind === 'MATCH_FINISHED') await this.onMatchFinished(event.subjectId);
-      handled.push(event.id);
+      await this.outbox.markProcessed([event.id]);
+      handled++;
     }
-    await this.outbox.markProcessed(handled);
-    return handled.length;
+    return handled;
   }
 
   /**

@@ -22,7 +22,6 @@ interface Props {
   variante?: 'estrella' | 'boton';
   /** Cierto si la cuenta ya lo tiene: evita el parpadeo para quien entró. */
   siguiendo?: boolean;
-  conCuenta?: boolean;
   /** Sobre la pizarra oscura el botón de superficie queda casi invisible. */
   onBoard?: boolean;
   class?: string;
@@ -38,7 +37,6 @@ const {
   banderaUrl = null,
   variante = 'estrella',
   siguiendo = false,
-  conCuenta = false,
   onBoard = false,
   class: className,
 } = Astro.props;
@@ -61,7 +59,6 @@ const CLASES = {
   data-favorito={`${tipo}:${slug}`}
   data-favorito-payload={payload}
   data-favorito-nombre={nombre}
-  data-con-cuenta={conCuenta ? 'si' : undefined}
   aria-pressed={siguiendo ? 'true' : 'false'}
   aria-label={etiqueta}
   title={etiqueta}
@@ -109,16 +106,6 @@ const CLASES = {
     const marcado = alternarFavorito(favorito);
     if (marcado && primeraVez()) {
       document.querySelector<HTMLElement>('[data-favoritos-aviso]')?.removeAttribute('hidden');
-    }
-
-    /* Con sesión, además viaja a la cuenta. Si falla, el favorito del navegador ya quedó. */
-    if (boton.dataset.conCuenta && favorito.id) {
-      const entityType = favorito.tipo === 'liga' ? 'competition' : favorito.tipo === 'equipo' ? 'team' : 'player';
-      void fetch('/api/favoritos', {
-        method: marcado ? 'POST' : 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entityType, entityId: favorito.id }),
-      }).catch(() => undefined);
     }
   });
 

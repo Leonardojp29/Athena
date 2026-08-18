@@ -23,7 +23,6 @@ import TablaLideres from '../../components/TablaLideres.astro';
 import { api, ApiError, type CompetitionView, type MatchView, type TeamView } from '../../lib/api';
 import { isLive } from '../../lib/format';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
-import { getSession } from '../../lib/supabase';
 import { nombreFase, paisEnEspanol } from '../../lib/paises';
 import { etiquetaDeRonda } from '../../lib/rondas';
 
@@ -37,7 +36,6 @@ const temporadaPedida = /^\d{4}$/.test(anioPedido ?? '') ? anioPedido : null;
 const pedidoVista = api<CompetitionView>(
   `/views/competition/${slug}${temporadaPedida ? `?temporada=${temporadaPedida}` : ''}`,
 );
-const pedidoSesion = getSession(Astro);
 
 /*
  * El partido abierto dentro de la copa. Se valida como UUID y si el pedido falla se cae al cuadro:
@@ -67,7 +65,6 @@ try {
   if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
   throw error;
 }
-const session = await pedidoSesion;
 const partido = await pedidoPartido;
 const equipo = await pedidoEquipo;
 
@@ -324,7 +321,6 @@ const jsonLd = {
           pais={pais}
           banderaUrl={competition.flagUrl}
           variante="boton"
-          conCuenta={session !== null}
           onBoard
           class="shrink-0"
         />
@@ -384,7 +380,6 @@ const jsonLd = {
             volver={`/competencias/${competition.slug}`}
             hrefPartido={enlacePartidoEnCopa}
             hrefEquipo={enlaceEquipoCopa}
-            conCuenta={session !== null}
           />
         )
       }

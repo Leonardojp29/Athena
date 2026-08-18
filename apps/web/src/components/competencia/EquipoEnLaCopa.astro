@@ -27,10 +27,9 @@ interface Props {
   volver: string;
   hrefPartido: (id: string) => string;
   hrefEquipo: (slug: string) => string;
-  conCuenta?: boolean;
 }
 
-const { rondas, view, grupo, volver, hrefPartido, hrefEquipo, conCuenta = false } = Astro.props;
+const { rondas, view, grupo, volver, hrefPartido, hrefEquipo } = Astro.props;
 const { team, squad } = view;
 
 /* Su camino: una fila por partido, con la ronda al lado porque acá se mezclan todas. */
@@ -108,7 +107,6 @@ const pais = paisEnEspanol(team.country);
       logoUrl={team.logoUrl}
       pais={pais}
       variante="boton"
-      conCuenta={conCuenta}
       class="ml-auto shrink-0"
     />
   </header>

@@ -32,7 +32,7 @@ export class EmbeddingRepository {
     const literal = toVectorLiteral(vector);
     await this.prisma.$executeRaw`
       INSERT INTO embeddings (id, entity_type, entity_id, model, content, vector, updated_at)
-      VALUES (gen_random_uuid(), ${entityType}, ${entityId}::uuid, ${model}, ${content}, ${literal}::vector, now())
+      VALUES (gen_random_uuid(), ${entityType}, ${entityId}::uuid, ${model}, ${content}, ${literal}::halfvec, now())
       ON CONFLICT (entity_type, entity_id, model)
       DO UPDATE SET content = EXCLUDED.content, vector = EXCLUDED.vector, updated_at = now()
     `;
@@ -48,18 +48,18 @@ export class EmbeddingRepository {
     const rows = entityType
       ? await this.prisma.$queryRaw<VectorHit[]>`
           SELECT entity_type AS "entityType", entity_id::text AS "entityId",
-                 1 - (vector <=> ${literal}::vector) AS score
+                 1 - (vector <=> ${literal}::halfvec) AS score
           FROM embeddings
           WHERE model = ${model} AND entity_type = ${entityType}
-          ORDER BY vector <=> ${literal}::vector
+          ORDER BY vector <=> ${literal}::halfvec
           LIMIT ${limit}
         `
       : await this.prisma.$queryRaw<VectorHit[]>`
           SELECT entity_type AS "entityType", entity_id::text AS "entityId",
-                 1 - (vector <=> ${literal}::vector) AS score
+                 1 - (vector <=> ${literal}::halfvec) AS score
           FROM embeddings
           WHERE model = ${model}
-          ORDER BY vector <=> ${literal}::vector
+          ORDER BY vector <=> ${literal}::halfvec
           LIMIT ${limit}
         `;
     return rows;
@@ -94,7 +94,7 @@ export class EmbeddingRepository {
     return this.prisma.$queryRaw<EntityHit[]>`
       SELECT e.entity_type AS "entityType",
              e.entity_id::text AS "entityId",
-             1 - (e.vector <=> ${literal}::vector) AS score,
+             1 - (e.vector <=> ${literal}::halfvec) AS score,
              COALESCE(t.name, p.name) AS name,
              COALESCE(t.slug, p.slug) AS slug,
              COALESCE(t.logo_url, p.photo_url) AS "imageUrl",
@@ -104,7 +104,7 @@ export class EmbeddingRepository {
       LEFT JOIN players p ON e.entity_type = 'player' AND p.id = e.entity_id
       WHERE e.model = ${model}
         AND (t.id IS NOT NULL OR p.id IS NOT NULL)
-      ORDER BY e.vector <=> ${literal}::vector
+      ORDER BY e.vector <=> ${literal}::halfvec
       LIMIT ${limit}
     `;
   }

@@ -109,7 +109,6 @@ describe('mapStatistics', () => {
 
     expect(stats.teamRef).toBe('1234');
     expect(stats.possessionPercent).toBeNull();
-    expect(stats.raw).toEqual({});
   });
 });
 

@@ -30,7 +30,6 @@ interface Props {
   paisActivo: string | null;
   ligaActiva: string | null;
   equipoActivo?: string | null;
-  conCuenta?: boolean;
 }
 
 const {
@@ -40,7 +39,6 @@ const {
   paisActivo,
   ligaActiva,
   equipoActivo = null,
-  conCuenta = false,
 } = Astro.props;
 
 const partidosPorPais = new Map(
@@ -162,7 +160,6 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                 nombre={nombreTorneo(competition.name)}
                 logoUrl={competition.logoUrl}
                 pais={continente.label}
-                conCuenta={conCuenta}
                 class="opacity-0 focus-visible:opacity-100 group-hover/liga:opacity-100 aria-pressed:opacity-100"
               />
             </div>
@@ -231,7 +228,6 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                         logoUrl={competition.logoUrl}
                         pais={nombrePais}
                         banderaUrl={pais.flagUrl}
-                        conCuenta={conCuenta}
                         class="opacity-0 focus-visible:opacity-100 group-hover/liga:opacity-100 aria-pressed:opacity-100"
                       />
                     </li>
@@ -316,7 +312,6 @@ const tieneSeleccion = (pais: NavContinent['countries'][number]): boolean =>
                     nombre={nombreTorneo(competition.name)}
                     logoUrl={competition.logoUrl}
                     pais={confederacion.label}
-                    conCuenta={conCuenta}
                     class="opacity-0 focus-visible:opacity-100 group-hover/liga:opacity-100 aria-pressed:opacity-100"
                   />
                 </li>

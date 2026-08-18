@@ -152,6 +152,24 @@ psql "$DIRECT_URL" -c "SELECT tipo, count(*) FROM tareas GROUP BY 1"
 curl -X POST -H "x-cron-secreto: $CRON_SECRET" http://localhost:3001/v1/internal/tick
 ```
 
+## Cuánto pesa la base
+
+Supabase Pro incluye 8 GB. La base guarda solo columnas tipadas —los payloads crudos del proveedor
+se eliminaron a propósito (ADR-006)— así que el crecimiento es ~280 MB por temporada con el
+catálogo actual. Para ver qué pesa:
+
+```sql
+select relname, pg_size_pretty(pg_total_relation_size(c.oid)) total
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r'
+order by pg_total_relation_size(c.oid) desc limit 10;
+```
+
+Si el producto necesita una métrica que hoy no se tipa, no hay dónde leerla: se agrega la columna,
+se mapea en el adaptador del proveedor y se re-corre el backfill correspondiente — re-pedir es el
+camino, no acumular. Tras borrar mucho, el espacio vuelve con `VACUUM FULL tabla` (bloquea la tabla
+unos segundos; nunca dentro de una migración).
+
 ## Apagar funcionalidad sin desplegar
 
 Los feature flags viven en la tabla `feature_flags` y se cachean 45 s en memoria:
@@ -174,8 +192,7 @@ Claves: `ai_insights`, `semantic_search`, `live_match_center`, `recommendations`
 | Partidos sin estadísticas | Normal si son viejos: corre `backfill:matches` |
 | Sin insights nuevos | Revisa el flag `ai_insights` y el tope de tokens |
 | Previa ausente en un partido | Esperado si no hay tabla, historial ni forma previa: se omite a propósito |
-| Login devuelve 403 | `security.allowedDomains` en `astro.config.mjs` debe incluir el dominio real |
-| La web dice que falta configurar Supabase | Las variables `PUBLIC_*` se compilan: hay que reconstruir tras cambiarlas |
+| La web muestra URLs viejas del API | Las variables `PUBLIC_*` se compilan: hay que reconstruir tras cambiarlas |
 | Todo se siente lento en local | Cada consulta viaja a Supabase (~800 ms por round-trip desde fuera de us-west-2). No es el código: en producción, con el API en la región de la base, son milisegundos. Mídelo con un `SELECT 1` antes de optimizar |
 
 Con `SENTRY_DSN` configurado, los errores 5xx y los jobs fallidos se reportan

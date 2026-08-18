@@ -36,7 +36,15 @@ const { alineaciones, equipo, fechaPedida = null } = Astro.props;
  * la derecha el siguiente, que es lo que espera cualquiera. El API los manda del más reciente para
  * atrás porque es lo que se abre por omisión.
  */
-const enOrden = [...alineaciones].reverse();
+/*
+ * Solo alineaciones que se pueden dibujar. En una caída parcial el proveedor publica los once sin
+ * formación ni posiciones; ese partido acá sería una cancha verde vacía. El riel muestra la última
+ * alineación conocida de verdad, que es lo que "con qué salió" promete.
+ */
+const dibujables = alineaciones.filter(
+  (a) => a.formation !== null || a.startXi.some((t) => t.grid ?? t.position),
+);
+const enOrden = [...dibujables].reverse();
 const pedido = enOrden.findIndex((a) => a.match.id === fechaPedida);
 const indiceInicial = pedido === -1 ? enOrden.length - 1 : pedido;
 
@@ -120,6 +128,7 @@ const paneles = enOrden.map((alineacion) => {
 });
 ---
 
+{enOrden.length > 0 && (
 <section class="overflow-hidden rounded-xl border border-border bg-surface" data-alineaciones>
   <header class="flex items-center gap-2 border-b border-border p-3">
     <Icon name="formacion" size={14} class="shrink-0 text-primary-ink" />
@@ -293,6 +302,7 @@ const paneles = enOrden.map((alineacion) => {
     ))
   }
 </section>
+)}
 
 <script>
   /*

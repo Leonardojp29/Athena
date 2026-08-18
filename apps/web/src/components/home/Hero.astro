@@ -18,10 +18,9 @@ import Container from '../layout/Container.astro';
 interface Props {
   live: MatchCard[];
   total: number;
-  destacado: { titular: string; matchId: string } | null;
 }
 
-const { live, total, destacado } = Astro.props;
+const { live, total } = Astro.props;
 const enJuego = live.filter((m) => isLive(m.status));
 const jugando = enJuego.length;
 
@@ -114,18 +113,6 @@ const fecha = new Intl.DateTimeFormat('es-PE', {
               ))}
             </div>
           </div>
-        )
-      }
-
-      {
-        destacado && (
-          <a
-            href={`/partidos/${destacado.matchId}?vista=analisis`}
-            class="ml-auto hidden min-w-0 items-center gap-1.5 text-2xs text-chalk-dim transition-colors hover:text-chalk xl:flex xl:max-w-[22rem]"
-          >
-            <Icon name="destello" size={12} class="shrink-0 text-data" />
-            <span class="truncate">{destacado.titular}</span>
-          </a>
         )
       }
     </div>

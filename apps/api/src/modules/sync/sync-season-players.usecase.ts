@@ -84,7 +84,6 @@ export class SyncSeasonPlayersUseCase {
         yellow_cards: t.yellowCards,
         red_cards: t.redCards,
         penalty_scored: t.penaltyScored,
-        raw: t.raw,
       });
       plantilla.push({
         team_id: teamId,
@@ -122,12 +121,10 @@ export class SyncSeasonPlayersUseCase {
         'yellow_cards',
         'red_cards',
         'penalty_scored',
-        'raw',
       ],
       rows: stats,
       generateId: true,
       touch: true,
-      jsonColumns: ['raw'],
     });
 
     await bulkUpsert(this.prisma, {

@@ -6,7 +6,6 @@ import SiteFooter from '../components/layout/SiteFooter.astro';
 import SiteHeader from '../components/layout/SiteHeader.astro';
 import ProgresoNavegacion from '../components/layout/ProgresoNavegacion.astro';
 import SkipLink from '../components/layout/SkipLink.astro';
-import { getSession } from '../lib/supabase';
 
 interface Props {
   title: string;
@@ -31,7 +30,6 @@ const {
   width = 'content',
 } = Astro.props;
 
-const session = await getSession(Astro);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -82,7 +80,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     -->
     <ProgresoNavegacion />
     <SkipLink />
-    <SiteHeader session={session} />
+    <SiteHeader />
     {chrome === 'full' && liveBar && <LiveBar />}
 
     <main id="contenido" class="flex-1 pb-5">

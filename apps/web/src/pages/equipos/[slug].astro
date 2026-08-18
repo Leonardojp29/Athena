@@ -14,7 +14,6 @@ import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.a
 import SquadGrid from '../../components/team/SquadGrid.astro';
 import TablaPlantel from '../../components/team/TablaPlantel.astro';
 import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
-import { getSession } from '../../lib/supabase';
 import { coloresDeClub, temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
@@ -29,7 +28,6 @@ const pedidoVista = api<TeamView>(`/views/team/${slug}`);
 const pedidoSimilar = api<{ results: SearchHit[] }>(`/search/similar/team/${slug}`)
   .then((r) => r.results)
   .catch(() => [] as SearchHit[]);
-const pedidoSesion = getSession(Astro);
 
 let view: TeamView;
 try {
@@ -49,7 +47,6 @@ const { team, standings, recent, upcoming, squad, scorers } = view;
 const hayEnVivo = [...recent, ...upcoming].some((m) => isLive(m.status));
 const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 const similar = await pedidoSimilar;
-const session = await pedidoSesion;
 
 const pais = paisEnEspanol(team.country);
 
@@ -233,7 +230,6 @@ const jsonLd = {
           logoUrl={team.logoUrl}
           pais={pais}
           variante="boton"
-          conCuenta={session !== null}
           onBoard
           class="shrink-0 !border-(--linea) !text-(--tinta) hover:!border-(--tinta-suave) aria-pressed:!border-(--tinta) aria-pressed:!bg-(--chip) aria-pressed:!text-(--tinta)"
         />

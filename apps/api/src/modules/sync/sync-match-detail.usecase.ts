@@ -74,8 +74,7 @@ export class SyncMatchDetailUseCase {
     for (const stat of statistics) {
       const teamId = teams.get(stat.teamRef);
       if (!teamId) continue;
-      const { teamRef: _teamRef, raw, ...fields } = stat;
-      const data = { ...fields, raw: raw as Prisma.InputJsonValue };
+      const { teamRef: _teamRef, ...data } = stat;
       await this.prisma.matchStatistics.upsert({
         where: { matchId_teamId: { matchId, teamId } },
         update: data,

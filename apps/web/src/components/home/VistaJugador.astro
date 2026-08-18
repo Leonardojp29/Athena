@@ -14,10 +14,9 @@ import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
  */
 interface Props {
   view: PlayerView;
-  conCuenta?: boolean;
 }
 
-const { view, conCuenta = false } = Astro.props;
+const { view } = Astro.props;
 const { player, teams, seasons, totals, recentPerformances, shirtNumber } = view;
 
 const posicion = player.position ? POSITION_LABEL[player.position] : null;
@@ -97,7 +96,6 @@ const nota = (valor: string | null) => (valor === null ? null : Number(valor).to
         logoUrl={player.photoUrl}
         pais={paisEnEspanol(player.nationality)}
         variante="boton"
-        conCuenta={conCuenta}
         onBoard
       />
       <a

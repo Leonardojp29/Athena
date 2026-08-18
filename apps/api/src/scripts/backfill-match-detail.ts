@@ -87,9 +87,16 @@ async function main(): Promise<void> {
     /*
      * Falta cualquiera de las tres y el partido entra: un partido puede tener sus eventos —que los
      * escribe el vivo, sin pasar por la cola— y haberse quedado sin alineación porque su trabajo se
-     * perdió. Mirar solo estadísticas y eventos dejaba esos afuera.
+     * perdió. Mirar solo estadísticas y eventos dejaba esos afuera. Y una alineación sin formación
+     * también cuenta como faltante: en una caída parcial el proveedor publica los once sin
+     * posiciones —una cancha que no se puede dibujar— y los completa días después.
      */
-    OR: [{ statistics: { none: {} } }, { events: { none: {} } }, { lineups: { none: {} } }],
+    OR: [
+      { statistics: { none: {} } },
+      { events: { none: {} } },
+      { lineups: { none: {} } },
+      { lineups: { some: { formation: null } } },
+    ],
     ...(horas > 0 ? { kickoffUtc: { gte: new Date(Date.now() - horas * 3600_000) } } : {}),
     season: {
       ...(desde > 0 || hasta > 0

@@ -7,7 +7,6 @@ import BotonFavorito from '../../components/BotonFavorito.astro';
 import RecentPerformances from '../../components/player/RecentPerformances.astro';
 import SeasonTable from '../../components/player/SeasonTable.astro';
 import { api, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
-import { getSession } from '../../lib/supabase';
 import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
 
@@ -15,7 +14,6 @@ const { slug } = Astro.params;
 
 /* Los dos pedidos arrancan juntos: la sesión no depende del jugador. */
 const pedidoVista = api<PlayerView>(`/views/player/${slug}`);
-const pedidoSesion = getSession(Astro);
 
 let view: PlayerView;
 try {
@@ -46,7 +44,6 @@ const EVENT_LABEL: Record<string, string> = {
   var: 'VAR',
 };
 
-const session = await pedidoSesion;
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -104,7 +101,6 @@ const jsonLd = {
         logoUrl={player.photoUrl}
         pais={paisEnEspanol(player.nationality)}
         variante="boton"
-        conCuenta={session !== null}
         onBoard
       />
     </div>

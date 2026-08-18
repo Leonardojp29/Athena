@@ -19,7 +19,6 @@ import {
   ApiError,
   type CompetitionView,
   type HomeView,
-  type PersonalFeed,
   type PlayerView,
   type TeamView,
   type TopPerformers,
@@ -28,7 +27,6 @@ import { isLive } from '../lib/format';
 import { getHomeView } from '../lib/live';
 import RefrescoDeMarcadores from '../components/RefrescoDeMarcadores.astro';
 import { getNavTree, todasLasCompetencias } from '../lib/nav';
-import { getSession } from '../lib/supabase';
 import { paisEnEspanol } from '../lib/paises';
 
 /*
@@ -40,8 +38,7 @@ const REGIONES = new Set(['sudamerica', 'europa', 'norteamerica', 'asia', 'afric
 const regionPedida = Astro.url.searchParams.get('region');
 const region = regionPedida && REGIONES.has(regionPedida) ? regionPedida : 'sudamerica';
 
-const session = await getSession(Astro);
-const [homeView, catalogo, mejores, feed] = await Promise.all([
+const [homeView, catalogo, mejores] = await Promise.all([
   getHomeView(),
   getNavTree(),
   api<TopPerformers>(`/views/top-performers?continente=${region}`).catch(
@@ -54,9 +51,6 @@ const [homeView, catalogo, mejores, feed] = await Promise.all([
         players: [],
       }) satisfies TopPerformers,
   ),
-  session?.accessToken
-    ? api<PersonalFeed>('/me/feed', session.accessToken).catch(() => null)
-    : Promise.resolve(null),
 ]);
 
 const home = homeView ?? ({ live: 0, sections: [], geography: [] } satisfies HomeView);
@@ -159,13 +153,6 @@ const todos = home.sections.flatMap((s) => s.matches);
  */
 const hayEnVivo = todos.some((m) => isLive(m.status));
 const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-const showFeed =
-  feed?.hasFavorites &&
-  (feed.live.length > 0 || feed.upcoming.length > 0 || feed.recent.length > 0);
-
-const destacado = feed?.insights[0]
-  ? { titular: feed.insights[0].titular, matchId: feed.insights[0].matchId }
-  : null;
 ---
 
 <Base
@@ -174,7 +161,7 @@ const destacado = feed?.insights[0]
   width="bleed"
   liveBar={false}
 >
-  <Hero live={todos} total={todos.length} destacado={destacado} />
+  <Hero live={todos} total={todos.length} />
 
   <Container width="wide" class="py-5">
     <div
@@ -195,35 +182,21 @@ const destacado = feed?.insights[0]
           paisActivo={pais}
           ligaActiva={liga}
           equipoActivo={equipo}
-          conCuenta={session !== null}
         />
       </aside>
 
       <div class="order-1 min-w-0 lg:order-none">
-        {
-          showFeed && feed && (
-            <section class="mb-5">
-              <h2 class="mb-2 font-display text-base font-semibold uppercase">Lo que sigues</h2>
-              <div class="rounded-lg border border-border bg-surface p-1">
-                {[...feed.live, ...feed.upcoming, ...feed.recent].slice(0, 5).map((match) => (
-                  <MatchRow match={match} showDate hrefEquipo={(slug) => `/?equipo=${slug}`} />
-                ))}
-              </div>
-            </section>
-          )
-        }
 
         {
           vistaLiga ? (
             <VistaLiga
               view={vistaLiga}
               banderaUrl={paisDeLaLiga?.flagUrl ?? null}
-              conCuenta={session !== null}
             />
           ) : vistaEquipo ? (
-            <VistaEquipo view={vistaEquipo} conCuenta={session !== null} />
+            <VistaEquipo view={vistaEquipo} />
           ) : vistaJugador ? (
-            <VistaJugador view={vistaJugador} conCuenta={session !== null} />
+            <VistaJugador view={vistaJugador} />
           ) : (
             <>
               <div class="mb-3 flex items-center gap-3">
@@ -310,24 +283,6 @@ const destacado = feed?.insights[0]
               href={(continente: string) => `/?region=${continente}`}
               hrefJugador={(slug: string) => `/?jugador=${slug}`}
             />
-          )
-        }
-
-        {
-          session === null && (
-            <section class="rounded-lg border border-primary/25 bg-surface p-3">
-              <p class="text-sm font-medium">Armá tu propio inicio</p>
-              <p class="mt-1 text-2xs text-ink-muted">
-                Seguí equipos y competencias y sus partidos aparecen arriba, con el análisis de
-                cada uno. Con cuenta, tus favoritos te siguen a cualquier dispositivo.
-              </p>
-              <a
-                href="/entrar"
-                class="mt-2.5 flex items-center justify-center gap-1 rounded-md bg-primary px-3 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
-              >
-                Crear cuenta
-              </a>
-            </section>
           )
         }
       </aside>

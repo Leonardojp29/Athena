@@ -36,7 +36,6 @@ const COLUMNAS_ACTUALIZABLES = [
   'penalty_scored',
   'penalty_missed',
   'penalty_saved',
-  'raw',
 ];
 
 /**
@@ -127,7 +126,6 @@ export class SyncMatchPlayersUseCase {
         penalty_scored: row.penaltyScored,
         penalty_missed: row.penaltyMissed,
         penalty_saved: row.penaltySaved,
-        raw: row.raw,
       });
     }
 
@@ -139,7 +137,6 @@ export class SyncMatchPlayersUseCase {
       rows: filas,
       generateId: true,
       touch: true,
-      jsonColumns: ['raw'],
     });
 
     this.logger.log(`Partido ${matchRef}: ${filas.length} jugadores con estadísticas`);

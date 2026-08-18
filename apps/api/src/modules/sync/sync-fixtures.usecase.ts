@@ -180,17 +180,25 @@ export class SyncFixturesUseCase {
 
     const fresh = resolvable.filter((f) => !matchIds.has(f.providerRef));
     if (fresh.length > 0) {
-      const created = await this.prisma.match.createManyAndReturn({
-        data: fresh.map(toFields),
-        select: { id: true },
-      });
-      await this.prisma.externalReference.createMany({
-        data: created.map((match, i) => ({
-          provider: this.provider.name,
-          entityType: 'match',
-          providerRef: fresh[i]?.providerRef as string,
-          entityId: match.id,
-        })),
+      /*
+       * Partido y referencia nacen juntos o no nace ninguno. Sin transacción, una función
+       * degollada entre los dos pasos deja partidos sin referencia: invisibles para el sync
+       * —que resuelve por providerRef— pero visibles en las vistas, y el siguiente sync los
+       * crea otra vez. Mismo patrón ya probado en PlayerResolver sobre el pooler.
+       */
+      await this.prisma.$transaction(async (tx) => {
+        const created = await tx.match.createManyAndReturn({
+          data: fresh.map(toFields),
+          select: { id: true },
+        });
+        await tx.externalReference.createMany({
+          data: created.map((match, i) => ({
+            provider: this.provider.name,
+            entityType: 'match',
+            providerRef: fresh[i]?.providerRef as string,
+            entityId: match.id,
+          })),
+        });
       });
     }
 

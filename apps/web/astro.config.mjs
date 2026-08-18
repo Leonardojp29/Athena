@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 
 // El .env vive en la raíz del monorepo, no en apps/web: sin esto las variables
-// PUBLIC_ se compilarían vacías y la web creería que Supabase no está configurado.
+// PUBLIC_ (la URL del API, la del sitio) se compilarían vacías.
 const ENV_DIR = '../..';
 const rootEnv = new URL('../../.env', import.meta.url);
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);

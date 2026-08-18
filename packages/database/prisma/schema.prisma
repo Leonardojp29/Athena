@@ -174,8 +174,8 @@ model Player {
   @@map("players")
 }
 
-/// Rendimiento de un jugador en un partido. Las columnas canónicas son las que la ficha
-/// muestra y por las que se ordena; `raw` guarda el resto del payload del proveedor.
+/// Rendimiento de un jugador en un partido: solo las columnas que la ficha muestra
+/// y por las que se ordena. Una métrica nueva se re-pide al proveedor, no se acumula.
 model MatchPlayerStatistics {
   id       String @id @default(uuid()) @db.Uuid
   match    Match  @relation(fields: [matchId], references: [id])
@@ -213,7 +213,6 @@ model MatchPlayerStatistics {
   penaltyScored   Int?     @map("penalty_scored")
   penaltyMissed   Int?     @map("penalty_missed")
   penaltySaved    Int?     @map("penalty_saved")
-  raw             Json
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@unique([matchId, playerId])
@@ -250,7 +249,6 @@ model PlayerSeasonStatistics {
   yellowCards     Int?     @map("yellow_cards")
   redCards        Int?     @map("red_cards")
   penaltyScored   Int?     @map("penalty_scored")
-  raw             Json
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@unique([playerId, seasonId, teamId])
@@ -307,8 +305,7 @@ model Match {
   @@map("matches")
 }
 
-/// Estadísticas por equipo de un partido. Los campos canónicos son los que el
-/// producto usa; `raw` conserva todo lo que envía el proveedor por si agrega métricas.
+/// Estadísticas por equipo de un partido: solo los campos que el producto usa.
 model MatchStatistics {
   id                String   @id @default(uuid()) @db.Uuid
   match             Match    @relation(fields: [matchId], references: [id])
@@ -330,7 +327,6 @@ model MatchStatistics {
   passesAccurate    Int?     @map("passes_accurate")
   passesPercent     Int?     @map("passes_percent")
   expectedGoals     Decimal? @map("expected_goals") @db.Decimal(5, 2)
-  raw               Json
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@unique([matchId, teamId])
@@ -407,7 +403,7 @@ model Embedding {
   entityId   String                      @map("entity_id") @db.Uuid
   model      String
   content    String
-  vector     Unsupported("vector(1536)")
+  vector     Unsupported("halfvec(1536)")
   updatedAt  DateTime                    @updatedAt @map("updated_at")
 
   @@unique([entityType, entityId, model])
@@ -451,34 +447,6 @@ model EntityRelationship {
 }
 
 // ---------- platform ----------
-
-/// Perfil de Athena para un usuario de Supabase Auth. `id` es el uid de auth.users:
-/// las credenciales las administra Supabase, el dominio solo guarda lo suyo.
-model UserProfile {
-  id          String     @id @db.Uuid
-  displayName String?    @map("display_name")
-  lang        String     @default("es")
-  onboardedAt DateTime?  @map("onboarded_at")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  favorites   Favorite[]
-
-  @@map("user_profiles")
-}
-
-/// Seguimiento de equipos, competencias y jugadores. Alimenta el home personalizado.
-model Favorite {
-  id         String      @id @default(uuid()) @db.Uuid
-  user       UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     String      @map("user_id") @db.Uuid
-  entityType String      @map("entity_type") // team | competition | player
-  entityId   String      @map("entity_id") @db.Uuid
-  createdAt  DateTime    @default(now()) @map("created_at")
-
-  @@unique([userId, entityType, entityId])
-  @@index([entityType, entityId])
-  @@map("favorites")
-}
 
 /// Toggle features without deploying (ARCHITECT_REVIEW point 5).
 model FeatureFlag {

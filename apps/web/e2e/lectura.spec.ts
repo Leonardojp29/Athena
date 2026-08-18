@@ -234,13 +234,9 @@ test.describe('comparar', () => {
   });
 });
 
-test.describe('sesión y favoritos', () => {
-  /*
-   * Seguir a un equipo ya no exige una cuenta: se guarda en el navegador y el aviso dice dónde
-   * quedó, con la invitación a crear cuenta. Antes el botón decía "Entrar para seguir" y quien no
-   * tenía cuenta no podía marcar nada.
-   */
-  test('sin sesión, seguir un equipo guarda en el navegador y lo avisa', async ({ page }) => {
+test.describe('favoritos', () => {
+  /* Sin cuentas: el favorito vive en el navegador y el aviso dice dónde quedó. */
+  test('seguir un equipo guarda en el navegador y lo avisa', async ({ page }) => {
     await page.goto('/equipos/alianza-lima');
 
     const seguir = page.getByRole('button', { name: /seguir/i }).first();
@@ -249,23 +245,6 @@ test.describe('sesión y favoritos', () => {
     await seguir.click();
     await expect(seguir).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText(/en este navegador/i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /crear cuenta/i })).toBeVisible();
-  });
-
-  test('la página de login pide correo y contraseña', async ({ page }) => {
-    await page.goto('/entrar');
-    await expect(page.getByLabel(/correo/i)).toBeVisible();
-    await expect(page.getByLabel(/contraseña/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /iniciar sesión/i })).toBeVisible();
-  });
-
-  test('credenciales inválidas muestran un error legible, no una excepción', async ({ page }) => {
-    await page.goto('/entrar');
-    await page.getByLabel(/correo/i).fill('nadie@athena-test.invalid');
-    await page.getByLabel(/contraseña/i).fill('claveIncorrecta123');
-    await page.getByRole('button', { name: /iniciar sesión/i }).click();
-
-    await expect(page.locator('main')).toContainText(/incorrectos|confirma|correo/i);
   });
 });
 

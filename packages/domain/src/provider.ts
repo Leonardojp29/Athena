@@ -117,7 +117,6 @@ export interface ProviderMatchStatistics {
   passesAccurate: number | null;
   passesPercent: number | null;
   expectedGoals: number | null;
-  raw: Record<string, string | number | null>;
 }
 
 export interface ProviderLineupPlayer {
@@ -177,7 +176,6 @@ export interface ProviderMatchPlayerStats {
   penaltyScored: number | null;
   penaltyMissed: number | null;
   penaltySaved: number | null;
-  raw: Record<string, unknown>;
 }
 
 export interface ProviderSeasonTotals {
@@ -197,7 +195,6 @@ export interface ProviderSeasonTotals {
   yellowCards: number | null;
   redCards: number | null;
   penaltyScored: number | null;
-  raw: Record<string, unknown>;
 }
 
 /**

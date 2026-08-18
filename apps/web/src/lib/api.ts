@@ -23,10 +23,6 @@ export class ApiError extends Error {
  * ya declara cuánto vale cada respuesta en su `Cache-Control: s-maxage`; nadie lo estaba
  * honrando. Esto lo honra.
  *
- * Solo se cachea lo público —lo que va sin token—: `/me/*` lleva Authorization y nunca entra
- * acá. Un caché compartido entre visitantes con datos de sesión sería una filtración, no una
- * optimización.
- *
  * Y se guarda la promesa, no el valor: dos componentes que piden lo mismo en el mismo render
  * comparten una sola llamada en vuelo en lugar de disparar dos.
  */
@@ -46,9 +42,7 @@ function ttlDe(res: Response): number {
   return match?.[1] ? Number(match[1]) * 1000 : TTL_POR_DEFECTO_MS;
 }
 
-export async function api<T>(path: string, accessToken?: string | null): Promise<T> {
-  if (accessToken) return pedir<T>(path, accessToken);
-
+export async function api<T>(path: string): Promise<T> {
   const ahora = Date.now();
   const guardada = cache.get(path);
   if (guardada && guardada.vence > ahora) return guardada.promesa as Promise<T>;
@@ -56,7 +50,7 @@ export async function api<T>(path: string, accessToken?: string | null): Promise
   /* Vence al TTL por defecto y se corrige con el del API en cuanto llega la respuesta. */
   const entrada: Entrada = {
     vence: ahora + TTL_POR_DEFECTO_MS,
-    promesa: pedir<T>(path, null, (res) => {
+    promesa: pedir<T>(path, (res) => {
       entrada.vence = Date.now() + ttlDe(res);
     }),
   };
@@ -68,36 +62,14 @@ export async function api<T>(path: string, accessToken?: string | null): Promise
   return entrada.promesa as Promise<T>;
 }
 
-async function pedir<T>(
-  path: string,
-  accessToken: string | null,
-  alResponder?: (res: Response) => void,
-): Promise<T> {
-  const res = await fetch(`${API_URL}/v1${path}`, {
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-  });
+async function pedir<T>(path: string, alResponder?: (res: Response) => void): Promise<T> {
+  const res = await fetch(`${API_URL}/v1${path}`);
   alResponder?.(res);
   if (!res.ok) {
     const cuerpo = res.status === 404 ? await res.json().catch(() => null) : null;
     throw new ApiError(res.status, `${path} → ${res.status}`, cuerpo);
   }
   return res.json() as Promise<T>;
-}
-
-export interface FavoriteEntity {
-  entityType: 'team' | 'competition' | 'player';
-  entityId: string;
-  name: string;
-  slug: string;
-  imageUrl: string | null;
-}
-
-export interface PersonalFeed {
-  hasFavorites: boolean;
-  live: MatchCard[];
-  upcoming: MatchCard[];
-  recent: MatchCard[];
-  insights: Array<{ matchId: string; titular: string }>;
 }
 
 export interface TeamSummary {

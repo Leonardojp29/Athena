@@ -25,10 +25,9 @@ interface Props {
   view: CompetitionView;
   /** La bandera sale del catálogo: la vista de competencia solo trae el nombre del país. */
   banderaUrl?: string | null;
-  conCuenta?: boolean;
 }
 
-const { view, banderaUrl = null, conCuenta = false } = Astro.props;
+const { view, banderaUrl = null } = Astro.props;
 const { competition, season, recent, upcoming, scorers, assisters } = view;
 
 const pais = paisEnEspanol(competition.country);
@@ -134,7 +133,6 @@ const cabecera = paleta
         pais={pais}
         banderaUrl={banderaUrl}
         variante="boton"
-        conCuenta={conCuenta}
         onBoard
       />
       <a

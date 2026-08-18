@@ -186,7 +186,6 @@ export function mapStatistics(raw: ApiFootballStatistics): ProviderMatchStatisti
     passesAccurate: get('Passes accurate'),
     passesPercent: get('Passes %'),
     expectedGoals: get('expected_goals'),
-    raw: Object.fromEntries(byType),
   };
 }
 
@@ -323,7 +322,6 @@ export function mapFixturePlayers(raws: ApiFootballFixturePlayers[]): ProviderMa
           penaltyScored: s.penalty?.scored ?? null,
           penaltyMissed: s.penalty?.missed ?? null,
           penaltySaved: s.penalty?.saved ?? null,
-          raw: s as unknown as Record<string, unknown>,
         },
       ];
     }),
@@ -382,7 +380,6 @@ export function mapSeasonPlayers(
           yellowCards: block.cards?.yellow ?? null,
           redCards: block.cards?.red ?? null,
           penaltyScored: block.penalty?.scored ?? null,
-          raw: block as unknown as Record<string, unknown>,
         },
       },
     ];
