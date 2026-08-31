@@ -102,12 +102,14 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
         'Una vida, una camiseta. Pudiste irte cuando quisiste y no te fuiste nunca: en ese estadio tu nombre no se discute.',
     };
   }
-  if (volvioACasa && trofeos >= 2) {
+  /* Volver es fácil; volver **después de haberla roto afuera** es la historia que vale contarse. */
+  const continentes = new Set(t.map((x) => x.ligaSlug));
+  if (volvioACasa && trofeos >= 4 && continentes.size >= 3) {
     return {
       id: 'el-que-volvio',
       titulo: 'El que volvió',
       descripcion:
-        'Te fuiste, ganaste todo lejos de casa y volviste a terminar donde empezaste. La última vuelta olímpica fue en tu barrio.',
+        'Te fuiste, ganaste lejos de casa y volviste a terminar donde empezaste. La última vuelta olímpica fue en tu barrio.',
     };
   }
   if (ovrMaximo >= 90 && trofeos >= 8 && premios >= 1) {
@@ -171,6 +173,14 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
       titulo: 'El resucitado',
       descripcion:
         'Te dieron por terminado y volviste. Lo que hiciste después de la lesión vale doble, y lo sabés.',
+    };
+  }
+  if (volvioACasa) {
+    return {
+      id: 'nunca-se-fue-del-todo',
+      titulo: 'Nunca se fue del todo',
+      descripcion:
+        'Diste la vuelta al mundo y terminaste en la camiseta de siempre. No ganaste todo, pero volviste, y en tu barrio eso pesa más.',
     };
   }
   return {

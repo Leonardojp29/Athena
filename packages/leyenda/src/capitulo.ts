@@ -31,7 +31,7 @@ import {
   type Vinculo,
 } from './estado.js';
 import { CATALOGO, elegirEvento, redactar, type Categoria, type Efectos } from './eventos/index.js';
-import { armarOfertas, ofertasDeDebut, quiereRenovar, rivalDe } from './mercado.js';
+import { armarOfertas, ofertaDePrestamo, ofertasDeDebut, quiereRenovar, rivalDe } from './mercado.js';
 import { momentoParaPuesto, resolverMomento, type Intencion } from './momentos.js';
 import { calcularOvr, nivelDe, valorDeMercado } from './ovr.js';
 import { elencoDe } from './personajes/index.js';
@@ -485,10 +485,30 @@ function prepararDecision(carrera: Carrera, azar: Azar, capitulo: Capitulo, mund
           o.matices.length > 0 ||
           carrera.futbolista.edad >= 32,
       )
-      /* La más aspiracional primero: es la que el jugador quiere ver antes de decidir. */
-      .sort((a, b) => b.club.renombre - a.club.renombre);
-    if (ofertas.length > 0) {
-      return { ...carrera, ofertas: ofertas.slice(0, MAX_OFERTAS), etapa: 'mercado', pendiente: { clase: 'mercado' } };
+      /*
+       * El orden cuenta una intención. Mientras la carrera sube, primero la más aspiracional; pasados
+       * los 33, primero la vuelta a casa y el clásico rival, que son los dos finales que la gente
+       * recuerda y que de otro modo quedaban escondidos abajo de una oferta europea cualquiera.
+       */
+      .sort((a, b) => {
+        if (carrera.futbolista.edad >= 33) {
+          const peso = (o: typeof a) => (o.matices.includes('regreso') ? 2 : o.matices.includes('rival') ? 1 : 0);
+          const diferencia = peso(b) - peso(a);
+          if (diferencia !== 0) return diferencia;
+        }
+        return b.club.renombre - a.club.renombre;
+      });
+    /* Y si estás en el banco de un club que te queda grande, la salida clásica: irte a préstamo. */
+    const prestamo = ofertaDePrestamo(azar, carrera, mundo);
+    const conPrestamo = prestamo ? [prestamo, ...ofertas] : ofertas;
+
+    if (conPrestamo.length > 0) {
+      return {
+        ...carrera,
+        ofertas: conPrestamo.slice(0, MAX_OFERTAS),
+        etapa: 'mercado',
+        pendiente: { clase: 'mercado' },
+      };
     }
   }
 
@@ -542,6 +562,31 @@ function proponerMomento(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
 
 /* ------------------------------------------------------------------- decisiones */
 
+/**
+ * El rol con el que realmente llegás, que no siempre es el prometido.
+ *
+ * Cuanto más grande te queda el club, más chances de que la promesa del proyecto se caiga y termines
+ * mirando desde el banco. Es el riesgo que la oferta anunciaba, y es lo que convierte a "aceptar al
+ * gigante" en una decisión en lugar de un premio: sin esto, todas las carreras subían y ninguna se
+ * torcía, que es justo lo contrario de lo que hace buena a una historia de fútbol.
+ */
+function rolDeVerdad(azar: Azar, oferta: Oferta, carrera: Carrera): Oferta['rolPrometido'] {
+  const brecha = oferta.club.fuerza - carrera.ovr;
+  if (brecha <= 2 || oferta.matices.includes('prestamo')) return oferta.rolPrometido;
+  if (!chance(azar, limitar(brecha / 22, 0.05, 0.55))) return oferta.rolPrometido;
+
+  const escala: Array<Oferta['rolPrometido']> = [
+    'promesa',
+    'suplente',
+    'rotacion',
+    'titular',
+    'estrella',
+    'capitan',
+  ];
+  const indice = escala.indexOf(oferta.rolPrometido);
+  return escala[Math.max(0, indice - 1)] ?? 'suplente';
+}
+
 function firmar(carrera: Carrera, ofertaId: string, azar: Azar, capitulo: Capitulo, mundo: Mundo): Carrera {
   const oferta = carrera.ofertas.find((o) => o.id === ofertaId);
   if (!oferta) return carrera;
@@ -558,10 +603,28 @@ function firmar(carrera: Carrera, ofertaId: string, azar: Azar, capitulo: Capitu
       salario: oferta.salario,
       rolPrometido: oferta.rolPrometido,
     },
-    rol: oferta.rolPrometido,
+    /*
+     * El rol prometido no siempre se cumple. Si el club te queda grande, hay una posibilidad real de
+     * que la promesa del proyecto se caiga y termines mirando: es exactamente el riesgo que la oferta
+     * anunciaba, y es lo que hace que aceptar al gigante sea una decisión y no un premio. Sin esto,
+     * todas las carreras subían y ninguna se torcía.
+     */
+    rol: rolDeVerdad(azar, oferta, carrera),
     clubes: carrera.clubes.includes(oferta.club.slug) ? carrera.clubes : [...carrera.clubes, oferta.club.slug],
     ofertas: [],
     pendiente: null,
+    vida: {
+      ...carrera.vida,
+      /*
+       * Cambiar de continente cuesta. El primer bienio afuera se juega con el idioma, el clima y la
+       * comida en contra, y el juego lo cobra en forma: es la adaptación que en el fútbol real
+       * hunde a la mitad de los que cruzan el charco.
+       */
+      forma:
+        oferta.club.continente !== carrera.clubActual?.continente && carrera.clubActual !== null
+          ? limitar(carrera.vida.forma - 14, 25, 98)
+          : carrera.vida.forma,
+    },
   };
 
   capitulo.consecuencia = esDebut

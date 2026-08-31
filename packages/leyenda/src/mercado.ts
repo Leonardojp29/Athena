@@ -11,7 +11,7 @@
  * candidatos que el motor busca a propósito porque son los que producen historias: el rival y la
  * casa.
  */
-import { chance, elegir, entre, limitar, mezclar, pesado, type Azar } from './azar.js';
+import { chance, crearAzar, elegir, entre, limitar, mezclar, pesado, type Azar } from './azar.js';
 import {
   MAX_OFERTAS,
   type Carrera,
@@ -21,6 +21,9 @@ import {
   type Oferta,
   type Rol,
 } from './estado.js';
+
+/** El azar del clásico de tu club de origen: estable durante toda la carrera. */
+const crearAzarDeCasa = (carrera: Carrera): Azar => crearAzar((carrera.semilla + 31) >>> 0);
 
 /** Cuánto paga un club por temporada, en millones, según su fuerza y lo que valés. */
 function salarioDe(azar: Azar, club: Club, valor: number, rol: Rol): number {
@@ -87,7 +90,31 @@ const RENOMBRE_MINIMO = 55;
  * El número es el renombre del club, que ya combina el peso de su liga, dónde termina y cuántas
  * copas continentales juega.
  */
-const ESCALON = { local: 45, grandeLocal: 70, continental: 82, europaTop: 90 } as const;
+/**
+ * Los cinco escalones, por renombre del club. Una carrera los sube **de a uno**.
+ *
+ *   chico local → grande local → grande del continente → Europa → elite mundial
+ *
+ * Un pibe de Cienciano no ficha por el Barcelona, y que el juego lo permitiera arruinaba lo único
+ * que esta clase de juego tiene para dar: la sensación de haber llegado. Ahora el salto se hace en
+ * etapas y cada una hay que ganársela; solo la joya de veinte años con dos años enormes se saltea
+ * un escalón, que es la excepción que también existe en el fútbol de verdad.
+ */
+const ESCALONES = [
+  { hasta: 64, nombre: 'chico local' },
+  { hasta: 75, nombre: 'grande local' },
+  { hasta: 84, nombre: 'grande del continente' },
+  { hasta: 92, nombre: 'Europa' },
+  { hasta: 100, nombre: 'elite mundial' },
+] as const;
+
+export const escalonDe = (renombre: number): number =>
+  ESCALONES.findIndex((e) => renombre <= e.hasta) === -1
+    ? ESCALONES.length - 1
+    : ESCALONES.findIndex((e) => renombre <= e.hasta);
+
+export const nombreDelEscalon = (renombre: number): string =>
+  ESCALONES[escalonDe(renombre)]?.nombre ?? '';
 
 /**
  * ¿Este club te querría? Devuelve el peso con el que aparecería entre las ofertas; 0 es "no te
@@ -115,7 +142,18 @@ export function interesDe(club: Club, carrera: Carrera, esDeLaCasa: boolean): nu
    * su primer capítulo y el ascenso —que es el corazón del juego— salía gratis.
    */
   const ultima = carrera.temporadas.at(-1);
-  if (brecha > 8 && (ultima?.notaMedia ?? 0) < 7 && (ultima?.goles ?? 0) < 25) return 0;
+  const bienioGrande = (ultima?.notaMedia ?? 0) >= 7.2 || (ultima?.goles ?? 0) >= 30;
+  if (brecha > 8 && !bienioGrande) return 0;
+
+  /*
+   * La escalera, de a un escalón por vez. La joya de veinte años que viene de romperla puede saltear
+   * uno —el pibe que un grande de Europa va a buscar a Sudamérica—, pero es la excepción y hay que
+   * merecerla.
+   */
+  const escalonActual = escalonDe(carrera.clubActual?.renombre ?? 0);
+  const salto2 = escalonDe(club.renombre) - escalonActual;
+  const joya = futbolista.edad <= 21 && bienioGrande && (ultima?.notaMedia ?? 0) >= 7.5;
+  if (salto2 > (joya ? 2 : 1)) return 0;
 
   let peso = 100 - Math.abs(brecha) * 4;
   if (brecha > 0) peso += Math.max(0, 12 - brecha) * 2;
@@ -144,14 +182,9 @@ export function interesDe(club: Club, carrera: Carrera, esDeLaCasa: boolean): nu
    */
   const mismaLiga = club.ligaSlug === carrera.clubActual?.ligaSlug;
   if (mismaLiga && ovr > actual + 6) peso *= 0.2;
-  /* El escalón siguiente al que estás es el que más pesa: de local a grande local, y así. */
-  const objetivo =
-    actual < ESCALON.grandeLocal
-      ? ESCALON.grandeLocal
-      : actual < ESCALON.continental
-        ? ESCALON.continental
-        : ESCALON.europaTop;
-  if (club.renombre >= objetivo && ovr >= club.fuerza - 6) peso += 25;
+
+  /* El escalón inmediatamente superior es el que más pesa: es el camino que la carrera quiere tomar. */
+  if (salto2 === 1 && ovr >= club.fuerza - 6) peso += 30;
 
   return Math.max(0, peso);
 }
@@ -186,6 +219,17 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
   const rival = actual && ligaActual ? rivalDe(azar, ligaActual, actual) : null;
   const casa = carrera.clubDeOrigen;
 
+  /*
+   * El último capítulo de una carrera es volver.
+   *
+   * Pasados los 33 el club donde debutaste —y su clásico rival, que es la otra gran historia— entran
+   * siempre entre las ofertas, cueste lo que cueste en el resto de las cuentas. Retirarse en casa o
+   * hacerlo enfrente son los dos finales que la gente recuerda, y el juego tiene que ofrecerlos.
+   */
+  const vuelveACasa = carrera.futbolista.edad >= 33 && casa !== null;
+  const ligaDeCasa = casa ? (mundo.ligas.find((l) => l.slug === casa.ligaSlug) ?? null) : null;
+  const rivalDeCasa = casa && ligaDeCasa ? rivalDe(crearAzarDeCasa(carrera), ligaDeCasa, casa) : null;
+
   for (const liga of mundo.ligas) {
     /* Arabia, Japón o Canadá recién a los 30: antes rompen la carrera en lugar de darle sabor. */
     if (esDestinoTardio(liga) && carrera.futbolista.edad < 30) continue;
@@ -207,6 +251,20 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
     }
   }
 
+  /* Al final de la carrera, la casa y su rival entran aunque las cuentas digan otra cosa. */
+  if (vuelveACasa && ligaDeCasa) {
+    for (const club of [casa, rivalDeCasa]) {
+      if (!club || club.slug === actual?.slug) continue;
+      if (candidatos.some((c) => c.club.slug === club.slug)) continue;
+      candidatos.push({
+        club,
+        liga: ligaDeCasa,
+        peso: 160,
+        matices: club.slug === casa?.slug ? ['regreso'] : ['rival', 'regreso-rival'],
+      });
+    }
+  }
+
   if (candidatos.length === 0) return [];
 
   const elegidos: Array<{ club: Club; liga: Liga; matices: string[] }> = [];
@@ -215,7 +273,7 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
   /* El rival y la casa entran primero: son las ofertas que hacen la historia. */
   for (const especial of ['rival', 'regreso']) {
     const encontrado = candidatos.find((c) => c.matices.includes(especial));
-    if (encontrado && elegidos.length < MAX_OFERTAS && chance(azar, 0.55)) {
+    if (encontrado && elegidos.length < MAX_OFERTAS && (vuelveACasa || chance(azar, 0.55))) {
       elegidos.push(encontrado);
       ligasTomadas.add(encontrado.liga.slug);
     }
@@ -311,6 +369,46 @@ export function ofertasDeDebut(azar: Azar, carrera: Carrera, liga: Liga): Oferta
       riesgo: club.fuerza > carrera.ovr + 8 ? 'medio' : 'bajo',
     } satisfies Oferta;
   });
+}
+
+/**
+ * El préstamo: la salida del que no juega.
+ *
+ * Es una de las decisiones más de guion que tiene el fútbol —bajar de categoría un año para volver a
+ * jugar— y el juego la necesita porque es lo que salva a una carrera que se estancó en el banco de un
+ * grande. Aparece justo cuando duele: rol de suplente en un club que te queda grande.
+ */
+export function ofertaDePrestamo(azar: Azar, carrera: Carrera, mundo: Mundo): Oferta | null {
+  const actual = carrera.clubActual;
+  if (!actual) return null;
+  const enElBanco = carrera.rol === 'suplente' || carrera.rol === 'promesa';
+  const leQuedaGrande = actual.fuerza > carrera.ovr + 4;
+  if (!enElBanco || !leQuedaGrande || carrera.futbolista.edad > 26) return null;
+
+  /* Un club de un escalón abajo, donde jugar todos los domingos. */
+  const candidatos = mundo.ligas
+    .filter((l) => !esDestinoTardio(l))
+    .flatMap((l) => l.clubes)
+    .filter(
+      (c) =>
+        c.slug !== actual.slug &&
+        c.renombre >= RENOMBRE_MINIMO &&
+        c.fuerza <= carrera.ovr + 2 &&
+        c.fuerza >= carrera.ovr - 12,
+    );
+  if (candidatos.length === 0) return null;
+
+  const club = elegir(azar, mezclar(azar, candidatos).slice(0, 6));
+  return {
+    id: `prestamo-${carrera.anio}`,
+    club,
+    salario: Math.max(0.05, Math.round((carrera.valor / 12) * 100) / 100),
+    rolPrometido: 'titular',
+    proyecto: `${actual.nombre} te presta por dos años para que juegues todos los domingos.`,
+    temporadas: 2,
+    matices: ['prestamo'],
+    riesgo: 'bajo',
+  };
 }
 
 /** ¿El club actual quiere renovar? Depende del rendimiento y de cómo te llevás con ellos. */
