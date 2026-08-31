@@ -1,0 +1,209 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { NOMBRE_DE_NIVEL, type Capitulo, type Trofeo } from '@athena/leyenda';
+
+/**
+ * Lo que se celebra.
+ *
+ * Un título que aparece como una línea de texto en una lista no se siente un título. Esta pantalla
+ * existe para que el pago del bienio ocurra **en el medio**, con el escudo real de la competencia
+ * ocupando la pantalla: es el único momento del juego en el que no hay nada que decidir y todo el
+ * espacio es para lo que ganaste.
+ *
+ * Se encadena sola y se salta con un clic, con Escape o con espacio. Nunca dura más de dos segundos
+ * y media: la recompensa tiene que ser un golpe, no una espera.
+ */
+
+interface Props {
+  capitulo: Capitulo;
+  onCerrar: () => void;
+}
+
+type Escena =
+  | { clase: 'trofeo'; trofeo: Trofeo }
+  | { clase: 'nivel'; de: string; a: string }
+  | { clase: 'media'; de: number; a: number };
+
+const MS_POR_ESCENA = 1500;
+
+/** Lo que merece pantalla, en orden de importancia: primero lo que ganaste, después lo que subiste. */
+export function escenasDe(capitulo: Capitulo): Escena[] {
+  const escenas: Escena[] = [];
+
+  const jerarquia: Record<Trofeo['clase'], number> = {
+    seleccion: 0,
+    continental: 1,
+    liga: 2,
+    copa: 3,
+    individual: 4,
+  };
+  for (const trofeo of [...capitulo.trofeos].sort((a, b) => jerarquia[a.clase] - jerarquia[b.clase])) {
+    escenas.push({ clase: 'trofeo', trofeo });
+  }
+
+  if (capitulo.ascenso) {
+    escenas.push({
+      clase: 'nivel',
+      de: NOMBRE_DE_NIVEL[capitulo.ascenso.de],
+      a: NOMBRE_DE_NIVEL[capitulo.ascenso.a],
+    });
+  }
+
+  /* Un punto de media no es noticia; cinco sí. */
+  const salto = capitulo.saltoDeOvr;
+  if (salto && salto.a - salto.de >= 3) escenas.push({ clase: 'media', de: salto.de, a: salto.a });
+
+  /* Cuatro escenas es el techo: a la quinta la celebración deja de premiar y empieza a estorbar. */
+  return escenas.slice(0, 4);
+}
+
+export default function Celebracion({ capitulo, onCerrar }: Props) {
+  const escenas = useMemo(() => escenasDe(capitulo), [capitulo]);
+  const [i, setI] = useState(0);
+
+  const siguiente = useCallback(() => {
+    setI((actual) => {
+      if (actual + 1 >= escenas.length) {
+        onCerrar();
+        return actual;
+      }
+      return actual + 1;
+    });
+  }, [escenas.length, onCerrar]);
+
+  useEffect(() => {
+    if (escenas.length === 0) {
+      onCerrar();
+      return;
+    }
+    const reloj = window.setTimeout(siguiente, MS_POR_ESCENA);
+    return () => window.clearTimeout(reloj);
+  }, [i, escenas.length, siguiente, onCerrar]);
+
+  useEffect(() => {
+    const teclas = (evento: KeyboardEvent) => {
+      if (['Escape', ' ', 'Enter'].includes(evento.key)) {
+        evento.preventDefault();
+        onCerrar();
+      }
+    };
+    window.addEventListener('keydown', teclas);
+    return () => window.removeEventListener('keydown', teclas);
+  }, [onCerrar]);
+
+  const escena = escenas[i];
+  if (!escena) return null;
+
+  return (
+    <div
+      data-celebracion
+      role="dialog"
+      aria-live="polite"
+      aria-label="Lo que ganaste"
+      onClick={onCerrar}
+      className="fixed inset-0 z-50 grid cursor-pointer place-items-center px-6 backdrop-blur-sm"
+      style={{ background: 'oklch(0.13 0.012 285 / 0.94)' }}
+    >
+      <div key={i} data-celebracion-escena className="relative flex flex-col items-center text-center">
+        {/* La luz de atrás: es lo que hace que un escudo parezca un trofeo y no un icono. */}
+        <span aria-hidden="true" data-celebracion-luz className="pointer-events-none absolute" />
+
+        {escena.clase === 'trofeo' && <EscenaDeTrofeo trofeo={escena.trofeo} />}
+        {escena.clase === 'nivel' && (
+          <>
+            <p className="text-2xs font-medium uppercase tracking-label text-chalk-dim">Tu carta cambió</p>
+            <p
+              data-celebracion-titulo
+              className="mt-2 font-display text-5xl font-semibold uppercase leading-none tracking-label text-primary sm:text-6xl"
+            >
+              {escena.a}
+            </p>
+            <p className="mt-3 text-sm text-chalk-dim">
+              Dejaste atrás <span className="text-chalk">{escena.de}</span>.
+            </p>
+          </>
+        )}
+        {escena.clase === 'media' && (
+          <>
+            <p className="text-2xs font-medium uppercase tracking-label text-chalk-dim">Tu media subió</p>
+            <p className="mt-2 flex items-baseline gap-4">
+              <span className="font-display text-4xl font-semibold tabular text-chalk-dim">
+                {escena.de}
+              </span>
+              <span aria-hidden="true" className="font-display text-2xl text-chalk-dim">
+                →
+              </span>
+              <span
+                data-celebracion-titulo
+                className="font-display text-7xl font-semibold leading-none tabular text-primary sm:text-8xl"
+              >
+                {escena.a}
+              </span>
+            </p>
+            <p className="mt-3 text-sm text-chalk-dim">
+              {escena.a - escena.de} puntos en dos años.
+            </p>
+          </>
+        )}
+      </div>
+
+      <p className="absolute bottom-8 text-2xs uppercase tracking-label text-chalk-dim">
+        {escenas.length > 1 ? `${i + 1} de ${escenas.length} · ` : ''}toca para seguir
+      </p>
+    </div>
+  );
+}
+
+function EscenaDeTrofeo({ trofeo }: { trofeo: Trofeo }) {
+  const individual = trofeo.clase === 'individual';
+  return (
+    <>
+      <p className="text-2xs font-medium uppercase tracking-label text-chalk-dim">
+        {individual ? 'Premio individual' : trofeo.clase === 'seleccion' ? 'Con tu selección' : 'Campeón'}
+      </p>
+
+      <span data-celebracion-objeto className="relative mt-4 grid size-40 place-items-center sm:size-48">
+        {trofeo.escudo ? (
+          <img
+            src={trofeo.escudo}
+            alt=""
+            className="size-full object-contain drop-shadow-[0_0_28px_oklch(0.906_0.191_118/0.45)]"
+          />
+        ) : (
+          <TrofeoDibujado dorado={!individual} />
+        )}
+      </span>
+
+      <p
+        data-celebracion-titulo
+        className="mt-5 max-w-md font-display text-3xl font-semibold uppercase leading-tight tracking-label text-chalk sm:text-4xl"
+      >
+        {trofeo.nombre}
+      </p>
+      <p className="mt-2 text-sm tabular text-chalk-dim">
+        {trofeo.clubNombre} · {trofeo.temporada}
+      </p>
+      {trofeo.detalle && <p className="mt-2 max-w-sm text-xs italic text-chalk-dim">{trofeo.detalle}</p>}
+    </>
+  );
+}
+
+/** El trofeo de la casa, para los premios individuales: no hay logo de un Balón de Oro en la base. */
+function TrofeoDibujado({ dorado }: { dorado: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`size-full ${dorado ? 'text-card-yellow' : 'text-data'} drop-shadow-[0_0_28px_currentColor]`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8 4.5h8v4.2a4 4 0 0 1-8 0z" fill="currentColor" fillOpacity="0.18" />
+      <path d="M8 5.5H5.2v1.8A3.2 3.2 0 0 0 8.4 10.5M16 5.5h2.8v1.8a3.2 3.2 0 0 1-3.2 3.2" />
+      <path d="M12 12.7v3.3M8.5 19.5h7" />
+      <path d="M10 16h4l.8 3.5h-5.6z" fill="currentColor" fillOpacity="0.18" />
+    </svg>
+  );
+}

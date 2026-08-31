@@ -12,6 +12,7 @@
  * casa.
  */
 import { chance, crearAzar, elegir, entre, limitar, mezclar, pesado, type Azar } from './azar.js';
+import { normalizarCiudad, rivalesDeclarados } from './clasicos.js';
 import {
   MAX_OFERTAS,
   type Carrera,
@@ -372,10 +373,35 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
 export function rivalDe(azar: Azar, liga: Liga, club: Club): Club | null {
   const otros = liga.clubes.filter((c) => c.slug !== club.slug);
   if (otros.length === 0) return null;
-  const cercanos = [...otros].sort(
-    (a, b) => Math.abs(a.fuerza - club.fuerza) - Math.abs(b.fuerza - club.fuerza),
-  );
-  return elegir(azar, cercanos.slice(0, Math.min(3, cercanos.length)));
+
+  /*
+   * 1. El clásico declarado, y sin sortear: un club tiene un clásico, no tres candidatos. La tabla
+   * los lista por importancia, así que el primero que esté en esta liga es el que manda —el de
+   * Universitario es Alianza aunque también juegue con Cristal—.
+   */
+  const declarados = rivalesDeclarados(club.slug);
+  for (const slug of declarados) {
+    const historico = otros.find((c) => c.slug === slug);
+    if (historico) return historico;
+  }
+
+  /* 2. El vecino: mismo estadio o misma ciudad. Dos equipos del barrio se odian aunque nadie lo escriba. */
+  const ciudad = normalizarCiudad(club.ciudad);
+  if (ciudad) {
+    const vecinos = otros.filter((c) => normalizarCiudad(c.ciudad) === ciudad);
+    if (vecinos.length > 0) {
+      /* Entre varios vecinos manda el más grande: el derbi que se juega en la tele. */
+      const ordenados = [...vecinos].sort((a, b) => b.renombre - a.renombre);
+      return ordenados[0] ?? null;
+    }
+  }
+
+  /*
+   * 3. Y si no hay historia ni barrio, el más grande de la liga que no seas tú. Antes se elegía "el
+   * de fuerza más parecida", que es como el United terminaba jugando su clásico con el Sunderland.
+   */
+  const grandes = [...otros].sort((a, b) => b.renombre - a.renombre);
+  return grandes[0] ?? null;
 }
 
 /**

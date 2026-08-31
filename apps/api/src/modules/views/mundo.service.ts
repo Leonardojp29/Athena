@@ -57,6 +57,8 @@ export interface ClubDelMundo {
   escudo: string | null;
   primario: string | null;
   secundario: string | null;
+  /** La ciudad del estadio, normalizada: sirve para deducir los clásicos de barrio. */
+  ciudad: string | null;
   fuerza: number;
   /**
    * Qué tan conocido es el club, de 0 a 100. Es distinto de la fuerza: la fuerza es relativa a su
@@ -85,17 +87,36 @@ export interface LigaDelMundo {
   clubes: ClubDelMundo[];
 }
 
+export interface CopaNacionalDelMundo {
+  slug: string;
+  nombre: string;
+  pais: string;
+  paisCodigo: string | null;
+  escudo: string | null;
+}
+
 export interface CopaDelMundo {
   slug: string;
   nombre: string;
   continente: string;
+  escudo: string | null;
   plazas: number;
   jerarquia: number;
+}
+
+/** Un torneo de selecciones, con su escudo real. Es lo que se gana con tu país. */
+export interface TorneoDeSeleccionDelMundo {
+  slug: string;
+  nombre: string;
+  continente: string;
+  escudo: string | null;
 }
 
 export interface Mundo {
   ligas: LigaDelMundo[];
   copas: CopaDelMundo[];
+  copasNacionales: CopaNacionalDelMundo[];
+  torneos: TorneoDeSeleccionDelMundo[];
   generadoEn: string;
 }
 
@@ -104,8 +125,19 @@ export class MundoService {
   constructor(private readonly prisma: PrismaService) {}
 
   async mundo(): Promise<Mundo> {
-    const [ligas, copas] = await Promise.all([this.ligasJugables(), this.copasContinentales()]);
-    return { ligas, copas, generadoEn: new Date().toISOString().slice(0, 10) };
+    const [ligas, copas, copasNacionales, torneos] = await Promise.all([
+      this.ligasJugables(),
+      this.copasContinentales(),
+      this.copasNacionales(),
+      this.torneosDeSeleccion(),
+    ]);
+    return {
+      ligas,
+      copas,
+      copasNacionales,
+      torneos,
+      generadoEn: new Date().toISOString().slice(0, 10),
+    };
   }
 
   /**
@@ -180,6 +212,7 @@ export class MundoService {
           escudo: club.escudo,
           primario: club.primario,
           secundario: club.secundario,
+          ciudad: ciudadDe(club.ciudad),
           ligaSlug: competencia.slug,
           ligaNombre: nombre,
           pais,
@@ -213,6 +246,7 @@ export class MundoService {
         escudo: string | null;
         primario: string | null;
         secundario: string | null;
+        ciudad: string | null;
         posicionMedia: number;
         equipos: number;
       }>
@@ -235,14 +269,17 @@ export class MundoService {
              t.logo_url AS escudo,
              t.primary_color AS primario,
              t.secondary_color AS secundario,
+             /* La ciudad del estadio: es lo único de la base que delata un clásico de barrio. */
+             v.city AS ciudad,
              avg(s.position)::float AS "posicionMedia",
              max(z.equipos)::int AS equipos
       FROM standings s
       JOIN teams t ON t.id = s.team_id
       JOIN tamano z ON z.season_id = s.season_id
+      LEFT JOIN venues v ON v.id = t.venue_id
       WHERE s.season_id IN (SELECT id FROM temporadas)
         AND t.is_national_team = false
-      GROUP BY t.slug, t.name, t.short_name, t.logo_url, t.primary_color, t.secondary_color
+      GROUP BY t.slug, t.name, t.short_name, t.logo_url, t.primary_color, t.secondary_color, v.city
       /*
        * Al menos dos de las tres temporadas. Con una sola entraban los ascendidos y descendidos —los
        * clubes que nadie ubica— y además distorsionaban la fuerza: un equipo que apareció una vez y
@@ -297,7 +334,7 @@ export class MundoService {
   private async copasContinentales(): Promise<CopaDelMundo[]> {
     const copas = await this.prisma.competition.findMany({
       where: { isActive: true, scope: 'clubs', format: 'cup', countryCode: null },
-      select: { slug: true, name: true, continent: true },
+      select: { slug: true, name: true, continent: true, logoUrl: true },
     });
 
     return copas
@@ -305,6 +342,8 @@ export class MundoService {
         slug: copa.slug,
         nombre: copa.name,
         continente: copa.continent ?? 'mundial',
+        /* El logo real: es la diferencia entre "ganaste un título" y ver la Champions. */
+        escudo: copa.logoUrl,
         plazas: jerarquiaDeCopa(copa.name) === 0 ? 4 : 6,
         jerarquia: jerarquiaDeCopa(copa.name),
       }))
@@ -312,6 +351,73 @@ export class MundoService {
       .filter((copa) => copa.jerarquia <= 1)
       .sort((a, b) => a.jerarquia - b.jerarquia);
   }
+
+/**
+ * La copa de cada país, con su nombre de verdad.
+ *
+ * El motor inventaba "Copa de Perú" porque no tenía de dónde sacar el nombre, y a un string
+ * inventado no se le puede poner un escudo. Con esto la vitrina dice *Copa del Rey* o *Copa do
+ * Brasil* y muestra el logo que el proveedor ya tiene para las 77 competencias.
+ */
+  private async copasNacionales(): Promise<CopaNacionalDelMundo[]> {
+    const copas = await this.prisma.competition.findMany({
+      where: { isActive: true, scope: 'clubs', format: 'cup', countryCode: { not: null } },
+      select: { slug: true, name: true, country: true, countryCode: true, logoUrl: true },
+    });
+
+    /*
+     * Una por país. Cuando hay varias manda la que la gente llamaría "la copa": muchos países tienen
+     * además una supercopa o un campeón de campeones, y ganar el Campeón de Campeones no es lo que
+     * alguien imagina cuando lee "copa de México".
+     */
+    const rango = (nombre: string) => {
+      const n = nombre.toLowerCase();
+      if (n.includes('super') || n.includes('campeón de campeones') || n.includes('campeon de campeones')) return 2;
+      if (n.startsWith('copa') || n.includes(' cup') || n.startsWith('cup')) return 0;
+      return 1;
+    };
+    const porPais = new Map<string, CopaNacionalDelMundo>();
+    for (const copa of [...copas].sort(
+      (a, b) => rango(a.name) - rango(b.name) || a.name.localeCompare(b.name, 'es'),
+    )) {
+      const codigo = copa.countryCode;
+      if (!codigo || porPais.has(codigo)) continue;
+      porPais.set(codigo, {
+        slug: copa.slug,
+        nombre: copa.name,
+        pais: paisEnEspanol(copa.country) ?? copa.country ?? '',
+        paisCodigo: codigo,
+        escudo: copa.logoUrl,
+      });
+    }
+    return [...porPais.values()];
+  }
+
+  /** Los torneos de selecciones: el Mundial y las continentales, con su escudo. */
+  private async torneosDeSeleccion(): Promise<TorneoDeSeleccionDelMundo[]> {
+    const torneos = await this.prisma.competition.findMany({
+      where: { isActive: true, scope: 'national' },
+      select: { slug: true, name: true, continent: true, logoUrl: true },
+    });
+    return torneos.map((t) => ({
+      slug: t.slug,
+      nombre: t.name,
+      continente: t.continent ?? 'mundial',
+      escudo: t.logoUrl,
+    }));
+  }
+}
+
+/**
+ * La ciudad del estadio, limpia.
+ *
+ * El proveedor manda `Liverpool` para el Liverpool y `Liverpool, Merseyside` para el Everton: sin
+ * quedarse con lo de antes de la coma, el derbi más famoso de Inglaterra no se detectaría. Los
+ * alias de Buenos Aires los resuelve el motor, que es donde se comparan.
+ */
+function ciudadDe(ciudad: string | null): string | null {
+  const base = ciudad?.split(',')[0]?.trim();
+  return base && base.length > 0 ? base : null;
 }
 
 /** La Champions y la Libertadores son 0; la Europa League y la Sudamericana, 1; el resto, más. */

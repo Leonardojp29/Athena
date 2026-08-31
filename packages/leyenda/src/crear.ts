@@ -170,7 +170,7 @@ export function crearCarrera(datos: DatosDeCreacion): Carrera {
   relaciones.pareja = { confianza: 0, respeto: 0, rencor: 0 };
 
   return {
-    version: 1,
+    version: 2,
     semilla: datos.semilla,
     azar: azar.estado(),
     ligaDeOrigen: datos.ligaSlug,
@@ -191,6 +191,9 @@ export function crearCarrera(datos: DatosDeCreacion): Carrera {
     vistos: {},
     ofertas: [],
     pendiente: null,
+    cola: [],
+    pendientes: [],
+    bono: null,
     retiro: null,
     clubes: [],
     ovr,

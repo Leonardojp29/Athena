@@ -23,17 +23,37 @@ import {
   type Liga,
   type Mundo,
   type Nivel,
+  type Club,
   type Oferta,
+  type PasoDelCapitulo,
   type Recuerdo,
+  type Retiro,
   type Temporada,
   type Trofeo,
   type Vinculo,
 } from './estado.js';
-import { CATALOGO, elegirEvento, redactar, type Categoria, type Efectos } from './eventos/index.js';
+import {
+  CATALOGO,
+  elegirEvento,
+  redactar,
+  type Categoria,
+  type Efectos,
+  type Evento,
+  type MotivoDeFinal,
+} from './eventos/index.js';
 import { armarOfertas, ofertaDePrestamo, ofertasDeDebut, quiereRenovar, rivalDe } from './mercado.js';
 import { momentoParaPuesto, resolverMomento, type Intencion } from './momentos.js';
 import { calcularOvr, nivelDe, valorDeMercado } from './ovr.js';
 import { elencoDe } from './personajes/index.js';
+import {
+  NOMBRE_DE_RONDA,
+  convocado,
+  fuerzaDeSeleccion,
+  numerosDeSeleccion,
+  rondaAlcanzada,
+  torneosDelBienio,
+  trofeoDeSeleccion,
+} from './seleccion.js';
 import {
   aporteDelJugador,
   posicionEnLaTabla,
@@ -43,7 +63,16 @@ import {
   titulosDeLaTemporada,
 } from './temporada.js';
 
-/** Lo que el jugador puede hacer. Una por capítulo, nunca dos. */
+/**
+ * Cuántas cosas le pasan al jugador en cada bienio.
+ *
+ * Una sola dejaba doce decisiones en toda una vida y el juego se sentía un trámite; tres lo estiran
+ * hasta donde empieza a cansar. Dos, de tipos distintos, es donde un capítulo tiene textura sin
+ * dejar de terminarse en dos minutos.
+ */
+export const DECISIONES_POR_CAPITULO = 2;
+
+/** Lo que el jugador puede hacer. */
 export type Eleccion =
   | { tipo: 'firmar'; ofertaId: string }
   | { tipo: 'renovar' }
@@ -140,14 +169,31 @@ export function avanzarCapitulo(carrera: Carrera, eleccion: Eleccion, mundo: Mun
       break;
   }
 
+  /* Una decisión puede acabar la carrera. Si pasó, no hay bienio que jugar. */
+  if (siguiente.etapa === 'legado') {
+    siguiente.azar = azar.estado();
+    return { carrera: siguiente, capitulo };
+  }
+
   /*
-   * Todo capítulo juega, el del debut incluido: se firma con el club y se juegan los dos años ahí
-   * mismo, así la primera fila de la carrera —los 16— se llena de una. Cuando el debut era un caso
-   * especial que solo firmaba, el capítulo no avanzaba y el mercado podía volver a abrir en el mismo
-   * paso: el jugador se iba de su primer club sin haber jugado un partido.
+   * Un capítulo son **dos** decisiones, no una. Mientras quede algo en la cola se materializa y se
+   * devuelve sin simular nada: el jugador ve la consecuencia de lo que acaba de elegir y enseguida
+   * lo siguiente que le pasa en esos mismos dos años.
+   */
+  if (siguiente.cola.length > 0) {
+    const [paso, ...resto] = siguiente.cola;
+    siguiente = materializar({ ...siguiente, cola: resto }, paso as PasoDelCapitulo, azar, mundo);
+    siguiente.azar = azar.estado();
+    return { carrera: siguiente, capitulo };
+  }
+
+  /*
+   * Con la cola vacía se juegan los dos años. Todo capítulo juega, el del debut incluido: se firma
+   * con el club y se juegan los dos años ahí mismo, así la primera fila de la carrera —los 16— se
+   * llena de una.
    */
   siguiente = jugarBienio(siguiente, azar, capitulo, mundo);
-  siguiente = prepararDecision(siguiente, azar, capitulo, mundo);
+  siguiente = prepararCapitulo(siguiente, azar, mundo);
   siguiente.azar = azar.estado();
   return { carrera: siguiente, capitulo };
 }
@@ -177,6 +223,8 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
   const edad = carrera.futbolista.edad;
 
   const rendimiento = simularBienio(azar, carrera);
+  /* Lo que la jugada dejó a cuenta: el gol de la final y el título que se definió en la cancha. */
+  const bono = carrera.bono;
 
   const fila: Temporada = {
     anio: carrera.anio,
@@ -189,7 +237,7 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
     ligaNombre: club.ligaNombre,
     rol: carrera.rol,
     partidos: rendimiento.partidos,
-    goles: rendimiento.goles,
+    goles: rendimiento.goles + (bono?.goles ?? 0),
     asistencias: rendimiento.asistencias,
     notaMedia: rendimiento.nota,
     minutos: rendimiento.minutos,
@@ -209,7 +257,7 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
   let siguiente: Carrera = { ...carrera };
 
   /* La tabla, una vez por año del bienio: dos chances de salir campeón, como en la vida. */
-  const trofeos: Trofeo[] = [];
+  const trofeos: Trofeo[] = [...(bono?.trofeos ?? [])];
   let mejorPosicion: number | null = null;
   for (let anio = 0; anio < ANIOS_POR_CAPITULO; anio++) {
     if (!liga) break;
@@ -229,6 +277,9 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
       total: liga.clubes.length,
       jugoContinental,
       copaContinental: copa?.nombre ?? null,
+      /* La copa se definió en la cancha en este mismo bienio: no se sortea otra vez. */
+      sinCopa: bono?.copaResuelta ?? false,
+      copaNacional: copaNacionalDe(mundo, club)?.nombre ?? null,
     })) {
       trofeos.push({
         id: `${titulo.clase}-${carrera.anio + anio}-${club.slug}`,
@@ -237,6 +288,8 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
         temporada: carrera.anio + anio,
         clubSlug: club.slug,
         clubNombre: club.nombre,
+        escudo: escudoDeTrofeo(mundo, liga, copa, titulo.clase, club),
+        competicionSlug: slugDeTrofeo(mundo, liga, copa, titulo.clase, club),
         aporte: {
           partidos: Math.round(fila.partidos / 2),
           goles: Math.round(fila.goles / 2),
@@ -250,15 +303,36 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
   fila.campeonDeLiga = trofeos.some((t) => t.clase === 'liga');
   fila.trofeos = trofeos.map((t) => t.nombre);
 
-  /* La selección: el umbral baja para los juveniles, que es cuando ilusiona más. */
-  const umbral = edad <= 21 ? 66 : 70;
-  if (carrera.ovr >= umbral) {
-    const convocatorias = entre(azar, 4, carrera.ovr >= 82 ? 20 : 12);
-    fila.seleccion = {
-      convocatorias,
-      goles:
-        carrera.futbolista.puesto === 'POR' ? 0 : entre(azar, 0, Math.max(1, Math.round(convocatorias / 3))),
-    };
+  /*
+   * La selección, jugada de verdad.
+   *
+   * Antes era un contador decorativo: un umbral de media encendía unas convocatorias que no llevaban
+   * a ninguna parte, y la clase de trofeo `'seleccion'` estaba declarada sin que nadie la produjera.
+   * Ahora el calendario es el real —Mundial cada cuatro años desde 2026, la continental en el medio—
+   * y llegar lejos con tu país es lo único que pesa más que una Champions.
+   */
+  if (convocado(carrera)) {
+    const torneos = torneosDelBienio(carrera.anio, club.continente, mundo).filter(
+      (t) => !(carrera.bono?.seleccionResuelta ?? []).includes(t.nombre),
+    );
+    fila.seleccion = numerosDeSeleccion(azar, carrera, torneos.length);
+
+    const fuerza = fuerzaDeSeleccion(escuelaDelPais(carrera.futbolista.paisCodigo));
+    for (const torneo of torneos) {
+      const ronda = rondaAlcanzada(azar, carrera, fuerza, torneo.mundial);
+      if (ronda >= 4) {
+        trofeos.push(
+          trofeoDeSeleccion(carrera, torneo, `Campeones. Jugaste el torneo entero con la ${carrera.futbolista.pais}.`),
+        );
+      } else if (ronda >= 2) {
+        siguiente = recordar(siguiente, {
+          tipo: 'seleccion',
+          texto: `${carrera.futbolista.pais} cayó en ${NOMBRE_DE_RONDA[ronda]} del ${torneo.nombre} de ${torneo.anio}.`,
+          etiquetas: ['seleccion:torneo', `seleccion:ronda-${ronda}`],
+          balance: ronda >= 3 ? 2 : 0,
+        });
+      }
+    }
   }
 
   /* Premios individuales, una tirada por año del bienio. */
@@ -322,6 +396,7 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
     temporadas: [...carrera.temporadas, fila],
     anio: carrera.anio + ANIOS_POR_CAPITULO,
     capitulo: carrera.capitulo + 1,
+    bono: null,
     vida: {
       ...carrera.vida,
       dinero: carrera.vida.dinero + (carrera.contrato?.salario ?? 0.1) * ANIOS_POR_CAPITULO,
@@ -349,6 +424,52 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
     });
   }
   return siguiente;
+}
+
+/**
+ * La escuela del país: el mismo número que decide cuánto arranca por delante un juvenil sirve como
+ * el mejor proxy que hay del nivel de su selección. Un brasileño llega lejos más seguido que un
+ * boliviano, que es exactamente lo que pasa.
+ */
+const ESCUELA_DE_SELECCION: Record<string, number> = {
+  BR: 12, AR: 12, FR: 12, ES: 11, DE: 11, 'GB-ENG': 11, GB: 11, IT: 10, PT: 10, NL: 10,
+  BE: 9, HR: 8, UY: 8, CO: 7, MX: 7, US: 6, CL: 6, JP: 6, KR: 6, MA: 6, SN: 6, EG: 5,
+  EC: 5, PE: 4, PY: 4, CA: 4, SA: 3, BO: 2, VE: 3,
+};
+
+const escuelaDelPais = (codigo: string | null): number => ESCUELA_DE_SELECCION[codigo ?? ''] ?? 4;
+
+/**
+ * El escudo del trofeo: el logo real de la competencia que ganaste.
+ *
+ * Es la diferencia entre "ganaste un título" y ver la Champions. Los tres logos vienen de la misma
+ * tabla del proveedor, que los tiene todos; el premio individual no tiene competencia detrás y se
+ * dibuja con el trofeo de la casa.
+ */
+function escudoDeTrofeo(
+  mundo: Mundo,
+  liga: Liga | null,
+  copa: { escudo?: string | null } | undefined,
+  clase: Trofeo['clase'],
+  club: Club,
+): string | null {
+  if (clase === 'liga') return liga?.escudo ?? null;
+  if (clase === 'continental') return copa?.escudo ?? null;
+  if (clase === 'copa') return copaNacionalDe(mundo, club)?.escudo ?? null;
+  return null;
+}
+
+function slugDeTrofeo(
+  mundo: Mundo,
+  liga: Liga | null,
+  copa: { slug?: string } | undefined,
+  clase: Trofeo['clase'],
+  club: Club,
+): string | null {
+  if (clase === 'liga') return liga?.slug ?? null;
+  if (clase === 'continental') return copa?.slug ?? null;
+  if (clase === 'copa') return copaNacionalDe(mundo, club)?.slug ?? null;
+  return null;
 }
 
 /** El titular que resume el bienio. Da narrativa sin costar un clic. */
@@ -445,120 +566,268 @@ function repartirCrecimiento(azar: Azar, carrera: Carrera, delta: number) {
 /* --------------------------------------------------------- la decisión siguiente */
 
 /**
- * Qué se le pide al jugador en este capítulo.
+ * Qué le pasa al jugador en este bienio.
  *
- * La cadencia está repartida a propósito: mercado, evento y de vez en cuando un momento jugable.
- * Que no se repita el tipo dos capítulos seguidos es lo que evita que doce decisiones se sientan
- * doce veces la misma.
+ * Dos cosas, siempre, y de tipos distintos: el mercado y un escándalo, un momento en la cancha y una
+ * llamada de la selección. Con una sola decisión cada dos años el juego se sentía un trámite —doce
+ * clics y una vida— y con dos del mismo tipo se siente repetido, así que la cola se arma cuidando
+ * que nunca se repita la categoría.
+ *
+ * La cola se arma entera acá pero cada paso se materializa cuando le toca (`materializar`): si
+ * firmas por otro club en el primer paso, el segundo tiene que hablar de tu club nuevo.
  */
-function prepararDecision(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mundo): Carrera {
-  if (carrera.capitulo >= CAPITULOS) {
-    return retirarse(carrera);
-  }
+function prepararCapitulo(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
+  if (carrera.capitulo >= CAPITULOS) return retirarse(carrera, 'edad');
 
-  const paso = carrera.capitulo;
-  const contratoVence = (carrera.contrato?.hasta ?? 0) <= carrera.anio + 1;
-
-  /* Dos momentos jugables por carrera, en la mitad y cerca del pico: cuando más se juega algo. */
-  const tocaMomento = paso === 3 || paso === 7;
-  if (tocaMomento && carrera.clubActual) {
-    return proponerMomento(carrera, azar, mundo);
-  }
+  const pasos: PasoDelCapitulo[] = [];
 
   /*
-   * El mercado abre cuando el contrato lo permite; si no, cada tanto llega algo irrechazable. Y solo
-   * se abre si hay algo que valga la pena: una oferta de un club de menos renombre que el actual no
-   * es una decisión, es ruido, y era lo que llenaba las carreras de camisetas intercambiables.
+   * El mercado va primero: firmar decide en qué club se juegan estos dos años, y si viniera después
+   * el bienio ya estaría jugado con la camiseta vieja.
    */
-  const tocaMercado = contratoVence || chance(azar, 0.15);
-  if (tocaMercado) {
-    const actual = carrera.clubActual?.renombre ?? 0;
-    const ofertas = armarOfertas(azar, carrera, { mundo, actual: carrera.clubActual })
-      /*
-       * Solo se ofrece lo que es un paso adelante, salvo que traiga historia (volver a casa, el
-       * clásico rival) o que ya estés de vuelta de todo. Una oferta para bajar de categoría a los 24
-       * no es una decisión difícil: es ruido que ensucia la carrera.
-       */
-      .filter(
-        (o) =>
-          carrera.clubActual === null ||
-          o.club.renombre >= actual ||
-          o.matices.length > 0 ||
-          carrera.futbolista.edad >= 32,
-      )
-      /*
-       * El orden cuenta una intención. Mientras la carrera sube, primero la más aspiracional; pasados
-       * los 33, primero la vuelta a casa y el clásico rival, que son los dos finales que la gente
-       * recuerda y que de otro modo quedaban escondidos abajo de una oferta europea cualquiera.
-       */
-      .sort((a, b) => {
-        if (carrera.futbolista.edad >= 33) {
-          const peso = (o: typeof a) => (o.matices.includes('regreso') ? 2 : o.matices.includes('rival') ? 1 : 0);
-          const diferencia = peso(b) - peso(a);
-          if (diferencia !== 0) return diferencia;
-        }
-        return b.club.renombre - a.club.renombre;
-      });
-    /* Y si estás en el banco de un club que te queda grande, la salida clásica: irte a préstamo. */
-    const prestamo = ofertaDePrestamo(azar, carrera, mundo);
-    const conPrestamo = prestamo ? [prestamo, ...ofertas] : ofertas;
+  if (hayMercado(carrera, azar, mundo)) pasos.push({ tipo: 'mercado' });
 
-    if (conPrestamo.length > 0) {
-      return {
-        ...carrera,
-        ofertas: conPrestamo.slice(0, MAX_OFERTAS),
-        etapa: 'mercado',
-        pendiente: { clase: 'mercado' },
-      };
-    }
+  /*
+   * Los momentos jugables ya no están clavados en dos capítulos fijos: se sortean, y pesan más
+   * cuando hay algo que ganar. Salen tres o cuatro por carrera.
+   */
+  if (carrera.clubActual && chance(azar, probabilidadDeMomento(carrera))) pasos.push({ tipo: 'momento' });
+
+  /* Y se completa hasta dos con eventos, sin repetir categoría dentro del mismo bienio. */
+  const usadas = new Set<Categoria>();
+  const vistos = new Set<string>();
+  while (pasos.length < DECISIONES_POR_CAPITULO) {
+    const evento = siguienteEvento(carrera, azar, usadas, vistos);
+    if (!evento) break;
+    usadas.add(evento.categoria);
+    vistos.add(evento.id);
+    pasos.push({ tipo: 'evento', eventoId: evento.id });
   }
 
-  /* Si no hay mercado, un evento; y si el catálogo se agotó, el mercado igual. */
-  const categorias = categoriasDelPaso(paso);
+  /* Si el catálogo se agotó, el mercado siempre tiene algo que ofrecer. */
+  if (pasos.length === 0) pasos.push({ tipo: 'mercado' });
+
+  const [primero, ...resto] = pasos;
+  const conVistos = {
+    ...carrera,
+    vistos: pasos.reduce(
+      (acumulado, paso) =>
+        paso.tipo === 'evento' ? { ...acumulado, [paso.eventoId]: carrera.anio } : acumulado,
+      carrera.vistos,
+    ),
+    /* Lo agendado que ya se sirvió sale de la lista de facturas. */
+    pendientes: carrera.pendientes.filter(
+      (p) => !pasos.some((paso) => paso.tipo === 'evento' && paso.eventoId === p.eventoId),
+    ),
+    cola: resto,
+  };
+  return materializar(conVistos, primero as PasoDelCapitulo, azar, mundo);
+}
+
+/**
+ * El evento siguiente, respetando lo agendado.
+ *
+ * Una factura pendiente —la investigación de la apuesta que aceptaste hace dos capítulos— entra
+ * antes que cualquier sorteo: si dependiera del azar, la mitad de las cadenas no se cobrarían nunca
+ * y el juego olvidaría lo que el jugador hizo.
+ */
+function siguienteEvento(
+  carrera: Carrera,
+  azar: Azar,
+  usadas: Set<Categoria>,
+  vistos: Set<string>,
+): Evento | null {
+  const agendado = carrera.pendientes.find(
+    (p) => p.capitulo <= carrera.capitulo && !vistos.has(p.eventoId),
+  );
+  if (agendado) {
+    const evento = CATALOGO.find((e) => e.id === agendado.eventoId);
+    if (evento) return evento;
+  }
+  const categorias = categoriasDelPaso(carrera.capitulo).filter((c) => !usadas.has(c));
+  if (categorias.length === 0) return null;
   const evento = elegirEvento(azar, carrera, CATALOGO, { categorias });
-  if (evento) {
-    return {
-      ...carrera,
-      etapa: 'decision',
-      pendiente: { clase: 'decision', eventoId: evento.id },
-      vistos: { ...carrera.vistos, [evento.id]: carrera.anio },
-    };
-  }
+  return evento && !vistos.has(evento.id) ? evento : null;
+}
 
-  /* Si el catálogo de eventos se agotó, el mercado siempre tiene algo que ofrecer. */
-  const ofertas = armarOfertas(azar, carrera, { mundo, actual: carrera.clubActual });
-  return { ...carrera, ofertas: ofertas.slice(0, MAX_OFERTAS), etapa: 'mercado', pendiente: { clase: 'mercado' } };
+/** Convierte un paso de la cola en algo que la pantalla sabe mostrar. */
+function materializar(carrera: Carrera, paso: PasoDelCapitulo, azar: Azar, mundo: Mundo): Carrera {
+  if (paso.tipo === 'momento' && carrera.clubActual) return proponerMomento(carrera, azar, mundo);
+  if (paso.tipo === 'evento') {
+    return { ...carrera, etapa: 'decision', pendiente: { clase: 'decision', eventoId: paso.eventoId } };
+  }
+  return abrirMercado(carrera, azar, mundo);
+}
+
+/**
+ * ¿Se abre el mercado?
+ *
+ * Cuando el contrato lo permite, o cada tanto porque llega algo irrechazable. Y solo si hay algo que
+ * valga la pena: una oferta de un club de menos renombre que el actual no es una decisión, es ruido,
+ * y era lo que llenaba las carreras de camisetas intercambiables.
+ */
+function hayMercado(carrera: Carrera, azar: Azar, mundo: Mundo): boolean {
+  const contratoVence = (carrera.contrato?.hasta ?? 0) <= carrera.anio + 1;
+  if (!contratoVence && !chance(azar, 0.15)) return false;
+  return ofertasDelCapitulo(carrera, azar, mundo).length > 0;
+}
+
+function abrirMercado(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
+  const ofertas = ofertasDelCapitulo(carrera, azar, mundo);
+  const conFondo =
+    ofertas.length > 0 ? ofertas : armarOfertas(azar, carrera, { mundo, actual: carrera.clubActual });
+  return {
+    ...carrera,
+    ofertas: conFondo.slice(0, MAX_OFERTAS),
+    etapa: 'mercado',
+    pendiente: { clase: 'mercado' },
+  };
+}
+
+function ofertasDelCapitulo(carrera: Carrera, azar: Azar, mundo: Mundo): Oferta[] {
+  const actual = carrera.clubActual?.renombre ?? 0;
+  const ofertas = armarOfertas(azar, carrera, { mundo, actual: carrera.clubActual })
+    /*
+     * Solo se ofrece lo que es un paso adelante, salvo que traiga historia (volver a casa, el
+     * clásico rival) o que ya estés de vuelta de todo. Una oferta para bajar de categoría a los 24
+     * no es una decisión difícil: es ruido que ensucia la carrera.
+     */
+    .filter(
+      (o) =>
+        carrera.clubActual === null ||
+        o.club.renombre >= actual ||
+        o.matices.length > 0 ||
+        carrera.futbolista.edad >= 32,
+    )
+    /*
+     * El orden cuenta una intención. Mientras la carrera sube, primero la más aspiracional; pasados
+     * los 33, primero la vuelta a casa y el clásico rival, que son los dos finales que la gente
+     * recuerda y que de otro modo quedaban escondidos abajo de una oferta europea cualquiera.
+     */
+    .sort((a, b) => {
+      if (carrera.futbolista.edad >= 33) {
+        const peso = (o: typeof a) => (o.matices.includes('regreso') ? 2 : o.matices.includes('rival') ? 1 : 0);
+        const diferencia = peso(b) - peso(a);
+        if (diferencia !== 0) return diferencia;
+      }
+      return b.club.renombre - a.club.renombre;
+    });
+
+  /* Y si estás en el banco de un club que te queda grande, la salida clásica: irte a préstamo. */
+  const prestamo = ofertaDePrestamo(azar, carrera, mundo);
+  return prestamo ? [prestamo, ...ofertas] : ofertas;
+}
+
+/**
+ * Cuántas ganas tiene el juego de darte una jugada.
+ *
+ * Sube con lo que hay en juego: un titular de un club grande vive finales, un suplente de un club
+ * chico no. Da tres o cuatro momentos por carrera, repartidos donde tienen sentido en lugar de en
+ * dos capítulos fijos.
+ */
+function probabilidadDeMomento(carrera: Carrera): number {
+  const grande = (carrera.clubActual?.fuerza ?? 60) >= 72 ? 0.12 : 0;
+  const juega = carrera.rol === 'titular' || carrera.rol === 'estrella' || carrera.rol === 'capitan' ? 0.1 : 0;
+  return limitar(0.14 + grande + juega, 0.14, 0.4);
 }
 
 /**
  * De qué habla cada capítulo. Rota el tipo para que la carrera tenga textura: al principio el
  * vestuario y el cuerpo, en el medio la prensa y el dinero, al final el legado.
+ *
+ * Cada categoría aparece en un tramo lo bastante ancho para que ningún evento quede fuera de su
+ * propia edad. Antes `dinero` empezaba a los 22 y su evento del primer contrato pedía `edadMax: 21`,
+ * y `profesional` terminaba a los 20 mientras su oferta árabe pedía `edadMin: 27`: dos eventos
+ * escritos que era imposible ver. Un test recorre el catálogo para que no vuelva a pasar.
  */
-function categoriasDelPaso(paso: number): Categoria[] {
-  if (paso <= 2) return ['futbol', 'profesional', 'social'];
-  if (paso <= 5) return ['futbol', 'prensa', 'relaciones', 'dinero'];
-  if (paso <= 8) return ['prensa', 'dinero', 'caos', 'futbol', 'relaciones'];
-  return ['legado', 'futbol', 'caos', 'prensa'];
+export function categoriasDelPaso(paso: number): Categoria[] {
+  if (paso <= 2) return ['futbol', 'profesional', 'social', 'dinero', 'relaciones'];
+  if (paso <= 5) return ['futbol', 'prensa', 'relaciones', 'dinero', 'social', 'caos', 'profesional'];
+  if (paso <= 8) return ['prensa', 'dinero', 'caos', 'futbol', 'relaciones', 'social', 'profesional'];
+  return ['legado', 'futbol', 'caos', 'prensa', 'relaciones', 'dinero', 'social', 'profesional'];
 }
 
+/**
+ * La jugada, y lo que se juega en ella.
+ *
+ * Cuando la escena es una final, el título **entra en juego de verdad**: se arma el trofeo acá y solo
+ * llega a la vitrina si el jugador la mete. Antes el momento no tocaba nada —el gol se descartaba y
+ * la copa la sorteaba la simulación por su cuenta— y se podía fallar el penal de la final y salir
+ * campeón igual, que es exactamente lo que no puede pasar en un juego de decisiones.
+ */
 function proponerMomento(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
   const datos = datosDeTexto(carrera, mundo);
+  const club = carrera.clubActual;
   const momento: ClaseDeMomento = momentoParaPuesto(azar, carrera.futbolista.puesto);
-  const escenas = [
-    'Final de copa, y la definición pasa por tus pies',
-    'Clásico, estadio lleno, últimos minutos',
-    'Se juega la clasificación a la copa',
-    'Eliminatoria con tu selección',
-  ];
+
+  /* Una final solo la juega quien llegó: club competitivo y un rol que pise el campo. */
+  const juegaFinales =
+    (club?.fuerza ?? 0) >= 66 && ['titular', 'estrella', 'capitan', 'rotacion'].includes(carrera.rol);
+  const esFinal = juegaFinales && chance(azar, 0.45);
+
+  const escenas = esFinal
+    ? [`Final de la Copa de ${carrera.clubActual?.pais ?? datos.pais}, y la definición pasa por tus pies`]
+    : [
+        'Clásico, estadio lleno, últimos minutos',
+        'Se juega la clasificación a la copa',
+        'Eliminatoria con tu selección',
+        'Último partido del año y hay que ganarlo',
+      ];
+
+  const enJuego: Trofeo | undefined =
+    esFinal && club
+      ? {
+          id: `copa-${carrera.anio}-${club.slug}`,
+          nombre: `Copa de ${club.pais}`,
+          clase: 'copa',
+          temporada: carrera.anio,
+          clubSlug: club.slug,
+          clubNombre: club.nombre,
+          escudo: copaNacionalDe(mundo, club)?.escudo ?? null,
+          competicionSlug: copaNacionalDe(mundo, club)?.slug ?? null,
+        }
+      : undefined;
+
   const contexto: ContextoDeMomento = {
     escena: elegir(azar, escenas),
     rival: datos.rival,
     minuto: entre(azar, 78, 92),
     marcador: [entre(azar, 0, 2), entre(azar, 0, 2)],
     presion: limitar(0.5 + azar.siguiente() * 0.45, 0.5, 0.95),
-    competencia: carrera.clubActual?.ligaNombre ?? datos.liga,
+    competencia: enJuego?.nombre ?? carrera.clubActual?.ligaNombre ?? datos.liga,
+    ...(enJuego ? { enJuego } : {}),
   };
   return { ...carrera, etapa: 'momento', pendiente: { clase: 'momento', momento, contexto } };
+}
+
+/** La copa nacional del país del club, para ponerle su escudo de verdad al trofeo. */
+function copaNacionalDe(mundo: Mundo, club: { paisCodigo: string | null }) {
+  if (!club.paisCodigo) return null;
+  return mundo.copasNacionales?.find((c) => c.paisCodigo === club.paisCodigo) ?? null;
+}
+
+/**
+ * Lo que la pantalla necesita para mostrar la decisión pendiente, ya redactado con los nombres de
+ * esta carrera. La interfaz no conoce el catálogo: solo pinta lo que le llega.
+ */
+export function eventoPendiente(carrera: Carrera, mundo: Mundo) {
+  const pendiente = carrera.pendiente;
+  if (pendiente?.clase !== 'decision') return null;
+  const evento = CATALOGO.find((e) => e.id === pendiente.eventoId);
+  if (!evento) return null;
+  const datos = datosDeTexto(carrera, mundo);
+  return {
+    evento,
+    titulo: redactar(evento.titulo, datos),
+    texto: redactar(evento.texto, datos).replaceAll('{dorsal}', datos.dorsal),
+    opciones: evento.opciones.map((o) => ({
+      id: o.id,
+      texto: o.texto,
+      pista: o.pista,
+      /* La pantalla marca las opciones que se juegan a los dados, sin decir cómo salen. */
+      arriesgada: o.riesgo !== undefined,
+    })),
+  };
 }
 
 /* ------------------------------------------------------------------- decisiones */
@@ -712,6 +981,14 @@ function renovar(carrera: Carrera, azar: Azar, capitulo: Capitulo): Carrera {
   };
 }
 
+/**
+ * Una decisión, y el dado que trae encima.
+ *
+ * Hasta acá el resultado de un evento estaba escrito antes de que el jugador tocara nada: la opción
+ * declaraba sus efectos y se aplicaban, punto. Nada podía salir mal, y por eso ninguna decisión se
+ * sentía una decisión. Ahora una opción puede declarar un `riesgo` —una probabilidad y dos futuros—
+ * y la pista avisa el tipo de apuesta sin adelantar el resultado.
+ */
 function decidir(carrera: Carrera, opcionId: string, azar: Azar, capitulo: Capitulo, mundo: Mundo): Carrera {
   const pendiente = carrera.pendiente;
   if (pendiente?.clase !== 'decision') return carrera;
@@ -720,20 +997,90 @@ function decidir(carrera: Carrera, opcionId: string, azar: Azar, capitulo: Capit
   if (!evento || !opcion) return carrera;
 
   const datos = datosDeTexto(carrera, mundo);
-  capitulo.consecuencia = redactar(opcion.resultado, datos);
+  let efectos = opcion.efectos;
+  let relato = opcion.resultado;
 
-  let siguiente = aplicarEfectos(carrera, opcion.efectos, capitulo, mundo);
+  if (opcion.riesgo) {
+    const salioBien = chance(azar, opcion.riesgo.prob);
+    efectos = fusionar(efectos, salioBien ? opcion.riesgo.bien : opcion.riesgo.mal);
+    relato = `${opcion.resultado} ${salioBien ? opcion.riesgo.relatoBien : opcion.riesgo.relatoMal}`;
+  }
+
+  capitulo.consecuencia = redactar(relato, datos);
+
+  let siguiente = aplicarEfectos(carrera, efectos, capitulo, mundo);
   siguiente = recordar(siguiente, {
     tipo: evento.tipoDeRecuerdo,
     texto: capitulo.consecuencia,
-    etiquetas: (opcion.efectos.etiquetas ?? []).map((e) => e.replaceAll('{rivalSlug}', datos.rivalSlug)),
-    balance: opcion.efectos.balance,
+    etiquetas: (efectos.etiquetas ?? []).map((e) => e.replaceAll('{rivalSlug}', datos.rivalSlug)),
+    balance: efectos.balance,
     eventoId: evento.id,
   });
-  void azar;
+
+  /* La factura que llega después: se agenda y entra sola cuando le toque. */
+  if (efectos.luego) {
+    siguiente = {
+      ...siguiente,
+      pendientes: [
+        ...siguiente.pendientes,
+        { eventoId: efectos.luego.eventoId, capitulo: siguiente.capitulo + efectos.luego.enCapitulos },
+      ],
+    };
+  }
+
+  /* Y el final del que no vuelve. Nunca sale de la nada: es el último eslabón de una cadena. */
+  if (efectos.final) {
+    return terminarPorLaMala(
+      { ...siguiente, pendiente: null, cola: [] },
+      efectos.final.motivo,
+      redactar(efectos.final.texto, datos).replaceAll('{edad}', String(carrera.futbolista.edad)),
+    );
+  }
+
   return { ...siguiente, pendiente: null };
 }
 
+/** Junta dos paquetes de efectos: los números se suman, las listas se concatenan. */
+function fusionar(base: Efectos, extra: Efectos): Efectos {
+  const sumar = <T extends Record<string, number | undefined>>(a?: T, b?: T): T | undefined => {
+    if (!a) return b;
+    if (!b) return a;
+    const salida = { ...a } as Record<string, number>;
+    for (const [clave, valor] of Object.entries(b)) salida[clave] = (salida[clave] ?? 0) + (valor ?? 0);
+    return salida as T;
+  };
+
+  const relaciones = { ...(base.relaciones ?? {}) };
+  for (const [vinculo, cambios] of Object.entries(extra.relaciones ?? {})) {
+    const v = vinculo as Vinculo;
+    relaciones[v] = {
+      confianza: (relaciones[v]?.confianza ?? 0) + (cambios?.confianza ?? 0),
+      respeto: (relaciones[v]?.respeto ?? 0) + (cambios?.respeto ?? 0),
+      rencor: (relaciones[v]?.rencor ?? 0) + (cambios?.rencor ?? 0),
+    };
+  }
+
+  return {
+    vida: sumar(base.vida, extra.vida),
+    atributos: sumar(base.atributos, extra.atributos),
+    personalidad: sumar(base.personalidad, extra.personalidad),
+    relaciones: Object.keys(relaciones).length > 0 ? relaciones : undefined,
+    etiquetas: [...(base.etiquetas ?? []), ...(extra.etiquetas ?? [])],
+    titular: extra.titular ?? base.titular,
+    balance: (base.balance ?? 0) + (extra.balance ?? 0),
+    luego: extra.luego ?? base.luego,
+    final: extra.final ?? base.final,
+  };
+}
+
+/**
+ * La jugada, y lo que deja.
+ *
+ * El gol no se pierde: espera en `bono` hasta que el bienio se simule y se suma a la fila. Y si había
+ * un título en juego, este es el único lugar donde se decide: metiéndola entra en la vitrina, y
+ * fallándola no la gana nadie. El resto de la carrera lo escuchará —el cariño de la hinchada, la
+ * confianza, la prensa— porque un penal en una final no se olvida en dos semanas.
+ */
 function jugarMomento(carrera: Carrera, intencion: Intencion, azar: Azar, capitulo: Capitulo): Carrera {
   const pendiente = carrera.pendiente;
   if (pendiente?.clase !== 'momento') return carrera;
@@ -746,29 +1093,57 @@ function jugarMomento(carrera: Carrera, intencion: Intencion, azar: Azar, capitu
     pendiente.contexto,
     carrera.vida.confianza,
   );
-  capitulo.consecuencia = resultado.relato;
+  const enJuego = pendiente.contexto.enJuego ?? null;
+  capitulo.consecuencia = enJuego
+    ? `${resultado.relato} ${resultado.exito ? `${enJuego.nombre} para ${enJuego.clubNombre}.` : `La copa se fue con ${pendiente.contexto.rival}.`}`
+    : resultado.relato;
+
+  const ganado = resultado.exito && enJuego;
+  const trofeo: Trofeo | null = ganado
+    ? {
+        ...enJuego,
+        detalle: `${pendiente.contexto.escena}. La definiste tú, en el ${pendiente.contexto.minuto}'.`,
+      }
+    : null;
+
+  /* Lo que se juega en una final pesa el doble: ganarla o perderla marca los dos años siguientes. */
+  const peso = enJuego ? 1.6 : 1;
 
   let siguiente: Carrera = {
     ...carrera,
     pendiente: null,
+    bono: {
+      goles: (carrera.bono?.goles ?? 0) + (resultado.suma?.goles ?? 0),
+      trofeos: [...(carrera.bono?.trofeos ?? []), ...(trofeo ? [trofeo] : [])],
+      /* Si la copa se definía acá, el bienio no la vuelve a sortear: ya se jugó. */
+      copaResuelta: (carrera.bono?.copaResuelta ?? false) || enJuego !== null,
+    },
     vida: {
       ...carrera.vida,
-      confianza: limitar(carrera.vida.confianza + resultado.efectos.confianza, 5, 100),
+      confianza: limitar(carrera.vida.confianza + resultado.efectos.confianza * peso, 5, 100),
       carinoDeLaHinchada: limitar(
-        carrera.vida.carinoDeLaHinchada + resultado.efectos.carinoDeLaHinchada,
+        carrera.vida.carinoDeLaHinchada + resultado.efectos.carinoDeLaHinchada * peso,
         0,
         100,
       ),
       forma: limitar(carrera.vida.forma + resultado.efectos.forma, 20, 98),
       estres: limitar(carrera.vida.estres + resultado.efectos.estres, 0, 100),
-      reputacion: limitar(carrera.vida.reputacion + (resultado.efectos.reputacion ?? 0), 0, 100),
+      reputacion: limitar(carrera.vida.reputacion + (resultado.efectos.reputacion ?? 0) * peso, 0, 100),
     },
   };
   siguiente = recordar(siguiente, {
     tipo: resultado.exito ? 'gol' : 'decision',
-    texto: `${pendiente.contexto.escena}: ${resultado.relato}`,
-    etiquetas: [`momento:${pendiente.momento}`, resultado.exito ? 'momento:exito' : 'momento:fallo'],
-    balance: resultado.exito ? 6 : -4,
+    texto: `${pendiente.contexto.escena}: ${capitulo.consecuencia}`,
+    /*
+     * La etiqueta la lee el catálogo: haber sido el héroe de una final abre eventos de ídolo, y
+     * haberla fallado abre a la prensa encima. La memoria del juego sirve para algo o no sirve.
+     */
+    etiquetas: [
+      `momento:${pendiente.momento}`,
+      resultado.exito ? 'momento:exito' : 'momento:fallo',
+      ...(enJuego ? [resultado.exito ? 'momento:heroe' : 'momento:villano'] : []),
+    ],
+    balance: (resultado.exito ? 6 : -4) * peso,
   });
   return siguiente;
 }
@@ -848,54 +1223,62 @@ function recordar(
   return { ...carrera, recuerdos: [...carrera.recuerdos, recuerdo] };
 }
 
-function retirarse(carrera: Carrera): Carrera {
+/**
+ * Colgar los botines.
+ *
+ * El final por edad es el que todos esperan; los otros son el precio de haber jugado con fuego y
+ * llegan por `terminarPorLaMala`. La pantalla del legado cambia de tono según el motivo, porque
+ * retirarse a los 38 en tu club y acabar sancionado a los 26 no son la misma historia.
+ */
+function retirarse(carrera: Carrera, motivo: Retiro['motivo'], relato?: string): Carrera {
   const club = carrera.clubActual;
   const enCasa = club !== null && club.slug === carrera.clubDeOrigen?.slug;
   /*
    * Cuelga los botines al final del último bienio: la edad del estado ya avanzó los dos años enteros
    * y decir "se retiró a los 40" cuando la última fila dice 38 no le suena bien a nadie.
    */
-  const edad = (carrera.temporadas.at(-1)?.edad ?? carrera.futbolista.edad) + 1;
+  const edad =
+    motivo === 'edad' ? (carrera.temporadas.at(-1)?.edad ?? carrera.futbolista.edad) + 1 : carrera.futbolista.edad;
+  const texto =
+    relato ??
+    (enCasa
+      ? `Te retiraste en ${club?.nombre}, donde habías empezado.`
+      : `Te retiraste en ${club?.nombre ?? 'el fútbol'} a los ${edad}.`);
+
   return {
     ...recordar(carrera, {
       tipo: 'legado',
-      texto: enCasa
-        ? `Te retiraste en ${club?.nombre}, donde habías empezado.`
-        : `Te retiraste en ${club?.nombre ?? 'el fútbol'} a los ${edad}.`,
-      etiquetas: ['retiro', ...(enCasa ? ['retiro:en-casa'] : [])],
+      texto,
+      etiquetas: ['retiro', `retiro:${motivo}`, ...(enCasa ? ['retiro:en-casa'] : [])],
     }),
     etapa: 'legado',
     ofertas: [],
     pendiente: null,
+    cola: [],
     retiro: {
       anio: carrera.anio,
       edad,
       clubSlug: club?.slug ?? '',
       clubNombre: club?.nombre ?? '',
       enCasa,
-      motivo: 'edad',
+      motivo,
+      ...(relato ? { relato } : {}),
     },
   };
 }
 
-/* ------------------------------------------------------------------- consulta */
-
-/** El evento pendiente con sus textos redactados: lo que la interfaz necesita para pintarlo. */
-export function eventoPendiente(carrera: Carrera, mundo: Mundo) {
-  const pendiente = carrera.pendiente;
-  if (pendiente?.clase !== 'decision') return null;
-  const evento = CATALOGO.find((e) => e.id === pendiente.eventoId);
-  if (!evento) return null;
-  const datos = datosDeTexto(carrera, mundo);
-  return {
-    evento,
-    titulo: redactar(evento.titulo, datos),
-    texto: redactar(evento.texto, datos).replaceAll('{dorsal}', datos.dorsal),
-    opciones: evento.opciones.map((o) => ({ id: o.id, texto: o.texto, pista: o.pista })),
-  };
+/**
+ * El final del que no vuelve.
+ *
+ * Una sanción de por vida, una rodilla que no aguantó, un auto a las cuatro de la mañana. Nunca sale
+ * de la nada: siempre es el último eslabón de una cadena que el jugador fue alimentando, y la opción
+ * que lo abre lo avisa antes. Es lo que hace que arriesgarse dé miedo de verdad.
+ */
+function terminarPorLaMala(carrera: Carrera, motivo: MotivoDeFinal, relato: string): Carrera {
+  return retirarse(carrera, motivo, relato);
 }
 
-/** ¿El club quiere renovarte? Decide si la pantalla de mercado ofrece quedarse. */
+/** ¿El club te quiere seguir? Es lo que decide si "quedarme" aparece como opción en el mercado. */
 export const puedeRenovar = (carrera: Carrera): boolean =>
   carrera.clubActual !== null && quiereRenovar(carrera);
 

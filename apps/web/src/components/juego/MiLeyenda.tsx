@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import {
   abrirCarrera,
   avanzarCapitulo,
@@ -11,14 +11,28 @@ import {
   type Mundo,
 } from '@athena/leyenda';
 import { borrarPartida, codificarLegado, guardarEnElSalon, guardarPartida, leerPartida } from '../../lib/leyenda';
+import { escenasDe } from './Celebracion';
 import Creacion from './Creacion';
 import Decision from './Decision';
 import Ficha from './Ficha';
-import Legado from './Legado';
+
 import LineaDeCarrera from './LineaDeCarrera';
-import Estadio from './cancha/Estadio';
+
 import Ofertas from './Ofertas';
+import Estadio from './cancha/Estadio';
 import ResumenDelCapitulo from './ResumenDelCapitulo';
+
+/*
+ * Dos piezas que no hacen falta para empezar a jugar: el legado, que solo existe cuando la carrera
+ * termina, y la celebración, que aparece cuando hay algo que celebrar. Con las dos dentro del primer
+ * paquete, la pantalla de creación —que no usa ninguna— arrastraba kilobytes que nadie iba a ver
+ * hasta cinco minutos después.
+ *
+ * El estadio **no** se difiere aunque pese: una jugada aparece de golpe y un cuadro en blanco
+ * mientras baja el trozo rompe justo el momento que el juego quiere que se sienta.
+ */
+const Legado = lazy(() => import('./Legado'));
+const Celebracion = lazy(() => import('./Celebracion'));
 
 /**
  * Mi Leyenda: doce decisiones y una carrera.
@@ -51,6 +65,8 @@ export default function MiLeyenda({ mundo, anio }: Props) {
   const [capitulo, setCapitulo] = useState<Capitulo | null>(null);
   const [listo, setListo] = useState(false);
   const [ascenso, setAscenso] = useState(false);
+  /* Lo que hay que celebrar antes de seguir jugando: títulos, cambio de material, salto de media. */
+  const [celebrando, setCelebrando] = useState<Capitulo | null>(null);
 
   useEffect(() => {
     const guardada = leerPartida();
@@ -76,6 +92,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
       const resultado = avanzarCapitulo(carrera, eleccion, mundo);
       setCarrera(resultado.carrera);
       setCapitulo(resultado.capitulo);
+      if (escenasDe(resultado.capitulo).length > 0) setCelebrando(resultado.capitulo);
     },
     [carrera, mundo],
   );
@@ -93,6 +110,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
     borrarPartida();
     setCarrera(null);
     setCapitulo(null);
+    setCelebrando(null);
   }, []);
 
   if (!listo) {
@@ -107,6 +125,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
 
   if (carrera.etapa === 'legado') {
     return (
+      <Suspense fallback={<div className="grid min-h-[60vh] place-items-center text-sm text-ink-muted">Contando tu carrera…</div>}>
       <Legado
         carrera={carrera}
         onEmpezarDeNuevo={empezarDeNuevo}
@@ -141,6 +160,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
           return codigo;
         }}
       />
+      </Suspense>
     );
   }
 
@@ -152,9 +172,16 @@ export default function MiLeyenda({ mundo, anio }: Props) {
    * elegirse, y meterla en la columna de la ficha la dejaba del tamaño de un sello: la cámara detrás
    * del pateador necesita ancho para que el arco se vea como un arco.
    */
+  const celebracion = celebrando ? (
+    <Suspense fallback={null}>
+      <Celebracion capitulo={celebrando} onCerrar={() => setCelebrando(null)} />
+    </Suspense>
+  ) : null;
+
   if (momento) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:py-4">
+        {celebracion}
         {capitulo && <ResumenDelCapitulo capitulo={capitulo} />}
         <div className="min-h-0 flex-1">
           <Estadio
@@ -176,6 +203,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
    */
   return (
     <div className="mx-auto flex w-full max-w-[104rem] flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:gap-4 lg:px-6 lg:py-4">
+      {celebracion}
       <Ficha carrera={carrera} ascenso={ascenso} onEmpezarDeNuevo={empezarDeNuevo} />
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-6">

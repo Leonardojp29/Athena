@@ -63,6 +63,12 @@ export interface Condiciones {
   /** Solo si viene de una temporada con nota alta o baja. */
   notaMin?: number;
   notaMax?: number;
+  /**
+   * Rangos sobre los diez diales de la vida: `{ estres: [70, 100] }` es "solo si está fundido".
+   * Es la puerta de los eventos reactivos —el escándalo llega cuando la fama está alta y el
+   * profesionalismo bajo, no porque sí— y por eso son rangos y no umbrales sueltos.
+   */
+  vida?: Partial<Record<keyof Carrera['vida'], [number, number]>>;
 }
 
 /** El efecto de una opción sobre el estado. Todo es relativo: sumas y restas, nunca asignaciones. */
@@ -79,8 +85,36 @@ export interface Efectos {
   titular?: { texto: string; tono: 'elogio' | 'duda' | 'polemica' | 'neutro' };
   /** Cuánto ayudó o costó esta decisión: alimenta la mejor y la peor de la carrera. */
   balance?: number;
-  /** Un evento que se dispara en la próxima oportunidad. */
-  luego?: string;
+  /**
+   * La factura que llega después.
+   *
+   * Apostar a los veinticuatro no se paga a los veinticuatro: se paga cuando la investigación toca
+   * la puerta. El evento queda agendado en `carrera.pendientes` y entra sí o sí en el capítulo que
+   * le toca, sin depender de que el sorteo vuelva a elegirlo.
+   */
+  luego?: { eventoId: string; enCapitulos: number };
+  /** Termina la carrera acá mismo. Solo al final de una cadena que el jugador alimentó. */
+  final?: { motivo: MotivoDeFinal; texto: string };
+}
+
+/** Por qué se acabó una carrera antes de tiempo. */
+export type MotivoDeFinal = 'lesion' | 'sancion' | 'accidente';
+
+/**
+ * La apuesta de una opción: puede salir bien o puede salir mal.
+ *
+ * Es lo que separa decidir de elegir. Sin esto, el resultado de un evento está escrito antes de que
+ * el jugador toque nada y ninguna decisión puede sorprenderlo. La pista avisa **el tipo** de riesgo,
+ * nunca el resultado: saber que algo puede terminar mal es información; saber que va a terminar mal
+ * es un spoiler.
+ */
+export interface Riesgo {
+  /** Probabilidad de que salga bien, 0-1. */
+  prob: number;
+  bien: Efectos;
+  mal: Efectos;
+  relatoBien: string;
+  relatoMal: string;
 }
 
 export interface Opcion {
@@ -88,10 +122,22 @@ export interface Opcion {
   texto: string;
   /** El detalle que aparece bajo la opción: lo que el jugador sabe antes de decidir. */
   pista?: string;
+  /** Lo que pasa siempre, salga como salga. */
   efectos: Efectos;
+  /** Y lo que se juega a los dados encima de eso. */
+  riesgo?: Riesgo;
   /** El texto que se muestra cuando ya eligió: la consecuencia narrada. */
   resultado: string;
 }
+
+/**
+ * La regla del catálogo: cuatro opciones, siempre.
+ *
+ * Con dos o tres, la decisión se lee de un vistazo y el jugador aprende cuál es "la buena". Con
+ * cuatro entran las cuatro voces que hacen interesante una decisión —la prudente, la profesional,
+ * la ambiciosa y la que te va a meter en un problema— y ninguna partida se parece a la anterior.
+ */
+export const OPCIONES_POR_EVENTO = 4;
 
 export interface Evento {
   id: string;
@@ -148,6 +194,14 @@ export function cumple(evento: Evento, carrera: Carrera, etiquetas: Set<string>)
     for (const [rasgo, rango] of Object.entries(c.personalidad)) {
       if (!rango) continue;
       const valor = futbolista.personalidad[rasgo as keyof typeof futbolista.personalidad];
+      if (valor < rango[0] || valor > rango[1]) return false;
+    }
+  }
+
+  if (c.vida) {
+    for (const [dial, rango] of Object.entries(c.vida)) {
+      if (!rango) continue;
+      const valor = vida[dial as keyof typeof vida];
       if (valor < rango[0] || valor > rango[1]) return false;
     }
   }

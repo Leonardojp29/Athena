@@ -22,25 +22,45 @@
   perspective-origin: center;
 }
 
+/*
+ * La silueta del blasón.
+ *
+ * Una carta de fútbol no es un rectángulo: es un escudo con las esquinas redondeadas, una muesca
+ * arriba y una base que baja en curva hasta una punta suave. Un polígono no puede hacer curvas, así
+ * que el recorte es un `clipPath` de SVG en unidades relativas —escala solo— y vive dentro del
+ * componente.
+ *
+ * El recorte se lleva puesta la sombra (`box-shadow` se recorta con el clip), así que la sombra vive
+ * en el marco como un `drop-shadow` que sigue el contorno de verdad.
+ */
 [data-carta] {
   position: relative;
-  aspect-ratio: 2 / 3;
-  border-radius: var(--a-radius-lg);
+  aspect-ratio: 5 / 7;
   overflow: hidden;
+  clip-path: url(#carta-blason);
   transform-style: preserve-3d;
   transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) scale(var(--carta-escala, 1));
-  transition:
-    transform var(--a-motion-slow) var(--a-ease-magnet),
-    box-shadow var(--a-motion-base) var(--a-ease);
+  transition: transform var(--a-motion-slow) var(--a-ease-magnet);
   will-change: transform;
-  /* La sombra del imán: la carta se levanta del tablero, y por eso no lleva borde además. */
-  box-shadow:
-    0 1px 2px oklch(0.15 0.005 285 / 0.28),
-    0 12px 28px -8px oklch(0.15 0.005 285 / 0.45);
+}
+
+[data-carta-marco] {
+  filter: drop-shadow(0 1px 2px oklch(0.15 0.005 285 / 0.3))
+    drop-shadow(0 10px 20px oklch(0.15 0.005 285 / 0.4));
 }
 
 [data-carta][data-tomada='si'] {
   transition: none;
+}
+
+/*
+ * El filo del blasón. Con el recorte curvo no hay forma de dibujar un borde interior con CSS, así
+ * que el filo es el mismo contorno pintado en SVG por encima de todo, con el trazo hacia adentro.
+ */
+[data-carta-filo] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 /* El brillo: una banda diagonal que sigue al puntero. Es lo que hace que la carta parezca material. */
@@ -81,6 +101,7 @@
   --carta-tinta: var(--a-color-chalk);
   --carta-tenue: var(--a-color-chalk-dim);
   --carta-filo: oklch(1 0 0 / 0.14);
+  --carta-silueta: oklch(0.16 0.02 190);
 }
 
 [data-material='promesa'] {
@@ -89,6 +110,7 @@
   --carta-tinta: var(--a-color-chalk);
   --carta-tenue: var(--a-color-chalk-dim);
   --carta-filo: oklch(0.906 0.191 118 / 0.5);
+  --carta-silueta: oklch(0.15 0.03 175);
 }
 
 [data-material='profesional'] {
@@ -97,6 +119,7 @@
   --carta-tinta: oklch(0.18 0.01 260);
   --carta-tenue: oklch(0.32 0.012 260);
   --carta-filo: oklch(1 0 0 / 0.5);
+  --carta-silueta: oklch(0.24 0.012 255);
 }
 
 [data-material='elite'] {
@@ -105,6 +128,7 @@
   --carta-tinta: oklch(0.99 0.01 80);
   --carta-tenue: oklch(0.99 0.01 80 / 0.72);
   --carta-filo: oklch(0.88 0.07 78 / 0.6);
+  --carta-silueta: oklch(0.26 0.05 52);
 }
 
 [data-material='clase-mundial'] {
@@ -113,6 +137,7 @@
   --carta-tinta: oklch(0.2 0.03 70);
   --carta-tenue: oklch(0.32 0.04 70);
   --carta-filo: oklch(1 0.02 95 / 0.72);
+  --carta-silueta: oklch(0.34 0.08 74);
 }
 
 [data-material='icono'] {
@@ -121,6 +146,7 @@
   --carta-tinta: oklch(0.98 0.002 285);
   --carta-tenue: oklch(0.98 0.002 285 / 0.66);
   --carta-filo: oklch(0.85 0.12 200 / 0.55);
+  --carta-silueta: oklch(0.06 0.015 290);
 }
 
 [data-material='inmortal'] {
@@ -129,7 +155,16 @@
   --carta-tinta: oklch(0.16 0.01 285);
   --carta-tenue: oklch(0.3 0.012 285);
   --carta-filo: oklch(0.906 0.191 118 / 0.7);
+  --carta-silueta: oklch(0.4 0.012 285);
 }
+
+/*
+ * El retrato es una sombra, no una tinta.
+ *
+ * Usar `--carta-tinta` dejaba una cabeza blanca sobre el bronce de la carta élite: un fantasma. Cada
+ * material declara el tono de su silueta, siempre unos pasos más oscuro que su fondo salvo en las
+ * dos cartas negras, donde va al revés.
+ */
 
 /* La holografía: solo de clase mundial para arriba, y siempre por debajo del contenido. */
 [data-carta-holo] {
@@ -220,6 +255,90 @@
 
 [data-carta-asciende] {
   animation: carta-asciende var(--a-motion-cine) var(--a-ease-magnet) both;
+}
+
+/* ------------------------------------------------------------- la celebración */
+
+/*
+ * El golpe. Es la única pantalla del juego donde no hay nada que decidir, y por eso es la única que
+ * se permite entrar con escala: el objeto llega desde el fondo, la luz se abre detrás y el nombre
+ * sube. Dura menos de un segundo; lo que queda del segundo y medio es para mirarlo.
+ */
+@keyframes celebracion-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+[data-celebracion] {
+  animation: celebracion-entra var(--a-motion-base) var(--a-ease-out-expo) both;
+}
+
+@keyframes objeto-llega {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-14deg);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+[data-celebracion-objeto] {
+  animation: objeto-llega var(--a-motion-cine) var(--a-ease-magnet) both;
+}
+
+@keyframes titulo-sube {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-celebracion-titulo] {
+  animation: titulo-sube var(--a-motion-drama) var(--a-ease-out-expo) 180ms both;
+}
+
+/* La luz de atrás: un halo que se abre y se queda. Sin esto, un escudo es un icono. */
+@keyframes luz-se-abre {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+[data-celebracion-luz] {
+  inset: -30%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    oklch(0.906 0.191 118 / 0.22),
+    oklch(0.906 0.191 118 / 0.06) 45%,
+    transparent 72%
+  );
+  animation: luz-se-abre var(--a-motion-cine) var(--a-ease-out-expo) both;
+}
+
+[data-celebracion-escena] {
+  animation: celebracion-entra var(--a-motion-drama) var(--a-ease-out-expo) both;
 }
 
 /* --------------------------------------------------------- la línea de la carrera */
@@ -475,6 +594,11 @@ li:nth-child(4) > [data-oferta] {
   [data-ventana-cursor],
   [data-capitulo-nuevo],
   [data-escudo-nuevo],
+  [data-celebracion],
+  [data-celebracion-escena],
+  [data-celebracion-objeto],
+  [data-celebracion-titulo],
+  [data-celebracion-luz],
   [data-oferta],
   [data-resumen] {
     animation: none !important;

@@ -112,7 +112,14 @@ export function simularBienio(azar: Azar, carrera: Carrera, fechas = 68): Rendim
    */
   const notaBase = 5.9 + (carrera.ovr - 60) / 22;
   const aporte = partidos > 0 ? ((goles * 2 + asistencias) / partidos) * 0.8 : 0;
-  const nota = limitar(campana(azar, notaBase + aporte, 0.3), 4.5, 9.6);
+  /*
+   * La cabeza juega. Un jugador con la confianza por el piso rinde por debajo de su media y uno
+   * fundido de estrés se equivoca más: son los dos diales que las decisiones mueven todo el tiempo y
+   * que hasta ahora no llegaban a ninguna parte. Vale medio punto de nota entre el mejor y el peor
+   * estado anímico, que es más o menos lo que se ve en la realidad.
+   */
+  const porCabeza = (vida.confianza - 55) / 220 - (vida.estres - 45) / 260;
+  const nota = limitar(campana(azar, notaBase + aporte + porCabeza, 0.3), 4.5, 9.6);
 
   const propension = (100 - futbolista.personalidad.disciplina) / 100;
   const amarillas = poisson(azar, partidos * (0.12 + propension * 0.2));
@@ -165,8 +172,13 @@ export function posicionEnLaTabla(
   const total = Math.max(8, liga.clubes.length);
   const conRuido = liga.clubes.map((c) => ({
     slug: c.slug,
-    /* El ruido alto es lo que hace que el campeonato no sea una cuenta: el grande gana seguido, no siempre. */
-    puntaje: c.fuerza + campana(azar, 0, 18) + (c.slug === club.slug ? aporte : 0),
+    /*
+     * El ruido alto es lo que hace que el campeonato no sea una cuenta: el grande gana seguido, no
+     * siempre. Subió de 18 a 38 tras medir dos mil carreras: con el ruido viejo, una carrera que
+     * pasaba por los grandes de Europa se llevaba nueve ligas de veinticuatro temporadas y el título
+     * dejaba de significar nada. Con este, el grande sigue ganando más que nadie pero pierde años.
+     */
+    puntaje: c.fuerza + campana(azar, 0, 38) + (c.slug === club.slug ? aporte : 0),
   }));
   conRuido.sort((a, b) => b.puntaje - a.puntaje);
   const posicion = conRuido.findIndex((c) => c.slug === club.slug) + 1;
@@ -181,9 +193,10 @@ export function posicionEnLaTabla(
 export function aporteDelJugador(carrera: Carrera & { enCurso: Temporada | null }): number {
   const t = carrera.enCurso;
   if (!t || t.partidos === 0) return 0;
-  const porNota = (t.notaMedia - 6.5) * 8;
+  const porNota = (t.notaMedia - 6.5) * 7;
   const porRol = carrera.rol === 'estrella' || carrera.rol === 'capitan' ? 4 : 0;
-  return limitar(porNota + porRol, -6, 18);
+  /* Sigues siendo decisivo, pero no ganas la liga tú solo: el techo bajó de 18 a 12. */
+  return limitar(porNota + porRol, -5, 12);
 }
 
 /**
@@ -199,9 +212,19 @@ export function rolSiguiente(azar: Azar, carrera: Carrera & { enCurso: Temporada
   const brecha = club.fuerza - carrera.ovr;
   const conDt = carrera.relaciones.dt.confianza - carrera.relaciones.dt.rencor;
   const rendimiento = (carrera.enCurso?.notaMedia ?? 6.5) - 6.5;
+  /*
+   * La tribuna también pone once. Un ídolo con la hinchada encima se queda en el equipo aunque el
+   * técnico no lo quiera, y uno silbado se cae del once por mucho que rinda. Es el canal por el que
+   * un escándalo de hace dos años te cuesta el puesto hoy.
+   */
+  const conLaTribuna = (carrera.vida.carinoDeLaHinchada - 50) / 8;
 
   const puntaje =
-    -brecha * 0.8 + conDt * 0.25 + rendimiento * 14 + (carrera.futbolista.edad < 20 ? -8 : 0);
+    -brecha * 0.8 +
+    conDt * 0.25 +
+    conLaTribuna +
+    rendimiento * 14 +
+    (carrera.futbolista.edad < 20 ? -8 : 0);
 
   const escala: Array<{ item: Rol; peso: number }> = [
     { item: 'promesa', peso: puntaje < -18 ? 3 : 0 },
@@ -224,6 +247,10 @@ export function titulosDeLaTemporada(
     total: number;
     jugoContinental: boolean;
     copaContinental: string | null;
+    /** La copa ya se definió en la cancha, en un momento jugable: no se sortea otra vez. */
+    sinCopa?: boolean;
+    /** El nombre real de la copa del país, cuando el mundo lo trae. */
+    copaNacional?: string | null;
   },
 ): Array<{ nombre: string; clase: 'liga' | 'copa' | 'continental'; detalle?: string }> {
   const salida: Array<{ nombre: string; clase: 'liga' | 'copa' | 'continental'; detalle?: string }> = [];
@@ -233,16 +260,18 @@ export function titulosDeLaTemporada(
 
   /*
    * La copa nacional es más azarosa que la liga: un equipo mediano la gana. Las probabilidades están
-   * bajas a propósito —un jugador de elite termina su carrera con ocho o diez títulos, no con
-   * veinticinco— porque un trofeo que llega todos los años deja de ser un trofeo.
+   * bajas a propósito —una gran carrera termina con ocho o diez títulos, no con veinticinco— porque
+   * un trofeo que llega todos los años deja de ser un trofeo.
    */
-  const chanceCopa = limitar((club.fuerza / 100) * 0.13 + (posicion <= 4 ? 0.03 : 0), 0.01, 0.18);
-  if (chance(azar, chanceCopa)) {
-    salida.push({ nombre: `Copa de ${liga.pais}`, clase: 'copa' });
+  if (!params.sinCopa) {
+    const chanceCopa = limitar((club.fuerza / 100) * 0.09 + (posicion <= 4 ? 0.02 : 0), 0.01, 0.12);
+    if (chance(azar, chanceCopa)) {
+      salida.push({ nombre: params.copaNacional ?? `Copa de ${liga.pais}`, clase: 'copa' });
+    }
   }
 
   if (jugoContinental && copaContinental) {
-    const chanceContinental = limitar(((club.fuerza - 62) / 100) * 0.3, 0.01, 0.14);
+    const chanceContinental = limitar(((club.fuerza - 68) / 100) * 0.28, 0.005, 0.1);
     if (chance(azar, chanceContinental)) {
       salida.push({ nombre: copaContinental, clase: 'continental' });
     }
@@ -263,15 +292,15 @@ export function premiosDeLaTemporada(
   const goleador = t.goles >= 30 && (carrera.futbolista.puesto === 'DC' || carrera.futbolista.puesto === 'EXT');
   const notaAlta = t.notaMedia >= 7.5;
 
-  if (goleador && chance(azar, 0.3)) salida.push(`Goleador de ${t.ligaNombre}`);
-  if (notaAlta && campeon && chance(azar, 0.25)) salida.push(`Mejor jugador de ${t.ligaNombre}`);
-  if (carrera.futbolista.edad <= 21 && notaAlta && chance(azar, 0.25)) {
+  if (goleador && chance(azar, 0.22)) salida.push(`Goleador de ${t.ligaNombre}`);
+  if (notaAlta && campeon && chance(azar, 0.18)) salida.push(`Mejor jugador de ${t.ligaNombre}`);
+  if (carrera.futbolista.edad <= 21 && notaAlta && chance(azar, 0.2)) {
     salida.push('Mejor jugador joven');
   }
   /* El premio grande exige todo junto: nivel, títulos y una temporada de época. */
   if (carrera.ovr >= 89 && notaAlta && campeon && carrera.trofeos.some((tr) => tr.clase === 'continental')) {
     /* El premio grande, una vez cada tanto incluso para el mejor del mundo. */
-    if (chance(azar, 0.22)) salida.push('Balón de Oro');
+    if (chance(azar, 0.14)) salida.push('Balón de Oro');
   }
   return salida;
 }

@@ -370,7 +370,7 @@ export default function Estadio({ momento, contexto, colorRival, onJugar }: Prop
         onPointerLeave={() => arrastre && soltar()}
         tabIndex={0}
         className="absolute inset-0 block size-full touch-none outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        aria-label={`${TITULO[momento]}. Arrastra desde la pelota hacia donde quieres patear, o usá las flechas para apuntar y espacio para definir.`}
+        aria-label={`${TITULO[momento]}. Arrastra desde la pelota hacia donde quieres patear, o usa las flechas para apuntar y espacio para definir.`}
         role="application"
       />
       </div>

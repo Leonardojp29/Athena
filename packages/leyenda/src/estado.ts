@@ -97,6 +97,11 @@ export interface Club {
    * clubes que nadie ubica.
    */
   renombre: number;
+  /**
+   * La ciudad del estadio, tal como la trae el proveedor. Es lo único de la base que delata a dos
+   * vecinos, y por eso la usa `rivalDe` cuando no hay un clásico declarado.
+   */
+  ciudad?: string | null;
   ligaSlug: string;
   ligaNombre: string;
   pais: string;
@@ -122,14 +127,42 @@ export interface CopaContinental {
   slug: string;
   nombre: string;
   continente: string;
+  /** El logo real de la competencia: es lo que se ve cuando la ganas. */
+  escudo?: string | null;
   /** Cuántos clubes de cada liga clasifican, de mejor a peor. */
   plazas: number;
   jerarquia: number;
 }
 
+/**
+ * La copa de cada país, con su nombre de verdad.
+ *
+ * El motor inventaba "Copa de Perú" y no había forma de ponerle un escudo a algo que no existe en
+ * ninguna tabla. Con esto la vitrina dice *Copa del Rey* o *Copa do Brasil* y muestra su logo.
+ */
+export interface CopaNacional {
+  slug: string;
+  nombre: string;
+  pais: string;
+  paisCodigo: string | null;
+  escudo: string | null;
+}
+
+/** Un torneo de selecciones, con su escudo real: Mundial, Copa América, Eurocopa. */
+export interface TorneoDeSeleccion {
+  slug: string;
+  nombre: string;
+  continente: string;
+  escudo: string | null;
+}
+
 export interface Mundo {
   ligas: Liga[];
   copas: CopaContinental[];
+  /** Puede faltar: los mundos guardados antes de existir este campo siguen siendo válidos. */
+  torneos?: TorneoDeSeleccion[];
+  /** Puede faltar: los mundos guardados antes de existir este campo siguen siendo válidos. */
+  copasNacionales?: CopaNacional[];
   generadoEn: string;
 }
 
@@ -147,6 +180,7 @@ export type TipoRecuerdo =
   | 'polemica'
   | 'caos'
   | 'gol'
+  | 'seleccion'
   | 'legado';
 
 /**
@@ -181,6 +215,10 @@ export interface Trofeo {
   temporada: number;
   clubSlug: string | null;
   clubNombre: string | null;
+  /** El logo real de la competencia. Es lo que convierte un chip de texto en un trofeo. */
+  escudo?: string | null;
+  /** El slug de la competencia, para agrupar la vitrina. */
+  competicionSlug?: string | null;
   /** Contexto para la sala de trofeos: rival de la final, marcador, tu aporte. */
   detalle?: string;
   aporte?: { partidos: number; goles: number; asistencias: number };
@@ -272,7 +310,7 @@ export interface Futbolista {
 export type Etapa = 'decision' | 'momento' | 'mercado' | 'legado';
 
 export interface Carrera {
-  version: 1;
+  version: 2;
   semilla: number;
   /** El estado del generador: guardar y retomar sin cortar el hilo del azar. */
   azar: number;
@@ -299,6 +337,24 @@ export interface Carrera {
   ofertas: Oferta[];
   /** Lo pendiente que la interfaz tiene que resolver antes de seguir. */
   pendiente: Pendiente | null;
+  /**
+   * Lo que queda por decidir en este mismo bienio.
+   *
+   * Un capítulo son dos decisiones, no una: la cola guarda la segunda mientras se resuelve la
+   * primera, y solo cuando se vacía se juegan los dos años. Así un bienio puede traer el mercado y
+   * un escándalo, o un momento en la cancha y una llamada de la selección.
+   */
+  cola: PasoDelCapitulo[];
+  /** Facturas agendadas: el evento que una decisión de hace dos capítulos dejó pagando. */
+  pendientes: Array<{ eventoId: string; capitulo: number }>;
+  /**
+   * Lo que un momento jugable dejó a cuenta del bienio que todavía no se juega.
+   *
+   * El penal se patea antes de que la temporada se simule, así que su gol y el título que estaba en
+   * juego esperan aquí hasta que `jugarBienio` los recoja. Sin esto el resultado del momento se
+   * perdía y se podía fallar el penal de la final y salir campeón igual.
+   */
+  bono: Bono | null;
   retiro: Retiro | null;
   clubes: string[];
   ovr: number;
@@ -311,6 +367,26 @@ export type Pendiente =
   | { clase: 'momento'; momento: ClaseDeMomento; contexto: ContextoDeMomento }
   | { clase: 'mercado' };
 
+/**
+ * Un paso del capítulo, antes de convertirse en algo que la pantalla pueda mostrar.
+ *
+ * La cola se arma entera al empezar el bienio pero cada paso se materializa cuando le toca: si el
+ * primero es el mercado y firmas por otro club, el segundo tiene que hablar de tu club nuevo.
+ */
+export type PasoDelCapitulo =
+  | { tipo: 'mercado' }
+  | { tipo: 'momento' }
+  | { tipo: 'evento'; eventoId: string };
+
+export interface Bono {
+  goles: number;
+  trofeos: Trofeo[];
+  /** La copa ya se decidió en la cancha: el bienio no vuelve a sortearla. */
+  copaResuelta: boolean;
+  /** Los torneos de selección que ya se jugaron a mano en un momento. */
+  seleccionResuelta?: string[];
+}
+
 export type ClaseDeMomento = 'penal' | 'mano-a-mano' | 'tiro-libre' | 'atajada';
 
 export interface ContextoDeMomento {
@@ -322,6 +398,13 @@ export interface ContextoDeMomento {
   presion: number;
   /** Competencia donde ocurre, para el trofeo o el titular. */
   competencia: string;
+  /**
+   * El título que se define en esta jugada.
+   *
+   * Si está, fallar significa perderlo: es lo que hace que patear un penal en una final importe.
+   * Antes el resultado del momento no tocaba nada y se podía fallar el penal y salir campeón igual.
+   */
+  enJuego?: Trofeo;
 }
 
 export interface Retiro {
@@ -331,8 +414,19 @@ export interface Retiro {
   clubNombre: string;
   /** Si se retiró donde debutó, el juego lo reconoce. */
   enCasa: boolean;
-  motivo: 'edad' | 'lesion' | 'decision';
+  motivo: MotivoDeRetiro;
+  /** Lo que pasó, cuando no fue simplemente la edad. */
+  relato?: string;
 }
+
+/**
+ * Cómo termina una carrera.
+ *
+ * `edad` y `decision` son el final que todos esperan. Los otros tres son el precio de haber jugado
+ * con fuego: nunca salen de la nada, siempre son el último eslabón de una cadena que el jugador
+ * alimentó él mismo, y la opción que los abre lo avisa antes.
+ */
+export type MotivoDeRetiro = 'edad' | 'decision' | 'lesion' | 'sancion' | 'accidente';
 
 export const VINCULOS: Vinculo[] = [
   'dt',

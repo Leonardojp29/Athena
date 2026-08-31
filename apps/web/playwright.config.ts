@@ -10,7 +10,13 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 2 : 0,
+  /*
+   * Un reintento también en local. Mi Leyenda tiene una escena de canvas que corre a sesenta cuadros
+   * y una celebración que se pone delante de la pantalla: con cuatro procesos peleando por la misma
+   * máquina, un clic llega de vez en cuando medio cuadro tarde. Reintentar una vez distingue eso de
+   * un fallo de verdad, que reaparece en el reintento.
+   */
+  retries: process.env.CI ? 2 : 1,
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
   use: {
     baseURL: BASE_URL,

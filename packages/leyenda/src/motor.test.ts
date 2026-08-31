@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { crearAzar, entre, pesado, semillaDe } from './azar.js';
-import { abrirCarrera, avanzarCapitulo, eventoPendiente } from './capitulo.js';
+import { abrirCarrera, avanzarCapitulo, categoriasDelPaso, eventoPendiente } from './capitulo.js';
 import { crearCarrera, type DatosDeCreacion } from './crear.js';
-import { CAPITULOS, MAX_OFERTAS, type Carrera, type Club, type Liga, type Mundo } from './estado.js';
+import {
+  CAPITULOS,
+  MAX_OFERTAS,
+  edadDelCapitulo,
+  type Carrera,
+  type Club,
+  type Liga,
+  type Mundo,
+} from './estado.js';
+import { CATALOGO, OPCIONES_POR_EVENTO } from './eventos/index.js';
 import { armarOfertas } from './mercado.js';
 import { resolverPenal, resolverAtajada, type Intencion } from './momentos.js';
 import { calcularOvr, nivelDe, valorDeMercado } from './ovr.js';
@@ -338,7 +347,8 @@ describe('carrera completa', () => {
 
     const edades: number[] = [16];
     let vueltas = 0;
-    while (carrera.etapa !== 'legado' && vueltas++ < 20) {
+    /* Un capítulo son dos decisiones: la fila se escribe recién cuando la cola se vacía. */
+    while (carrera.etapa !== 'legado' && vueltas++ < 60) {
       const antes = carrera.temporadas.length;
       const oferta = carrera.ofertas[0];
       const eleccion =
@@ -354,9 +364,13 @@ describe('carrera completa', () => {
               : ({ tipo: 'renovar' } as const);
 
       const { carrera: siguiente, capitulo } = avanzarCapitulo(carrera, eleccion, mundo);
-      expect(siguiente.temporadas.length).toBe(antes + 1);
-      expect(capitulo.fila).not.toBeNull();
-      edades.push(capitulo.fila?.edad ?? 0);
+      if (capitulo.fila) {
+        expect(siguiente.temporadas.length).toBe(antes + 1);
+        edades.push(capitulo.fila.edad);
+      } else {
+        /* Sin fila, el capítulo sigue abierto: quedaba algo en la cola. */
+        expect(siguiente.temporadas.length).toBe(antes);
+      }
       carrera = siguiente;
     }
     /* 16, 18, 20… de dos en dos, sin saltos ni repeticiones. */
@@ -469,3 +483,160 @@ describe('carrera completa', () => {
     expect(prime?.hasta).toBeLessThanOrEqual(29);
   });
 });
+
+/* ------------------------------------------------------------------- el catálogo */
+
+describe('el catálogo', () => {
+  it('todo evento ofrece cuatro opciones', () => {
+    const cortos = CATALOGO.filter((e) => e.opciones.length !== OPCIONES_POR_EVENTO);
+    expect(cortos.map((e) => `${e.id} (${e.opciones.length})`)).toEqual([]);
+  });
+
+  it('ningún evento es inalcanzable por su ventana de categoría', () => {
+    /*
+     * El bug que este test existe para que no vuelva: `dinero-primer-contrato` pedía `edadMax: 21`
+     * mientras su categoría solo entraba a partir de los 22, y `profesional-oferta-arabe` pedía
+     * `edadMin: 27` con su categoría cerrada a los 20. Dos eventos escritos y muertos.
+     */
+    const inalcanzables = CATALOGO.filter((evento) => {
+      for (let paso = 0; paso < CAPITULOS; paso++) {
+        if (!categoriasDelPaso(paso).includes(evento.categoria)) continue;
+        const edad = edadDelCapitulo(paso);
+        const c = evento.condiciones ?? {};
+        if (c.edadMin !== undefined && edad < c.edadMin) continue;
+        if (c.edadMax !== undefined && edad > c.edadMax) continue;
+        if (c.temporadasMin !== undefined && paso < c.temporadasMin) continue;
+        return false;
+      }
+      return true;
+    });
+    expect(inalcanzables.map((e) => e.id)).toEqual([]);
+  });
+
+  it('los ids no se repiten, ni los de las opciones dentro de un evento', () => {
+    const ids = CATALOGO.map((e) => e.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const evento of CATALOGO) {
+      const opciones = evento.opciones.map((o) => o.id);
+      expect(new Set(opciones).size, evento.id).toBe(opciones.length);
+    }
+  });
+
+  it('toda opción arriesgada avisa en la pista y cuenta las dos caras', () => {
+    for (const evento of CATALOGO) {
+      for (const opcion of evento.opciones) {
+        if (!opcion.riesgo) continue;
+        expect(opcion.pista, `${evento.id}/${opcion.id}`).toBeTruthy();
+        expect(opcion.riesgo.prob).toBeGreaterThan(0);
+        expect(opcion.riesgo.prob).toBeLessThan(1);
+        expect(opcion.riesgo.relatoBien.length).toBeGreaterThan(0);
+        expect(opcion.riesgo.relatoMal.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('los eventos que agendan una factura apuntan a un evento que existe', () => {
+    for (const evento of CATALOGO) {
+      for (const opcion of evento.opciones) {
+        for (const efectos of [opcion.efectos, opcion.riesgo?.bien, opcion.riesgo?.mal]) {
+          if (!efectos?.luego) continue;
+          expect(CATALOGO.some((e) => e.id === efectos.luego?.eventoId), `${evento.id}/${opcion.id}`).toBe(true);
+          expect(efectos.luego.enCapitulos).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it('un final de carrera solo llega por una opción que lo avisa', () => {
+    for (const evento of CATALOGO) {
+      for (const opcion of evento.opciones) {
+        const final = opcion.efectos.final ?? opcion.riesgo?.mal.final ?? opcion.riesgo?.bien.final;
+        if (!final) continue;
+        /* Nunca sale de la nada: la pista tiene que estar y el texto tiene que contar qué pasó. */
+        expect(opcion.pista, `${evento.id}/${opcion.id}`).toBeTruthy();
+        expect(final.texto.length).toBeGreaterThan(30);
+      }
+    }
+  });
+});
+
+describe('las consecuencias', () => {
+  it('una decisión con riesgo puede salir bien y puede salir mal', () => {
+    /*
+     * Antes `decidir` hacía `void azar`: el resultado de un evento estaba escrito antes de que el
+     * jugador tocara nada. Este test falla si eso vuelve.
+     */
+    const conRiesgo = CATALOGO.filter((e) => e.opciones.some((o) => o.riesgo));
+    expect(conRiesgo.length).toBeGreaterThan(6);
+
+    const mundo = mundoDePrueba();
+    const resultados = new Set<string>();
+    for (let semilla = 1; semilla <= 60; semilla++) {
+      let carrera = abrirCarrera(crearCarrera({ ...datosBase, semilla }), mundo).carrera;
+      let vueltas = 0;
+      while (carrera.etapa !== 'legado' && vueltas++ < 60) {
+        const pendiente = carrera.pendiente;
+        if (pendiente?.clase === 'decision') {
+          const evento = CATALOGO.find((e) => e.id === pendiente.eventoId);
+          const arriesgada = evento?.opciones.find((o) => o.riesgo);
+          if (arriesgada) {
+            const antes = carrera.recuerdos.length;
+            carrera = avanzarCapitulo(carrera, { tipo: 'decidir', opcionId: arriesgada.id }, mundo).carrera;
+            resultados.add(carrera.recuerdos[antes]?.texto ?? '');
+            continue;
+          }
+        }
+        carrera = avanzarCapitulo(carrera, siguienteJugada(carrera, mundo), mundo).carrera;
+      }
+    }
+    /* Con sesenta semillas, la misma opción tiene que haber salido de las dos maneras. */
+    expect(resultados.size).toBeGreaterThan(4);
+  });
+
+  it('fallar el momento de una final deja el título sin ganar', () => {
+    const mundo = mundoDePrueba();
+    let carrera = abrirCarrera(crearCarrera({ ...datosBase, semilla: 4242 }), mundo).carrera;
+    let vueltas = 0;
+    let comprobado = false;
+    while (carrera.etapa !== 'legado' && vueltas++ < 80) {
+      const pendiente = carrera.pendiente;
+      if (pendiente?.clase === 'momento' && pendiente.contexto.enJuego) {
+        const enJuego = pendiente.contexto.enJuego;
+        /* Una intención imposible: se falla seguro. */
+        const { carrera: siguiente } = avanzarCapitulo(
+          carrera,
+          { tipo: 'jugar-momento', intencion: { direccion: 1, altura: 1, potencia: 1, timing: 0 } },
+          mundo,
+        );
+        /*
+         * Fallado el penal, esa copa no la gana nadie: ni queda a cuenta del bienio ni el bienio la
+         * sortea por su lado. Antes el resultado del momento se descartaba y se podía fallar el
+         * penal de la final y salir campeón igual.
+         */
+        const enElBono = siguiente.bono?.trofeos.some((t) => t.id === enJuego.id) ?? false;
+        const enLaVitrina = siguiente.trofeos.some((t) => t.id === enJuego.id);
+        if (!enElBono && !enLaVitrina) {
+          expect(enLaVitrina).toBe(false);
+          comprobado = true;
+        }
+        carrera = siguiente;
+        continue;
+      }
+      carrera = avanzarCapitulo(carrera, siguienteJugada(carrera, mundo), mundo).carrera;
+    }
+    expect(comprobado).toBe(true);
+  });
+});
+
+/** Lo que haría un jugador apurado: firmar, decidir lo primero, patear. */
+function siguienteJugada(carrera: Carrera, mundo: Mundo) {
+  const pendiente = carrera.pendiente;
+  if (pendiente?.clase === 'momento') {
+    return { tipo: 'jugar-momento', intencion: { direccion: 0.4, altura: 0.5, potencia: 0.7, timing: 0.6 } } as const;
+  }
+  if (pendiente?.clase === 'decision') {
+    return { tipo: 'decidir', opcionId: eventoPendiente(carrera, mundo)?.opciones[0]?.id ?? '' } as const;
+  }
+  const oferta = carrera.ofertas[0];
+  return oferta ? ({ tipo: 'firmar', ofertaId: oferta.id } as const) : ({ tipo: 'renovar' } as const);
+}

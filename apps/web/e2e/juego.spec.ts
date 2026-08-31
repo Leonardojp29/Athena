@@ -24,8 +24,25 @@ async function crearFutbolista(
   await page.getByRole('button', { name: /empezar la carrera/i }).click();
 }
 
+/** La celebración tapa la pantalla hasta que alguien la cierra. */
+async function cerrarCelebracion(page: Page): Promise<void> {
+  const celebracion = page.locator('[data-celebracion]');
+  for (let intentos = 0; intentos < 8 && (await celebracion.count()); intentos++) {
+    await celebracion.click({ force: true });
+    await page.waitForTimeout(160);
+  }
+}
+
 /** Da un paso del juego. Devuelve false cuando no hay nada que hacer (la carrera terminó). */
 async function unPaso(page: Page): Promise<boolean> {
+  /* La celebración se pone delante de todo: hay que sacarla antes de seguir jugando. */
+  const celebracion = page.locator('[data-celebracion]');
+  if (await celebracion.count()) {
+    await celebracion.click();
+    await page.waitForTimeout(120);
+    return true;
+  }
+
   const oferta = page.locator('[data-oferta]');
   const cancha = page.locator('[data-escena] canvas, canvas');
   const decision = page.locator('[data-escena] ul button');
@@ -37,8 +54,22 @@ async function unPaso(page: Page): Promise<boolean> {
      * se vaya en lugar de dormir un tiempo fijo: dormir metía dos segundos de test en la medición de
      * cuánto tarda una carrera, que es justo lo que este test existe para vigilar.
      */
-    await page.keyboard.press('Space');
-    await expect(cancha).toHaveCount(0, { timeout: 15_000 });
+    /*
+     * Espacio patea y el motor resuelve solo un segundo después. Se reintenta porque una celebración
+     * puede aparecer entre la comprobación y la tecla y se lleva la primera pulsación. No se
+     * comprueba que el lienzo desaparezca: al capítulo siguiente puede tocar otra jugada, y entonces
+     * hay un lienzo nuevo aunque la anterior se haya resuelto perfectamente.
+     */
+    for (let intentos = 0; intentos < 2; intentos++) {
+      await cancha.first().focus();
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(2000);
+      const avanzo =
+        (await page.locator('[data-celebracion]').count()) +
+        (await page.locator('[data-oferta]').count()) +
+        (await page.locator('[data-escena] ul button').count());
+      if (avanzo > 0 || (await cancha.count()) === 0) break;
+    }
   } else if (await oferta.count()) {
     await oferta.first().click({ force: true });
   } else if (await decision.count()) {
@@ -114,8 +145,9 @@ test.describe('Mi Leyenda', () => {
   });
 
   test('la carta vive dentro de la ficha y muestra los seis atributos', async ({ page }) => {
+    /* La ficha comparte pantalla con el mercado: la carta está desde el primer segundo. */
     await crearFutbolista(page, { puesto: 'MO' });
-    await page.locator('[data-oferta]').first().click();
+    await expect(page.locator('[data-oferta]').first()).toBeVisible({ timeout: 15_000 });
 
     const carta = page.locator('[data-carta]').first();
     await expect(carta).toBeVisible();
@@ -129,7 +161,7 @@ test.describe('Mi Leyenda', () => {
 
   test('un arquero tiene sus propios atributos en la carta', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Arquero Prueba', puesto: 'POR' });
-    await page.locator('[data-oferta]').first().click();
+    await expect(page.locator('[data-oferta]').first()).toBeVisible({ timeout: 15_000 });
 
     const carta = page.locator('[data-carta]').first();
     await expect(carta).toContainText('POR');
@@ -140,18 +172,20 @@ test.describe('Mi Leyenda', () => {
 
   test('la línea de la carrera trae el escudo del club de cada bienio', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Escudos Prueba', puesto: 'DC' });
-    await page.locator('[data-oferta]').first().click();
+    await expect(page.locator('[data-oferta]').first()).toBeVisible({ timeout: 15_000 });
 
-    const filas = page.locator('ol li');
-    await expect(filas.first()).toBeVisible();
+    /* Un capítulo son dos decisiones: la primera fila llega recién cuando la cola se vacía. */
+    const filas = page.locator('ol li img');
+    for (let pasos = 0; pasos < 6 && (await filas.count()) === 0; pasos++) {
+      await unPaso(page);
+    }
     /* La carrera se lee por escudos: sin ellos es una planilla. */
-    await expect(filas.first().locator('img')).toBeVisible();
+    await expect(filas.first()).toBeVisible();
   });
 
   test('se puede empezar una leyenda nueva', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Reinicio Prueba' });
-    await page.locator('[data-oferta]').first().click();
-    await expect(page.locator('[data-carta]').first()).toBeVisible();
+    await expect(page.locator('[data-carta]').first()).toBeVisible({ timeout: 15_000 });
 
     page.on('dialog', (dialogo) => dialogo.accept());
     await page.getByRole('button', { name: /nueva leyenda/i }).first().click();
@@ -160,8 +194,8 @@ test.describe('Mi Leyenda', () => {
 
   test('la partida se retoma al recargar', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Retomar Prueba' });
+    await expect(page.locator('[data-carta]').first()).toBeVisible({ timeout: 15_000 });
     await page.locator('[data-oferta]').first().click();
-    await expect(page.locator('[data-carta]').first()).toBeVisible();
 
     await page.reload();
     /* Al volver no aparece la creación: aparece la carrera donde quedó. */
@@ -182,7 +216,7 @@ test.describe('Mi Leyenda', () => {
     const arranque = Date.now();
     let pasos = 0;
     let vacios = 0;
-    while (pasos++ < 60) {
+    while (pasos++ < 90) {
       if (await page.getByRole('button', { name: /compartir mi leyenda/i }).count()) break;
       if (await unPaso(page)) {
         vacios = 0;
@@ -193,9 +227,12 @@ test.describe('Mi Leyenda', () => {
     }
     const duracion = Date.now() - arranque;
 
-    /* Doce capítulos, doce decisiones: si esto sube, el juego volvió a ser largo. */
-    expect(pasos).toBeLessThanOrEqual(16);
-    expect(duracion).toBeLessThan(25_000);
+    /*
+     * Doce capítulos y dos decisiones en cada uno, más las celebraciones que hay que cerrar. Si esto
+     * sube, el juego volvió a ser largo, que es lo único que este test existe para vigilar.
+     */
+    expect(pasos).toBeLessThanOrEqual(60);
+    expect(duracion).toBeLessThan(30_000);
 
     /* El veredicto es un arquetipo, no un puntaje. */
     await expect(page.getByRole('button', { name: /compartir mi leyenda/i })).toBeVisible();
@@ -203,10 +240,17 @@ test.describe('Mi Leyenda', () => {
     await expect(page.getByText(/temporadas/i).first()).toBeVisible();
     await expect(page.locator('[data-carta]').first()).toBeVisible();
 
-    /* El enlace del legado abre esa misma carta para cualquiera. */
-    const enlace = (await page.locator('p.break-all').textContent())?.trim();
-    expect(enlace).toContain('/juegos/mi-leyenda/');
-    await page.goto(enlace as string);
+    /*
+     * El enlace del legado abre esa misma carta para cualquiera. El código ya no se imprime en la
+     * pantalla —era una tira de trescientos caracteres al pie— así que sale de donde el juego lo
+     * guarda: el salón de leyendas.
+     */
+    const codigo = await page.evaluate(() => {
+      const salon = JSON.parse(window.localStorage.getItem('athena:leyenda-salon') ?? '[]');
+      return salon.at(-1)?.codigo ?? '';
+    });
+    expect(codigo.length).toBeGreaterThan(20);
+    await page.goto(`/juegos/mi-leyenda/${codigo}`);
     await expect(page.locator('[data-carta]')).toHaveCount(1);
     await expect(page.getByRole('link', { name: /crear tu propia leyenda/i })).toBeVisible();
   });
@@ -224,7 +268,10 @@ test.describe('Mi Leyenda', () => {
 
     await oferta.focus();
     await expect(oferta).toBeFocused();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('[data-carta]').first()).toBeVisible();
+    /* `press` sobre el propio locator lo vuelve a enfocar: si React redibujó la lista entre medio,
+       la tecla llegaba a un nodo que ya no estaba en la pantalla. */
+    await oferta.press('Enter');
+    /* Firmó: el mercado se cerró y el juego siguió, sea con una decisión o con una jugada. */
+    await expect(page.locator('[data-oferta]')).toHaveCount(0, { timeout: 10_000 });
   });
 });

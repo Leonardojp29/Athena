@@ -4,10 +4,10 @@ El primer juego de Athena. Creás un futbolista y vivís su carrera hasta el ret
 la carta de toda tu vida y un legado compartible por enlace. Este documento existe para poder sumar
 contenido y pantallas sin releer el código.
 
-**Doce capítulos de dos años, de los 16 a los 38, y una carrera se termina en menos de veinte
-segundos.** Esa duración es el diseño: la primera versión eran veinte temporadas y cien clics, casi
-nadie llegaba al final —que es justo donde está lo bueno— y por eso el e2e la mide en lugar de
-confiar en que no crezca sola.
+**Doce capítulos de dos años, de los 16 a los 38, dos decisiones en cada uno, y una carrera entera en
+dos o tres minutos.** Esa duración es el diseño: la primera versión eran veinte temporadas y cien
+clics, casi nadie llegaba al final —que es justo donde está lo bueno— y por eso el e2e la mide en
+lugar de confiar en que no crezca sola.
 
 ## La idea que ordena todo
 
@@ -42,8 +42,10 @@ Un solo verbo:
 avanzarCapitulo(carrera, eleccion, mundo) → { carrera, capitulo }
 ```
 
-Cada capítulo hace siempre lo mismo: juega dos temporadas, escribe una fila en la línea de la
-carrera, deja un titular de prensa y plantea **una** decisión —mercado, evento o momento jugable—.
+Cada capítulo hace siempre lo mismo: plantea **dos** decisiones de tipos distintos —mercado, evento o
+momento jugable—, juega dos temporadas, escribe una fila en la línea de la carrera y deja un titular
+de prensa. La cola de esas dos vive en `carrera.cola` y cada paso se materializa cuando le toca: si
+firmas por otro club en el primero, el segundo ya habla de tu club nuevo.
 La interfaz no conoce una sola regla del fútbol: recibe el resumen del bienio y las opciones. Por eso
 el motor se prueba entero sin navegador y la pantalla se puede rediseñar sin tocar una regla.
 
@@ -58,7 +60,30 @@ el motor se prueba entero sin navegador y la pantalla se puede rediseñar sin to
 | `momentos.ts` | Resuelve los cuatro momentos jugables |
 | `eventos/` | Motor (condiciones tipadas, pesos, cooldowns) + catálogo |
 | `legado.ts` | Prime, arquetipo, mejor y peor decisión, veredicto |
-| `capitulo.ts` | El orquestador: los doce capítulos, el crecimiento y la decisión siguiente |
+| `capitulo.ts` | El orquestador: los doce capítulos, la cola de dos decisiones y el crecimiento |
+| `clasicos.ts` | Los derbis declarados y la ciudad normalizada: de ahí sale el clásico rival |
+| `seleccion.ts` | El calendario real de Mundiales y continentales, la convocatoria y el torneo |
+
+## Las consecuencias
+
+Es lo que hace que una decisión sea una decisión, y hasta hace poco no existía: `decidir()` hacía
+`void azar` y el resultado de un evento estaba escrito antes de que el jugador tocara nada.
+
+- **Una opción puede jugarse a los dados.** `Opcion.riesgo` declara una probabilidad y dos futuros
+  (`bien` y `mal`), y la pista avisa **el tipo** de riesgo, nunca el resultado. Un test falla si una
+  opción con riesgo no trae pista o no cuenta las dos caras.
+- **Los diez diales de `Vida` los lee la simulación.** La confianza y el estrés entran en la nota; la
+  condición, en las lesiones; el cariño de la hinchada y el rencor del técnico deciden tu rol del
+  bienio siguiente. Antes solo se leía `forma`, así que ninguna decisión llegaba a ninguna parte.
+- **Las facturas llegan después.** `Efectos.luego` agenda un evento para dentro de N capítulos en
+  `carrera.pendientes`, y ese evento entra sí o sí cuando le toca: aceptar una apuesta a los 24 se
+  paga a los 28 aunque el sorteo nunca lo hubiera elegido.
+- **Una carrera puede terminar antes de tiempo.** `Efectos.final` la cierra con `motivo` de `lesion`,
+  `sancion` o `accidente`, y solo al final de una cadena que el jugador alimentó. Medido sobre 1.200
+  carreras jugando **siempre** la opción arriesgada: 20% de finales abruptos (16% sanción, 3% lesión,
+  0,2% accidente fatal). Con un jugador normal, 2,5%.
+- **Los momentos deciden títulos.** `ContextoDeMomento.enJuego` cuelga un trofeo de la jugada: si
+  fallas el penal de la final, esa copa no la gana nadie y el bienio no la sortea por su cuenta.
 
 ## Sumar un evento
 
@@ -126,6 +151,21 @@ Tres reglas la sostienen, todas en `mercado.ts`:
   30, cuando son una decisión con sabor en lugar de un mal comienzo. Pasados los 33, el club donde
   debutaste y su clásico rival entran siempre entre las ofertas.
 
+**El clásico no se deduce de la tabla: se hereda.** Tres capas, en `clasicos.ts` y `mercado.ts`: una
+tabla curada de ~70 derbis por slug (Universitario–Alianza, Boca–River, United–Liverpool,
+Milan–Inter); si no hay, la ciudad del estadio —`venues.city` cubre 367 de los 371 clubes jugables,
+normalizada porque el proveedor manda `Liverpool` y `Liverpool, Merseyside`—; y de último recurso el
+club de mayor renombre de la liga. Antes se elegía "el de fuerza más parecida", y así el United
+terminaba jugando su clásico con el Sunderland.
+
+## La selección
+
+El calendario es el real y encaja con los años del juego: Mundial en 2026, 2030, 2034 y 2038; la
+continental de tu confederación en el medio. Te convocan según media, nota y tu relación con el
+técnico nacional —no por pasar un umbral—, y el torneo produce un trofeo de clase `seleccion` con el
+logo real de la competencia. Medido sobre 400 carreras por país: un brasileño gana algo con su
+selección el 69% de las veces y un Mundial el 15%; un peruano, el 7% y casi nunca.
+
 Nada de esto es un riel: se puede ir bien o se puede ir mal, y quedarse toda la vida en el club de
 siempre también es un final.
 
@@ -176,7 +216,17 @@ resultado no se puede falsear ni depende de la velocidad de la máquina.
 
 ## Balance: los números que importan
 
-Dos calibraciones que ya se pagaron caras y conviene no repetir:
+Medido sobre 1.500 carreras completas, jugando siempre la oferta más grande —la ruta más codiciosa
+que existe—: **22,8 decisiones por carrera** (14,3 eventos, 5,4 de mercado, 3,0 momentos) y títulos
+colectivos en p25 6 · p50 8 · p75 11 · p95 14. Ese rango es el objetivo: una gran carrera deja ocho o
+diez títulos, no veinticinco.
+
+Tres calibraciones que ya se pagaron caras y conviene no repetir:
+
+- **El ruido de la tabla decide cuántas ligas se ganan.** Con la desviación baja, una carrera que
+  pasa por los grandes de Europa se llevaba nueve ligas de veinticuatro temporadas y el título dejaba
+  de significar nada. Está en `posicionEnLaTabla` y mover ese número cambia el total de la carrera.
+
 
 - **El crecimiento se mide en OVR pero se aplica a atributos.** El OVR es un promedio ponderado de
   seis casilleros: para que la media suba un punto hay que repartir bastante más que un punto. Sin esa

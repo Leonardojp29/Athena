@@ -1,0 +1,531 @@
+/**
+ * Prensa amarilla: lo que se publica de ti cuando ya no hace falta que hagas nada.
+ *
+ * A partir de cierta fama, la mitad de lo que se cuenta de un futbolista no pasó en una cancha. Este
+ * bloque es esa mitad: programas de chismes, periodistas con una carpeta, publicaciones a las tres de
+ * la mañana, un ex compañero que habla de más.
+ *
+ * Las figuras que aparecen son inventadas —una modelo, un cantante, un conductor— y ninguna se
+ * parece a nadie real. Y no hay nada sexual ni drogas: el escándalo se cuenta como lo cuenta un
+ * diario, con lo que insinúa, que además dura más.
+ */
+import type { Evento } from './motor.js';
+
+export const EVENTOS_DE_FARANDULA: Evento[] = [
+  {
+    id: 'prensa-programa-de-chismes',
+    categoria: 'prensa',
+    rareza: 'comun',
+    titulo: 'Te sentaron en el panel',
+    texto:
+      'Un programa de espectáculos dedicó veinte minutos a tu vida privada. Dos panelistas hablan de vos y uno dice conocerte.',
+    tipoDeRecuerdo: 'polemica',
+    condiciones: { famaMin: 30, temporadasMin: 2 },
+    cooldown: 4,
+    opciones: [
+      {
+        id: 'ignorar',
+        texto: 'No mirarlo siquiera',
+        pista: 'Se apaga en cuatro días.',
+        efectos: {
+          vida: { exposicion: 6, estres: 4 },
+          personalidad: { sensibilidadMediatica: -5 },
+          balance: 2,
+        },
+        resultado: 'No lo viste ni te lo contaron. A la semana hablaban de otro.',
+      },
+      {
+        id: 'llamar-en-vivo',
+        texto: 'Llamar al programa en vivo',
+        pista: 'Puede quedar enorme. O puede quedar peor.',
+        efectos: { vida: { exposicion: 22, fama: 8 }, personalidad: { carisma: 5 } },
+        riesgo: {
+          prob: 0.55,
+          bien: {
+            vida: { reputacion: 12, carinoDeLaHinchada: 10 },
+            relaciones: { prensa: { respeto: 10 } },
+            titular: { texto: 'EL LLAMADO DE {APELLIDO} QUE DEJÓ MUDO AL PANEL', tono: 'elogio' },
+            balance: 6,
+          },
+          mal: {
+            vida: { reputacion: -14 },
+            relaciones: { prensa: { rencor: 16 } },
+            titular: { texto: '{APELLIDO} PERDIÓ LOS PAPELES EN VIVO', tono: 'polemica' },
+            balance: -7,
+          },
+          relatoBien: 'Los desarmaste en dos minutos y sin levantar la voz.',
+          relatoMal: 'Te calentaste, dijiste tres cosas de más y quedó grabado para siempre.',
+        },
+        resultado: 'Marcaste el número que salía en pantalla.',
+      },
+      {
+        id: 'abogado',
+        texto: 'Mandarles una carta documento',
+        pista: 'Se callan. Y se acuerdan.',
+        efectos: {
+          vida: { dinero: -0.1, exposicion: -8 },
+          relaciones: { prensa: { rencor: 12 } },
+          personalidad: { profesionalismo: 4 },
+          balance: 1,
+        },
+        resultado: 'Recibieron la carta en el corte. No volvieron a nombrarte en un año.',
+      },
+      {
+        id: 'invitar',
+        texto: 'Ir vos al programa',
+        pista: 'Terreno ajeno. Y toda la audiencia.',
+        efectos: {
+          vida: { fama: 16, exposicion: 20, dinero: 0.15 },
+          personalidad: { carisma: 6, sensibilidadMediatica: 4 },
+          relaciones: { prensa: { confianza: 10 } },
+          etiquetas: ['prensa:televisivo'],
+          balance: 3,
+        },
+        resultado: 'Fuiste, te reíste de todo y te ganaste a la mitad del panel.',
+      },
+    ],
+  },
+  {
+    id: 'prensa-publicacion-nocturna',
+    categoria: 'prensa',
+    rareza: 'infrecuente',
+    titulo: 'Lo publicaste a las tres de la mañana',
+    texto:
+      'Perdieron de local y escribiste algo sobre el arbitraje. Cuando te despertaste tenía cuarenta mil compartidas.',
+    tipoDeRecuerdo: 'polemica',
+    condiciones: { temporadasMin: 2 },
+    cooldown: 5,
+    opciones: [
+      {
+        id: 'sostener',
+        texto: 'Sostenerlo',
+        pista: 'La tribuna te va a defender. La federación no.',
+        efectos: {
+          vida: { carinoDeLaHinchada: 16, exposicion: 16, reputacion: -6, dinero: -0.15 },
+          personalidad: { temperamento: 6 },
+          relaciones: { hinchada: { confianza: 14 } },
+          titular: { texto: '{APELLIDO} NO SE RETRACTA: "LO VUELVO A DECIR"', tono: 'polemica' },
+          etiquetas: ['prensa:provocador'],
+          balance: 2,
+        },
+        resultado: 'Lo dejaste publicado y encima lo fijaste. Te multaron con dos fechas.',
+      },
+      {
+        id: 'borrar',
+        texto: 'Borrarlo y no explicar nada',
+        pista: 'Ya lo vio todo el mundo. Igual conviene.',
+        efectos: {
+          vida: { exposicion: 8, reputacion: 2 },
+          personalidad: { sensibilidadMediatica: 5 },
+          balance: 2,
+        },
+        resultado: 'Lo borraste a las nueve. Para entonces había cuatro capturas dando vueltas.',
+      },
+      {
+        id: 'disculpa',
+        texto: 'Pedir disculpas públicas',
+        pista: 'Queda bien arriba y mal abajo.',
+        efectos: {
+          vida: { reputacion: 12, carinoDeLaHinchada: -12 },
+          relaciones: { club: { confianza: 12 }, hinchada: { rencor: 10 } },
+          personalidad: { profesionalismo: 6, ego: -4 },
+          balance: 1,
+        },
+        resultado: 'Pediste disculpas en un comunicado. En la tribuna te lo cantaron el domingo.',
+      },
+      {
+        id: 'culpar-al-community',
+        texto: 'Decir que te manejan las redes',
+        pista: 'Nadie se lo cree. Casi nadie.',
+        efectos: {
+          vida: { reputacion: -10, exposicion: 12 },
+          relaciones: { prensa: { rencor: 10 } },
+          titular: { texto: '"NO LO ESCRIBÍ YO": LA EXPLICACIÓN DE {APELLIDO}', tono: 'duda' },
+          balance: -4,
+        },
+        resultado: 'Dijiste que te las maneja una agencia. Nadie te creyó y quedó peor.',
+      },
+    ],
+  },
+  {
+    id: 'prensa-excompanero',
+    categoria: 'prensa',
+    rareza: 'infrecuente',
+    titulo: 'Un ex compañero habló de más',
+    texto:
+      'Salió a contar cómo era el vestuario cuando estabas vos. No dio nombres, pero dio detalles suficientes.',
+    tipoDeRecuerdo: 'polemica',
+    condiciones: { clubesMin: 2, temporadasMin: 4 },
+    cooldown: 6,
+    opciones: [
+      {
+        id: 'llamarlo',
+        texto: 'Llamarlo por teléfono',
+        pista: 'Lo más directo. Y lo que menos ruido hace.',
+        efectos: {
+          vida: { estres: 6 },
+          relaciones: { companeros: { confianza: 6 } },
+          personalidad: { carisma: 4 },
+          balance: 4,
+        },
+        resultado: 'Lo llamaste esa noche. Te pidió perdón antes de que dijeras nada.',
+      },
+      {
+        id: 'contestar',
+        texto: 'Contestarle en público',
+        pista: 'Se hace más grande, seguro.',
+        efectos: {
+          vida: { exposicion: 20, estres: 12 },
+          relaciones: { companeros: { rencor: 14 }, prensa: { confianza: 8 } },
+          personalidad: { temperamento: 6 },
+          titular: { texto: 'CRUCE ENTRE {APELLIDO} Y SU EX COMPAÑERO', tono: 'polemica' },
+          balance: -3,
+        },
+        resultado: 'Le contestaste en zona mixta. Estuvieron tres días yendo y viniendo.',
+      },
+      {
+        id: 'contar-mas',
+        texto: 'Contar vos algo peor de él',
+        pista: 'Ganás la pelea. Perdés el vestuario, este y los que vengan.',
+        efectos: {
+          vida: { exposicion: 24, reputacion: -14 },
+          relaciones: { companeros: { rencor: 26 } },
+          personalidad: { temperamento: 10, lealtad: -8 },
+          etiquetas: ['conflicto:bocon'],
+          balance: -8,
+        },
+        resultado: 'Contaste algo que solo sabían cuatro personas. Desde ahí nadie te contó nada más.',
+      },
+      {
+        id: 'nada',
+        texto: 'No decir una sola palabra',
+        pista: 'Lo más aburrido. Lo más efectivo.',
+        efectos: {
+          vida: { reputacion: 6 },
+          personalidad: { profesionalismo: 6 },
+          relaciones: { companeros: { respeto: 8 } },
+          balance: 4,
+        },
+        resultado: 'No dijiste nada en ningún lado. A los diez días nadie se acordaba.',
+      },
+    ],
+  },
+  {
+    id: 'prensa-carpeta',
+    categoria: 'prensa',
+    rareza: 'raro',
+    titulo: 'El periodista con la carpeta',
+    texto:
+      'Un periodista te muestra una carpeta con movimientos de tus empresas y te dice que la publica el domingo. Salvo que hablen.',
+    tipoDeRecuerdo: 'caos',
+    condiciones: { famaMin: 50, temporadasMin: 5 },
+    cooldown: 10,
+    opciones: [
+      {
+        id: 'hablar',
+        texto: 'Sentarte a hablar con él',
+        pista: 'Vas a tener que contar cosas. Se publica menos.',
+        efectos: {
+          vida: { estres: 14, exposicion: 8 },
+          relaciones: { prensa: { confianza: 14 } },
+          personalidad: { sensibilidadMediatica: 5 },
+          balance: 3,
+        },
+        resultado: 'Hablaron cuatro horas. Publicó la mitad y con tu versión al lado.',
+      },
+      {
+        id: 'pagar',
+        texto: 'Ofrecerle dinero',
+        pista: 'Esto sale mal más veces de las que sale bien.',
+        efectos: { vida: { dinero: -0.8 }, personalidad: { riesgo: 8 } },
+        riesgo: {
+          prob: 0.35,
+          bien: { vida: { exposicion: -6 }, etiquetas: ['prensa:comprada'], balance: -1 },
+          mal: {
+            vida: { reputacion: -24, exposicion: 30 },
+            relaciones: { prensa: { rencor: 26 } },
+            titular: { texto: '"{APELLIDO} ME OFRECIÓ DINERO PARA NO PUBLICAR"', tono: 'polemica' },
+            etiquetas: ['prensa:enemigo'],
+            balance: -12,
+          },
+          relatoBien: 'Aceptó y la carpeta no se publicó nunca.',
+          relatoMal: 'Grabó la conversación entera y la publicó el domingo, con tu oferta incluida.',
+        },
+        resultado: 'Le pusiste una cifra sobre la mesa.',
+      },
+      {
+        id: 'adelantarse',
+        texto: 'Contarlo vos antes del domingo',
+        pista: 'Le sacás la nota. Y la portada la ponés vos.',
+        efectos: {
+          vida: { exposicion: 22, reputacion: 8, estres: 16 },
+          relaciones: { prensa: { respeto: 12 } },
+          personalidad: { carisma: 6 },
+          titular: { texto: '{APELLIDO} LO CUENTA TODO ANTES DE QUE LO CUENTEN', tono: 'neutro' },
+          etiquetas: ['prensa:sincero'],
+          balance: 5,
+        },
+        resultado: 'Diste una entrevista el viernes y explicaste todo. El domingo ya era viejo.',
+      },
+      {
+        id: 'que-publique',
+        texto: 'Decirle que publique lo que quiera',
+        pista: 'Si no hay nada, no hay nada.',
+        efectos: { vida: { estres: 12 } },
+        riesgo: {
+          prob: 0.6,
+          bien: { vida: { reputacion: 10 }, relaciones: { prensa: { respeto: 14 } }, balance: 5 },
+          mal: {
+            vida: { reputacion: -16, exposicion: 26, dinero: -1.2 },
+            titular: { texto: 'LO QUE LA CARPETA DE {APELLIDO} ESCONDÍA', tono: 'polemica' },
+            balance: -9,
+          },
+          relatoBien: 'Publicó y no había nada. Quedó él en ridículo.',
+          relatoMal: 'Publicó, y sí había. Estuviste seis meses explicando.',
+        },
+        resultado: 'Le dijiste que hiciera su trabajo y te fuiste.',
+      },
+    ],
+  },
+  {
+    id: 'social-cantante',
+    categoria: 'social',
+    rareza: 'infrecuente',
+    titulo: 'El videoclip',
+    texto:
+      'Tato Belmonte, el cantante del momento, te quiere en su próximo video. Sale en dos semanas y lo va a ver medio continente.',
+    tipoDeRecuerdo: 'decision',
+    condiciones: { famaMin: 40, edadMin: 20 },
+    cooldown: 8,
+    opciones: [
+      {
+        id: 'hacerlo',
+        texto: 'Hacerlo',
+        pista: 'Millones de vistas. Y una foto que te va a seguir.',
+        efectos: {
+          vida: { fama: 20, exposicion: 20, dinero: 0.4, felicidad: 8 },
+          personalidad: { carisma: 6, vidaSocial: 5 },
+          etiquetas: ['social:jet-set'],
+          balance: 2,
+        },
+        resultado: 'Saliste ocho segundos y fue lo más comentado del video.',
+      },
+      {
+        id: 'solo-audio',
+        texto: 'Prestar la voz, no la cara',
+        pista: 'Estás sin estar.',
+        efectos: {
+          vida: { fama: 8, dinero: 0.2 },
+          personalidad: { profesionalismo: 4 },
+          balance: 3,
+        },
+        resultado: 'Grabaste cuatro palabras en el estribillo. Nadie supo que eras vos hasta meses después.',
+      },
+      {
+        id: 'condicion-club',
+        texto: 'Hacerlo si el club da el visto bueno',
+        pista: 'Más lento, sin problemas después.',
+        efectos: {
+          vida: { fama: 12, exposicion: 12, dinero: 0.3 },
+          relaciones: { club: { confianza: 10 } },
+          personalidad: { profesionalismo: 5 },
+          balance: 4,
+        },
+        resultado: 'El club dijo que sí en tres días y hasta lo publicó en sus redes.',
+      },
+      {
+        id: 'no',
+        texto: 'Decir que no',
+        pista: 'Nada cambia.',
+        efectos: { personalidad: { vidaSocial: -3 }, balance: 1 },
+        resultado: 'Dijiste que no tenías tiempo. Fue otro y le cambió el año.',
+      },
+    ],
+  },
+  {
+    id: 'social-hinchada-te-canta',
+    categoria: 'social',
+    rareza: 'infrecuente',
+    titulo: 'Te hicieron una canción',
+    texto: 'La tribuna estrenó un tema con tu apellido y no paró de cantarlo los noventa minutos.',
+    tipoDeRecuerdo: 'decision',
+    condiciones: { temporadasMin: 3, vida: { carinoDeLaHinchada: [55, 100] } },
+    cooldown: 6,
+    opciones: [
+      {
+        id: 'devolver',
+        texto: 'Ir a la tribuna al final del partido',
+        pista: 'Diez minutos que la gente cuenta veinte años.',
+        efectos: {
+          vida: { carinoDeLaHinchada: 20, felicidad: 16 },
+          relaciones: { hinchada: { confianza: 20, respeto: 14 } },
+          etiquetas: ['leyenda:hinchada'],
+          balance: 7,
+        },
+        resultado: 'Fuiste hasta el alambrado y te la cantaron a un metro. No dormiste esa noche.',
+      },
+      {
+        id: 'grabarla',
+        texto: 'Grabarla y subirla vos',
+        pista: 'Se hace viral. Y se hace tuya.',
+        efectos: {
+          vida: { fama: 12, exposicion: 12, carinoDeLaHinchada: 10 },
+          personalidad: { carisma: 5 },
+          balance: 4,
+        },
+        resultado: 'La subiste esa misma noche. En dos días la cantaba gente de otros clubes.',
+      },
+      {
+        id: 'incomodo',
+        texto: 'Pedir que no la canten: te incomoda',
+        pista: 'Es raro. También es honesto.',
+        efectos: {
+          vida: { carinoDeLaHinchada: -8, reputacion: 6 },
+          personalidad: { ego: -6 },
+          balance: 1,
+        },
+        resultado: 'Pediste que se la cantaran al equipo. Siguieron cantándotela igual.',
+      },
+      {
+        id: 'nada',
+        texto: 'Disfrutarla en silencio',
+        pista: 'Nada afuera. Todo adentro.',
+        efectos: { vida: { felicidad: 12, confianza: 8 }, balance: 3 },
+        resultado: 'No dijiste nada en ningún lado. La escuchabas en el auto camino al predio.',
+      },
+    ],
+  },
+  {
+    id: 'relaciones-hijo',
+    categoria: 'relaciones',
+    rareza: 'raro',
+    titulo: 'Vas a ser padre',
+    texto: 'Te enterás en plena temporada, a mitad de una pelea por el descenso.',
+    tipoDeRecuerdo: 'decision',
+    condiciones: { edadMin: 23, temporadasMin: 4 },
+    cooldown: 0,
+    opciones: [
+      {
+        id: 'todo',
+        texto: 'Estar en todo, cueste lo que cueste',
+        pista: 'Vas a llegar a algún entrenamiento sin dormir.',
+        efectos: {
+          vida: { felicidad: 26, estres: 10, condicion: -6 },
+          personalidad: { lealtad: 8, profesionalismo: -3 },
+          relaciones: { pareja: { confianza: 22 } },
+          etiquetas: ['vida:padre'],
+          balance: 7,
+        },
+        resultado: 'No te perdiste un control. Llegaste a dos partidos sin haber dormido y jugaste igual.',
+      },
+      {
+        id: 'equilibrio',
+        texto: 'Poner el fútbol primero hasta junio',
+        pista: 'Se entiende. No siempre se perdona.',
+        efectos: {
+          vida: { forma: 8, felicidad: -6 },
+          relaciones: { pareja: { rencor: 12 } },
+          personalidad: { profesionalismo: 6 },
+          balance: 0,
+        },
+        resultado: 'Te concentraste en salvar la categoría. Lo lograste y te lo cobraron en casa.',
+      },
+      {
+        id: 'anunciarlo',
+        texto: 'Anunciarlo y dedicar el próximo gol',
+        pista: 'Lo público entra en tu casa.',
+        efectos: {
+          vida: { felicidad: 18, exposicion: 14, carinoDeLaHinchada: 10 },
+          personalidad: { carisma: 4 },
+          etiquetas: ['vida:padre', 'social:pareja-publica'],
+          balance: 4,
+        },
+        resultado: 'Lo dedicaste con las dos manos en la boca. La foto la tenés colgada en el living.',
+      },
+      {
+        id: 'privado',
+        texto: 'No contárselo a nadie del club',
+        pista: 'Lo tuyo, tuyo.',
+        efectos: {
+          vida: { felicidad: 14, estres: 8, exposicion: -6 },
+          personalidad: { profesionalismo: 4 },
+          etiquetas: ['vida:padre', 'social:reservado'],
+          balance: 3,
+        },
+        resultado: 'Se enteraron cuatro meses después, cuando ya no había cómo esconderlo.',
+      },
+    ],
+  },
+  {
+    id: 'futbol-racha-negra',
+    categoria: 'futbol',
+    rareza: 'comun',
+    titulo: 'Once partidos sin marcar',
+    texto:
+      'No la metés desde agosto. En el estadio, cada vez que tocás la pelota se escucha un murmullo distinto.',
+    tipoDeRecuerdo: 'decision',
+    condiciones: { temporadasMin: 2, notaMax: 6.9 },
+    cooldown: 4,
+    opciones: [
+      {
+        id: 'doble-turno',
+        texto: 'Quedarte a tirar al arco después de cada práctica',
+        pista: 'Lo que hacen todos. A veces funciona.',
+        efectos: {
+          vida: { forma: 10, condicion: -4, confianza: 8 },
+          atributos: { tiro: 2 },
+          personalidad: { profesionalismo: 7 },
+          balance: 5,
+        },
+        resultado: 'Cien remates por día durante tres semanas. La rompiste el domingo catorce.',
+      },
+      {
+        id: 'psicologo',
+        texto: 'Ir al psicólogo del club',
+        pista: 'El problema puede no estar en el pie.',
+        efectos: {
+          vida: { confianza: 18, estres: -14 },
+          personalidad: { profesionalismo: 5 },
+          etiquetas: ['vida:cabeza'],
+          balance: 6,
+        },
+        resultado: 'Descubriste que hacía cuatro meses que no dormías bien. Se arregló antes que la racha.',
+      },
+      {
+        id: 'cambiar-puesto',
+        texto: 'Pedirle al técnico jugar más atrás',
+        pista: 'Dejás de ser el que la mete. Volvés a jugar bien.',
+        efectos: {
+          vida: { forma: 8, confianza: 10 },
+          atributos: { pase: 3, tiro: -1 },
+          relaciones: { dt: { confianza: 8 } },
+          etiquetas: ['futbol:reinventado'],
+          balance: 4,
+        },
+        resultado: 'Retrocediste veinte metros y volviste a tocar la pelota. Los goles llegaron solos.',
+      },
+      {
+        id: 'forzar',
+        texto: 'Tirar al arco de cualquier lugar hasta que entre una',
+        pista: 'Sale una. O sale la silbatina.',
+        efectos: { personalidad: { ego: 5, riesgo: 6 } },
+        riesgo: {
+          prob: 0.45,
+          bien: {
+            vida: { confianza: 20, carinoDeLaHinchada: 12, forma: 10 },
+            titular: { texto: 'EL GOLAZO CON EL QUE {APELLIDO} SE SACÓ LA MOCHILA', tono: 'elogio' },
+            balance: 6,
+          },
+          mal: {
+            vida: { confianza: -16, carinoDeLaHinchada: -14 },
+            relaciones: { dt: { rencor: 10 }, hinchada: { rencor: 12 } },
+            balance: -7,
+          },
+          relatoBien: 'Entró una de treinta metros y se te acabó la racha en un segundo.',
+          relatoMal: 'Tiraste catorce veces afuera en tres partidos. Te silbaron al salir.',
+        },
+        resultado: 'Empezaste a rematar desde donde fuera.',
+      },
+    ],
+  },
+];
