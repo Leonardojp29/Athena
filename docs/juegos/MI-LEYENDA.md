@@ -4,6 +4,11 @@ El primer juego de Athena. Creás un futbolista y vivís su carrera hasta el ret
 la carta de toda tu vida y un legado compartible por enlace. Este documento existe para poder sumar
 contenido y pantallas sin releer el código.
 
+**Doce capítulos de dos años, de los 16 a los 38, y una carrera se termina en menos de veinte
+segundos.** Esa duración es el diseño: la primera versión eran veinte temporadas y cien clics, casi
+nadie llegaba al final —que es justo donde está lo bueno— y por eso el e2e la mide en lugar de
+confiar en que no crezca sola.
+
 ## La idea que ordena todo
 
 **Nunca elegís el club.** En la creación llenás nombre, dorsal, puesto, pie y liga; después el
@@ -19,13 +24,13 @@ reproduce.
 Un solo verbo:
 
 ```ts
-avanzar(carrera, accion, mundo) → { carrera, beats }
+avanzarCapitulo(carrera, eleccion, mundo) → { carrera, capitulo }
 ```
 
-`beats` es **un guion**: `gol`, `titular`, `trofeo`, `carta`, `momento`, `decision`… Cada beat
-declara su intensidad (`micro`, `ui`, `drama`, `cine`) y de ahí sale cuánto respira en pantalla. La
-interfaz es un proyector: no conoce una sola regla del fútbol. Por eso el motor se prueba entero sin
-navegador y la pantalla se puede rediseñar sin tocar una regla.
+Cada capítulo hace siempre lo mismo: juega dos temporadas, escribe una fila en la línea de la
+carrera, deja un titular de prensa y plantea **una** decisión —mercado, evento o momento jugable—.
+La interfaz no conoce una sola regla del fútbol: recibe el resumen del bienio y las opciones. Por eso
+el motor se prueba entero sin navegador y la pantalla se puede rediseñar sin tocar una regla.
 
 | Archivo | Qué resuelve |
 |---|---|
@@ -38,7 +43,7 @@ navegador y la pantalla se puede rediseñar sin tocar una regla.
 | `momentos.ts` | Resuelve los cuatro momentos jugables |
 | `eventos/` | Motor (condiciones tipadas, pesos, cooldowns) + catálogo |
 | `legado.ts` | Prime, arquetipo, mejor y peor decisión, veredicto |
-| `motor.ts` | El orquestador: el bucle de la carrera y los beats |
+| `capitulo.ts` | El orquestador: los doce capítulos, el crecimiento y la decisión siguiente |
 
 ## Sumar un evento
 
@@ -80,6 +85,9 @@ puede exigir (`conEtiquetas`) o excluir (`sinEtiquetas`) lo que ya pasó.
 
 `GET /v1/views/mundo` (caché de un día) arma las 20 ligas jugables con sus clubes reales:
 
+- **El renombre** (0-100) es cuán conocido es un club: peso de su liga, posición sostenida y
+  participaciones en copas continentales. Es lo que ordena la escalera y lo que deja afuera a los
+  clubes que nadie nombraría.
 - **La fuerza no se inventa**: sale de la posición promedio de cada club en sus últimas tres
   temporadas reales, normalizada por el tamaño de su liga y encuadrada en la franja que le da el peso
   de su liga (`mundo.service.ts`). Arsenal queda en 91, Southampton en 62.
@@ -87,6 +95,24 @@ puede exigir (`conEtiquetas`) o excluir (`sinEtiquetas`) lo que ya pasó.
   diga que la Premier vale más que la Liga 1, y fingir que se deduce sería peor que declararlo.
 - Escudos y colores vienen de `teams.logo_url` / `primary_color`. De 459 clubes, 336 tienen color
   usable; el resto se apoya en el material de la carta.
+
+## La escalera
+
+La carrera soñada tiene una forma y el mercado la respeta: **club chico de tu país → grande local →
+un país grande del mismo continente → Europa, que es el techo → volver a casa o a la del rival**.
+Tres reglas la sostienen, todas en `mercado.ts`:
+
+- **Un escalón por vez.** `ESCALONES` parte el renombre en cinco tramos y una oferta normal sube como
+  mucho uno; saltar dos lo hace solo la joya, el que sale con una media que no se discute.
+- **Europa se gana.** Quien no nació en Europa la ve recién después de pasar por una liga de peso 72
+  o más —México, Argentina, Brasil— o de romperla con 84 de media. Sin esta regla, un pibe de veinte
+  pasaba de Cusco a la Bundesliga.
+- **Los destinos de madurez** —Asia, África, la MLS y las ligas de peso bajo— aparecen a partir de los
+  30, cuando son una decisión con sabor en lugar de un mal comienzo. Pasados los 33, el club donde
+  debutaste y su clásico rival entran siempre entre las ofertas.
+
+Nada de esto es un riel: se puede ir bien o se puede ir mal, y quedarse toda la vida en el club de
+siempre también es un final.
 
 ## La carta
 
@@ -108,10 +134,16 @@ Cuatro, y pocos a propósito: si todo el partido fuera jugable, ningún momento 
 
 | Momento | Mecánica | Quién lo juega |
 |---|---|---|
-| Penal | Parar la mira, parar la barra de fuerza | todos menos el arquero |
-| Mano a mano | Tres opciones con ventana de tiempo | delanteros y extremos |
-| Tiro libre | Arrastrar para comba, altura y fuerza | medios y mediapuntas |
-| Atajada | Anticipar, esperar o volar | arqueros |
+| Penal | Arrastrar desde la pelota: largo = fuerza, curva del gesto = comba | todos menos el arquero |
+| Mano a mano | Definir mientras el arquero sale a achicar | delanteros y extremos |
+| Tiro libre | El arco del arrastre pasa la barrera y baja | medios y mediapuntas |
+| Atajada | Desde el arco: elegir zona y momento del vuelo | arqueros |
+
+Se juegan sobre un motor propio en `apps/web/src/components/juego/cancha/`: `fisica.ts` integra la
+pelota en tres dimensiones a paso fijo con gravedad, rozamiento y efecto Magnus —la comba sale de la
+simulación, no de una animación—, `escena.ts` proyecta esa física a la pantalla y dibuja el estadio
+nocturno, y `arquero.ts` la silueta que vuela. Todo con teclado también: flechas apuntan, espacio
+define.
 
 La interfaz manda **la intención** (dónde, cuánta fuerza, con qué timing) y el motor decide con los
 atributos, la presión de la escena y el azar semillado. Nada se resuelve en el navegador, así que un
@@ -146,6 +178,7 @@ pnpm --filter @athena/leyenda test      # motor: determinismo, tope de 4 ofertas
 pnpm --filter @athena/web exec playwright test e2e/juego.spec.ts
 ```
 
-El e2e juega una carrera entera hasta el retiro, comprueba el enlace del legado y que la partida se
-retome al recargar. Las dos rutas del juego están en el suite de axe y en el presupuesto de peso, con
+El e2e juega una carrera entera hasta el retiro y **mide cuánto tarda**: si pasa de veinte segundos o
+de dieciséis pasos, el juego volvió a ser largo y el test falla. Comprueba además los escudos de la
+línea de la carrera, el enlace del legado y que la partida se retome al recargar. Las dos rutas del juego están en el suite de axe y en el presupuesto de peso, con
 un techo propio y más alto: es una aplicación con estado, no una vista de lectura.

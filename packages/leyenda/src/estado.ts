@@ -183,6 +183,10 @@ export interface Temporada {
   edad: number;
   clubSlug: string;
   clubNombre: string;
+  /** El escudo real del club: la línea de la carrera se lee por los escudos, no por los nombres. */
+  clubEscudo: string | null;
+  /** El color del club, para teñir su tramo de la carrera. */
+  clubColor: string | null;
   ligaSlug: string;
   ligaNombre: string;
   rol: Rol;

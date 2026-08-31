@@ -56,8 +56,15 @@
       arrancar();
     });
 
-    /* Los formularios del sitio son GET de búsqueda y POST de sesión: los dos navegan. */
-    document.addEventListener('submit', arrancar);
+    /*
+     * Los formularios del sitio son GET de búsqueda y POST de sesión: los dos navegan. Los de las
+     * islas de React no navegan nada —cancelan el envío—, y ahí la barra se quedaría rodando para
+     * siempre; por eso se mira si alguien ya canceló el evento antes de llegar acá.
+     */
+    document.addEventListener('submit', (event) => {
+      if (event.defaultPrevented) return;
+      arrancar();
+    });
     window.addEventListener('pagehide', parar);
     window.addEventListener('pageshow', parar);
   }

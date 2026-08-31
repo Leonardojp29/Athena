@@ -31,9 +31,7 @@ const anio = new Date().getFullYear();
 >
   {
     mundo && mundo.ligas.length > 0 ? (
-      <div data-tema-oscuro class="min-h-[calc(100vh-4rem)] bg-canvas text-ink">
-        <MiLeyenda client:load mundo={mundo} anio={anio} />
-      </div>
+      <MiLeyenda client:load mundo={mundo} anio={anio} />
     ) : (
       <div class="mx-auto max-w-md px-4 py-16 text-center">
         <h1 class="font-display text-2xl font-semibold uppercase tracking-label">Mi Leyenda</h1>

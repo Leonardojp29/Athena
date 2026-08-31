@@ -63,10 +63,27 @@ const PROYECTOS_RIESGO = [
   'Ofrecen una fortuna, pero nadie sabe cuánto durará el proyecto.',
 ];
 
-function proyectoDe(azar: Azar, club: Club, rol: Rol, riesgo: 'bajo' | 'medio' | 'alto'): string {
-  if (riesgo === 'alto') return elegir(azar, PROYECTOS_RIESGO);
-  if (rol === 'estrella' || club.fuerza < 60) return elegir(azar, PROYECTOS_PROYECTO);
-  return elegir(azar, PROYECTOS_GRANDE);
+/*
+ * Cuatro ofertas con la misma frase se leen como un error del juego, no como una coincidencia. Se
+ * elige sin reponer dentro de la misma ventana, y solo se repite si el repertorio se agotó.
+ */
+function elegirSinRepetir(azar: Azar, opciones: string[], usados: Set<string>): string {
+  const libres = opciones.filter((o) => !usados.has(o));
+  const elegido = elegir(azar, libres.length > 0 ? libres : opciones);
+  usados.add(elegido);
+  return elegido;
+}
+
+function proyectoDe(
+  azar: Azar,
+  club: Club,
+  rol: Rol,
+  riesgo: 'bajo' | 'medio' | 'alto',
+  usados: Set<string>,
+): string {
+  if (riesgo === 'alto') return elegirSinRepetir(azar, PROYECTOS_RIESGO, usados);
+  if (rol === 'estrella' || club.fuerza < 60) return elegirSinRepetir(azar, PROYECTOS_PROYECTO, usados);
+  return elegirSinRepetir(azar, PROYECTOS_GRANDE, usados);
 }
 
 /**
@@ -196,8 +213,15 @@ export function interesDe(club: Club, carrera: Carrera, esDeLaCasa: boolean): nu
  * canadiense, pero la oferta millonaria de Arabia a los 31 —o el retiro dorado en la MLS— es una
  * decisión con sabor. Se abren a partir de los treinta.
  */
-export function esDestinoTardio(liga: { continente: string; peso: number }): boolean {
-  return liga.continente === 'asia' || liga.continente === 'africa' || liga.peso < 52;
+const DESTINOS_DE_MADUREZ = new Set(['major-league-soccer']);
+
+export function esDestinoTardio(liga: { slug: string; continente: string; peso: number }): boolean {
+  return (
+    liga.continente === 'asia' ||
+    liga.continente === 'africa' ||
+    liga.peso < 52 ||
+    DESTINOS_DE_MADUREZ.has(liga.slug)
+  );
 }
 
 export interface ParametrosDeMercado {
@@ -227,12 +251,34 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
    * hacerlo enfrente son los dos finales que la gente recuerda, y el juego tiene que ofrecerlos.
    */
   const vuelveACasa = carrera.futbolista.edad >= 33 && casa !== null;
+
+  /*
+   * Europa se gana, no se sortea.
+   *
+   * La escalera real de un sudamericano es club chico → grande de su país → un país grande del mismo
+   * continente → Europa: un pibe de veinte que la rompe en Perú no ficha en la Bundesliga, primero
+   * pasa por Brasil, Argentina o México. La excepción es la joya —el que sale con una media que no se
+   * discute—, porque esa también es una historia real, solo que rara. Quien empieza en Europa no
+   * tiene puerta que abrir.
+   */
+  const continenteDeOrigen =
+    mundo.ligas.find((l) => l.slug === carrera.clubDeOrigen?.ligaSlug)?.continente ?? null;
+  const pesoMaximoJugado = carrera.temporadas.reduce(
+    (alto, t) => Math.max(alto, mundo.ligas.find((l) => l.slug === t.ligaSlug)?.peso ?? 0),
+    0,
+  );
+  const listoParaEuropa =
+    continenteDeOrigen === null ||
+    continenteDeOrigen === 'europa' ||
+    pesoMaximoJugado >= 72 ||
+    carrera.ovr >= 84;
   const ligaDeCasa = casa ? (mundo.ligas.find((l) => l.slug === casa.ligaSlug) ?? null) : null;
   const rivalDeCasa = casa && ligaDeCasa ? rivalDe(crearAzarDeCasa(carrera), ligaDeCasa, casa) : null;
 
   for (const liga of mundo.ligas) {
     /* Arabia, Japón o Canadá recién a los 30: antes rompen la carrera en lugar de darle sabor. */
     if (esDestinoTardio(liga) && carrera.futbolista.edad < 30) continue;
+    if (liga.continente === 'europa' && !listoParaEuropa) continue;
     for (const club of liga.clubes) {
       if (club.slug === actual?.slug) continue;
       const esDeLaCasa = club.slug === casa?.slug;
@@ -295,6 +341,7 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
     elegidos.push(elegido);
   }
 
+  const usados = new Set<string>();
   return elegidos.map((e, i) => {
     const rol = rolPrometido(azar, e.club, carrera.ovr, carrera.futbolista.edad);
     const riesgo: 'bajo' | 'medio' | 'alto' =
@@ -308,7 +355,7 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
       club: e.club,
       salario: salarioDe(azar, e.club, carrera.valor, rol),
       rolPrometido: rol,
-      proyecto: proyectoDe(azar, e.club, rol, riesgo),
+      proyecto: proyectoDe(azar, e.club, rol, riesgo, usados),
       /* Cuatro a ocho años: dos a cuatro capítulos. Con contratos de dos años el mercado abría en
          todos los capítulos y una carrera terminaba con ocho camisetas. */
       temporadas: entre(azar, 4, 8),
@@ -347,6 +394,7 @@ export function ofertasDeDebut(azar: Azar, carrera: Carrera, liga: Liga): Oferta
   const desde = conocidos.length > 8 ? 3 : conocidos.length > 5 ? 2 : 0;
   const pelotón = conocidos.slice(desde, desde + 6);
   const posibles = mezclar(azar, pelotón.length >= 3 ? pelotón : conocidos).slice(0, MAX_OFERTAS);
+  const usados = new Set<string>();
 
   return posibles.map((club, i) => {
     /* En un grande se arranca desde la cantera; en uno mediano se juega antes. */
@@ -356,14 +404,22 @@ export function ofertasDeDebut(azar: Azar, carrera: Carrera, liga: Liga): Oferta
       club,
       salario: salarioDe(azar, club, Math.max(0.4, carrera.valor), rol),
       rolPrometido: rol,
-      proyecto:
+      proyecto: elegirSinRepetir(
+        azar,
         club.fuerza <= 58
-          ? 'Necesitan gente ya: vas a jugar desde el arranque.'
-          : elegir(azar, [
+          ? [
+              'Necesitan gente ya: vas a jugar desde el arranque.',
+              'El plantel está corto y el técnico mira a los pibes.',
+              'Te quieren para pelear el puesto ahora mismo.',
+            ]
+          : [
               'Te suman al plantel profesional y vas de a poco.',
               'Primero la reserva, y si andás, arriba.',
               'El técnico quiere verte en pretemporada.',
-            ]),
+              'Firmás con la primera y entrenás con los grandes.',
+            ],
+        usados,
+      ),
       temporadas: entre(azar, 4, 6),
       matices: ['debut'],
       riesgo: club.fuerza > carrera.ovr + 8 ? 'medio' : 'bajo',

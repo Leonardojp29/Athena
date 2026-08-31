@@ -3,18 +3,17 @@ import { expect, test, type Page } from '@playwright/test';
 /*
  * Mi Leyenda, de punta a punta.
  *
- * Una carrera entera tarda un rato incluso en ritmo exprés, así que el recorrido completo va en un solo
- * test que juega como jugaría una persona apurada —aceptar, decidir, patear— y comprueba las promesas
- * del juego: nunca más de cuatro clubes, la carta con sus atributos, el legado con su veredicto y el
- * enlace que abre esa carta en otra pestaña.
+ * El juego son doce capítulos y se termina en menos de veinte segundos jugando a lo bruto: esa
+ * duración **es** el diseño —la versión anterior tardaba casi dos minutos y por eso nadie llegaba al
+ * final— y por eso el recorrido completo la mide en lugar de solo comprobar que no explota.
  */
-test.describe.configure({ timeout: 180_000 });
+test.describe.configure({ timeout: 120_000 });
 
 const CREAR = '/juegos/mi-leyenda';
 
 async function crearFutbolista(
   page: Page,
-  opciones: { nombre?: string; puesto?: string; ritmo?: RegExp } = {},
+  opciones: { nombre?: string; puesto?: string } = {},
 ): Promise<void> {
   await page.goto(CREAR);
   await page.fill('#nombre', opciones.nombre ?? 'Leonardo Jurado');
@@ -22,39 +21,30 @@ async function crearFutbolista(
   if (opciones.puesto) {
     await page.getByRole('button', { name: new RegExp(`^${opciones.puesto}\\b`) }).first().click();
   }
-  await page.getByRole('button', { name: opciones.ritmo ?? /^Exprés/ }).click();
   await page.getByRole('button', { name: /empezar la carrera/i }).click();
 }
 
 /** Da un paso del juego. Devuelve false cuando no hay nada que hacer (la carrera terminó). */
 async function unPaso(page: Page): Promise<boolean> {
-  const oferta = page.locator('li button:has-text("Riesgo")');
-  const golpe = page.getByRole('button', { name: /^(Apuntar|Patear|Pegarle)$/ });
-  const opcionDeMomento = page.locator('[data-ventana] ~ ul button').first();
+  const oferta = page.locator('[data-oferta]');
+  const cancha = page.locator('[data-escena] canvas, canvas');
   const decision = page.locator('[data-escena] ul button');
-  const continuar = page.getByRole('button', { name: /^(Continuar|Ver todo)$/ });
-  const quedarse = page.getByRole('button', { name: /quedarme/i });
+  const quedarse = page.getByRole('button', { name: /quedarme|^seguir$/i });
 
-  if (await oferta.count()) {
-    await oferta.first().click();
-  } else if (await golpe.count()) {
-    await golpe.first().click();
-    await page.waitForTimeout(340);
-    if (await golpe.count()) await golpe.first().click();
-    await page.waitForTimeout(760);
-  } else if (await opcionDeMomento.count()) {
-    await opcionDeMomento.click();
-    await page.waitForTimeout(640);
+  if (await cancha.count()) {
+    /* Espacio patea; el motor resuelve y avanza solo un segundo después. */
+    await page.keyboard.press('Space');
+    await page.waitForTimeout(2600);
+  } else if (await oferta.count()) {
+    await oferta.first().click({ force: true });
   } else if (await decision.count()) {
-    await decision.first().click();
-  } else if (await continuar.count()) {
-    await continuar.first().click();
+    await decision.first().click({ force: true });
   } else if (await quedarse.count()) {
-    await quedarse.click();
+    await quedarse.first().click({ force: true });
   } else {
     return false;
   }
-  await page.waitForTimeout(140);
+  await page.waitForTimeout(160);
   return true;
 }
 
@@ -83,7 +73,7 @@ test.describe('Mi Leyenda', () => {
   test('al debutar te quieren cuatro clubes como máximo, y todos son reales', async ({ page }) => {
     await crearFutbolista(page, { puesto: 'DC' });
 
-    const ofertas = page.locator('li button:has-text("Riesgo")');
+    const ofertas = page.locator('[data-oferta]');
     await expect(ofertas.first()).toBeVisible({ timeout: 15_000 });
     const cuantas = await ofertas.count();
     expect(cuantas).toBeGreaterThan(0);
@@ -91,17 +81,17 @@ test.describe('Mi Leyenda', () => {
 
     /* Un club real trae su escudo del proveedor y su liga. */
     await expect(ofertas.first().locator('img')).toBeVisible();
-    await expect(ofertas.first()).toContainText(/Rol|Sueldo/i);
+    await expect(ofertas.first()).toContainText(/riesgo/i);
   });
 
-  test('la carta muestra la media, el puesto y los seis atributos', async ({ page }) => {
+  test('la carta vive dentro de la ficha y muestra los seis atributos', async ({ page }) => {
     await crearFutbolista(page, { puesto: 'MO' });
-    await page.locator('li button:has-text("Riesgo")').first().click();
+    await page.locator('[data-oferta]').first().click();
 
     const carta = page.locator('[data-carta]').first();
     await expect(carta).toBeVisible();
-    /* El material arranca en cantera: la progresión se ve, no se lee. */
-    await expect(carta).toHaveAttribute('data-material', 'cantera');
+    /* Recién firmado, el material todavía es de los de abajo: la progresión se ve, no se lee. */
+    await expect(carta).toHaveAttribute('data-material', /cantera|promesa/);
     await expect(carta).toContainText('MO');
     for (const rotulo of ['RIT', 'TIR', 'PAS', 'REG', 'DEF', 'FÍS']) {
       await expect(carta).toContainText(rotulo);
@@ -110,7 +100,7 @@ test.describe('Mi Leyenda', () => {
 
   test('un arquero tiene sus propios atributos en la carta', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Arquero Prueba', puesto: 'POR' });
-    await page.locator('li button:has-text("Riesgo")').first().click();
+    await page.locator('[data-oferta]').first().click();
 
     const carta = page.locator('[data-carta]').first();
     await expect(carta).toContainText('POR');
@@ -119,9 +109,29 @@ test.describe('Mi Leyenda', () => {
     }
   });
 
+  test('la línea de la carrera trae el escudo del club de cada bienio', async ({ page }) => {
+    await crearFutbolista(page, { nombre: 'Escudos Prueba', puesto: 'DC' });
+    await page.locator('[data-oferta]').first().click();
+
+    const filas = page.locator('ol li');
+    await expect(filas.first()).toBeVisible();
+    /* La carrera se lee por escudos: sin ellos es una planilla. */
+    await expect(filas.first().locator('img')).toBeVisible();
+  });
+
+  test('se puede empezar una leyenda nueva', async ({ page }) => {
+    await crearFutbolista(page, { nombre: 'Reinicio Prueba' });
+    await page.locator('[data-oferta]').first().click();
+    await expect(page.locator('[data-carta]').first()).toBeVisible();
+
+    page.on('dialog', (dialogo) => dialogo.accept());
+    await page.getByRole('button', { name: /nueva leyenda/i }).first().click();
+    await expect(page.locator('#nombre')).toBeVisible();
+  });
+
   test('la partida se retoma al recargar', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Retomar Prueba' });
-    await page.locator('li button:has-text("Riesgo")').first().click();
+    await page.locator('[data-oferta]').first().click();
     await expect(page.locator('[data-carta]').first()).toBeVisible();
 
     await page.reload();
@@ -132,28 +142,31 @@ test.describe('Mi Leyenda', () => {
     await expect(page.locator('[data-carta]').first()).toContainText(/prueba/i);
   });
 
-  test('una carrera llega al retiro y deja un legado compartible', async ({ page, isMobile }) => {
-    /*
-     * Este recorrido tarda casi dos minutos: jugar la carrera entera en los dos viewports no agrega
-     * información —el móvil ya está cubierto por los otros tests— y saturaba la máquina lo suficiente
-     * para hacer fallar por timeout a tests de otras suites.
-     */
+  test('una carrera entera se juega en menos de veinte segundos y deja un legado compartible', async ({
+    page,
+    isMobile,
+  }) => {
     test.skip(isMobile, 'el recorrido completo corre una sola vez');
     await crearFutbolista(page, { nombre: 'Legado Prueba' });
+    await expect(page.locator('[data-oferta]').first()).toBeVisible({ timeout: 15_000 });
 
+    const arranque = Date.now();
     let pasos = 0;
     let vacios = 0;
-    while (pasos++ < 500) {
+    while (pasos++ < 60) {
       if (await page.getByRole('button', { name: /compartir mi leyenda/i }).count()) break;
-      const avanzo = await unPaso(page);
-      if (!avanzo) {
-        /* Puede estar corriendo la animación de un momento: se espera y se vuelve a mirar. */
-        if (++vacios > 10) break;
-        await page.waitForTimeout(700);
+      if (await unPaso(page)) {
+        vacios = 0;
         continue;
       }
-      vacios = 0;
+      if (++vacios > 8) break;
+      await page.waitForTimeout(500);
     }
+    const duracion = Date.now() - arranque;
+
+    /* Doce capítulos, doce decisiones: si esto sube, el juego volvió a ser largo. */
+    expect(pasos).toBeLessThanOrEqual(16);
+    expect(duracion).toBeLessThan(25_000);
 
     /* El veredicto es un arquetipo, no un puntaje. */
     await expect(page.getByRole('button', { name: /compartir mi leyenda/i })).toBeVisible();
@@ -177,13 +190,11 @@ test.describe('Mi Leyenda', () => {
 
   test('el juego se puede jugar con el teclado', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Teclado Prueba' });
-    await page.locator('li button:has-text("Riesgo")').first().click();
-    await expect(page.locator('[data-carta]').first()).toBeVisible();
+    const oferta = page.locator('[data-oferta]').first();
+    await expect(oferta).toBeVisible({ timeout: 15_000 });
 
-    /* Tabular llega al botón de continuar y Enter lo activa. */
-    const continuar = page.getByRole('button', { name: /^(Continuar|Ver todo)$/ });
-    await continuar.focus();
-    await expect(continuar).toBeFocused();
+    await oferta.focus();
+    await expect(oferta).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(page.locator('[data-carta]').first()).toBeVisible();
   });

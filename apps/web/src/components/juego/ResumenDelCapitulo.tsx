@@ -8,6 +8,18 @@ import { NOMBRE_DE_NIVEL, type Capitulo } from '@athena/leyenda';
  * titular del bienio, los títulos y —cuando pasa— el salto de la carta, que es el momento que la
  * gente espera.
  */
+/* Un capítulo son dos temporadas: ganar la liga las dos veces son dos trofeos, no dos etiquetas iguales. */
+function agrupar(trofeos: Capitulo['trofeos']) {
+  const cuenta = new Map<string, { nombre: string; clase: string; veces: number }>();
+  for (const t of trofeos) {
+    const clave = `${t.nombre}|${t.clase}`;
+    const previo = cuenta.get(clave);
+    if (previo) previo.veces += 1;
+    else cuenta.set(clave, { nombre: t.nombre, clase: t.clase, veces: 1 });
+  }
+  return [...cuenta.values()];
+}
+
 export default function ResumenDelCapitulo({ capitulo }: { capitulo: Capitulo }) {
   const hayAlgo =
     capitulo.consecuencia || capitulo.titular || capitulo.trofeos.length > 0 || capitulo.ascenso;
@@ -30,9 +42,9 @@ export default function ResumenDelCapitulo({ capitulo }: { capitulo: Capitulo })
 
       {capitulo.trofeos.length > 0 && (
         <ul className="flex flex-wrap gap-1.5">
-          {capitulo.trofeos.map((trofeo, i) => (
+          {agrupar(capitulo.trofeos).map((trofeo) => (
             <li
-              key={`${trofeo.id}-${i}`}
+              key={`${trofeo.nombre}-${trofeo.clase}`}
               className={`rounded-md px-2 py-1 text-xs font-medium ${
                 trofeo.clase === 'individual'
                   ? 'bg-data/16 text-data-ink'
@@ -40,6 +52,7 @@ export default function ResumenDelCapitulo({ capitulo }: { capitulo: Capitulo })
               }`}
             >
               {trofeo.nombre}
+              {trofeo.veces > 1 && <span className="ml-1 tabular opacity-70">×{trofeo.veces}</span>}
             </li>
           ))}
         </ul>

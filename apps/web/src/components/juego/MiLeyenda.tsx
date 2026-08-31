@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  CAPITULOS,
   abrirCarrera,
   avanzarCapitulo,
-  calcularVeredicto,
   crearCarrera,
   eventoPendiente,
   puedeRenovar,
@@ -13,13 +11,12 @@ import {
   type Mundo,
 } from '@athena/leyenda';
 import { borrarPartida, codificarLegado, guardarEnElSalon, guardarPartida, leerPartida } from '../../lib/leyenda';
-import Carta, { type DatosDeCarta } from './Carta';
 import Creacion from './Creacion';
 import Decision from './Decision';
 import Ficha from './Ficha';
 import Legado from './Legado';
 import LineaDeCarrera from './LineaDeCarrera';
-import Momento from './Momento';
+import Estadio from './cancha/Estadio';
 import Ofertas from './Ofertas';
 import ResumenDelCapitulo from './ResumenDelCapitulo';
 
@@ -35,6 +32,18 @@ import ResumenDelCapitulo from './ResumenDelCapitulo';
 interface Props {
   mundo: Mundo;
   anio: number;
+}
+
+/**
+ * El color del rival para las siluetas de la escena. Sale del club actual invertido —si jugás de
+ * rojo, enfrente hay alguien que no es rojo— con una vuelta al azul del vestuario si no hay dato.
+ */
+function colorDelRival(carrera: Carrera): string {
+  const propio = carrera.clubActual?.primario;
+  if (!propio || !/^[0-9a-f]{6}$/i.test(propio)) return '#1b2a36';
+  const n = parseInt(propio, 16);
+  const invertido = (0xffffff ^ n).toString(16).padStart(6, '0');
+  return `#${invertido}`;
 }
 
 export default function MiLeyenda({ mundo, anio }: Props) {
@@ -85,25 +94,6 @@ export default function MiLeyenda({ mundo, anio }: Props) {
     setCarrera(null);
     setCapitulo(null);
   }, []);
-
-  const datosDeCarta = useMemo<DatosDeCarta | null>(
-    () =>
-      carrera
-        ? {
-            nombre: carrera.futbolista.nombre,
-            dorsal: carrera.futbolista.dorsal,
-            puesto: carrera.futbolista.puesto,
-            ovr: carrera.ovr,
-            nivel: carrera.nivel,
-            atributos: carrera.futbolista.atributos,
-            club: carrera.clubActual,
-            pais: carrera.futbolista.pais,
-            bandera: carrera.futbolista.bandera,
-            edad: carrera.futbolista.edad,
-          }
-        : null,
-    [carrera],
-  );
 
   if (!listo) {
     return (
@@ -156,25 +146,43 @@ export default function MiLeyenda({ mundo, anio }: Props) {
   const momento = carrera.pendiente?.clase === 'momento' ? carrera.pendiente : null;
   const decision = carrera.pendiente?.clase === 'decision' ? eventoPendiente(carrera, mundo) : null;
 
-  return (
-    <div className="mx-auto grid w-full max-w-5xl gap-4 px-3 py-4 lg:grid-cols-[22rem_1fr] lg:gap-5 lg:px-4">
-      {/* Izquierda: quién sos y qué hay que decidir. En el teléfono, la decisión va primero. */}
-      <div className="order-1 flex flex-col gap-3">
-        <div className="order-2 lg:order-1">
-          <Ficha carrera={carrera} />
+  /*
+   * El momento se lleva la pantalla entera. Es la única escena del juego que se **juega** en lugar de
+   * elegirse, y meterla en la columna de la ficha la dejaba del tamaño de un sello: la cámara detrás
+   * del pateador necesita ancho para que el arco se vea como un arco.
+   */
+  if (momento) {
+    return (
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:py-4">
+        {capitulo && <ResumenDelCapitulo capitulo={capitulo} />}
+        <div className="min-h-0 flex-1">
+          <Estadio
+            momento={momento.momento}
+            contexto={momento.contexto}
+            colorRival={colorDelRival(carrera)}
+            onJugar={(intencion) => avanzar({ tipo: 'jugar-momento', intencion })}
+          />
         </div>
+      </div>
+    );
+  }
 
-        <div className="order-1 flex flex-col gap-3 lg:order-2">
+  /*
+   * El tablero: la identidad acostada arriba y debajo dos zonas —lo que hay que hacer y lo que ya
+   * hiciste—. En escritorio se ata al alto de la ventana y cada zona hace su propio scroll si le
+   * falta lugar, así una partida entera entra en una pantalla de 1080 sin mover la página. En el
+   * teléfono la atadura se suelta y todo fluye, con la decisión primero.
+   */
+  return (
+    <div className="mx-auto flex w-full max-w-[104rem] flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:gap-4 lg:px-6 lg:py-4">
+      <Ficha carrera={carrera} ascenso={ascenso} onEmpezarDeNuevo={empezarDeNuevo} />
+
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_23rem] lg:gap-6">
+        {/* Lo único que hay que hacer en esta pantalla. */}
+        <div className="order-1 flex min-h-0 flex-col gap-4 lg:overflow-y-auto lg:pr-1">
           {capitulo && <ResumenDelCapitulo capitulo={capitulo} />}
 
-          {momento ? (
-            <Momento
-              momento={momento.momento}
-              contexto={momento.contexto}
-              puesto={carrera.futbolista.puesto}
-              onJugar={(intencion) => avanzar({ tipo: 'jugar-momento', intencion })}
-            />
-          ) : decision ? (
+          {decision ? (
             <Decision
               titulo={decision.titulo}
               texto={decision.texto}
@@ -193,22 +201,11 @@ export default function MiLeyenda({ mundo, anio }: Props) {
             />
           )}
         </div>
-      </div>
 
-      {/* Derecha: la carrera, llenándose. */}
-      <div className="order-2 flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-label">Tu carrera</h2>
-          <p className="text-2xs text-ink-muted">
-            capítulo {Math.min(carrera.capitulo + 1, CAPITULOS)} de {CAPITULOS}
-          </p>
+        {/* La carrera, llenándose. */}
+        <div className="order-2 min-h-0 lg:overflow-y-auto lg:border-l lg:border-border lg:pl-6">
+          <LineaDeCarrera carrera={carrera} ultima={carrera.temporadas.length - 1} />
         </div>
-        <LineaDeCarrera carrera={carrera} ultima={carrera.temporadas.length - 1} />
-        {datosDeCarta && (
-          <div className="hidden justify-center lg:flex">
-            <Carta datos={datosDeCarta} asciende={ascenso} class="max-w-[15rem]" />
-          </div>
-        )}
       </div>
     </div>
   );

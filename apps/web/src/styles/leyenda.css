@@ -222,6 +222,95 @@
   animation: carta-asciende var(--a-motion-cine) var(--a-ease-magnet) both;
 }
 
+/* --------------------------------------------------------- la línea de la carrera */
+
+/*
+ * Un capítulo nuevo entra empujando: aparece desde la izquierda con su escudo y se asienta. Es la
+ * animación más importante del juego —la que premia cada decisión— y por eso es la única que se
+ * permite un poco de escala.
+ */
+@keyframes capitulo-entra {
+  from {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.985);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+[data-capitulo-nuevo] {
+  animation: capitulo-entra var(--a-motion-drama) var(--a-ease-out-expo) both;
+}
+
+/* El escudo de un club nuevo llega girando: se nota que cambiaste de camiseta. */
+@keyframes escudo-llega {
+  from {
+    opacity: 0;
+    transform: rotateY(-90deg) scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0) scale(1);
+  }
+}
+
+[data-escudo-nuevo] {
+  animation: escudo-llega var(--a-motion-cine) var(--a-ease-magnet) both;
+}
+
+/* El resumen del capítulo se desliza desde arriba, como un titular que baja. */
+@keyframes resumen-baja {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-resumen] {
+  animation: resumen-baja var(--a-motion-slow) var(--a-ease-out-expo) both;
+}
+
+/*
+ * Las ofertas entran escalonadas, una detrás de otra. El retraso por posición es lo que hace que
+ * cuatro tarjetas se lean como una decisión y no como un bloque que apareció de golpe.
+ */
+@keyframes oferta-entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+[data-oferta] {
+  animation: oferta-entra var(--a-motion-slow) var(--a-ease-out-expo) both;
+}
+
+li:nth-child(1) > [data-oferta] {
+  animation-delay: 0ms;
+}
+li:nth-child(2) > [data-oferta] {
+  animation-delay: 60ms;
+}
+li:nth-child(3) > [data-oferta] {
+  animation-delay: 120ms;
+}
+li:nth-child(4) > [data-oferta] {
+  animation-delay: 180ms;
+}
+
 /* ------------------------------------------------------------------- el guion */
 
 /*
@@ -383,7 +472,11 @@
   }
   [data-mira],
   [data-potencia-barra],
-  [data-ventana-cursor] {
+  [data-ventana-cursor],
+  [data-capitulo-nuevo],
+  [data-escudo-nuevo],
+  [data-oferta],
+  [data-resumen] {
     animation: none !important;
   }
   [data-mira] {

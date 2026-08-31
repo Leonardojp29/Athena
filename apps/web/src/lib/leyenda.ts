@@ -16,8 +16,15 @@ const CLAVE_SALON = 'athena:leyenda-salon';
 /** Se dispara cuando la partida cambia: la página del catálogo repinta el "seguir jugando". */
 export const EVENTO_LEYENDA = 'athena:leyenda';
 
-/** La versión del formato guardado. Si cambia la forma de `Carrera`, sube y lo viejo se descarta. */
-const VERSION = 1;
+/**
+ * La versión del formato guardado. Si cambia la forma de `Carrera`, sube y lo viejo se descarta.
+ *
+ * La 2 es el juego de doce capítulos. Una partida de la 1 —veinte temporadas, tramos, ritmo— leída
+ * con el motor nuevo mostraba disparates como "217 años" y "capítulo 1 de 12" con doce filas ya
+ * escritas: el estado viejo encajaba de casualidad en los tipos nuevos. Por eso la versión se
+ * compara antes de mirar nada más.
+ */
+const VERSION = 2;
 
 export interface CarreraGuardada {
   version: number;
@@ -44,8 +51,10 @@ export function leerPartida(): Carrera | null {
     const crudo = localStorage.getItem(CLAVE);
     if (!crudo) return null;
     const guardada = JSON.parse(crudo) as CarreraGuardada;
-    /* Una partida de un formato viejo no se migra: se descarta con aviso, no se rompe el juego. */
+    /* Una partida de un formato viejo no se migra: se descarta, que es mejor que jugar algo roto. */
     if (guardada.version !== VERSION || !guardada.carrera?.futbolista) return null;
+    /* Y una del formato nuevo pero incoherente tampoco: el juego arranca limpio. */
+    if (typeof guardada.carrera.capitulo !== 'number' || guardada.carrera.capitulo > 12) return null;
     return guardada.carrera;
   } catch {
     return null;
