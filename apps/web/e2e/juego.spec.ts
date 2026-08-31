@@ -7,7 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
  * duración **es** el diseño —la versión anterior tardaba casi dos minutos y por eso nadie llegaba al
  * final— y por eso el recorrido completo la mide en lugar de solo comprobar que no explota.
  */
-test.describe.configure({ timeout: 120_000 });
+test.describe.configure({ timeout: 180_000 });
 
 const CREAR = '/juegos/mi-leyenda';
 
@@ -19,7 +19,7 @@ async function crearFutbolista(
   await page.fill('#nombre', opciones.nombre ?? 'Leonardo Jurado');
   /* El botón del puesto lleva su nombre largo para el lector de pantalla: se busca por el prefijo. */
   if (opciones.puesto) {
-    await page.getByRole('button', { name: new RegExp(`^${opciones.puesto}\\b`) }).first().click();
+    await page.getByRole('button', { name: new RegExp(`^${opciones.puesto} —`) }).first().click();
   }
   await page.getByRole('button', { name: /empezar la carrera/i }).click();
 }
@@ -32,9 +32,13 @@ async function unPaso(page: Page): Promise<boolean> {
   const quedarse = page.getByRole('button', { name: /quedarme|^seguir$/i });
 
   if (await cancha.count()) {
-    /* Espacio patea; el motor resuelve y avanza solo un segundo después. */
+    /*
+     * Espacio patea; el motor resuelve y avanza solo un segundo después. Se espera a que la escena
+     * se vaya en lugar de dormir un tiempo fijo: dormir metía dos segundos de test en la medición de
+     * cuánto tarda una carrera, que es justo lo que este test existe para vigilar.
+     */
     await page.keyboard.press('Space');
-    await page.waitForTimeout(2600);
+    await expect(cancha).toHaveCount(0, { timeout: 15_000 });
   } else if (await oferta.count()) {
     await oferta.first().click({ force: true });
   } else if (await decision.count()) {
@@ -63,11 +67,36 @@ test.describe('Mi Leyenda', () => {
   test('la creación pide lo justo y nunca el club', async ({ page }) => {
     await page.goto(CREAR);
     await expect(page.locator('#nombre')).toBeVisible();
-    await expect(page.locator('#liga')).toBeVisible();
+    /* El puesto se señala en la cancha y la liga se reconoce por su escudo. */
+    await expect(page.getByRole('button', { name: /^DC —/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Primera División/ }).first()).toBeVisible();
     /* La promesa del diseño: se elige la liga, no el equipo. */
     await expect(page.getByLabel(/club/i)).toHaveCount(0);
     /* Sin nombre no se puede empezar. */
     await expect(page.getByRole('button', { name: /empezar la carrera/i })).toBeDisabled();
+  });
+
+  test('los laterales y los extremos se eligen por banda', async ({ page }) => {
+    await page.goto(CREAR);
+    await page.fill('#nombre', 'Banda Prueba');
+    await page.getByRole('button', { name: /^EI —/ }).click();
+    await expect(page.getByText('Extremo izquierdo')).toBeVisible();
+    await page.getByRole('button', { name: /empezar la carrera/i }).click();
+
+    /* La carta lleva la sigla con la banda, no el puesto pelado. */
+    await expect(page.locator('[data-carta]').first()).toContainText('EI');
+  });
+
+  test('la nacionalidad y la liga se eligen por separado', async ({ page }) => {
+    await page.goto(CREAR);
+    await page.fill('#nombre', 'Mixto Prueba');
+    await page.getByRole('button', { name: /^Perú$/ }).click();
+    await page.getByRole('button', { name: /Liga Profesional Argentina/ }).click();
+    await page.getByRole('button', { name: /empezar la carrera/i }).click();
+
+    /* Peruano debutando en Argentina: la bandera es la suya y los clubes, los de allá. */
+    await expect(page.locator('img[alt="Perú"]').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-oferta]').first()).toContainText(/argentina/i);
   });
 
   test('al debutar te quieren cuatro clubes como máximo, y todos son reales', async ({ page }) => {

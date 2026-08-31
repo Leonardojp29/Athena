@@ -130,6 +130,8 @@ export interface LegadoCompartible {
   n: string;
   d: number;
   p: string;
+  /** La banda del lateral o el extremo. Los códigos viejos no la traen. */
+  pc?: string;
   o: number;
   v: string;
   a: [number, number, number, number, number, number];

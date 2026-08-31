@@ -8,6 +8,7 @@
  */
 import { campana, chance, crearAzar, entre, limitar, type Azar } from './azar.js';
 import {
+  type Costado,
   EDAD_INICIAL,
   type Atributos,
   type Carrera,
@@ -25,6 +26,8 @@ export interface DatosDeCreacion {
   nombre: string;
   dorsal: number;
   puesto: Puesto;
+  /** La banda, solo para laterales y extremos. */
+  costado?: Costado;
   pie: Pie;
   pais: string;
   paisCodigo: string | null;
@@ -148,6 +151,7 @@ export function crearCarrera(datos: DatosDeCreacion): Carrera {
     nombre: datos.nombre.trim(),
     dorsal: datos.dorsal,
     puesto: datos.puesto,
+    ...(datos.costado ? { costado: datos.costado } : {}),
     pie: datos.pie,
     pais: datos.pais,
     paisCodigo: datos.paisCodigo,

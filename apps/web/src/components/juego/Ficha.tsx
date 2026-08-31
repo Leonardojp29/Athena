@@ -1,9 +1,9 @@
 import {
   CAPITULOS,
   NOMBRE_DE_NIVEL,
-  NOMBRE_DE_PUESTO,
   NOMBRE_DE_ROL,
   edadDelCapitulo,
+  nombreDePuesto,
   type Carrera,
 } from '@athena/leyenda';
 import Carta, { type DatosDeCarta } from './Carta';
@@ -44,6 +44,7 @@ export default function Ficha({
     nombre: carrera.futbolista.nombre,
     dorsal: carrera.futbolista.dorsal,
     puesto: carrera.futbolista.puesto,
+    costado: carrera.futbolista.costado,
     ovr: carrera.ovr,
     nivel: carrera.nivel,
     atributos: carrera.futbolista.atributos,
@@ -106,7 +107,7 @@ export default function Ficha({
                 />
               )}
               <span className="font-semibold tabular text-ink">#{carrera.futbolista.dorsal}</span>
-              <span className="uppercase tracking-label">{NOMBRE_DE_PUESTO[carrera.futbolista.puesto]}</span>
+              <span className="uppercase tracking-label">{nombreDePuesto(carrera.futbolista.puesto, carrera.futbolista.costado)}</span>
               <span aria-hidden="true">·</span>
               <span className="tabular">{carrera.futbolista.edad} años</span>
               <span

@@ -172,7 +172,7 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
       id: 'resucitado',
       titulo: 'El resucitado',
       descripcion:
-        'Te dieron por terminado y volviste. Lo que hiciste después de la lesión vale doble, y lo sabés.',
+        'Te dieron por terminado y volviste. Lo que hiciste después de la lesión vale doble, y lo sabes.',
     };
   }
   if (volvioACasa) {

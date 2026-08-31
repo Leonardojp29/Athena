@@ -1,6 +1,6 @@
 import Carta from './Carta';
 import type { LegadoCompartible } from '../../lib/leyenda';
-import type { Nivel, Puesto } from '@athena/leyenda';
+import type { Costado, Nivel, Puesto } from '@athena/leyenda';
 
 /**
  * La carta de un legado que llegó por enlace.
@@ -17,6 +17,7 @@ export default function CartaCompartida({ legado }: { legado: LegadoCompartible 
         nombre: legado.n,
         dorsal: legado.d,
         puesto: legado.p as Puesto,
+        costado: legado.pc as Costado | undefined,
         ovr: legado.o,
         nivel: legado.v as Nivel,
         atributos: { ritmo, tiro, pase, regate, defensa, fisico },

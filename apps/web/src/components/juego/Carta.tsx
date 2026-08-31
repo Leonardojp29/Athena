@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { NOMBRE_DE_NIVEL, rotulosDe, type Atributos, type Nivel, type Puesto } from '@athena/leyenda';
+import {
+  NOMBRE_DE_NIVEL,
+  rotulosDe,
+  siglaDePuesto,
+  type Atributos,
+  type Costado,
+  type Nivel,
+  type Puesto,
+} from '@athena/leyenda';
 
 /**
  * La carta.
@@ -21,6 +29,7 @@ export interface DatosDeCarta {
   nombre: string;
   dorsal: number;
   puesto: Puesto;
+  costado?: Costado;
   ovr: number;
   nivel: Nivel;
   atributos: Atributos;
@@ -135,7 +144,7 @@ export default function Carta({ datos, tamano = 'grande', entra = false, asciend
                 className={`mt-0.5 font-display font-semibold uppercase tracking-label ${chica ? 'text-[9px]' : 'text-xs'}`}
                 style={{ color: 'var(--carta-tenue)' }}
               >
-                {datos.puesto}
+                {siglaDePuesto(datos.puesto, datos.costado)}
               </span>
             </div>
 

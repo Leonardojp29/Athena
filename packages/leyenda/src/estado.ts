@@ -9,6 +9,19 @@
  */
 
 export type Puesto = 'POR' | 'DFC' | 'LAT' | 'MC' | 'MO' | 'EXT' | 'DC';
+
+/**
+ * La banda del que juega por afuera.
+ *
+ * Un lateral y un extremo se eligen por izquierda o por derecha, y un jugador se define por eso: nadie
+ * dice "extremo", dice "extremo izquierdo". No es un puesto aparte porque las cuentas son idénticas
+ * —un lateral vale lo mismo por cualquiera de los dos lados— y duplicar la tabla de pesos por una
+ * palabra sería inventar una diferencia que el fútbol no hace.
+ */
+export type Costado = 'izquierda' | 'derecha';
+
+/** Los dos puestos que se juegan por una banda. */
+export const PUESTOS_CON_COSTADO: Puesto[] = ['LAT', 'EXT'];
 export type Pie = 'derecha' | 'izquierda';
 
 /** Los siete materiales de la carta. El orden es la progresión. */
@@ -97,6 +110,8 @@ export interface Liga {
   pais: string;
   paisCodigo: string | null;
   bandera: string | null;
+  /** El logo de la competencia. Puede faltar: la bandera del país es el respaldo. */
+  escudo?: string | null;
   continente: string;
   /** 0-100: el peso futbolístico de la liga, para saber qué es un ascenso de categoría. */
   peso: number;
@@ -234,6 +249,8 @@ export interface Futbolista {
   nombre: string;
   dorsal: number;
   puesto: Puesto;
+  /** La banda, solo para laterales y extremos. Las partidas viejas no la traen. */
+  costado?: Costado;
   pie: Pie;
   /** Nacionalidad: define la selección. */
   pais: string;
@@ -347,6 +364,20 @@ export const NOMBRE_DE_PUESTO: Record<Puesto, string> = {
   EXT: 'Extremo',
   DC: 'Delantero',
 };
+
+/** El nombre completo, con la banda cuando corresponde: "Lateral izquierdo". */
+export function nombreDePuesto(puesto: Puesto, costado?: Costado | null): string {
+  const base = NOMBRE_DE_PUESTO[puesto];
+  if (!costado || !PUESTOS_CON_COSTADO.includes(puesto)) return base;
+  return `${base} ${costado === 'izquierda' ? 'izquierdo' : 'derecho'}`;
+}
+
+/** La sigla de la carta: LI, LD, EI, ED. Las tres letras no entran en el espacio que hay. */
+export function siglaDePuesto(puesto: Puesto, costado?: Costado | null): string {
+  if (!costado || !PUESTOS_CON_COSTADO.includes(puesto)) return puesto;
+  const inicial = costado === 'izquierda' ? 'I' : 'D';
+  return puesto === 'LAT' ? `L${inicial}` : `E${inicial}`;
+}
 
 export const NOMBRE_DE_NIVEL: Record<Nivel, string> = {
   cantera: 'Cantera',

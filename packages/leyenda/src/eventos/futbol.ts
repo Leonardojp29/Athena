@@ -14,7 +14,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     rareza: 'comun',
     titulo: 'La primera práctica con los grandes',
     texto:
-      'Te suben a entrenar con el plantel profesional de {club}. En el primer rondo te toca al lado de los referentes y todos miran cómo te movés.',
+      'Te suben a entrenar con el plantel profesional de {club}. En el primer rondo te toca al lado de los referentes y todos miran cómo te mueves.',
     tipoDeRecuerdo: 'decision',
     condiciones: { edadMax: 20, temporadasMin: 0 },
     cooldown: 0,
@@ -22,7 +22,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     opciones: [
       {
         id: 'mostrarse',
-        texto: 'Pedir la pelota y jugar como sabés',
+        texto: 'Pedir la pelota y jugar como sabes',
         pista: 'Alto riesgo, alta recompensa: si sale bien, el técnico te ve.',
         efectos: {
           vida: { confianza: 8, estres: 4 },
@@ -72,7 +72,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'descansar',
         texto: 'Priorizar el descanso',
-        pista: 'Llegás fresco al fin de semana.',
+        pista: 'Llegas fresco al fin de semana.',
         efectos: { vida: { condicion: 7, felicidad: 3 }, balance: 1 },
         resultado: 'Elegiste llegar entero al domingo. El cuerpo te lo agradeció.',
       },
@@ -95,7 +95,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     rareza: 'infrecuente',
     titulo: 'Hablar con el técnico',
     texto:
-      '{dt} te dejó afuera del once tres partidos seguidos. Tenés la puerta de su oficina a diez metros.',
+      '{dt} te dejó afuera del once tres partidos seguidos. Tienes la puerta de su oficina a diez metros.',
     tipoDeRecuerdo: 'conflicto',
     condiciones: { roles: ['suplente', 'rotacion', 'promesa'], temporadasMin: 1 },
     cooldown: 4,
@@ -112,7 +112,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           balance: 0,
         },
         resultado:
-          'Le dijiste todo lo que pensabas. Te escuchó con los brazos cruzados y te contestó dos palabras: "entrená mejor".',
+          'Le dijiste todo lo que pensabas. Te escuchó con los brazos cruzados y te contestó dos palabras: "entrena mejor".',
       },
       {
         id: 'trabajar',
@@ -129,7 +129,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'representante',
         texto: 'Que lo maneje tu representante',
-        pista: 'Te sacás el problema de encima. La prensa se enterará.',
+        pista: 'Te sacas el problema de encima. La prensa se enterará.',
         efectos: {
           relaciones: { representante: { confianza: 6 }, dt: { rencor: 6 }, prensa: { confianza: 4 } },
           vida: { exposicion: 8 },
@@ -145,7 +145,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     categoria: 'futbol',
     rareza: 'comun',
     titulo: 'Semana de clásico',
-    texto: 'Se viene {rival}. La ciudad no habla de otra cosa y a vos te preguntan en cada semáforo.',
+    texto: 'Se viene {rival}. La ciudad no habla de otra cosa y a ti te preguntan en cada semáforo.',
     tipoDeRecuerdo: 'decision',
     condiciones: { temporadasMin: 1 },
     cooldown: 4,
@@ -206,7 +206,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           titular: { texto: '{APELLIDO}, NUEVO CAPITÁN', tono: 'elogio' },
           balance: 8,
         },
-        resultado: 'Te pusiste la cinta. Desde ese día, cada micrófono del país te busca a vos.',
+        resultado: 'Te pusiste la cinta. Desde ese día, cada micrófono del país te busca a ti.',
       },
       {
         id: 'rechazar',
@@ -237,7 +237,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'patear',
         texto: 'Agarrar la pelota',
-        pista: 'Vas a patear vos. Se juega en el próximo momento.',
+        pista: 'Vas a patear tú. Se juega en el próximo momento.',
         efectos: { vida: { estres: 6 }, etiquetas: ['acepta:presion'], balance: 4, luego: 'MOMENTO:penal' },
         resultado: 'Levantaste la pelota del suelo y caminaste hasta el punto.',
       },
@@ -268,7 +268,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'apurar',
         texto: 'Apurar la vuelta',
-        pista: 'Volvés antes. El cuerpo puede no perdonarlo.',
+        pista: 'Vuelves antes. El cuerpo puede no perdonarlo.',
         efectos: {
           vida: { condicion: -14, forma: -10, estres: 10 },
           atributos: { ritmo: -3 },
@@ -280,7 +280,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'respetar',
         texto: 'Respetar los tiempos',
-        pista: 'Perdés la temporada. Salvás la carrera.',
+        pista: 'Pierdes la temporada. Salvas la carrera.',
         efectos: {
           vida: { condicion: 8, felicidad: -8, forma: -14 },
           personalidad: { profesionalismo: 5 },
@@ -297,7 +297,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     categoria: 'futbol',
     rareza: 'infrecuente',
     titulo: 'Te llaman de la selección',
-    texto: 'Suena el teléfono con un número que no conocés. Es el cuerpo técnico de {pais}.',
+    texto: 'Suena el teléfono con un número que no conoces. Es el cuerpo técnico de {pais}.',
     tipoDeRecuerdo: 'premio',
     condiciones: { ovrMin: 70, temporadasMin: 1, sinEtiquetas: ['seleccion:debut'] },
     cooldown: 0,
@@ -330,7 +330,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'liderar',
         texto: 'Hacerte cargo del equipo',
-        pista: 'Si se salvan, sos ídolo. Si se van, sos parte.',
+        pista: 'Si se salvan, eres ídolo. Si se van, eres parte.',
         efectos: {
           vida: { estres: 14, carinoDeLaHinchada: 12, reputacion: 6 },
           relaciones: { companeros: { respeto: 8 }, hinchada: { confianza: 10 } },

@@ -66,7 +66,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     rareza: 'raro',
     titulo: 'Te recuerdan la frase',
     texto:
-      'Un programa de televisión abrió con tu declaración de hace años, con el año en pantalla y tu cara de pibe. Debajo, tu camiseta nueva.',
+      'Un programa de televisión abrió con tu declaración de hace años, con el año en pantalla y tu cara de niño. Debajo, tu camiseta nueva.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { conEtiquetas: ['promesa:rota'] },
     cooldown: 0,
@@ -83,7 +83,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
           balance: 2,
         },
         resultado:
-          'Dijiste que el pibe que dijo eso no conocía nada de la vida. La mitad te entendió; la otra mitad no perdona.',
+          'Dijiste que el chico que dijo eso no conocía nada de la vida. La mitad te entendió; la otra mitad no perdona.',
       },
       {
         id: 'pedir-perdon',
@@ -109,7 +109,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
           balance: -5,
         },
         resultado:
-          'Dijiste que los que hablan no pagan tus cuentas. El clip se viralizó y todavía lo pasan cada vez que jugás.',
+          'Dijiste que los que hablan no pagan tus cuentas. El clip se viralizó y todavía lo pasan cada vez que juegas.',
       },
     ],
   },
@@ -119,7 +119,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     rareza: 'comun',
     titulo: 'Te bajaron en la tele',
     texto:
-      'Un panelista dijo que sos "el jugador más sobrevalorado de {liga}" y el clip tiene cuatro millones de vistas.',
+      'Un panelista dijo que eres "el jugador más sobrevalorado de {liga}" y el clip tiene cuatro millones de vistas.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { temporadasMin: 1, famaMin: 20 },
     cooldown: 4,
@@ -243,7 +243,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     categoria: 'social',
     rareza: 'comun',
     titulo: 'El día libre',
-    texto: 'Tenés cuarenta y ocho horas sin obligaciones por primera vez en cuatro meses.',
+    texto: 'Tienes cuarenta y ocho horas sin obligaciones por primera vez en cuatro meses.',
     tipoDeRecuerdo: 'decision',
     cooldown: 4,
     opciones: [
@@ -317,7 +317,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
         id: 'nada',
         texto: 'Dejarlo ahí',
         efectos: { vida: { felicidad: -3 }, balance: 0 },
-        resultado: 'No pasó nada. A veces te preguntás qué hubiera pasado.',
+        resultado: 'No pasó nada. A veces te preguntas qué hubiera pasado.',
       },
     ],
   },

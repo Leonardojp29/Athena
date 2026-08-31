@@ -414,9 +414,9 @@ export function ofertasDeDebut(azar: Azar, carrera: Carrera, liga: Liga): Oferta
             ]
           : [
               'Te suman al plantel profesional y vas de a poco.',
-              'Primero la reserva, y si andás, arriba.',
+              'Primero la reserva, y si andas, arriba.',
               'El técnico quiere verte en pretemporada.',
-              'Firmás con la primera y entrenás con los grandes.',
+              'Firmas con la primera y entrenas con los grandes.',
             ],
         usados,
       ),

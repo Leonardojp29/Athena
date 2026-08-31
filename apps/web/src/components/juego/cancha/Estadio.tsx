@@ -370,7 +370,7 @@ export default function Estadio({ momento, contexto, colorRival, onJugar }: Prop
         onPointerLeave={() => arrastre && soltar()}
         tabIndex={0}
         className="absolute inset-0 block size-full touch-none outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        aria-label={`${TITULO[momento]}. Arrastrá desde la pelota hacia donde querés patear, o usá las flechas para apuntar y espacio para definir.`}
+        aria-label={`${TITULO[momento]}. Arrastra desde la pelota hacia donde quieres patear, o usá las flechas para apuntar y espacio para definir.`}
         role="application"
       />
       </div>
@@ -379,8 +379,8 @@ export default function Estadio({ momento, contexto, colorRival, onJugar }: Prop
         {fase === 'apuntando' && (
           <p className="text-sm text-chalk-dim">
             {esAtajada
-              ? 'Arrastrá hacia donde vas a volar, o apuntá con las flechas y volá con espacio.'
-              : 'Arrastrá desde la pelota hacia el arco: más largo, más fuerte, y si curvás el gesto la pelota curva. Con teclado, flechas y espacio.'}
+              ? 'Arrastra hacia donde vas a volar, o apunta con las flechas y vuela con espacio.'
+              : 'Arrastra desde la pelota hacia el arco: más largo, más fuerte, y si curvas el gesto la pelota curva. Con teclado, flechas y espacio.'}
           </p>
         )}
         {fase !== 'apuntando' && (

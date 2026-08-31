@@ -21,7 +21,7 @@ export default function Decision({ titulo, texto, opciones, onElegir }: Props) {
     <section data-escena className="flex flex-col gap-3">
       <header>
         <p className="text-2xs font-medium uppercase tracking-label text-primary-ink">
-          Tenés que decidir
+          Tienes que decidir
         </p>
         <h2 className="mt-0.5 font-display text-xl font-semibold uppercase leading-none tracking-label">
           {titulo}

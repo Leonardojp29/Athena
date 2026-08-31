@@ -629,8 +629,8 @@ function firmar(carrera: Carrera, ofertaId: string, azar: Azar, capitulo: Capitu
   };
 
   capitulo.consecuencia = esDebut
-    ? `Debutás en ${oferta.club.nombre}.`
-    : `Fichás por ${oferta.club.nombre}${desde ? `, dejando ${desde}` : ''}.`;
+    ? `Debutas en ${oferta.club.nombre}.`
+    : `Fichas por ${oferta.club.nombre}${desde ? `, dejando ${desde}` : ''}.`;
 
   siguiente = recordar(siguiente, {
     tipo: esDebut ? 'debut' : 'fichaje',
@@ -690,7 +690,7 @@ function renovar(carrera: Carrera, azar: Azar, capitulo: Capitulo): Carrera {
   const club = carrera.clubActual;
   if (!club) return carrera;
   const temporadas = entre(azar, 2, 5);
-  capitulo.consecuencia = `Renovás con ${club.nombre} por ${temporadas} temporadas.`;
+  capitulo.consecuencia = `Renuevas con ${club.nombre} por ${temporadas} temporadas.`;
   return {
     ...carrera,
     contrato: {

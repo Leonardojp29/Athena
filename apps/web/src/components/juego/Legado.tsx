@@ -65,6 +65,7 @@ export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) 
               nombre: carrera.futbolista.nombre,
               dorsal: carrera.futbolista.dorsal,
               puesto: carrera.futbolista.puesto,
+              costado: carrera.futbolista.costado,
               ovr: totales.ovrMaximo,
               nivel: veredicto.nivelMaximo,
               atributos: carrera.futbolista.atributos,

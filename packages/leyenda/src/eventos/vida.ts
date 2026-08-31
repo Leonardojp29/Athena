@@ -13,7 +13,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     categoria: 'dinero',
     rareza: 'comun',
     titulo: 'El primer sueldo de verdad',
-    texto: 'Firmaste tu primer contrato profesional. Es más plata de la que vio tu familia junta.',
+    texto: 'Firmaste tu primer contrato profesional. Es más dinero del que vio tu familia junta.',
     tipoDeRecuerdo: 'decision',
     condiciones: { edadMax: 21, temporadasMin: 1, sinEtiquetas: ['dinero:primer-sueldo'] },
     cooldown: 0,
@@ -72,7 +72,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           etiquetas: ['dinero:patrocinio'],
           balance: 4,
         },
-        resultado: 'Firmaste. Tu cara apareció en la vidriera de todos los shoppings del país.',
+        resultado: 'Firmaste. Tu cara apareció en la vitrina de todos los centros comerciales del país.',
       },
       {
         id: 'negociar',
@@ -120,7 +120,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           etiquetas: ['profesional:agencia'],
           balance: 3,
         },
-        resultado: 'Firmaste con ellos. Al que te llevó de la mano desde pibe no lo volviste a ver.',
+        resultado: 'Firmaste con ellos. Al que te llevó de la mano desde niño no lo volviste a ver.',
       },
       {
         id: 'quedarse',
@@ -155,7 +155,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           vida: { estres: 4 },
           balance: 4,
         },
-        resultado: 'Fuiste el primero en golpearle la puerta. Arrancó la temporada con vos de titular.',
+        resultado: 'Fuiste el primero en golpearle la puerta. Arrancó la temporada contigo de titular.',
       },
       {
         id: 'esperar',
@@ -190,7 +190,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           balance: 3,
         },
         resultado:
-          'Toques dos canciones y alguien lo filmó. El video tiene más vistas que tus goles y todavía no lo podés creer.',
+          'Toques dos canciones y alguien lo filmó. El video tiene más vistas que tus goles y todavía no lo puedes creer.',
       },
       {
         id: 'firmar-camisetas',
@@ -272,7 +272,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           etiquetas: ['caos:mitico'],
           balance: 4,
         },
-        resultado: 'No se lo contaste a nadie. Cada vez que entrás a una cancha te acordás de ese abrazo.',
+        resultado: 'No se lo contaste a nadie. Cada vez que entras a una cancha te acuerdas de ese abrazo.',
       },
     ],
   },
@@ -300,12 +300,12 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       },
       {
         id: 'pedir-que-siga',
-        texto: 'Pedir que la use el próximo pibe de la cantera',
+        texto: 'Pedir que la use el próximo chico de la cantera',
         efectos: {
           vida: { reputacion: 18, carinoDeLaHinchada: 12 },
           personalidad: { ego: -6 },
           etiquetas: ['legado:generoso'],
-          titular: { texto: '{APELLIDO}: "QUE LA USE UN PIBE DE ACÁ"', tono: 'elogio' },
+          titular: { texto: '{APELLIDO}: "QUE LA USE UN CHICO DE LA CASA"', tono: 'elogio' },
           balance: 10,
         },
         resultado:
@@ -318,7 +318,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     categoria: 'legado',
     rareza: 'raro',
     titulo: 'La última decisión',
-    texto: 'El cuerpo ya no responde como antes. Tenés una temporada más adentro, tal vez dos.',
+    texto: 'El cuerpo ya no responde como antes. Tienes una temporada más adentro, tal vez dos.',
     tipoDeRecuerdo: 'decision',
     condiciones: { edadMin: 34 },
     cooldown: 2,
@@ -362,7 +362,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     opciones: [
       {
         id: 'ir',
-        texto: 'Ir por la plata',
+        texto: 'Ir por el dinero',
         pista: 'Nadie te va a ver jugar. Tu familia no vuelve a trabajar nunca.',
         efectos: {
           vida: { dinero: 14, fama: -6, reputacion: -8, felicidad: 4 },

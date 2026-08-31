@@ -115,6 +115,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
             n: carrera.futbolista.nombre,
             d: carrera.futbolista.dorsal,
             p: carrera.futbolista.puesto,
+            ...(carrera.futbolista.costado ? { pc: carrera.futbolista.costado } : {}),
             o: veredicto.totales.ovrMaximo,
             v: veredicto.nivelMaximo,
             a: [

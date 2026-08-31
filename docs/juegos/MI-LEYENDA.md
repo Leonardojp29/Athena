@@ -16,6 +16,21 @@ mercado te ofrece **como máximo cuatro** equipos que te quieren, y elegís entr
 debutar y en cada ventana de transferencias. `MAX_OFERTAS = 4` es una regla del diseño, no un tope
 técnico: si algún día se ofrecen cinco, el juego pierde lo que lo hace un juego.
 
+## La creación
+
+Lo único que el jugador llena, y todo se señala en lugar de leerse: el puesto se toca sobre una
+cancha vista desde arriba, la liga se reconoce por el logo de la competencia y la nacionalidad por su
+bandera. No hay un solo `<select>`: pedir en una lista desplegable algo que se puede ver es pedirle
+al jugador que lea de más.
+
+- **La nacionalidad y la liga son dos cosas distintas.** Una define tu selección, la otra dónde
+  debutas. Un peruano que arranca en Argentina ya es una historia antes de jugar un partido.
+- **Lateral y extremo se eligen por banda.** `Costado` no es un puesto aparte —las cuentas del OVR
+  son idénticas por izquierda o por derecha— pero sí cambia cómo te llamas: la carta dice `EI`, no
+  `EXT`. `siglaDePuesto` y `nombreDePuesto` resuelven las dos formas.
+- El idioma del juego es **español neutral**: nada de voseo ni de regionalismos que dejen fuera a la
+  mitad de los lectores.
+
 ## El motor y la pantalla
 
 `packages/leyenda` es el juego. TypeScript puro, sin DOM, testeado con vitest. La web solo lo

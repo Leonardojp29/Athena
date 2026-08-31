@@ -78,6 +78,8 @@ export interface LigaDelMundo {
   pais: string;
   paisCodigo: string | null;
   bandera: string | null;
+  /** El logo de la competencia: la liga se reconoce por su marca antes que por su nombre. */
+  escudo: string | null;
   continente: string;
   peso: number;
   clubes: ClubDelMundo[];
@@ -144,6 +146,7 @@ export class MundoService {
         country: true,
         countryCode: true,
         flagUrl: true,
+        logoUrl: true,
         continent: true,
       },
       orderBy: { name: 'asc' },
@@ -166,6 +169,7 @@ export class MundoService {
         pais,
         paisCodigo: competencia.countryCode,
         bandera: competencia.flagUrl,
+        escudo: competencia.logoUrl,
         continente: competencia.continent ?? 'mundial',
         peso,
         clubes: clubes.map((club) => ({

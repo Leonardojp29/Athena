@@ -60,8 +60,8 @@ export default function Ofertas({
         </h2>
         <p className="shrink-0 text-2xs text-ink-muted">
           {cuantas === 0
-            ? 'Nadie preguntó por vos.'
-            : `${cuantas} te quiere${cuantas === 1 ? '' : 'n'} · elegís uno`}
+            ? 'Nadie preguntó por ti.'
+            : `${cuantas} te quiere${cuantas === 1 ? '' : 'n'} · eliges uno`}
         </p>
       </header>
 
