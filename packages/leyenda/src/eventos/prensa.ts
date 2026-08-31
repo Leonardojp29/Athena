@@ -122,7 +122,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
       'Un panelista dijo que sos "el jugador más sobrevalorado de {liga}" y el clip tiene cuatro millones de vistas.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { temporadasMin: 1, famaMin: 20 },
-    cooldown: 2,
+    cooldown: 4,
     opciones: [
       {
         id: 'ignorar',
@@ -166,7 +166,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     titulo: 'Quieren filmar tu vida',
     texto: 'Una plataforma te ofrece un documental de tres capítulos sobre tu carrera. Con cámaras en tu casa.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 55, temporadasMin: 4 },
+    condiciones: { famaMin: 55, temporadasMin: 3 },
     cooldown: 0,
     opciones: [
       {
@@ -200,7 +200,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     texto:
       'Un compañero cumple años y arma algo grande. Es jueves, y el domingo se juega contra el segundo de {liga}.',
     tipoDeRecuerdo: 'decision',
-    cooldown: 2,
+    cooldown: 4,
     opciones: [
       {
         id: 'ir-y-quedarse',
@@ -245,7 +245,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     titulo: 'El día libre',
     texto: 'Tenés cuarenta y ocho horas sin obligaciones por primera vez en cuatro meses.',
     tipoDeRecuerdo: 'decision',
-    cooldown: 2,
+    cooldown: 4,
     opciones: [
       {
         id: 'familia',
@@ -289,7 +289,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
       'Conociste a alguien en la presentación de una marca. Al día siguiente hay tres fotos suyas en los portales, y una tuya al lado.',
     tipoDeRecuerdo: 'romance',
     condiciones: { edadMin: 19, sinEtiquetas: ['vida:pareja'] },
-    cooldown: 4,
+    cooldown: 8,
     opciones: [
       {
         id: 'apostar',
@@ -330,7 +330,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
       'Un referente del plantel te grita delante de todos por una jugada. El vestuario queda en silencio.',
     tipoDeRecuerdo: 'conflicto',
     condiciones: { temporadasMin: 1 },
-    cooldown: 3,
+    cooldown: 6,
     opciones: [
       {
         id: 'plantarse',

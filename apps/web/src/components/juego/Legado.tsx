@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { NOMBRE_DE_NIVEL, calcularVeredicto, type Carrera, type Veredicto } from '@athena/leyenda';
+import { calcularVeredicto, type Carrera, type Veredicto } from '@athena/leyenda';
 import Carta from './Carta';
 
 /**
@@ -13,13 +13,12 @@ import Carta from './Carta';
 
 interface Props {
   carrera: Carrera;
-  onSeguir: () => void;
   onEmpezarDeNuevo: () => void;
   /** Guarda en el salón y devuelve el código compartible. */
   alGuardar: (veredicto: Veredicto) => string;
 }
 
-export default function Legado({ carrera, onSeguir, onEmpezarDeNuevo, alGuardar }: Props) {
+export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) {
   const veredicto = useMemo(() => calcularVeredicto(carrera), [carrera]);
   const [codigo] = useState(() => alGuardar(veredicto));
   const [copiado, setCopiado] = useState(false);
@@ -172,7 +171,6 @@ export default function Legado({ carrera, onSeguir, onEmpezarDeNuevo, alGuardar 
         </button>
       </footer>
       <p className="mt-2 break-all text-center text-[10px] text-ink-muted">{enlace}</p>
-      <span className="hidden">{typeof onSeguir}</span>
     </div>
   );
 }

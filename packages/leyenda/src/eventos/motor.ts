@@ -41,7 +41,7 @@ export interface Condiciones {
   ovrMax?: number;
   /** Rol exacto que hace falta. */
   roles?: Rol[];
-  /** Temporadas jugadas como mínimo (0 = puede pasar en la primera). */
+  /** Capítulos jugados como mínimo (0 = puede pasar en el primero). Doce es la carrera entera. */
   temporadasMin?: number;
   famaMin?: number;
   famaMax?: number;
@@ -102,7 +102,7 @@ export interface Evento {
   texto: string;
   tipoDeRecuerdo: TipoRecuerdo;
   condiciones?: Condiciones;
-  /** Temporadas que tienen que pasar para que pueda repetirse. 0 = una sola vez en la carrera. */
+  /** Años que tienen que pasar para que pueda repetirse. 0 = una sola vez en la carrera. */
   cooldown?: number;
   /** Peso extra sobre el de su rareza, para los eventos que deberían salir seguido en su contexto. */
   peso?: number;
@@ -139,7 +139,8 @@ export function cumple(evento: Evento, carrera: Carrera, etiquetas: Set<string>)
 
   if (c.contratoPorVencer && (carrera.contrato?.hasta ?? 9999) > carrera.anio + 1) return false;
 
-  const nota = carrera.temporadas.at(-1)?.notaMedia ?? carrera.enCurso?.notaMedia ?? 6.5;
+  /* La nota del último bienio jugado: es lo que el club y la prensa tienen a mano para juzgarte. */
+  const nota = carrera.temporadas.at(-1)?.notaMedia ?? 6.5;
   if (c.notaMin !== undefined && nota < c.notaMin) return false;
   if (c.notaMax !== undefined && nota > c.notaMax) return false;
 

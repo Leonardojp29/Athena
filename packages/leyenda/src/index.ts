@@ -1,11 +1,10 @@
 export * from './azar.js';
-export * from './beats.js';
+export * from './capitulo.js';
 export * from './crear.js';
 export * from './estado.js';
 export * from './legado.js';
 export * from './mercado.js';
 export * from './momentos.js';
-export * from './motor.js';
 export * from './ovr.js';
 export * from './temporada.js';
 export { CATALOGO, redactar } from './eventos/index.js';

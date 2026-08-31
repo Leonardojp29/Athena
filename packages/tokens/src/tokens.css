@@ -142,8 +142,15 @@
   --a-pitch-width: 680;
 }
 
-/* --- slate: la pizarra del vestuario --- */
-:root[data-theme='dark'] {
+/*
+ * Slate: la pizarra del vestuario.
+ *
+ * Vale para el documento entero cuando el tema es oscuro, y también para cualquier subárbol marcado
+ * con `data-tema-oscuro`. Eso último lo pide el juego: una carrera se vive mejor a oscuras aunque el
+ * resto del sitio esté en claro, y así no hay que duplicar un solo valor para conseguirlo.
+ */
+:root[data-theme='dark'],
+[data-tema-oscuro] {
   --a-color-bg: oklch(0.15 0.005 285);
   --a-color-bg-subtle: oklch(0.181 0.006 286);
   --a-color-surface: oklch(0.212 0.008 286);

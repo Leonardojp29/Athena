@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { NOMBRE_DE_PUESTO, semillaDe, type DatosDeCreacion, type Mundo, type Puesto, type Ritmo } from '@athena/leyenda';
+import { NOMBRE_DE_PUESTO, esDestinoTardio, semillaDe, type DatosDeCreacion, type Mundo, type Puesto } from '@athena/leyenda';
 
 /**
  * La creación: lo único que el jugador llena.
@@ -21,22 +21,24 @@ interface Props {
 const PUESTOS: Puesto[] = ['POR', 'DFC', 'LAT', 'MC', 'MO', 'EXT', 'DC'];
 const DORSALES = [1, 4, 5, 7, 8, 9, 10, 11, 14, 17, 20, 23];
 
-const RITMOS: Array<{ id: Ritmo; nombre: string; detalle: string }> = [
-  { id: 'expres', nombre: 'Exprés', detalle: 'Una carrera entera en unos minutos' },
-  { id: 'normal', nombre: 'Normal', detalle: 'El equilibrio entre detalle y ritmo' },
-  { id: 'intenso', nombre: 'Intenso', detalle: 'Cada temporada, con todas sus decisiones' },
-];
-
 export default function Creacion({ mundo, anio, onEmpezar }: Props) {
   const [nombre, setNombre] = useState('');
   const [dorsal, setDorsal] = useState(10);
   const [puesto, setPuesto] = useState<Puesto>('MO');
   const [pie, setPie] = useState<'derecha' | 'izquierda'>('derecha');
-  const [ligaSlug, setLigaSlug] = useState(mundo.ligas.at(-1)?.slug ?? mundo.ligas[0]?.slug ?? '');
-  const [ritmo, setRitmo] = useState<Ritmo>('normal');
-
-  /* Las ligas de menor peso primero: es donde empieza una carrera de verdad. */
-  const ligas = useMemo(() => [...mundo.ligas].sort((a, b) => a.peso - b.peso), [mundo.ligas]);
+  /*
+   * Las ligas donde se puede empezar una carrera: quedan afuera las de destino tardío —Arabia, Japón,
+   * Canadá— que aparecen recién pasados los treinta, cuando son una decisión con sabor en lugar de un
+   * mal comienzo. Ordenadas de la más chica a la más grande, porque empezar abajo y llegar arriba es
+   * el juego; quien quiera arrancar en la Premier igual puede.
+   */
+  const ligas = useMemo(
+    () => mundo.ligas.filter((l) => !esDestinoTardio(l)).sort((a, b) => a.peso - b.peso),
+    [mundo.ligas],
+  );
+  const [ligaSlug, setLigaSlug] = useState(
+    mundo.ligas.find((l) => l.slug === 'primera-division')?.slug ?? '',
+  );
   const liga = ligas.find((l) => l.slug === ligaSlug) ?? ligas[0];
 
   const listo = nombre.trim().length >= 2 && liga !== undefined;
@@ -53,7 +55,6 @@ export default function Creacion({ mundo, anio, onEmpezar }: Props) {
       paisCodigo: liga.paisCodigo,
       bandera: liga.bandera,
       ligaSlug: liga.slug,
-      ritmo,
       semilla: semillaDe(`${nombre.trim()}|${dorsal}|${puesto}|${liga.slug}|${Date.now()}`),
       anio,
     });
@@ -165,29 +166,12 @@ export default function Creacion({ mundo, anio, onEmpezar }: Props) {
           </select>
           {liga && (
             <p className="mt-1.5 text-2xs text-ink-muted">
-              {liga.clubes.length} clubes reales. Vas a ser {liga.pais === 'Internacional' ? 'internacional' : `de ${liga.pais}`}, y
-              los clubes que te quieran salen de esta liga.
+              Vas a ser de {liga.pais} y a debutar en un club mediano de esta liga. Si rendís, después
+              llegan las ofertas de los grandes, de Sudamérica y de Europa.
             </p>
           )}
         </div>
 
-        <fieldset>
-          <legend className="mb-1.5 text-2xs font-medium uppercase tracking-label text-ink-muted">Ritmo</legend>
-          <div className="grid gap-1.5 sm:grid-cols-3">
-            {RITMOS.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRitmo(r.id)}
-                aria-pressed={ritmo === r.id}
-                className="cursor-pointer rounded-md border border-border px-3 py-2 text-left transition-colors hover:border-border-strong aria-pressed:border-primary-ink aria-pressed:bg-primary/12"
-              >
-                <span className="block font-display text-sm font-semibold uppercase tracking-label">{r.nombre}</span>
-                <span className="mt-0.5 block text-[10px] leading-snug text-ink-muted">{r.detalle}</span>
-              </button>
-            ))}
-          </div>
-        </fieldset>
 
         <button
           type="submit"

@@ -10,7 +10,6 @@
 
 export type Puesto = 'POR' | 'DFC' | 'LAT' | 'MC' | 'MO' | 'EXT' | 'DC';
 export type Pie = 'derecha' | 'izquierda';
-export type Ritmo = 'expres' | 'normal' | 'intenso';
 
 /** Los siete materiales de la carta. El orden es la progresión. */
 export const NIVELES = [
@@ -77,8 +76,14 @@ export interface Club {
   escudo: string | null;
   primario: string | null;
   secundario: string | null;
-  /** 0-100, derivada de sus posiciones reales en la tabla. */
+  /** 0-100, derivada de sus posiciones reales en la tabla. Es relativa a su liga. */
   fuerza: number;
+  /**
+   * 0-100 absoluto: qué tan conocido es. Manchester City 100, Boca 89, Universitario 78, un club de
+   * mitad de tabla peruano 45. Es lo que decide si una carrera se siente una carrera o un paseo por
+   * clubes que nadie ubica.
+   */
+  renombre: number;
   ligaSlug: string;
   ligaNombre: string;
   pais: string;
@@ -166,7 +171,13 @@ export interface Trofeo {
   aporte?: { partidos: number; goles: number; asistencias: number };
 }
 
-/** El rendimiento de una temporada: lo que la carta y los gráficos leen. */
+/**
+ * Una fila de la línea de la carrera: **dos temporadas** resumidas.
+ *
+ * El nombre quedó de la versión anterior, donde era una sola. La unidad del juego ahora es el
+ * bienio, así el salto de media entre filas se siente —de 50 a 59, no de 50 a 52— y doce filas
+ * cuentan una carrera entera.
+ */
 export interface Temporada {
   anio: number;
   edad: number;
@@ -231,27 +242,24 @@ export interface Futbolista {
   personalidad: Personalidad;
 }
 
-export type Etapa =
-  | 'creacion'
-  | 'debut'
-  | 'pretemporada'
-  | 'tramo'
-  | 'decision'
-  | 'momento'
-  | 'cierre'
-  | 'mercado'
-  | 'retiro'
-  | 'legado';
+/**
+ * Dónde está la carrera. Cuatro estados y no diez: la versión anterior tenía una rueda de
+ * pretemporada → tramo → cierre → mercado que exigía cien clics para llegar al retiro. Ahora un
+ * capítulo siempre hace lo mismo —simular dos años y pedir una decisión—, y el estado solo dice
+ * **qué clase de decisión** está esperando.
+ */
+export type Etapa = 'decision' | 'momento' | 'mercado' | 'legado';
 
 export interface Carrera {
   version: 1;
   semilla: number;
   /** El estado del generador: guardar y retomar sin cortar el hilo del azar. */
   azar: number;
-  ritmo: Ritmo;
   /** La liga que el jugador eligió al crear: de ahí salen los clubes que lo quieren al debutar. */
   ligaDeOrigen: string;
   etapa: Etapa;
+  /** En qué capítulo va, de 0 (el debut, a los 16) a 11 (los 38). Doce y se acabó. */
+  capitulo: number;
   futbolista: Futbolista;
   vida: Vida;
   relaciones: Record<Vinculo, Relacion>;
@@ -260,10 +268,7 @@ export interface Carrera {
   contrato: Contrato | null;
   rol: Rol;
   anio: number;
-  /** En qué tramo de la temporada va, de 0 a `tramosPorTemporada`. */
-  tramo: number;
-  /** Acumulado de la temporada en curso, se cierra en `cierre`. */
-  enCurso: Temporada | null;
+  /** Una fila por capítulo: es la línea de la carrera que el jugador ve llenarse. */
   temporadas: Temporada[];
   trofeos: Trofeo[];
   recuerdos: Recuerdo[];
@@ -349,8 +354,20 @@ export const NOMBRE_DE_NIVEL: Record<Nivel, string> = {
   inmortal: 'Inmortal',
 };
 
-/** Cuántos tramos tiene una temporada según el ritmo elegido. */
-export const TRAMOS_POR_RITMO: Record<Ritmo, number> = { expres: 2, normal: 4, intenso: 6 };
+/**
+ * Doce capítulos, de dos en dos años, de los 16 a los 38.
+ *
+ * Es el número que define el juego. La versión anterior duraba veinte temporadas con hasta seis
+ * tramos cada una —entre cien y trescientos clics— y casi nadie llegaba al final, que es justo
+ * donde está lo bueno. Doce decisiones caben en tres minutos y en un viaje en micro.
+ */
+export const CAPITULOS = 12;
+export const EDAD_INICIAL = 16;
+export const ANIOS_POR_CAPITULO = 2;
+
+/** La edad en la que ocurre cada capítulo: 16, 18, 20… 38. */
+export const edadDelCapitulo = (capitulo: number): number =>
+  EDAD_INICIAL + capitulo * ANIOS_POR_CAPITULO;
 
 /** Nunca más de cuatro clubes te quieren a la vez. Es una regla del juego, no un tope técnico. */
 export const MAX_OFERTAS = 4;

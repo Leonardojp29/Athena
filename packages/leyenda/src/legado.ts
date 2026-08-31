@@ -28,17 +28,18 @@ export function buscarPrime(temporadas: Temporada[]): Prime | null {
   if (temporadas.length === 0) return null;
   let mejor: { puntaje: number; desde: number; hasta: number } | null = null;
 
-  for (const largo of [5, 4, 3]) {
+  /* Ventanas de dos y tres capítulos: con doce filas, cinco sería casi media carrera. */
+  for (const largo of [3, 2]) {
     for (let i = 0; i + largo <= temporadas.length; i++) {
       const ventana = temporadas.slice(i, i + largo);
       const puntaje = ventana.reduce(
         (suma, t) =>
           suma +
-          t.goles * 3 +
-          t.asistencias * 2 +
-          t.trofeos.length * 12 +
-          (t.notaMedia - 6.4) * 20 +
-          t.partidos * 0.4,
+          t.goles * 2 +
+          t.asistencias * 1.5 +
+          t.trofeos.length * 14 +
+          (t.notaMedia - 6.4) * 25 +
+          t.partidos * 0.2,
         0,
       );
       /* Ventanas largas ganan por acumulación: se normaliza por temporada para que compitan de igual a igual. */
@@ -55,7 +56,8 @@ export function buscarPrime(temporadas: Temporada[]): Prime | null {
 
   return {
     desde: ventana[0]?.edad ?? 0,
-    hasta: ventana.at(-1)?.edad ?? 0,
+    /* El último capítulo de la ventana cubre dos años: el prime llega hasta el final del bienio. */
+    hasta: (ventana.at(-1)?.edad ?? 0) + 1,
     partidos,
     goles: ventana.reduce((s, t) => s + t.goles, 0),
     asistencias: ventana.reduce((s, t) => s + t.asistencias, 0),
@@ -92,7 +94,7 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
     t.at(-1)?.clubSlug === carrera.clubDeOrigen.slug &&
     clubes.size > 1;
 
-  if (clubes.size === 1 && t.length >= 10) {
+  if (clubes.size === 1 && t.length >= 8) {
     return {
       id: 'heroe-de-un-solo-club',
       titulo: 'El héroe de un solo club',
@@ -100,7 +102,7 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
         'Una vida, una camiseta. Pudiste irte cuando quisiste y no te fuiste nunca: en ese estadio tu nombre no se discute.',
     };
   }
-  if (volvioACasa && trofeos >= 3) {
+  if (volvioACasa && trofeos >= 2) {
     return {
       id: 'el-que-volvio',
       titulo: 'El que volvió',
@@ -132,7 +134,7 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
         'Tenías todo. Los que te vieron entrenar todavía cuentan lo que podías hacer con una pelota, y la vitrina no los acompaña.',
     };
   }
-  if (clubes.size >= 6) {
+  if (clubes.size >= 5) {
     return {
       id: 'mercenario',
       titulo: 'El mercenario',
@@ -155,7 +157,7 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
       descripcion: 'Doscientos gritos o más. Cada arquero de tu generación te tiene en la memoria.',
     };
   }
-  if (t.length >= 15 && carrera.futbolista.personalidad.profesionalismo >= 65) {
+  if (t.length >= 10 && carrera.futbolista.personalidad.profesionalismo >= 65) {
     return {
       id: 'profesional',
       titulo: 'El profesional',
@@ -163,7 +165,7 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
         'Quince temporadas sin un escándalo, sin una excusa y casi sin faltar. La carrera más difícil de todas.',
     };
   }
-  if (etiquetas.has('lesion:apurada') && t.length >= 8) {
+  if (etiquetas.has('lesion:apurada') && t.length >= 6) {
     return {
       id: 'resucitado',
       titulo: 'El resucitado',

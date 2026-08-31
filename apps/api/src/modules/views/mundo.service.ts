@@ -58,6 +58,13 @@ export interface ClubDelMundo {
   primario: string | null;
   secundario: string | null;
   fuerza: number;
+  /**
+   * Qué tan conocido es el club, de 0 a 100. Es distinto de la fuerza: la fuerza es relativa a su
+   * liga —el mejor de Canadá tiene la misma que un mediano español— y el renombre es absoluto. Sin
+   * él, un juego de carrera te hace debutar en Juan Pablo II College y la fantasía se rompe en el
+   * primer minuto.
+   */
+  renombre: number;
   ligaSlug: string;
   ligaNombre: string;
   pais: string;
@@ -99,6 +106,34 @@ export class MundoService {
     return { ligas, copas, generadoEn: new Date().toISOString().slice(0, 10) };
   }
 
+  /**
+   * Cuántas veces cada club jugó una copa continental en las últimas temporadas.
+   *
+   * Es la señal más honesta de "club grande" que esta base puede dar: la Libertadores y la Champions
+   * las juegan los que pelean arriba, año tras año. Una sola consulta para todos los clubes, que
+   * después se cruza en memoria.
+   */
+  private async participacionesContinentales(): Promise<Map<string, number>> {
+    const filas = await this.prisma.$queryRaw<Array<{ slug: string; veces: number }>>`
+      WITH copas AS (
+        SELECT s.id
+        FROM seasons s
+        JOIN competitions c ON c.id = s.competition_id
+        WHERE c.scope = 'clubs' AND c.format = 'cup' AND c.country_code IS NULL
+          AND s.year >= date_part('year', now()) - 4
+      ),
+      participantes AS (
+        SELECT DISTINCT m.season_id, m.home_team_id AS team_id FROM matches m WHERE m.season_id IN (SELECT id FROM copas)
+        UNION
+        SELECT DISTINCT m.season_id, m.away_team_id AS team_id FROM matches m WHERE m.season_id IN (SELECT id FROM copas)
+      )
+      SELECT t.slug, count(DISTINCT p.season_id)::int AS veces
+      FROM participantes p
+      JOIN teams t ON t.id = p.team_id
+      GROUP BY t.slug`;
+    return new Map(filas.map((f) => [f.slug, f.veces]));
+  }
+
   private async ligasJugables(): Promise<LigaDelMundo[]> {
     const competencias = await this.prisma.competition.findMany({
       where: { isActive: true, scope: 'clubs', format: 'league' },
@@ -114,6 +149,7 @@ export class MundoService {
       orderBy: { name: 'asc' },
     });
 
+    const continentales = await this.participacionesContinentales();
     const ligas: LigaDelMundo[] = [];
     for (const competencia of competencias) {
       const clubes = await this.clubesDe(competencia.id);
@@ -146,6 +182,12 @@ export class MundoService {
           paisCodigo: competencia.countryCode,
           continente: competencia.continent ?? 'mundial',
           fuerza: this.fuerzaDe(club.posicionMedia, club.equipos, peso),
+          renombre: this.renombreDe(
+            club.posicionMedia,
+            club.equipos,
+            peso,
+            continentales.get(club.slug) ?? 0,
+          ),
         })),
       });
     }
@@ -197,8 +239,12 @@ export class MundoService {
       WHERE s.season_id IN (SELECT id FROM temporadas)
         AND t.is_national_team = false
       GROUP BY t.slug, t.name, t.short_name, t.logo_url, t.primary_color, t.secondary_color
-      /* Solo los que siguen en la categoría: uno que jugó una sola de las tres se fue o subió. */
-      HAVING count(DISTINCT s.season_id) >= 1
+      /*
+       * Al menos dos de las tres temporadas. Con una sola entraban los ascendidos y descendidos —los
+       * clubes que nadie ubica— y además distorsionaban la fuerza: un equipo que apareció una vez y
+       * salió primero quedaba con la media del campeón (así aparecía "Hull City 90" en la Premier).
+       */
+      HAVING count(DISTINCT s.season_id) >= 2
       ORDER BY avg(s.position) ASC
       LIMIT 30`;
   }
@@ -217,6 +263,30 @@ export class MundoService {
     const piso = 30 + pesoDeLiga * 0.32;
     const fuerza = piso + (techo - piso) * Math.max(0, Math.min(1, relativa));
     return Math.round(Math.max(30, Math.min(95, fuerza)));
+  }
+
+  /**
+   * Qué tan conocido es un club, de 0 a 100.
+   *
+   * Tres señales, en orden de peso: **la liga** donde juega (la Premier pesa 100, la peruana 54),
+   * **dónde termina** dentro de ella, y **cuántas veces jugó una copa continental**, que es lo que
+   * separa a un grande de un equipo que aguanta la categoría. Un club de una liga chica que va todos
+   * los años a la Libertadores termina más conocido que un mediano europeo, y eso es correcto: en
+   * Sudamérica lo conoce todo el mundo.
+   */
+  private renombreDe(
+    posicionMedia: number,
+    equipos: number,
+    pesoDeLiga: number,
+    continentales: number,
+  ): number {
+    const total = Math.max(8, equipos || 20);
+    const relativa = 1 - (posicionMedia - 1) / (total - 1);
+    const porLiga = pesoDeLiga * 0.55;
+    const porPosicion = relativa * 25;
+    /* Cuatro participaciones seguidas ya es un grande de su país: se satura ahí. */
+    const porCopas = Math.min(continentales, 4) * 6;
+    return Math.round(Math.max(0, Math.min(100, porLiga + porPosicion + porCopas)));
   }
 
   /** Las copas continentales de clubes, con cuántos clasifican por liga. */

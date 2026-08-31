@@ -55,7 +55,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     titulo: 'Doble turno',
     texto: 'El preparador físico te ofrece quedarte a un segundo turno tres veces por semana.',
     tipoDeRecuerdo: 'decision',
-    cooldown: 3,
+    cooldown: 6,
     opciones: [
       {
         id: 'aceptar',
@@ -98,7 +98,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       '{dt} te dejó afuera del once tres partidos seguidos. Tenés la puerta de su oficina a diez metros.',
     tipoDeRecuerdo: 'conflicto',
     condiciones: { roles: ['suplente', 'rotacion', 'promesa'], temporadasMin: 1 },
-    cooldown: 2,
+    cooldown: 4,
     peso: 1.6,
     opciones: [
       {
@@ -148,7 +148,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     texto: 'Se viene {rival}. La ciudad no habla de otra cosa y a vos te preguntan en cada semáforo.',
     tipoDeRecuerdo: 'decision',
     condiciones: { temporadasMin: 1 },
-    cooldown: 2,
+    cooldown: 4,
     peso: 1.8,
     opciones: [
       {
@@ -191,7 +191,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     titulo: 'La cinta',
     texto: 'El capitán se va del club. {dt} te llama a su oficina con la cinta sobre el escritorio.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { edadMin: 24, roles: ['titular', 'estrella'], temporadasMin: 3 },
+    condiciones: { edadMin: 24, roles: ['titular', 'estrella'], temporadasMin: 2 },
     cooldown: 0,
     opciones: [
       {
@@ -231,7 +231,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       'Minuto 89 contra {rival}. Penal a favor y el pateador habitual está en el banco. La pelota te queda a los pies.',
     tipoDeRecuerdo: 'gol',
     condiciones: { temporadasMin: 1 },
-    cooldown: 1,
+    cooldown: 2,
     peso: 1.4,
     opciones: [
       {
@@ -262,8 +262,8 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     texto:
       'Sentiste el crujido antes del dolor. El parte médico dice seis meses y la palabra "ligamento" aparece tres veces.',
     tipoDeRecuerdo: 'lesion',
-    condiciones: { temporadasMin: 2 },
-    cooldown: 6,
+    condiciones: { temporadasMin: 1 },
+    cooldown: 12,
     opciones: [
       {
         id: 'apurar',
@@ -325,7 +325,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       '{club} está a tres puntos de la zona roja y faltan cinco fechas. En el vestuario ya nadie habla de la copa.',
     tipoDeRecuerdo: 'decision',
     condiciones: { clubFuerzaMax: 62, temporadasMin: 1 },
-    cooldown: 3,
+    cooldown: 6,
     opciones: [
       {
         id: 'liderar',
@@ -363,7 +363,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       'La agarraste de treinta metros y entró en el ángulo. El estadio hizo un ruido que no habías escuchado nunca.',
     tipoDeRecuerdo: 'gol',
     condiciones: { temporadasMin: 1 },
-    cooldown: 2,
+    cooldown: 4,
     opciones: [
       {
         id: 'dedicar',
@@ -395,8 +395,8 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     titulo: 'La final',
     texto: 'Llegaron a la final. Noventa minutos entre una vida de trabajo y una vitrina vacía.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 2, clubFuerzaMin: 62 },
-    cooldown: 2,
+    condiciones: { temporadasMin: 1, clubFuerzaMin: 62 },
+    cooldown: 4,
     opciones: [
       {
         id: 'concentrado',

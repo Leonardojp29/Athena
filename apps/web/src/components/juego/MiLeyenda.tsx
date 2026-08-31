@@ -1,144 +1,72 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  DURACION,
-  MAX_OFERTAS,
-  NOMBRE_DE_NIVEL,
-  NOMBRE_DE_ROL,
-  avanzar,
+  CAPITULOS,
+  abrirCarrera,
+  avanzarCapitulo,
   calcularVeredicto,
   crearCarrera,
   eventoPendiente,
-  tramosDe,
-  type Accion,
-  type Beat,
+  puedeRenovar,
+  type Capitulo,
   type Carrera,
+  type Eleccion,
   type Mundo,
 } from '@athena/leyenda';
-import {
-  borrarPartida,
-  codificarLegado,
-  guardarEnElSalon,
-  guardarPartida,
-  leerPartida,
-} from '../../lib/leyenda';
+import { borrarPartida, codificarLegado, guardarEnElSalon, guardarPartida, leerPartida } from '../../lib/leyenda';
 import Carta, { type DatosDeCarta } from './Carta';
 import Creacion from './Creacion';
-import Ofertas from './Ofertas';
 import Decision from './Decision';
-import Momento from './Momento';
+import Ficha from './Ficha';
 import Legado from './Legado';
-import Relato from './Relato';
-import Panel from './Panel';
+import LineaDeCarrera from './LineaDeCarrera';
+import Momento from './Momento';
+import Ofertas from './Ofertas';
+import ResumenDelCapitulo from './ResumenDelCapitulo';
 
 /**
- * Mi Leyenda: la isla que reproduce el juego.
+ * Mi Leyenda: doce decisiones y una carrera.
  *
- * No sabe una sola regla del fútbol. Le pide al motor que avance, recibe **un guion de beats** y los
- * pone en pantalla en orden, con el tiempo que cada uno pide: un dato pasa en 320 ms y un título ocupa
- * un segundo. Cuando el guion termina, muestra lo que el jugador tiene que hacer.
- *
- * Esa separación es la que hace que esto se sienta un videojuego y siga siendo mantenible: la película
- * la arma el motor, la pantalla solo la proyecta.
+ * La isla es deliberadamente simple. Un estado —la carrera—, un verbo —avanzar un capítulo— y dos
+ * columnas: quién sos y qué pasó. No hay reproductor de beats ni cola de temporizadores: cada clic
+ * devuelve el resumen de dos años y la decisión siguiente, y el juego entero se termina en tres
+ * minutos. La versión anterior tenía la maquinaria de una película y el ritmo de un trámite.
  */
 
 interface Props {
   mundo: Mundo;
-  /** El año real, para que la carrera arranque cuando el jugador está jugando. */
   anio: number;
 }
 
-interface Estado {
-  carrera: Carrera | null;
-  /** Los beats que faltan mostrar, y los ya mostrados. */
-  pendientes: Beat[];
-  mostrados: Beat[];
-}
-
-type Mensaje =
-  | { tipo: 'nueva'; carrera: Carrera; beats: Beat[] }
-  | { tipo: 'retomar'; carrera: Carrera }
-  | { tipo: 'avance'; carrera: Carrera; beats: Beat[] }
-  | { tipo: 'siguiente-beat' }
-  | { tipo: 'mostrar-todo' }
-  | { tipo: 'reiniciar' };
-
-function reducir(estado: Estado, mensaje: Mensaje): Estado {
-  switch (mensaje.tipo) {
-    case 'nueva':
-    case 'avance':
-      /*
-       * Cada avance es su propia película: los beats del paso anterior salen de pantalla. Acumularlos
-       * dejaba el capítulo viejo arriba del nuevo y el jugador leía dos escenas mezcladas; la historia
-       * completa vive en la pestaña Historia, que es donde alguien la va a buscar.
-       */
-      return { carrera: mensaje.carrera, pendientes: mensaje.beats, mostrados: [] };
-    case 'retomar':
-      return { carrera: mensaje.carrera, pendientes: [], mostrados: [] };
-    case 'siguiente-beat': {
-      const [primero, ...resto] = estado.pendientes;
-      if (!primero) return estado;
-      return { ...estado, pendientes: resto, mostrados: [...estado.mostrados, primero] };
-    }
-    case 'mostrar-todo':
-      return { ...estado, pendientes: [], mostrados: [...estado.mostrados, ...estado.pendientes] };
-    case 'reiniciar':
-      return { carrera: null, pendientes: [], mostrados: [] };
-  }
-}
-
 export default function MiLeyenda({ mundo, anio }: Props) {
-  const [estado, enviar] = useReducer(reducir, { carrera: null, pendientes: [], mostrados: [] });
+  const [carrera, setCarrera] = useState<Carrera | null>(null);
+  const [capitulo, setCapitulo] = useState<Capitulo | null>(null);
   const [listo, setListo] = useState(false);
   const [ascenso, setAscenso] = useState(false);
-  const relato = useRef<HTMLDivElement>(null);
 
-  /* Al abrir: si hay partida guardada, se retoma; si no, la creación. */
   useEffect(() => {
     const guardada = leerPartida();
-    if (guardada) enviar({ tipo: 'retomar', carrera: guardada });
+    if (guardada) setCarrera(guardada);
     setListo(true);
   }, []);
 
-  /* Cada cambio de carrera se guarda: cerrar la pestaña en mitad de una temporada no pierde nada. */
   useEffect(() => {
-    if (estado.carrera) guardarPartida(estado.carrera);
-  }, [estado.carrera]);
+    if (carrera) guardarPartida(carrera);
+  }, [carrera]);
 
-  /*
-   * El reproductor: saca un beat de la cola cada tanto, según su intensidad. Un solo temporizador vivo,
-   * y se limpia al desmontar o al cambiar de beat, así nunca se solapan dos películas.
-   */
+  /* La carta gira cuando el capítulo trajo un cambio de material. */
   useEffect(() => {
-    const siguiente = estado.pendientes[0];
-    if (!siguiente) return;
-    const espera = DURACION[siguiente.intensidad];
-    const reloj = window.setTimeout(() => enviar({ tipo: 'siguiente-beat' }), espera);
-    return () => window.clearTimeout(reloj);
-  }, [estado.pendientes]);
-
-  /* La carta gira cuando el guion trae un ascenso de material. */
-  useEffect(() => {
-    const ultimo = estado.mostrados.at(-1);
-    if (ultimo?.clase !== 'carta') return;
+    if (!capitulo?.ascenso) return;
     setAscenso(true);
     const reloj = window.setTimeout(() => setAscenso(false), 1100);
     return () => window.clearTimeout(reloj);
-  }, [estado.mostrados]);
+  }, [capitulo]);
 
-  /* El relato sigue al último beat sin arrastrar la página entera. */
-  useEffect(() => {
-    const nodo = relato.current;
-    if (nodo) nodo.scrollTop = nodo.scrollHeight;
-  }, [estado.mostrados]);
-
-  const carrera = estado.carrera;
-  const reproduciendo = estado.pendientes.length > 0;
-
-  const mover = useCallback(
-    (accion: Accion) => {
+  const avanzar = useCallback(
+    (eleccion: Eleccion) => {
       if (!carrera) return;
-      const { carrera: nueva, beats } = avanzar(carrera, accion, mundo);
-      enviar({ tipo: 'avance', carrera: nueva, beats });
+      const resultado = avanzarCapitulo(carrera, eleccion, mundo);
+      setCarrera(resultado.carrera);
+      setCapitulo(resultado.capitulo);
     },
     [carrera, mundo],
   );
@@ -146,33 +74,36 @@ export default function MiLeyenda({ mundo, anio }: Props) {
   const empezar = useCallback(
     (datos: Parameters<typeof crearCarrera>[0]) => {
       const inicial = crearCarrera(datos);
-      /* El primer avance arma las ofertas del debut: nadie elige club de una lista. */
-      const { carrera: conOfertas, beats } = avanzar(inicial, { tipo: 'seguir' }, mundo);
-      enviar({ tipo: 'nueva', carrera: conOfertas, beats });
+      setCarrera(abrirCarrera(inicial, mundo).carrera);
+      setCapitulo(null);
     },
     [mundo],
   );
 
   const empezarDeNuevo = useCallback(() => {
     borrarPartida();
-    enviar({ tipo: 'reiniciar' });
+    setCarrera(null);
+    setCapitulo(null);
   }, []);
 
-  const datosDeCarta = useMemo<DatosDeCarta | null>(() => {
-    if (!carrera) return null;
-    return {
-      nombre: carrera.futbolista.nombre,
-      dorsal: carrera.futbolista.dorsal,
-      puesto: carrera.futbolista.puesto,
-      ovr: carrera.ovr,
-      nivel: carrera.nivel,
-      atributos: carrera.futbolista.atributos,
-      club: carrera.clubActual,
-      pais: carrera.futbolista.pais,
-      bandera: carrera.futbolista.bandera,
-      edad: carrera.futbolista.edad,
-    };
-  }, [carrera]);
+  const datosDeCarta = useMemo<DatosDeCarta | null>(
+    () =>
+      carrera
+        ? {
+            nombre: carrera.futbolista.nombre,
+            dorsal: carrera.futbolista.dorsal,
+            puesto: carrera.futbolista.puesto,
+            ovr: carrera.ovr,
+            nivel: carrera.nivel,
+            atributos: carrera.futbolista.atributos,
+            club: carrera.clubActual,
+            pais: carrera.futbolista.pais,
+            bandera: carrera.futbolista.bandera,
+            edad: carrera.futbolista.edad,
+          }
+        : null,
+    [carrera],
+  );
 
   if (!listo) {
     return (
@@ -182,16 +113,12 @@ export default function MiLeyenda({ mundo, anio }: Props) {
     );
   }
 
-  if (!carrera) {
-    return <Creacion mundo={mundo} anio={anio} onEmpezar={empezar} />;
-  }
+  if (!carrera) return <Creacion mundo={mundo} anio={anio} onEmpezar={empezar} />;
 
-  /* El retiro cierra la carrera y la manda al salón una sola vez. */
-  if (carrera.etapa === 'legado' || (carrera.etapa === 'retiro' && !reproduciendo)) {
+  if (carrera.etapa === 'legado') {
     return (
       <Legado
         carrera={carrera}
-        onSeguir={() => mover({ tipo: 'seguir' })}
         onEmpezarDeNuevo={empezarDeNuevo}
         alGuardar={(veredicto) => {
           const codigo = codificarLegado({
@@ -226,86 +153,63 @@ export default function MiLeyenda({ mundo, anio }: Props) {
     );
   }
 
-  const momento = carrera.pendiente?.clase === 'momento' && !reproduciendo ? carrera.pendiente : null;
-  const decision = carrera.pendiente?.clase === 'decision' && !reproduciendo ? eventoPendiente(carrera, mundo) : null;
-  const eligiendoClub = (carrera.etapa === 'debut' || carrera.etapa === 'mercado') && !reproduciendo;
+  const momento = carrera.pendiente?.clase === 'momento' ? carrera.pendiente : null;
+  const decision = carrera.pendiente?.clase === 'decision' ? eventoPendiente(carrera, mundo) : null;
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[19rem_1fr] lg:gap-6 lg:py-6">
-      {/*
-        En escritorio la identidad va a la izquierda y la acción a la derecha. En el teléfono el orden
-        se invierte: primero lo que hay que hacer y después quién sos. Con la carta arriba había que
-        pasar seiscientos píxeles de scroll para llegar a patear un penal, y el juego se jugaba de
-        abajo hacia arriba. La carta también entra más chica: en una pantalla de mano es una referencia,
-        no la escena.
-      */}
-      <aside className="order-2 flex flex-col gap-3 lg:order-1 lg:sticky lg:top-20 lg:self-start">
-        {datosDeCarta && (
-          <Carta
-            datos={datosDeCarta}
-            asciende={ascenso}
-            class="mx-auto max-w-[13rem] sm:max-w-[16rem] lg:max-w-[19rem]"
-          />
-        )}
-        <Panel carrera={carrera} />
-      </aside>
+    <div className="mx-auto grid w-full max-w-5xl gap-4 px-3 py-4 lg:grid-cols-[22rem_1fr] lg:gap-5 lg:px-4">
+      {/* Izquierda: quién sos y qué hay que decidir. En el teléfono, la decisión va primero. */}
+      <div className="order-1 flex flex-col gap-3">
+        <div className="order-2 lg:order-1">
+          <Ficha carrera={carrera} />
+        </div>
 
-      <section className="order-1 min-w-0 lg:order-2">
-        {momento ? (
-          <Momento
-            momento={momento.momento}
-            contexto={momento.contexto}
-            puesto={carrera.futbolista.puesto}
-            onJugar={(intencion) => mover({ tipo: 'jugar-momento', intencion })}
-          />
-        ) : decision ? (
-          <Decision
-            titulo={decision.titulo}
-            texto={decision.texto}
-            opciones={decision.opciones}
-            onElegir={(opcionId) => mover({ tipo: 'decidir', opcionId })}
-          />
-        ) : eligiendoClub ? (
-          <Ofertas
-            ofertas={carrera.ofertas}
-            esDebut={carrera.etapa === 'debut'}
-            clubActual={carrera.clubActual}
-            puedeQuedarse={carrera.etapa === 'mercado'}
-            onFirmar={(ofertaId) => mover({ tipo: 'elegir-oferta', ofertaId })}
-            onQuedarse={() => mover({ tipo: 'renovar' })}
-            onRechazarTodo={() => mover({ tipo: 'seguir' })}
-          />
-        ) : (
-          <Relato
-            ref={relato}
-            beats={estado.mostrados}
-            reproduciendo={reproduciendo}
-            titulo={tituloDeEtapa(carrera)}
-            onSaltar={() => enviar({ tipo: 'mostrar-todo' })}
-            onSeguir={() => mover({ tipo: 'seguir' })}
-          />
+        <div className="order-1 flex flex-col gap-3 lg:order-2">
+          {capitulo && <ResumenDelCapitulo capitulo={capitulo} />}
+
+          {momento ? (
+            <Momento
+              momento={momento.momento}
+              contexto={momento.contexto}
+              puesto={carrera.futbolista.puesto}
+              onJugar={(intencion) => avanzar({ tipo: 'jugar-momento', intencion })}
+            />
+          ) : decision ? (
+            <Decision
+              titulo={decision.titulo}
+              texto={decision.texto}
+              opciones={decision.opciones}
+              onElegir={(opcionId) => avanzar({ tipo: 'decidir', opcionId })}
+            />
+          ) : (
+            <Ofertas
+              ofertas={carrera.ofertas}
+              esDebut={carrera.temporadas.length === 0}
+              clubActual={carrera.clubActual}
+              puedeQuedarse={puedeRenovar(carrera)}
+              onFirmar={(ofertaId) => avanzar({ tipo: 'firmar', ofertaId })}
+              onQuedarse={() => avanzar({ tipo: 'renovar' })}
+              onRechazarTodo={() => avanzar({ tipo: 'renovar' })}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Derecha: la carrera, llenándose. */}
+      <div className="order-2 flex flex-col gap-3">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-label">Tu carrera</h2>
+          <p className="text-2xs text-ink-muted">
+            capítulo {Math.min(carrera.capitulo + 1, CAPITULOS)} de {CAPITULOS}
+          </p>
+        </div>
+        <LineaDeCarrera carrera={carrera} ultima={carrera.temporadas.length - 1} />
+        {datosDeCarta && (
+          <div className="hidden justify-center lg:flex">
+            <Carta datos={datosDeCarta} asciende={ascenso} class="max-w-[15rem]" />
+          </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }
-
-function tituloDeEtapa(carrera: Carrera): string {
-  const total = tramosDe(carrera.ritmo);
-  switch (carrera.etapa) {
-    case 'pretemporada':
-      return `Pretemporada ${carrera.anio}`;
-    case 'tramo':
-      return `Temporada ${carrera.anio} · tramo ${Math.min(carrera.tramo + 1, total)} de ${total}`;
-    case 'cierre':
-      return `Fin de la temporada ${carrera.anio - 1}`;
-    case 'mercado':
-      return `Mercado ${carrera.anio}`;
-    case 'retiro':
-      return 'El final del camino';
-    default:
-      return `${NOMBRE_DE_ROL[carrera.rol]} · ${NOMBRE_DE_NIVEL[carrera.nivel]}`;
-  }
-}
-
-export { MAX_OFERTAS };

@@ -62,7 +62,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     texto: 'Una marca de ropa deportiva te ofrece un contrato de imagen por tres años.',
     tipoDeRecuerdo: 'decision',
     condiciones: { famaMin: 35 },
-    cooldown: 3,
+    cooldown: 6,
     opciones: [
       {
         id: 'firmar',
@@ -106,8 +106,8 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     texto:
       'Una agencia grande te ofrece manejar tu carrera. El que te acompaña desde los 14 se enteró por la prensa.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 2, ovrMin: 72 },
-    cooldown: 4,
+    condiciones: { temporadasMin: 1, ovrMin: 72 },
+    cooldown: 8,
     opciones: [
       {
         id: 'cambiar',
@@ -144,7 +144,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       'Echaron a {dt}. El que llega tiene fama de no creer en los jugadores que encontró en el plantel.',
     tipoDeRecuerdo: 'decision',
     condiciones: { temporadasMin: 1 },
-    cooldown: 2,
+    cooldown: 4,
     peso: 1.5,
     opciones: [
       {
@@ -176,7 +176,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     texto:
       'Una tormenta dejó al plantel doce horas en un aeropuerto. En el hall hay un piano y cincuenta hinchas del rival.',
     tipoDeRecuerdo: 'caos',
-    cooldown: 5,
+    cooldown: 10,
     opciones: [
       {
         id: 'piano',
@@ -249,7 +249,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     texto:
       'Un hincha corrió a la cancha, te abrazó llorando y te dijo que su papá pidió ser enterrado con tu camiseta. Después se fue como si nada.',
     tipoDeRecuerdo: 'caos',
-    condiciones: { temporadasMin: 3, famaMin: 40 },
+    condiciones: { temporadasMin: 2, famaMin: 40 },
     cooldown: 0,
     opciones: [
       {
@@ -283,7 +283,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     titulo: 'Quieren retirar tu número',
     texto: 'El club te avisa que nadie más va a usar la {dorsal}. Van a poner tu nombre en una tribuna.',
     tipoDeRecuerdo: 'legado',
-    condiciones: { edadMin: 32, temporadasMin: 8, famaMin: 60 },
+    condiciones: { edadMin: 32, temporadasMin: 6, famaMin: 60 },
     cooldown: 0,
     opciones: [
       {
@@ -321,7 +321,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     texto: 'El cuerpo ya no responde como antes. Tenés una temporada más adentro, tal vez dos.',
     tipoDeRecuerdo: 'decision',
     condiciones: { edadMin: 34 },
-    cooldown: 1,
+    cooldown: 2,
     opciones: [
       {
         id: 'seguir',
@@ -358,7 +358,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       'Llega una oferta de un club sin historia y con dinero infinito. Te ofrecen en un año lo que ganarías en seis.',
     tipoDeRecuerdo: 'decision',
     condiciones: { edadMin: 27, ovrMin: 78 },
-    cooldown: 4,
+    cooldown: 8,
     opciones: [
       {
         id: 'ir',

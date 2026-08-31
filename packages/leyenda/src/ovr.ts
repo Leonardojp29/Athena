@@ -59,12 +59,12 @@ export function calcularOvr(atributos: Atributos, puesto: Puesto): number {
  * además exigen carrera, no solo número (ver `nivelDe`).
  */
 const CORTES: Array<{ nivel: Nivel; desde: number }> = [
-  { nivel: 'inmortal', desde: 92 },
-  { nivel: 'icono', desde: 88 },
-  { nivel: 'clase-mundial', desde: 83 },
-  { nivel: 'elite', desde: 77 },
-  { nivel: 'profesional', desde: 70 },
-  { nivel: 'promesa', desde: 63 },
+  { nivel: 'inmortal', desde: 93 },
+  { nivel: 'icono', desde: 89 },
+  { nivel: 'clase-mundial', desde: 84 },
+  { nivel: 'elite', desde: 78 },
+  { nivel: 'profesional', desde: 71 },
+  { nivel: 'promesa', desde: 64 },
   { nivel: 'cantera', desde: 0 },
 ];
 

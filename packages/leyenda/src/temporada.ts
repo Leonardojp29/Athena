@@ -11,7 +11,6 @@
  * suplente en un grande gana todo y no mete ninguno. Las dos carreras tienen que ser posibles.
  */
 import { campana, chance, elegir, entre, limitar, pesado, type Azar } from './azar.js';
-import type { Guion } from './beats.js';
 import type { Carrera, Club, Liga, Puesto, Rol, Temporada } from './estado.js';
 
 /** Cuántos de los partidos del tramo juega, según el rol. */
@@ -24,29 +23,34 @@ const MINUTOS_POR_ROL: Record<Rol, [number, number]> = {
   capitan: [0.85, 1],
 };
 
-/** Goles esperados por partido completo, por puesto. Se corrige por tiro, forma y club. */
+/**
+ * Goles esperados por partido completo, por puesto. Se corrige por tiro, forma y club.
+ *
+ * Calibrado contra la realidad: un delantero titular de elite ronda los 25 goles por temporada, no
+ * 45. Con el bienio como unidad los números se duplican en pantalla y cualquier exceso salta a la
+ * vista; era lo que hacía que una carrera terminara con cifras de arcade.
+ */
 const GOLES_BASE: Record<Puesto, number> = {
   POR: 0,
-  DFC: 0.05,
-  LAT: 0.05,
-  MC: 0.1,
-  MO: 0.28,
-  EXT: 0.32,
-  DC: 0.52,
+  DFC: 0.04,
+  LAT: 0.04,
+  MC: 0.08,
+  MO: 0.2,
+  EXT: 0.24,
+  DC: 0.38,
 };
 
 const ASISTENCIAS_BASE: Record<Puesto, number> = {
   POR: 0,
-  DFC: 0.03,
-  LAT: 0.14,
-  MC: 0.18,
-  MO: 0.3,
-  EXT: 0.26,
-  DC: 0.14,
+  DFC: 0.02,
+  LAT: 0.1,
+  MC: 0.13,
+  MO: 0.22,
+  EXT: 0.2,
+  DC: 0.1,
 };
 
-export interface Tramo {
-  rotulo: string;
+export interface Rendimiento {
   partidos: number;
   goles: number;
   asistencias: number;
@@ -67,16 +71,13 @@ const MOTIVOS_DE_LESION = [
 ];
 
 /**
- * Un tramo de temporada. `fechas` es cuántos partidos abarca: sale de dividir un calendario de ~38
- * entre los tramos del ritmo elegido, así una carrera exprés y una intensa cuentan la misma
- * temporada con distinto detalle en lugar de ser dos juegos distintos.
+ * Dos temporadas de fútbol, resumidas.
+ *
+ * Es la unidad del juego: un capítulo simula un bienio completo —unas 68 fechas entre liga y copas—
+ * y de ahí salen los números de una fila de la carrera. Antes esto simulaba un tramo de temporada y
+ * hacían falta hasta seis llamadas por año; el cálculo es el mismo, la dosis no.
  */
-export function simularTramo(
-  azar: Azar,
-  carrera: Carrera,
-  fechas: number,
-  rotulo: string,
-): Tramo {
+export function simularBienio(azar: Azar, carrera: Carrera, fechas = 68): Rendimiento {
   const { futbolista, vida, rol, clubActual } = carrera;
   const fuerzaClub = clubActual?.fuerza ?? 50;
 
@@ -124,7 +125,6 @@ export function simularTramo(
     : null;
 
   return {
-    rotulo,
     partidos,
     goles,
     asistencias,
@@ -149,25 +149,6 @@ function poisson(azar: Azar, lambda: number): number {
   return k - 1;
 }
 
-export function acumularEnTemporada(temporada: Temporada, tramo: Tramo): void {
-  temporada.partidos += tramo.partidos;
-  temporada.goles += tramo.goles;
-  temporada.asistencias += tramo.asistencias;
-  temporada.minutos += tramo.minutos;
-  temporada.amarillas += tramo.amarillas;
-  temporada.rojas += tramo.rojas;
-  if (tramo.lesion) temporada.lesiones += 1;
-  /* La nota de la temporada es el promedio ponderado por partidos jugados en cada tramo. */
-  const jugadosAntes = temporada.partidos - tramo.partidos;
-  temporada.notaMedia =
-    temporada.partidos === 0
-      ? 0
-      : Math.round(
-          ((temporada.notaMedia * jugadosAntes + tramo.nota * tramo.partidos) / temporada.partidos) *
-            10,
-        ) / 10;
-}
-
 /**
  * Dónde termina el club en su liga.
  *
@@ -184,7 +165,8 @@ export function posicionEnLaTabla(
   const total = Math.max(8, liga.clubes.length);
   const conRuido = liga.clubes.map((c) => ({
     slug: c.slug,
-    puntaje: c.fuerza + campana(azar, 0, 14) + (c.slug === club.slug ? aporte : 0),
+    /* El ruido alto es lo que hace que el campeonato no sea una cuenta: el grande gana seguido, no siempre. */
+    puntaje: c.fuerza + campana(azar, 0, 18) + (c.slug === club.slug ? aporte : 0),
   }));
   conRuido.sort((a, b) => b.puntaje - a.puntaje);
   const posicion = conRuido.findIndex((c) => c.slug === club.slug) + 1;
@@ -196,7 +178,7 @@ export function posicionEnLaTabla(
  * quince puntos de tabla; un suplente, nada. Es el canal por el que el rendimiento propio se
  * convierte en títulos colectivos.
  */
-export function aporteDelJugador(carrera: Carrera): number {
+export function aporteDelJugador(carrera: Carrera & { enCurso: Temporada | null }): number {
   const t = carrera.enCurso;
   if (!t || t.partidos === 0) return 0;
   const porNota = (t.notaMedia - 6.5) * 8;
@@ -209,7 +191,7 @@ export function aporteDelJugador(carrera: Carrera): number {
  * valés respecto del plantel y qué tan bien te llevás con el técnico. Perder la titularidad es una
  * de las formas de fracaso que el juego necesita que existan.
  */
-export function rolSiguiente(azar: Azar, carrera: Carrera): Rol {
+export function rolSiguiente(azar: Azar, carrera: Carrera & { enCurso: Temporada | null }): Rol {
   const club = carrera.clubActual;
   if (!club) return 'promesa';
 
@@ -249,14 +231,18 @@ export function titulosDeLaTemporada(
 
   if (posicion === 1) salida.push({ nombre: liga.nombre, clase: 'liga' });
 
-  /* La copa nacional es más azarosa que la liga: un equipo mediano la gana. */
-  const chanceCopa = limitar((club.fuerza / 100) * 0.22 + (posicion <= 4 ? 0.06 : 0), 0.02, 0.3);
+  /*
+   * La copa nacional es más azarosa que la liga: un equipo mediano la gana. Las probabilidades están
+   * bajas a propósito —un jugador de elite termina su carrera con ocho o diez títulos, no con
+   * veinticinco— porque un trofeo que llega todos los años deja de ser un trofeo.
+   */
+  const chanceCopa = limitar((club.fuerza / 100) * 0.13 + (posicion <= 4 ? 0.03 : 0), 0.01, 0.18);
   if (chance(azar, chanceCopa)) {
     salida.push({ nombre: `Copa de ${liga.pais}`, clase: 'copa' });
   }
 
   if (jugoContinental && copaContinental) {
-    const chanceContinental = limitar((club.fuerza - 55) / 100 * 0.35, 0.01, 0.28);
+    const chanceContinental = limitar(((club.fuerza - 62) / 100) * 0.3, 0.01, 0.14);
     if (chance(azar, chanceContinental)) {
       salida.push({ nombre: copaContinental, clase: 'continental' });
     }
@@ -267,57 +253,26 @@ export function titulosDeLaTemporada(
 /** Premios individuales. Piden temporada grande, no solo OVR alto. */
 export function premiosDeLaTemporada(
   azar: Azar,
-  carrera: Carrera,
+  carrera: Carrera & { enCurso: Temporada | null },
   campeon: boolean,
 ): string[] {
   const t = carrera.enCurso;
-  if (!t || t.partidos < 12) return [];
+  if (!t || t.partidos < 20) return [];
   const salida: string[] = [];
-  const goleador = t.goles >= 18 && (carrera.futbolista.puesto === 'DC' || carrera.futbolista.puesto === 'EXT');
-  const notaAlta = t.notaMedia >= 7.4;
+  /* Los umbrales miran el bienio entero: treinta goles en dos años es una temporada de goleador. */
+  const goleador = t.goles >= 30 && (carrera.futbolista.puesto === 'DC' || carrera.futbolista.puesto === 'EXT');
+  const notaAlta = t.notaMedia >= 7.5;
 
-  if (goleador && chance(azar, 0.55)) salida.push(`Goleador de ${t.ligaNombre}`);
-  if (notaAlta && campeon && chance(azar, 0.5)) salida.push(`Mejor jugador de ${t.ligaNombre}`);
-  if (carrera.futbolista.edad <= 21 && notaAlta && chance(azar, 0.35)) {
+  if (goleador && chance(azar, 0.3)) salida.push(`Goleador de ${t.ligaNombre}`);
+  if (notaAlta && campeon && chance(azar, 0.25)) salida.push(`Mejor jugador de ${t.ligaNombre}`);
+  if (carrera.futbolista.edad <= 21 && notaAlta && chance(azar, 0.25)) {
     salida.push('Mejor jugador joven');
   }
   /* El premio grande exige todo junto: nivel, títulos y una temporada de época. */
-  if (carrera.ovr >= 88 && notaAlta && campeon && carrera.trofeos.some((tr) => tr.clase === 'continental')) {
-    if (chance(azar, 0.4)) salida.push('Balón de Oro');
+  if (carrera.ovr >= 89 && notaAlta && campeon && carrera.trofeos.some((tr) => tr.clase === 'continental')) {
+    /* El premio grande, una vez cada tanto incluso para el mejor del mundo. */
+    if (chance(azar, 0.22)) salida.push('Balón de Oro');
   }
   return salida;
 }
 
-/** El texto del tramo, con la fecha del calendario. */
-export function rotuloDeTramo(indice: number, total: number): string {
-  if (total <= 2) return indice === 0 ? 'Primera mitad' : 'Segunda mitad';
-  const nombres = ['Arranque', 'Primera vuelta', 'Mitad de año', 'Segunda vuelta', 'Recta final', 'Cierre'];
-  return nombres[Math.min(indice, nombres.length - 1)] as string;
-}
-
-/** Escribe en el guion lo que pasó en el tramo, gol por gol. */
-export function narrarTramo(guion: Guion, azar: Azar, tramo: Tramo, rival: string, competencia: string): void {
-  for (let i = 0; i < Math.min(tramo.goles, 4); i++) {
-    guion.agregar({
-      clase: 'gol',
-      minuto: entre(azar, 3, 92),
-      rival,
-      competencia,
-      intensidad: i === 0 ? 'drama' : 'ui',
-    });
-  }
-  if (tramo.goles > 4) {
-    guion.texto(`Y ${tramo.goles - 4} goles más en el tramo.`, 'ui');
-  }
-  if (tramo.rojas > 0) {
-    guion.agregar({ clase: 'tarjeta', color: 'roja', motivo: 'falta grave', intensidad: 'ui' });
-  }
-  if (tramo.lesion) {
-    guion.agregar({
-      clase: 'lesion',
-      semanas: tramo.lesion.semanas,
-      motivo: tramo.lesion.motivo,
-      intensidad: 'drama',
-    });
-  }
-}
