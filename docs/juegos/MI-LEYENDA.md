@@ -84,6 +84,10 @@ Es lo que hace que una decisión sea una decisión, y hasta hace poco no existí
   0,2% accidente fatal). Con un jugador normal, 2,5%.
 - **Los momentos deciden títulos.** `ContextoDeMomento.enJuego` cuelga un trofeo de la jugada: si
   fallas el penal de la final, esa copa no la gana nadie y el bienio no la sortea por su cuenta.
+- **Y todo eso se ve.** `Capitulo.resultado` trae el relato, si la apuesta salió bien o mal y los
+  números que se movieron —media, dinero, confianza, forma, físico, fama, hinchada, estrés— y la
+  celebración los muestra como muestra un título. Antes se decidía, se leían dos líneas de texto y
+  venía la pregunta siguiente sin que nada pareciera haber pasado.
 
 ## Sumar un evento
 
@@ -151,6 +155,12 @@ Tres reglas la sostienen, todas en `mercado.ts`:
   30, cuando son una decisión con sabor en lugar de un mal comienzo. Pasados los 33, el club donde
   debutaste y su clásico rival entran siempre entre las ofertas.
 
+**El mercado mira la media y la edad, en ese orden.** `brechaTolerada(edad)` dice cuánto por encima
+de tu nivel puede estar un club que te llame: veintidós puntos a los veinte —te compran por lo que
+vas a ser—, seis a los veintiocho y ninguno a partir de los treinta y tres, cuando un club que te
+queda por encima ya no te ficha. Y `ajustePorEdad` es la curva del club: un grande quiere el prime y
+paga por una promesa con techo, un club chico es donde uno empieza y donde uno vuelve.
+
 **El clásico no se deduce de la tabla: se hereda.** Tres capas, en `clasicos.ts` y `mercado.ts`: una
 tabla curada de ~70 derbis por slug (Universitario–Alianza, Boca–River, United–Liverpool,
 Milan–Inter); si no hay, la ciudad del estadio —`venues.city` cubre 367 de los 371 clubes jugables,
@@ -208,11 +218,12 @@ resultado no se puede falsear ni depende de la velocidad de la máquina.
 
 - La partida vive en `localStorage` (`athena:leyenda`), con el patrón de `favoritos.ts`: lectura
   defensiva, escritura silenciosa, versión por clave. Recargar retoma donde ibas.
-- El salón (`athena:leyenda-salon`) guarda **solo el veredicto** de las carreras terminadas: guardar
-  veinte carreras completas llenaría el almacenamiento y nadie vuelve a mirar la temporada nueve de
-  su tercer futbolista.
-- El legado se comparte con un **código en la URL** (`/juegos/mi-leyenda/<codigo>`): quien lo abre ve
-  la carta de verdad, interactiva, y nada se guarda en el servidor.
+- **No hay historial.** Cuando la carrera llega al legado, la partida se borra. Una leyenda que
+  terminó se cuenta, se comparte si el jugador quiere y desaparece: lo que hace que alguien empiece
+  otra es justamente que la anterior ya no esté esperándolo. El salón que guardaba las últimas veinte
+  se fue, y `leerPartida` borra su clave vieja de paso.
+- El legado se comparte con un **código en la URL** (`/juegos/mi-leyenda/<codigo>`): se calcula al
+  vuelo, viaja en el botón de compartir y no se guarda en ninguna parte.
 
 ## Balance: los números que importan
 

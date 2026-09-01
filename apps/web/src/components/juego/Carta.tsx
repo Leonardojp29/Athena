@@ -12,17 +12,16 @@ import {
 /*
  * El contorno del blasón, en unidades relativas (0-1) para que escale con cualquier tamaño.
  *
- * Esquinas superiores redondeadas, la muesca del centro arriba, los lados rectos y una base que baja
- * en curva hasta una punta suave. La primera versión era un polígono con la punta a noventa grados y
- * parecía un triángulo pegado abajo: las curvas son la mitad de lo que hace que esto se lea como una
- * carta de fútbol.
+ * Esquinas superiores redondeadas, borde de arriba **recto** y una base que baja en curva hasta una
+ * punta suave. Tuvo dos versiones antes de esta: un polígono con la punta a noventa grados que
+ * parecía un triángulo pegado abajo, y una con la muesca del centro arriba que se leía como un hueco
+ * en la carta. Un escudo se reconoce por la base, no por el techo.
  */
 const BLASON =
-  'M0.052 0.075 C0.052 0.028 0.068 0.012 0.115 0.012 L0.365 0.012 ' +
-  'C0.408 0.012 0.418 0.052 0.5 0.052 C0.582 0.052 0.592 0.012 0.635 0.012 ' +
-  'L0.885 0.012 C0.932 0.012 0.948 0.028 0.948 0.075 L0.948 0.83 ' +
-  'C0.948 0.876 0.936 0.9 0.9 0.918 L0.565 0.982 C0.522 0.998 0.478 0.998 0.435 0.982 ' +
-  'L0.1 0.918 C0.064 0.9 0.052 0.876 0.052 0.83 Z';
+  'M0.05 0.07 C0.05 0.022 0.07 0.008 0.115 0.008 L0.885 0.008 ' +
+  'C0.93 0.008 0.95 0.022 0.95 0.07 L0.95 0.83 ' +
+  'C0.95 0.876 0.938 0.9 0.902 0.918 L0.565 0.982 C0.522 0.998 0.478 0.998 0.435 0.982 ' +
+  'L0.098 0.918 C0.062 0.9 0.05 0.876 0.05 0.83 Z';
 
 /**
  * La carta.
@@ -297,14 +296,15 @@ export default function Carta({ datos, tamano = 'grande', entra = false, asciend
 function Busto({ chica }: { chica: boolean }) {
   return (
     <svg
-      viewBox="0 0 120 132"
+      viewBox="0 0 124 112"
+      preserveAspectRatio="xMidYMax meet"
       role="presentation"
       aria-hidden="true"
       className="pointer-events-none absolute bottom-0 left-1/2 z-0 h-full -translate-x-1/2"
-      style={{ width: chica ? '76%' : '70%' }}
+      style={{ width: chica ? '96%' : '92%' }}
     >
       <path
-        d="M14 132c2-21 13-35 33-42 6-2 9-5 9-11v-8c-10-6-17-20-17-37 0-18 9-30 21-30s21 12 21 30c0 17-7 31-17 37v8c0 6 3 9 9 11 20 7 31 21 33 42z"
+        d="M4 112C8 97 24 90 46 87c7-1 5-3 5-10V62C43 55 37 43 37 28 37 11 48 1 62 1s25 10 25 27c0 15-6 27-14 34v15c0 7-2 9 5 10 22 3 38 10 42 25z"
         fill="var(--carta-silueta, var(--carta-tinta))"
       />
     </svg>

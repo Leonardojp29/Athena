@@ -4,14 +4,15 @@
  * Sin cuentas, la fuente de verdad es `localStorage`, igual que los favoritos. Una carrera de veinte
  * temporadas ocupa unos 40 KB en JSON: entra sin problema y se lee de una sola vez al abrir el juego.
  *
- * Dos claves: la partida en curso y el salón, que guarda **solo el veredicto** de las carreras
- * terminadas. Guardar la carrera entera de cada una llenaría el almacenamiento en veinte partidas y
- * nadie vuelve a mirar el detalle de la temporada nueve de su tercer futbolista.
+ * Una sola clave: la partida en curso. **No hay historial.** Una leyenda que termina se cuenta, se
+ * comparte si el jugador quiere y desaparece; guardar la lista de todas convertía el juego en un
+ * archivo, y lo que hace que alguien empiece otra carrera es que la anterior ya no esté.
  */
-import type { Carrera, Veredicto } from '@athena/leyenda';
+import type { Carrera } from '@athena/leyenda';
 
 const CLAVE = 'athena:leyenda';
-const CLAVE_SALON = 'athena:leyenda-salon';
+/* La clave del salón viejo. Solo se usa para borrarla: las partidas terminadas ya no se guardan. */
+const CLAVE_SALON_VIEJA = 'athena:leyenda-salon';
 
 /** Se dispara cuando la partida cambia: la página del catálogo repinta el "seguir jugando". */
 export const EVENTO_LEYENDA = 'athena:leyenda';
@@ -32,22 +33,10 @@ export interface CarreraGuardada {
   carrera: Carrera;
 }
 
-export interface EntradaDelSalon {
-  nombre: string;
-  club: string;
-  temporadas: number;
-  goles: number;
-  trofeos: number;
-  ovr: number;
-  nivel: string;
-  adn: string;
-  terminadaEn: string;
-  /** El código compartible, para volver a abrir esa carta. */
-  codigo: string;
-}
-
 export function leerPartida(): Carrera | null {
   try {
+    /* De paso se limpia el salón viejo: si el historial ya no existe, tampoco su rastro. */
+    localStorage.removeItem(CLAVE_SALON_VIEJA);
     const crudo = localStorage.getItem(CLAVE);
     if (!crudo) return null;
     const guardada = JSON.parse(crudo) as CarreraGuardada;
@@ -81,39 +70,6 @@ export function borrarPartida(): void {
     window.dispatchEvent(new CustomEvent(EVENTO_LEYENDA));
   } catch {
     /* Si no se puede borrar, empezar de nuevo la sobreescribe igual. */
-  }
-}
-
-export function leerSalon(): EntradaDelSalon[] {
-  try {
-    const crudo = localStorage.getItem(CLAVE_SALON);
-    const lista = crudo ? (JSON.parse(crudo) as EntradaDelSalon[]) : [];
-    return Array.isArray(lista) ? lista.filter((e) => e && typeof e.nombre === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-/** Guarda una carrera terminada en el salón. Las últimas veinte alcanzan. */
-export function guardarEnElSalon(carrera: Carrera, veredicto: Veredicto, codigo: string): void {
-  try {
-    const entrada: EntradaDelSalon = {
-      nombre: carrera.futbolista.nombre,
-      club: carrera.retiro?.clubNombre ?? carrera.clubActual?.nombre ?? '',
-      temporadas: veredicto.totales.temporadas,
-      goles: veredicto.totales.goles,
-      trofeos: veredicto.totales.trofeos,
-      ovr: veredicto.totales.ovrMaximo,
-      nivel: veredicto.nivelMaximo,
-      adn: veredicto.adn.titulo,
-      terminadaEn: new Date().toISOString(),
-      codigo,
-    };
-    const lista = [entrada, ...leerSalon()].slice(0, 20);
-    localStorage.setItem(CLAVE_SALON, JSON.stringify(lista));
-    window.dispatchEvent(new CustomEvent(EVENTO_LEYENDA));
-  } catch {
-    /* Sin salón, el legado igual se puede compartir por su código. */
   }
 }
 

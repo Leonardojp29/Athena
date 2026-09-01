@@ -97,6 +97,28 @@ export interface Capitulo {
   trofeos: Trofeo[];
   /** El texto del resultado de la decisión anterior, si la hubo. */
   consecuencia: string | null;
+  /**
+   * Lo que dejó la decisión, para que la pantalla lo cuente como cuenta un título.
+   *
+   * "Siento que no pasa nada" era literal: el jugador elegía, leía dos líneas de texto y venía la
+   * pregunta siguiente. Los números se movían de verdad —confianza, forma, dinero, media— y no se
+   * veían en ninguna parte.
+   */
+  resultado: Resultado | null;
+}
+
+export interface Cambio {
+  rotulo: string;
+  delta: number;
+  /** Cómo se escribe: un entero, un valor con signo o millones. */
+  formato: 'entero' | 'millones';
+}
+
+export interface Resultado {
+  texto: string;
+  /** `true` salió bien, `false` salió mal, `null` no había nada que jugarse. */
+  salioBien: boolean | null;
+  cambios: Cambio[];
 }
 
 export interface Avance {
@@ -111,6 +133,7 @@ const vacio = (): Capitulo => ({
   saltoDeOvr: null,
   trofeos: [],
   consecuencia: null,
+  resultado: null,
 });
 
 /* --------------------------------------------------------------------- contexto */
@@ -999,9 +1022,10 @@ function decidir(carrera: Carrera, opcionId: string, azar: Azar, capitulo: Capit
   const datos = datosDeTexto(carrera, mundo);
   let efectos = opcion.efectos;
   let relato = opcion.resultado;
+  let salioBien: boolean | null = null;
 
   if (opcion.riesgo) {
-    const salioBien = chance(azar, opcion.riesgo.prob);
+    salioBien = chance(azar, opcion.riesgo.prob);
     efectos = fusionar(efectos, salioBien ? opcion.riesgo.bien : opcion.riesgo.mal);
     relato = `${opcion.resultado} ${salioBien ? opcion.riesgo.relatoBien : opcion.riesgo.relatoMal}`;
   }
@@ -1009,6 +1033,13 @@ function decidir(carrera: Carrera, opcionId: string, azar: Azar, capitulo: Capit
   capitulo.consecuencia = redactar(relato, datos);
 
   let siguiente = aplicarEfectos(carrera, efectos, capitulo, mundo);
+
+  /* Lo que se movió, para que la pantalla lo muestre en lugar de dejarlo pasar. */
+  capitulo.resultado = {
+    texto: capitulo.consecuencia,
+    salioBien,
+    cambios: cambiosEntre(carrera, siguiente),
+  };
   siguiente = recordar(siguiente, {
     tipo: evento.tipoDeRecuerdo,
     texto: capitulo.consecuencia,
@@ -1038,6 +1069,44 @@ function decidir(carrera: Carrera, opcionId: string, azar: Azar, capitulo: Capit
   }
 
   return { ...siguiente, pendiente: null };
+}
+
+/**
+ * Qué se movió con la decisión, en el idioma del jugador.
+ *
+ * Solo lo que cambió y solo lo que se entiende sin explicación: la media, el dinero y los cinco
+ * diales que la gente reconoce. Un cambio de dos décimas en el profesionalismo no es una noticia; que
+ * la media suba tres puntos, sí.
+ */
+const DIALES_VISIBLES: Array<{ clave: keyof Carrera['vida']; rotulo: string; formato: Cambio['formato'] }> = [
+  { clave: 'dinero', rotulo: 'Dinero', formato: 'millones' },
+  { clave: 'confianza', rotulo: 'Confianza', formato: 'entero' },
+  { clave: 'forma', rotulo: 'Forma', formato: 'entero' },
+  { clave: 'condicion', rotulo: 'Físico', formato: 'entero' },
+  { clave: 'fama', rotulo: 'Fama', formato: 'entero' },
+  { clave: 'carinoDeLaHinchada', rotulo: 'Hinchada', formato: 'entero' },
+  { clave: 'reputacion', rotulo: 'Reputación', formato: 'entero' },
+  { clave: 'estres', rotulo: 'Estrés', formato: 'entero' },
+];
+
+function cambiosEntre(antes: Carrera, despues: Carrera): Cambio[] {
+  const cambios: Cambio[] = [];
+
+  /* La media va primero siempre: es el número que el jugador mira. */
+  if (despues.ovr !== antes.ovr) {
+    cambios.push({ rotulo: 'Media', delta: despues.ovr - antes.ovr, formato: 'entero' });
+  }
+
+  for (const dial of DIALES_VISIBLES) {
+    const delta = despues.vida[dial.clave] - antes.vida[dial.clave];
+    if (Math.abs(delta) < (dial.formato === 'millones' ? 0.05 : 1)) continue;
+    cambios.push({ rotulo: dial.rotulo, delta: Math.round(delta * 100) / 100, formato: dial.formato });
+  }
+
+  /* Cinco chips es lo que se lee de un vistazo; los más grandes primero. */
+  return cambios
+    .sort((a, b) => (a.rotulo === 'Media' ? -1 : b.rotulo === 'Media' ? 1 : Math.abs(b.delta) - Math.abs(a.delta)))
+    .slice(0, 5);
 }
 
 /** Junta dos paquetes de efectos: los números se suman, las listas se concatenan. */
@@ -1131,6 +1200,13 @@ function jugarMomento(carrera: Carrera, intencion: Intencion, azar: Azar, capitu
       reputacion: limitar(carrera.vida.reputacion + (resultado.efectos.reputacion ?? 0) * peso, 0, 100),
     },
   };
+  /* La jugada también rinde cuentas: lo que movió se ve, igual que en una decisión. */
+  capitulo.resultado = {
+    texto: capitulo.consecuencia ?? resultado.relato,
+    salioBien: resultado.exito,
+    cambios: cambiosEntre(carrera, siguiente),
+  };
+
   siguiente = recordar(siguiente, {
     tipo: resultado.exito ? 'gol' : 'decision',
     texto: `${pendiente.contexto.escena}: ${capitulo.consecuencia}`,

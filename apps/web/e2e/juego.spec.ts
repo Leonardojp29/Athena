@@ -192,6 +192,22 @@ test.describe('Mi Leyenda', () => {
     await expect(page.locator('#nombre')).toBeVisible();
   });
 
+  test('una leyenda terminada no queda guardada', async ({ page }) => {
+    /*
+     * No hay historial: una carrera que se acabó se cuenta, se comparte si el jugador quiere y
+     * desaparece. Lo que hace que alguien empiece otra es que la anterior ya no esté esperándolo.
+     */
+    await page.goto(CREAR);
+    await page.evaluate(() =>
+      window.localStorage.setItem(
+        'athena:leyenda',
+        JSON.stringify({ version: 2, guardadaEn: '', carrera: { etapa: 'legado', capitulo: 12 } }),
+      ),
+    );
+    await page.reload();
+    await expect(page.locator('#nombre')).toBeVisible({ timeout: 15_000 });
+  });
+
   test('la partida se retoma al recargar', async ({ page }) => {
     await crearFutbolista(page, { nombre: 'Retomar Prueba' });
     await expect(page.locator('[data-carta]').first()).toBeVisible({ timeout: 15_000 });
@@ -241,14 +257,12 @@ test.describe('Mi Leyenda', () => {
     await expect(page.locator('[data-carta]').first()).toBeVisible();
 
     /*
-     * El enlace del legado abre esa misma carta para cualquiera. El código ya no se imprime en la
-     * pantalla —era una tira de trescientos caracteres al pie— así que sale de donde el juego lo
-     * guarda: el salón de leyendas.
+     * El enlace del legado abre esa misma carta para cualquiera. El código ya no se imprime al pie
+     * —era una tira de trescientos caracteres— ni se guarda en ningún lado: viaja en el botón de
+     * compartir, que es el único lugar donde hace falta.
      */
-    const codigo = await page.evaluate(() => {
-      const salon = JSON.parse(window.localStorage.getItem('athena:leyenda-salon') ?? '[]');
-      return salon.at(-1)?.codigo ?? '';
-    });
+    const codigo =
+      (await page.getByRole('button', { name: /compartir mi leyenda/i }).getAttribute('data-codigo')) ?? '';
     expect(codigo.length).toBeGreaterThan(20);
     await page.goto(`/juegos/mi-leyenda/${codigo}`);
     await expect(page.locator('[data-carta]')).toHaveCount(1);

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { calcularVeredicto, type Carrera, type Veredicto } from '@athena/leyenda';
+import { calcularVeredicto, type Carrera } from '@athena/leyenda';
 import Carta from './Carta';
 
 /**
@@ -14,13 +14,12 @@ import Carta from './Carta';
 interface Props {
   carrera: Carrera;
   onEmpezarDeNuevo: () => void;
-  /** Guarda en el salón y devuelve el código compartible. */
-  alGuardar: (veredicto: Veredicto) => string;
+  /** El código con el que esta carta viaja por un enlace. No se guarda en ninguna parte. */
+  codigo: string;
 }
 
-export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) {
+export default function Legado({ carrera, onEmpezarDeNuevo, codigo }: Props) {
   const veredicto = useMemo(() => calcularVeredicto(carrera), [carrera]);
-  const [codigo] = useState(() => alGuardar(veredicto));
   const [copiado, setCopiado] = useState(false);
 
   const enlace = typeof window === 'undefined' ? '' : `${window.location.origin}/juegos/mi-leyenda/${codigo}`;
@@ -44,27 +43,37 @@ export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) 
   const totales = veredicto.totales;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-6">
-      <header className="text-center">
-        <p className="text-2xs font-medium uppercase tracking-label text-ink-muted">
-          {ROTULO_DE_FINAL[carrera.retiro?.motivo ?? 'edad'] ??
-            (carrera.retiro?.enCasa ? 'Se retiró en casa' : 'Fin de la carrera')}
-        </p>
-        <h1 className="mt-1 font-display text-3xl font-semibold uppercase leading-tight tracking-label">
-          {veredicto.adn.titulo}
-        </h1>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-ink-muted">
-          {veredicto.adn.descripcion}
-        </p>
-        {carrera.retiro?.relato && (
-          <p className="mx-auto mt-3 max-w-md rounded-lg border border-card-red/35 bg-card-red/8 px-4 py-2.5 text-sm text-card-red-ink">
-            {carrera.retiro.relato}
+    /*
+     * Todo el cierre en una pantalla.
+     *
+     * Era un rollo de dos metros: cabecera, carta, ocho cifras, el prime, dos decisiones, el gráfico,
+     * los clubes y la vitrina, uno debajo del otro. Ahora son tres columnas atadas al alto de la
+     * ventana —quién fuiste, qué hiciste, qué te llevaste— y cada una hace su propio scroll si le
+     * falta lugar. En el teléfono la atadura se suelta y todo fluye.
+     */
+    <div className="mx-auto flex w-full max-w-[104rem] flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:gap-4 lg:px-6 lg:py-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <div className="min-w-0">
+          <p className="text-2xs font-medium uppercase tracking-label text-ink-muted">
+            {ROTULO_DE_FINAL[carrera.retiro?.motivo ?? 'edad'] ??
+              (carrera.retiro?.enCasa ? 'Se retiró en casa' : 'Fin de la carrera')}
           </p>
-        )}
+          <h1 className="font-display text-3xl font-semibold uppercase leading-none tracking-label sm:text-4xl">
+            {veredicto.adn.titulo}
+          </h1>
+        </div>
+        <p className="max-w-xl text-sm leading-snug text-ink-muted">{veredicto.adn.descripcion}</p>
       </header>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[19rem_1fr]">
-        <div className="mx-auto w-full max-w-[19rem]">
+      {carrera.retiro?.relato && (
+        <p className="rounded-lg border border-card-red/35 bg-card-red/8 px-4 py-2.5 text-sm text-card-red-ink">
+          {carrera.retiro.relato}
+        </p>
+      )}
+
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)_22rem] lg:gap-6">
+        {/* Quién fuiste: la carta y nada más. */}
+        <div className="flex min-h-0 flex-col items-center gap-2">
           <Carta
             entra
             datos={{
@@ -80,11 +89,30 @@ export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) 
               bandera: carrera.futbolista.bandera,
             }}
           />
-          <p className="mt-1 text-center text-2xs text-ink-muted">La carta de toda tu vida</p>
+          <p className="text-center text-2xs text-ink-muted">La carta de toda tu vida</p>
+
+          <footer className="mt-auto flex w-full flex-col gap-2 pt-2">
+            <button
+              type="button"
+              onClick={compartir}
+              data-codigo={codigo}
+              className="cursor-pointer rounded-lg bg-primary px-4 py-3 font-display text-sm font-semibold uppercase tracking-label text-primary-contrast transition-opacity hover:opacity-90"
+            >
+              {copiado ? 'Enlace copiado' : 'Compartir mi leyenda'}
+            </button>
+            <button
+              type="button"
+              onClick={onEmpezarDeNuevo}
+              className="cursor-pointer rounded-lg border border-border-strong px-4 py-3 font-display text-sm font-semibold uppercase tracking-label transition-colors hover:bg-canvas-subtle"
+            >
+              Otra carrera
+            </button>
+          </footer>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <dl className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        {/* Qué hiciste: los números, el prime, las dos decisiones y la forma. */}
+        <div className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 lg:[mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]">
+          <dl className="grid grid-cols-4 gap-2">
             {[
               ['Temporadas', totales.temporadas],
               ['Partidos', totales.partidos],
@@ -96,7 +124,7 @@ export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) 
               ['Selección', totales.seleccion.convocatorias],
             ].map(([rotulo, valor]) => (
               <div key={String(rotulo)} className="rounded-lg border border-border px-2.5 py-2">
-                <dt className="text-[10px] uppercase tracking-label text-ink-muted">{rotulo}</dt>
+                <dt className="text-[9px] uppercase tracking-label text-ink-muted">{rotulo}</dt>
                 <dd className="font-display text-xl font-semibold leading-none tabular">{valor}</dd>
               </div>
             ))}
@@ -137,32 +165,16 @@ export default function Legado({ carrera, onEmpezarDeNuevo, alGuardar }: Props) 
             )}
           </div>
 
+          <TarjetasDeClub carrera={carrera} />
+
           {carrera.temporadas.length > 0 && <Trazo carrera={carrera} />}
         </div>
+
+        {/* Qué te llevaste: la vitrina, con su propio scroll. */}
+        <div className="flex min-h-0 flex-col lg:border-l lg:border-border lg:pl-6">
+          <Vitrina carrera={carrera} />
+        </div>
       </div>
-
-      {/* Los clubes de tu vida, con su escudo y lo que ganaste en cada uno. */}
-      <TarjetasDeClub carrera={carrera} />
-
-      {/* La vitrina: los trofeos con su logo de verdad, agrupados. */}
-      <Vitrina carrera={carrera} />
-
-      <footer className="mt-7 flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={compartir}
-          className="flex-1 cursor-pointer rounded-md bg-primary px-4 py-3 font-display text-base font-semibold uppercase tracking-label text-primary-contrast transition-opacity hover:opacity-90"
-        >
-          {copiado ? 'Enlace copiado' : 'Compartir mi leyenda'}
-        </button>
-        <button
-          type="button"
-          onClick={onEmpezarDeNuevo}
-          className="flex-1 cursor-pointer rounded-md border border-border-strong px-4 py-3 font-display text-base font-semibold uppercase tracking-label transition-colors hover:bg-canvas-subtle"
-        >
-          Otra carrera
-        </button>
-      </footer>
     </div>
   );
 }
@@ -225,11 +237,11 @@ function TarjetasDeClub({ carrera }: { carrera: Carrera }) {
   if (clubes.length === 0) return null;
 
   return (
-    <section className="mt-7">
-      <h2 className="mb-2.5 font-display text-sm font-semibold uppercase tracking-label">
+    <section>
+      <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-label">
         Las camisetas de tu vida
       </h2>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid gap-2 sm:grid-cols-2">
         {clubes.map((club) => {
           const tinte = club.color && /^[0-9a-f]{6}$/i.test(club.color) ? `#${club.color}` : null;
           return (
@@ -320,7 +332,7 @@ function Vitrina({ carrera }: { carrera: Carrera }) {
 
   if (grupos.length === 0) {
     return (
-      <section className="mt-7 rounded-xl border border-dashed border-border px-4 py-6 text-center">
+      <section className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
         <p className="text-sm text-ink-muted">
           La vitrina quedó vacía. No todas las carreras se cuentan con trofeos.
         </p>
@@ -329,9 +341,12 @@ function Vitrina({ carrera }: { carrera: Carrera }) {
   }
 
   return (
-    <section className="mt-7">
-      <h2 className="mb-2.5 font-display text-sm font-semibold uppercase tracking-label">La vitrina</h2>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+    <section className="flex min-h-0 flex-col">
+      <h2 className="mb-2 flex items-baseline justify-between font-display text-sm font-semibold uppercase tracking-label">
+        La vitrina
+        <span className="text-2xs tabular text-ink-muted">{carrera.trofeos.length}</span>
+      </h2>
+      <ul className="grid min-h-0 gap-2 lg:overflow-y-auto lg:pr-1">
         {grupos.map((grupo) => (
           <li
             key={`${grupo.nombre}-${grupo.clase}`}

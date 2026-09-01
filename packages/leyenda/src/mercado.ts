@@ -135,9 +135,54 @@ export const nombreDelEscalon = (renombre: number): string =>
   ESCALONES[escalonDe(renombre)]?.nombre ?? '';
 
 /**
+ * Cuánto por encima de tu nivel puede estar un club que te llame, según la edad.
+ *
+ * Es la regla más parecida a cómo fichan los clubes de verdad, y la que el juego no tenía: a los
+ * diecinueve te compran por lo que vas a ser y una brecha de veinte puntos es normal; a los
+ * veintiocho te compran por lo que sos y la brecha se cierra; a los treinta y cuatro nadie paga por
+ * un futuro que no existe, así que solo te llaman clubes de tu nivel o por debajo.
+ */
+function brechaTolerada(edad: number): number {
+  if (edad <= 20) return 22;
+  if (edad <= 23) return 16;
+  if (edad <= 26) return 10;
+  if (edad <= 29) return 6;
+  if (edad <= 32) return 2;
+  return -2;
+}
+
+/**
+ * Cuánto le interesa tu edad a este club.
+ *
+ * Un grande quiere el prime —veintitrés a veintinueve— y paga por una promesa con techo, pero no
+ * gasta una plaza en alguien de treinta y cinco. Un club mediano vive del que sube y del que baja, y
+ * un club chico es donde uno empieza y donde uno termina. Es la curva que hace que la carrera tenga
+ * forma: te suben cuando toca y te devuelven a casa cuando toca.
+ */
+function ajustePorEdad(club: Club, edad: number, potencial: number, ovr: number): number {
+  const grande = club.renombre >= 84;
+  const mediano = club.renombre >= 70;
+  const techo = potencial - ovr;
+
+  if (edad <= 21) {
+    /* Al pibe lo compra el que cree en su techo; con poco margen, nadie apuesta. */
+    return grande ? (techo >= 10 ? 28 : -25) : mediano ? 14 : 6;
+  }
+  if (edad <= 26) return grande ? 22 : mediano ? 16 : 0;
+  if (edad <= 29) return grande ? 14 : mediano ? 12 : 2;
+  if (edad <= 32) return grande ? -12 : mediano ? 4 : 12;
+  /* Pasados los 33 el mercado se invierte: los grandes no llaman y los de abajo sí. */
+  return grande ? -60 : mediano ? -20 : 22;
+}
+
+/**
  * ¿Este club te querría? Devuelve el peso con el que aparecería entre las ofertas; 0 es "no te
  * llama". Un club nunca te llama si estás muy por debajo de su nivel, y pierde interés si estás muy
  * por encima del suyo salvo que seas de la casa.
+ *
+ * Dos cosas mandan, como en cualquier juego de fútbol: **la media y la edad**. La media dice si das
+ * el nivel; la edad dice si te compran por lo que sos o por lo que vas a ser. Todo lo demás —la
+ * fama, el bienio, la escalera— ajusta alrededor de esas dos.
  *
  * La escalera es la clave del juego: **el mercado tiene que llevarte hacia arriba**. Un club de menos
  * renombre que el tuyo casi no llama, y la carrera camina de la liga local a Europa en lugar de
@@ -150,9 +195,15 @@ export function interesDe(club: Club, carrera: Carrera, esDeLaCasa: boolean): nu
   /* Los clubes que nadie ubica no existen para el juego, salvo que sea tu casa. */
   if (club.renombre < RENOMBRE_MINIMO && !esDeLaCasa) return 0;
 
-  /* Un club diez puntos más fuerte que tu nivel no te mira, salvo que seas joven con techo. */
-  if (brecha > 14 && futbolista.edad > 22) return 0;
-  if (brecha > 22) return 0;
+  /* La brecha que tu edad permite. Es la puerta: si no la pasás, este club no te mira. */
+  if (brecha > brechaTolerada(futbolista.edad) && !esDeLaCasa) return 0;
+
+  /*
+   * Y la puerta de salida de los grandes. A los treinta y tres, un club que te queda por encima ya no
+   * te ficha: se busca a alguien de veinticinco. Sin esto, una carrera terminaba de titular en el
+   * Madrid a los treinta y ocho, que es lo único que ningún jugador de fútbol logra.
+   */
+  if (futbolista.edad >= 33 && club.fuerza > ovr + 2 && !esDeLaCasa) return 0;
 
   /*
    * El salto grande hay que ganárselo. Un club muy por encima de tu nivel solo mira a alguien que
@@ -177,8 +228,8 @@ export function interesDe(club: Club, carrera: Carrera, esDeLaCasa: boolean): nu
   if (brecha > 0) peso += Math.max(0, 12 - brecha) * 2;
   peso += (vida.fama / 100) * 12;
   peso += (carrera.temporadas.at(-1)?.notaMedia ?? 6.5) >= 7.2 ? 18 : 0;
-  if (futbolista.edad >= 33) peso -= 35;
-  if (futbolista.edad <= 20 && club.fuerza > ovr) peso += 14;
+  /* La curva de la edad de este club: es lo que decide quién te llama y a qué altura de tu carrera. */
+  peso += ajustePorEdad(club, futbolista.edad, futbolista.potencial, ovr);
   if (esDeLaCasa) peso += 40;
 
   /*

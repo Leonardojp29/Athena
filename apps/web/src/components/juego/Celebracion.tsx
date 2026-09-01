@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NOMBRE_DE_NIVEL, type Capitulo, type Trofeo } from '@athena/leyenda';
+import { NOMBRE_DE_NIVEL, type Cambio, type Capitulo, type Resultado, type Trofeo } from '@athena/leyenda';
 
 /**
  * Lo que se celebra.
@@ -19,6 +19,7 @@ interface Props {
 }
 
 type Escena =
+  | { clase: 'resultado'; resultado: Resultado }
   | { clase: 'trofeo'; trofeo: Trofeo }
   | { clase: 'nivel'; de: string; a: string }
   | { clase: 'media'; de: number; a: number };
@@ -28,6 +29,12 @@ const MS_POR_ESCENA = 1500;
 /** Lo que merece pantalla, en orden de importancia: primero lo que ganaste, después lo que subiste. */
 export function escenasDe(capitulo: Capitulo): Escena[] {
   const escenas: Escena[] = [];
+
+  /*
+   * Lo primero es lo que acabás de decidir. Va antes que cualquier trofeo porque es la respuesta a la
+   * pregunta que el jugador se hizo hace dos segundos: cómo salió, y qué se movió.
+   */
+  if (capitulo.resultado) escenas.push({ clase: 'resultado', resultado: capitulo.resultado });
 
   const jerarquia: Record<Trofeo['clase'], number> = {
     seleccion: 0,
@@ -52,8 +59,8 @@ export function escenasDe(capitulo: Capitulo): Escena[] {
   const salto = capitulo.saltoDeOvr;
   if (salto && salto.a - salto.de >= 3) escenas.push({ clase: 'media', de: salto.de, a: salto.a });
 
-  /* Cuatro escenas es el techo: a la quinta la celebración deja de premiar y empieza a estorbar. */
-  return escenas.slice(0, 4);
+  /* Cinco escenas es el techo: a la sexta la celebración deja de premiar y empieza a estorbar. */
+  return escenas.slice(0, 5);
 }
 
 export default function Celebracion({ capitulo, onCerrar }: Props) {
@@ -107,6 +114,7 @@ export default function Celebracion({ capitulo, onCerrar }: Props) {
         {/* La luz de atrás: es lo que hace que un escudo parezca un trofeo y no un icono. */}
         <span aria-hidden="true" data-celebracion-luz className="pointer-events-none absolute" />
 
+        {escena.clase === 'resultado' && <EscenaDeResultado resultado={escena.resultado} />}
         {escena.clase === 'trofeo' && <EscenaDeTrofeo trofeo={escena.trofeo} />}
         {escena.clase === 'nivel' && (
           <>
@@ -150,6 +158,77 @@ export default function Celebracion({ capitulo, onCerrar }: Props) {
         {escenas.length > 1 ? `${i + 1} de ${escenas.length} · ` : ''}toca para seguir
       </p>
     </div>
+  );
+}
+
+/**
+ * Cómo salió lo que elegiste.
+ *
+ * El rótulo dice si la apuesta salió bien o mal —cuando había una apuesta— y debajo van los números
+ * que se movieron. Es la parte que el juego no tenía: se decidía, se leían dos líneas de texto y
+ * venía la pregunta siguiente sin que nada pareciera haber pasado.
+ */
+function EscenaDeResultado({ resultado }: { resultado: Resultado }) {
+  const rotulo =
+    resultado.salioBien === true
+      ? 'Salió bien'
+      : resultado.salioBien === false
+        ? 'Salió mal'
+        : 'Lo que decidiste';
+  const color =
+    resultado.salioBien === true
+      ? 'text-primary'
+      : resultado.salioBien === false
+        ? 'text-card-red-ink'
+        : 'text-chalk';
+
+  return (
+    <>
+      <p className={`text-2xs font-medium uppercase tracking-label ${color}`}>{rotulo}</p>
+      <p
+        data-celebracion-titulo
+        className="mt-3 max-w-2xl text-balance font-display text-2xl font-semibold uppercase leading-tight tracking-label text-chalk sm:text-3xl"
+      >
+        {resultado.texto}
+      </p>
+
+      {resultado.cambios.length > 0 && (
+        <ul className="mt-6 flex flex-wrap justify-center gap-2">
+          {resultado.cambios.map((cambio) => (
+            <li key={cambio.rotulo}>
+              <Chip cambio={cambio} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** Un número que se movió. El signo manda: verde si subió, rojo si bajó. */
+function Chip({ cambio }: { cambio: Cambio }) {
+  /* El estrés es el único al revés: que suba es una mala noticia. */
+  const bueno = cambio.rotulo === 'Estrés' ? cambio.delta < 0 : cambio.delta > 0;
+  const valor =
+    cambio.formato === 'millones'
+      ? `${cambio.delta > 0 ? '+' : '−'}${Math.abs(cambio.delta).toFixed(1)} M`
+      : `${cambio.delta > 0 ? '+' : '−'}${Math.abs(Math.round(cambio.delta))}`;
+
+  return (
+    <span
+      className={`flex items-baseline gap-2 rounded-lg border px-3 py-2 ${
+        bueno ? 'border-primary/40 bg-primary/12' : 'border-card-red/40 bg-card-red/12'
+      }`}
+    >
+      <span className="text-[10px] uppercase tracking-label text-chalk-dim">{cambio.rotulo}</span>
+      <span
+        className={`font-display text-xl font-semibold leading-none tabular ${
+          bueno ? 'text-primary' : 'text-card-red-ink'
+        }`}
+      >
+        {valor}
+      </span>
+    </span>
   );
 }
 

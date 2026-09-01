@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import {
   abrirCarrera,
   avanzarCapitulo,
+  calcularVeredicto,
   crearCarrera,
   eventoPendiente,
   puedeRenovar,
@@ -10,12 +11,11 @@ import {
   type Eleccion,
   type Mundo,
 } from '@athena/leyenda';
-import { borrarPartida, codificarLegado, guardarEnElSalon, guardarPartida, leerPartida } from '../../lib/leyenda';
+import { borrarPartida, codificarLegado, guardarPartida, leerPartida } from '../../lib/leyenda';
 import { escenasDe } from './Celebracion';
 import Creacion from './Creacion';
 import Decision from './Decision';
 import Ficha from './Ficha';
-
 import LineaDeCarrera from './LineaDeCarrera';
 
 import Ofertas from './Ofertas';
@@ -49,6 +49,42 @@ interface Props {
 }
 
 /**
+ * El código con el que una carrera terminada viaja por un enlace.
+ *
+ * Se calcula al vuelo y no se guarda: quien quiera conservar su leyenda se lleva la dirección, y el
+ * navegador no acumula un archivo de carreras viejas que nadie vuelve a mirar.
+ */
+function codigoDelLegado(carrera: Carrera): string {
+  const veredicto = calcularVeredicto(carrera);
+  return codificarLegado({
+    n: carrera.futbolista.nombre,
+    d: carrera.futbolista.dorsal,
+    p: carrera.futbolista.puesto,
+    ...(carrera.futbolista.costado ? { pc: carrera.futbolista.costado } : {}),
+    o: veredicto.totales.ovrMaximo,
+    v: veredicto.nivelMaximo,
+    a: [
+      carrera.futbolista.atributos.ritmo,
+      carrera.futbolista.atributos.tiro,
+      carrera.futbolista.atributos.pase,
+      carrera.futbolista.atributos.regate,
+      carrera.futbolista.atributos.defensa,
+      carrera.futbolista.atributos.fisico,
+    ],
+    c: carrera.retiro?.clubNombre ?? carrera.clubActual?.nombre ?? '',
+    cc: carrera.clubActual?.primario ?? null,
+    e: carrera.futbolista.pais,
+    b: carrera.futbolista.bandera,
+    t: veredicto.totales.trofeos,
+    pr: veredicto.totales.premios,
+    g: veredicto.totales.goles,
+    as: veredicto.totales.asistencias,
+    te: veredicto.totales.temporadas,
+    adn: veredicto.adn.titulo,
+  });
+}
+
+/**
  * El color del rival para las siluetas de la escena. Sale del club actual invertido —si jugás de
  * rojo, enfrente hay alguien que no es rojo— con una vuelta al azul del vestuario si no hay dato.
  */
@@ -74,8 +110,15 @@ export default function MiLeyenda({ mundo, anio }: Props) {
     setListo(true);
   }, []);
 
+  /*
+   * La partida se guarda mientras se juega y **se borra cuando termina**. No hay historial de
+   * leyendas: una carrera que se acabó se cuenta, se comparte si querés y desaparece. Lo que hace
+   * que alguien empiece otra es justamente que la anterior ya no esté esperándolo.
+   */
   useEffect(() => {
-    if (carrera) guardarPartida(carrera);
+    if (!carrera) return;
+    if (carrera.etapa === 'legado') borrarPartida();
+    else guardarPartida(carrera);
   }, [carrera]);
 
   /* La carta gira cuando el capítulo trajo un cambio de material. */
@@ -126,40 +169,7 @@ export default function MiLeyenda({ mundo, anio }: Props) {
   if (carrera.etapa === 'legado') {
     return (
       <Suspense fallback={<div className="grid min-h-[60vh] place-items-center text-sm text-ink-muted">Contando tu carrera…</div>}>
-      <Legado
-        carrera={carrera}
-        onEmpezarDeNuevo={empezarDeNuevo}
-        alGuardar={(veredicto) => {
-          const codigo = codificarLegado({
-            n: carrera.futbolista.nombre,
-            d: carrera.futbolista.dorsal,
-            p: carrera.futbolista.puesto,
-            ...(carrera.futbolista.costado ? { pc: carrera.futbolista.costado } : {}),
-            o: veredicto.totales.ovrMaximo,
-            v: veredicto.nivelMaximo,
-            a: [
-              carrera.futbolista.atributos.ritmo,
-              carrera.futbolista.atributos.tiro,
-              carrera.futbolista.atributos.pase,
-              carrera.futbolista.atributos.regate,
-              carrera.futbolista.atributos.defensa,
-              carrera.futbolista.atributos.fisico,
-            ],
-            c: carrera.retiro?.clubNombre ?? carrera.clubActual?.nombre ?? '',
-            cc: carrera.clubActual?.primario ?? null,
-            e: carrera.futbolista.pais,
-            b: carrera.futbolista.bandera,
-            t: veredicto.totales.trofeos,
-            pr: veredicto.totales.premios,
-            g: veredicto.totales.goles,
-            as: veredicto.totales.asistencias,
-            te: veredicto.totales.temporadas,
-            adn: veredicto.adn.titulo,
-          });
-          guardarEnElSalon(carrera, veredicto, codigo);
-          return codigo;
-        }}
-      />
+        <Legado carrera={carrera} onEmpezarDeNuevo={empezarDeNuevo} codigo={codigoDelLegado(carrera)} />
       </Suspense>
     );
   }
