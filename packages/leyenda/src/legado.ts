@@ -255,7 +255,7 @@ function veredictoDeLaVida(datos: {
     return 'Vendiste más diarios fuera de la cancha que dentro. Nadie se aburrió contigo.';
   }
   if (datos.escandalos >= 3 && datos.reputacion < 45) {
-    return 'Te acordás de las portadas mejor que de los goles, y no porque fueran buenas.';
+    return 'Te acuerdas de las portadas mejor que de los goles, y no porque fueran buenas.';
   }
   if (datos.polemicas > datos.elogios && datos.polemicas >= 3) {
     return 'La prensa te tuvo de tapa por lo que decías, no por lo que hacías.';

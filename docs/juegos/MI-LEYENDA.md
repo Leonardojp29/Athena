@@ -106,6 +106,26 @@ se pagan en la carta.
 Tres tests lo vigilan: toda opción tiene `pista`, ningún desenlace baja de doce palabras —un
 desenlace no cabe en ocho— y una opción con riesgo tiene que contar las dos caras.
 
+### El salseo
+
+`eventos/salseo.ts` es el bloque que hace que la carrera se sienta una vida y no una planilla: el
+ampay antes del clásico, el reality con la prueba del arnés, la orquesta de cumbia que te saca un
+tema, el primo que se imprimió tarjetas de "representante de imagen", la pollada del barrio, el
+mototaxi cuando el tráfico no avanza y el chibolo de la cantera que te imita todo.
+
+Tres reglas de tono, ninguna negociable:
+
+1. **Toda figura pública es inventada**, y sale de `personajes/`. El juego inventa escándalos, y un
+   escándalo inventado sobre alguien que existe no es un juego, es una calumnia.
+2. **Nada sexual y nada de drogas.** El escándalo se cuenta con lo que insinúa, con el titular y con
+   la cara del que tiene que explicarlo al día siguiente.
+3. **El resultado cuenta el desenlace.** Nunca "te ampayaron"; siempre qué pasó después.
+
+Y los titulares vienen firmados. `DIARIO_POR_TONO` reparte cada uno según su tono entre los tres
+diarios del grupo —**El Popular** la farándula, **Líbero** el fútbol, **La República** lo serio— y el
+nombre aparece encima de la frase. No es adorno: una polémica no la saca el mismo medio que una nota
+de fútbol, y ver quién la publica cambia cómo se lee.
+
 ### La otra mitad de la carrera
 
 `fueraDeLaCancha(carrera)` en `legado.ts` mide lo que no es fútbol: fama, reputación, exposición,

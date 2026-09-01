@@ -176,7 +176,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     rareza: 'comun',
     titulo: 'El panelista',
     texto:
-      'Un panelista dijo que eres "el jugador más sobrevalorado de {liga}" y el clip tiene cuatro millones de vistas.',
+      'Un panelista dijo en televisión que eres "el jugador más sobrevalorado de {liga}", Líbero lo puso en portada y el clip tiene cuatro millones de vistas.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { temporadasMin: 2, famaMin: 20 },
     cooldown: 4,
@@ -263,7 +263,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
             balance: -5,
           },
           relatoBien:
-            'Fue, corrió veinte minutos, terminó tirado en el césped y lo contó en vivo. Cerró el programa diciendo que se había equivocado con vos.',
+            'Fue, corrió veinte minutos, terminó tirado en el césped y lo contó en vivo. Cerró el programa diciendo que se había equivocado contigo.',
           relatoMal:
             'Fue con un camarógrafo, no entrenó nada y escribió una nota sobre lo poco que se exige en tu club. Te ganaste el enojo del vestuario entero.',
         },
@@ -354,7 +354,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     rareza: 'comun',
     titulo: 'Te sentaron en el panel',
     texto:
-      'Un programa de espectáculos dedicó veinte minutos a tu vida privada. Dos panelistas hablan de ti y uno dice conocerte.',
+      'El Popular te puso en portada y un programa de espectáculos le dedicó veinte minutos. Dos panelistas hablan de ti y uno dice conocerte.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { famaMin: 30, temporadasMin: 2 },
     cooldown: 4,
@@ -576,7 +576,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     rareza: 'raro',
     titulo: 'El periodista con la carpeta',
     texto:
-      'Un periodista te muestra una carpeta con movimientos de tus empresas y te dice que la publica el domingo. Salvo que hablen.',
+      'Un periodista de La República te muestra una carpeta con movimientos de tus empresas y te dice que la publica el domingo. Salvo que hablen.',
     tipoDeRecuerdo: 'caos',
     condiciones: { famaMin: 50, temporadasMin: 5 },
     cooldown: 10,
@@ -592,7 +592,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
           balance: 4,
         },
         resultado:
-          'Hablaron cuatro horas en un bar vacío. Publicó la mitad, con tu versión al lado, y el escándalo que iba a durar un mes duró dos días.',
+          'Hablaron cuatro horas en un bar vacío. Publicó la mitad, con tu versión al lado, y el escándalo que iba a durar un mes duró dos días. Líbero lo tituló "el que sí dio la cara".',
       },
       {
         id: 'pagar',

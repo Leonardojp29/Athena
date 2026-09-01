@@ -172,7 +172,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'probar',
         texto: 'Darle seis meses de prueba',
-        pista: 'Si funciona, seguís. Si no, chau.',
+        pista: 'Si funciona, sigues. Si no, chau.',
         efectos: {
           relaciones: { representante: { confianza: 8 } },
           personalidad: { profesionalismo: 5 },
@@ -183,7 +183,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'agencia-grande',
         texto: 'Firmar con la agencia más grande del continente',
-        pista: 'Puertas abiertas en todos lados. Sos uno más de doscientos.',
+        pista: 'Puertas abiertas en todos lados. Eres uno más de doscientos.',
         efectos: {
           vida: { fama: 8 },
           relaciones: { representante: { confianza: -10 } },
@@ -328,7 +328,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'dormir',
         texto: 'Dormir en el suelo con la campera de almohada',
-        pista: 'Nadie se acuerda de vos. Y llegas descansado.',
+        pista: 'Nadie se acuerda de ti. Y llegas descansado.',
         efectos: { vida: { condicion: -4, felicidad: 2 }, balance: 1 },
         resultado: 'Dormiste doce horas en el piso del aeropuerto y llegaste al partido como pudiste.',
       },
@@ -379,7 +379,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       },
       {
         id: 'cobrarlo',
-        texto: 'Ir solo si pagan lo que pedís',
+        texto: 'Ir solo si pagan lo que pides',
         pista: 'Si es un circo, que al menos pague.',
         efectos: {
           vida: { dinero: 0.6, fama: 8, exposicion: 10 },
@@ -391,7 +391,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'mandar-a-otro',
         texto: 'Mandar a un compañero en tu lugar',
-        pista: 'A él le viene bien y a vos no te cuesta nada.',
+        pista: 'A él le viene bien y a ti no te cuesta nada.',
         efectos: {
           relaciones: { companeros: { confianza: 14 } },
           vida: { exposicion: -4 },
@@ -429,7 +429,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'guardarlo',
         texto: 'Guardártelo para siempre',
-        pista: 'Solo vos vas a saber que pasó.',
+        pista: 'Solo tú vas a saber que pasó.',
         efectos: {
           vida: { felicidad: 12 },
           etiquetas: ['caos:mitico'],
@@ -516,7 +516,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       },
       {
         id: 'rechazar',
-        texto: 'Rechazarlo: el club es más grande que vos',
+        texto: 'Rechazarlo: el club es más grande que tú',
         pista: 'Nadie va a entenderlo. Algunos sí.',
         efectos: {
           vida: { reputacion: 14 },
@@ -636,7 +636,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'negociar-vuelta',
         texto: 'Aceptar con una cláusula de vuelta a tu país',
-        pista: 'El dinero ahora y el final donde querés.',
+        pista: 'El dinero ahora y el final donde quieres.',
         efectos: {
           vida: { dinero: 5.5, fama: 6 },
           personalidad: { ambicion: 6, lealtad: 4 },

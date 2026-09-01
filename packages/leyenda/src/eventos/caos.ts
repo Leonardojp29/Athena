@@ -16,7 +16,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     rareza: 'raro',
     titulo: 'Vinieron a cobrar',
     texto:
-      'Dos personas te esperan a la salida del entrenamiento. No levantan la voz. Solo recuerdan cuánto debés y desde cuándo.',
+      'Dos personas te esperan a la salida del entrenamiento. No levantan la voz. Solo recuerdan cuánto debes y desde cuándo.',
     tipoDeRecuerdo: 'caos',
     condiciones: { conEtiquetas: ['caos:deuda-grande'] },
     cooldown: 0,
@@ -103,7 +103,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
       {
         id: 'manejar',
         texto: 'Manejar igual',
-        pista: 'Ya sabés cómo termina esto. Puede terminar peor.',
+        pista: 'Ya sabes cómo termina esto. Puede terminar peor.',
         efectos: { vida: { estres: 10 }, personalidad: { riesgo: 12 } },
         riesgo: {
           prob: 0.55,
@@ -290,7 +290,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
       {
         id: 'cambiar-cuerpo',
         texto: 'Rearmar tu juego alrededor de la rodilla',
-        pista: 'Menos velocidad, más cabeza. Cambia lo que sos.',
+        pista: 'Menos velocidad, más cabeza. Cambia lo que eres.',
         efectos: {
           vida: { condicion: 12, forma: -8 },
           atributos: { ritmo: -6, pase: 5, defensa: 3 },
@@ -309,7 +309,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     rareza: 'infrecuente',
     titulo: 'Se filtró el audio',
     texto:
-      'Un audio tuyo del grupo del plantel llegó a un programa de televisión. Hablás del técnico y no bien.',
+      'Un audio tuyo del grupo del plantel llegó a un programa de televisión. Hablas del técnico y no bien.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { temporadasMin: 3 },
     cooldown: 8,
@@ -317,7 +317,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
       {
         id: 'asumir',
         texto: 'Asumirlo y hablar con el técnico primero',
-        pista: 'Lo dijiste. Al menos que lo escuche de vos.',
+        pista: 'Lo dijiste. Al menos que lo escuche de ti.',
         efectos: {
           vida: { exposicion: 14, reputacion: 4, estres: 12 },
           relaciones: { dt: { rencor: 8, respeto: 12 } },
@@ -386,7 +386,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     opciones: [
       {
         id: 'salir',
-        texto: 'Salir a dar la cara vos solo',
+        texto: 'Salir a dar la cara tú solo',
         pista: 'Es lo que nadie hace. Por algo será.',
         efectos: {
           vida: { carinoDeLaHinchada: 22, reputacion: 10, estres: 20 },

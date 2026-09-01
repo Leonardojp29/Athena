@@ -1,4 +1,4 @@
-import { NOMBRE_DE_NIVEL, type Capitulo } from '@athena/leyenda';
+import { DIARIO_POR_TONO, NOMBRE_DE_NIVEL, type Capitulo } from '@athena/leyenda';
 
 /**
  * Lo que pasó en los últimos dos años, en cuatro líneas.
@@ -33,9 +33,23 @@ export default function ResumenDelCapitulo({ capitulo }: { capitulo: Capitulo })
 
       {capitulo.titular && (
         <blockquote className="rounded-lg border border-border bg-canvas-subtle px-3 py-2">
-          <p className="text-[10px] uppercase tracking-label text-ink-muted">Prensa</p>
+          {/*
+            El diario que lo publica sale del tono: una polémica no la saca el mismo medio que una
+            nota de fútbol, y ver el nombre arriba cambia cómo se lee la frase.
+          */}
+          <p
+            className={`text-[10px] font-medium uppercase tracking-label ${
+              capitulo.titular.tono === 'polemica'
+                ? 'text-card-red-ink'
+                : capitulo.titular.tono === 'elogio'
+                  ? 'text-primary-ink'
+                  : 'text-ink-muted'
+            }`}
+          >
+            {DIARIO_POR_TONO[capitulo.titular.tono]}
+          </p>
           <p className="font-display text-sm font-semibold uppercase leading-snug tracking-label">
-            {capitulo.titular}
+            {capitulo.titular.texto}
           </p>
         </blockquote>
       )}

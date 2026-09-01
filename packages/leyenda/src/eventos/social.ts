@@ -66,7 +66,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
       },
       {
         id: 'organizar',
-        texto: 'Organizarla vos y poner las reglas',
+        texto: 'Organizarla tú y poner las reglas',
         pista: 'Si vas a estar, que sea a tu manera.',
         efectos: {
           vida: { dinero: -0.2, felicidad: 10, fama: 4 },
@@ -98,14 +98,14 @@ export const EVENTOS_SOCIALES: Evento[] = [
     rareza: 'infrecuente',
     titulo: 'La cámara te encontró',
     texto:
-      'Te vieron cenando con Valeria Rissi, la modelo del momento. Hay cuatro fotos y ninguna es tuya.',
+      'Te vieron cenando con Valeria Rissi, la modelo del momento. El Popular tiene cuatro fotos y ninguna es tuya.',
     tipoDeRecuerdo: 'romance',
     condiciones: { famaMin: 30, edadMin: 20, sinEtiquetas: ['vida:pareja-estable'] },
     cooldown: 6,
     opciones: [
       {
         id: 'blanquear',
-        texto: 'Blanquearlo vos, antes que ellos',
+        texto: 'Blanquearlo tú, antes que ellos',
         pista: 'Se acaba el misterio y se acaba el negocio de venderlo.',
         efectos: {
           vida: { fama: 16, exposicion: 18, felicidad: 8 },
@@ -115,7 +115,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
           titular: { texto: '{APELLIDO} LO CONFIRMA Y LE SACA LA NOTA A TODOS', tono: 'neutro' },
           balance: 3,
         },
-        resultado: 'Subiste una foto vos mismo. La revista que la tenía perdió la portada.',
+        resultado: 'Subiste una foto tú mismo. La revista que la tenía perdió la portada.',
       },
       {
         id: 'negar',
@@ -140,7 +140,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
       {
         id: 'privado',
         texto: 'Pedirle a tu representante que lo maneje',
-        pista: 'Para eso le pagás.',
+        pista: 'Para eso le pagas.',
         efectos: {
           vida: { dinero: -0.15, exposicion: -6, estres: -6 },
           relaciones: { representante: { confianza: 10 } },
@@ -266,7 +266,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
             balance: 7,
           },
           mal: { vida: { dinero: -0.4, estres: 12 }, etiquetas: ['dinero:mal-negocio'], balance: -5 },
-          relatoBien: 'En dos años abrieron tres locales y ya no dependés del fútbol.',
+          relatoBien: 'En dos años abrieron tres locales y ya no dependes del fútbol.',
           relatoMal: 'Cerró en dieciocho meses dejando deudas con dos proveedores. Todavía te llaman por esas facturas y tu nombre figura en la demanda.',
         },
         resultado: 'Pusiste plata y tu nombre.',
@@ -315,7 +315,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
       },
       {
         id: 'manejar',
-        texto: 'Manejar vos',
+        texto: 'Manejar tú',
         pista: 'Es tarde, estás cansado y la carretera está vacía. Puede terminar muy mal.',
         efectos: { vida: { estres: 6 }, personalidad: { riesgo: 6 }, etiquetas: ['caos:volante'] },
         riesgo: {
@@ -347,7 +347,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
       {
         id: 'club',
         texto: 'Llamar al club y contar la verdad',
-        pista: 'Se enteran igual. Mejor por vos.',
+        pista: 'Se enteran igual. Mejor por ti.',
         efectos: {
           vida: { estres: 8 },
           relaciones: { club: { confianza: 12, respeto: 8 }, dt: { rencor: -6 } },
@@ -373,7 +373,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
       {
         id: 'ir',
         texto: 'Ir y disfrutarlo',
-        pista: 'Volvés descansado o volvés en las portadas. A veces las dos.',
+        pista: 'Vuelves descansado o vuelves en las portadas. A veces las dos.',
         efectos: {
           vida: { felicidad: 16, fama: 12, exposicion: 16, condicion: -8 },
           personalidad: { vidaSocial: 6 },
@@ -407,7 +407,7 @@ export const EVENTOS_SOCIALES: Evento[] = [
       {
         id: 'entrenar',
         texto: 'No ir: pretemporada en serio',
-        pista: 'Llegás fino a agosto.',
+        pista: 'Llegas fino a agosto.',
         efectos: {
           vida: { condicion: 14, forma: 10, felicidad: -6 },
           personalidad: { profesionalismo: 8 },

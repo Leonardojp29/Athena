@@ -26,8 +26,18 @@ const RIOPLATENSE: Repertorio = {
 const ANDINO: Repertorio = {
   tecnicos: ['Wilfredo Palacios', 'Óscar Zambrano', 'Julio Cépeda', 'Marco Quintanilla', 'Édgar Tapia'],
   companeros: ['Jhoan Vílchez', 'Piero Salazar', 'Álex Huamán', 'Cristhian Bazán', 'Renzo Mendoza', 'Diego Chávez'],
-  periodistas: ['Coco Barrios', 'Fiorella Ramos', 'Aldo Ninahuanca', 'Lucía Ferrand'],
-  figuras: ['Kiara del Solar', 'el grupo Sabor Norteño', 'Beto Palomino'],
+  periodistas: ['Coco Barrios', 'Fiorella Ramos', 'Aldo Ninahuanca', 'Lucía Ferrand', 'Manolo Zegarra'],
+  figuras: [
+    'Kiara del Solar',
+    'el grupo Sabor Norteño',
+    'Beto Palomino',
+    'Yamilé Ríos',
+    'la orquesta Fuego de Chosica',
+    'Brunella Ayala',
+    'el Chato Requena',
+    'Milagros Ponce',
+    'la cumbiambera Shirley Sáenz',
+  ],
 };
 
 const BRASILENO: Repertorio = {

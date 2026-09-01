@@ -203,8 +203,24 @@ export interface Recuerdo {
 export interface Titular {
   temporada: number;
   texto: string;
-  tono: 'elogio' | 'duda' | 'polemica' | 'neutro';
+  tono: TonoDeTitular;
 }
+
+export type TonoDeTitular = 'elogio' | 'duda' | 'polemica' | 'neutro';
+
+/**
+ * Qué diario publica cada titular.
+ *
+ * No es adorno: es lo que hace que la prensa del juego se sienta prensa. Una polémica no la saca el
+ * mismo medio que una nota de fútbol, y ver el nombre del diario arriba del titular cambia cómo se
+ * lee la frase. Son los tres diarios del grupo, cada uno con lo suyo.
+ */
+export const DIARIO_POR_TONO: Record<TonoDeTitular, string> = {
+  polemica: 'El Popular',
+  elogio: 'Líbero',
+  duda: 'Líbero',
+  neutro: 'La República',
+};
 
 export type ClaseDeTrofeo = 'liga' | 'copa' | 'continental' | 'seleccion' | 'individual';
 

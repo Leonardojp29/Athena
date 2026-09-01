@@ -53,7 +53,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'perfil-bajo',
         texto: 'No arriesgar y pasarla siempre a la primera',
-        pista: 'Nadie se acuerda de vos. Tampoco nadie se queja.',
+        pista: 'Nadie se acuerda de ti. Tampoco nadie se queja.',
         efectos: {
           personalidad: { profesionalismo: 4, ego: -3 },
           relaciones: { companeros: { confianza: 4 } },
@@ -65,7 +65,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'mirar',
         texto: 'Mirar y aprender antes de pedir la pelota',
-        pista: 'Llegas sabiendo cómo se mueven todos. Perdés un día.',
+        pista: 'Llegas sabiendo cómo se mueven todos. Pierdes un día.',
         efectos: {
           personalidad: { profesionalismo: 6, ego: -3 },
           relaciones: { companeros: { confianza: 5 } },
@@ -176,7 +176,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           balance: 5,
         },
         resultado:
-          'Entrenabas a las siete de la mañana con alguien que solo trabaja para vos. Nadie supo por qué llegaste distinto a la pretemporada.',
+          'Entrenabas a las siete de la mañana con alguien que solo trabaja para ti. Nadie supo por qué llegaste distinto a la pretemporada.',
       },
     ],
   },
@@ -276,7 +276,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     categoria: 'futbol',
     rareza: 'comun',
     titulo: 'Semana de clásico',
-    texto: 'Se viene {rival}. La ciudad no habla de otra cosa y a ti te preguntan en cada semáforo.',
+    texto: 'Se viene {rival}. Líbero abre con la previa cinco días antes, la ciudad no habla de otra cosa y a ti te preguntan en cada semáforo.',
     tipoDeRecuerdo: 'declaracion',
     condiciones: { temporadasMin: 1 },
     cooldown: 4,
@@ -306,7 +306,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
             balance: -9,
           },
           relatoBien:
-            'Ganaron 2-0 y el segundo lo hiciste vos. Esa noche cantaron tu nombre en la avenida hasta las cuatro de la mañana.',
+            'Ganaron 2-0 y el segundo lo hiciste tú. Esa noche cantaron tu nombre en la avenida hasta las cuatro de la mañana.',
           relatoMal:
             'Perdieron 3-0 en tu cancha. Pasaron tu declaración en bucle durante una semana y la hinchada te la cantó todo el año.',
         },
@@ -383,7 +383,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     categoria: 'futbol',
     rareza: 'infrecuente',
     titulo: 'La cinta',
-    texto: 'Se fue el capitán y {dt} te pregunta si la quieres llevar vos.',
+    texto: 'Se fue el capitán y {dt} te pregunta si la quieres llevar tú.',
     tipoDeRecuerdo: 'decision',
     condiciones: { temporadasMin: 3, edadMin: 23, roles: ['titular', 'estrella'] },
     cooldown: 0,
@@ -413,7 +413,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           relatoBien:
             'Te la pusiste y el equipo cambió de cara: nueve partidos sin perder y la gente cantando tu nombre en la despedida del año.',
           relatoMal:
-            'Te la pusiste y el equipo se cayó igual. Cada derrota te la preguntaron a vos y en tres meses habías envejecido cinco años.',
+            'Te la pusiste y el equipo se cayó igual. Cada derrota te la preguntaron a ti y en tres meses habías envejecido cinco años.',
         },
         resultado: 'Aceptaste la cinta.',
       },
@@ -428,7 +428,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           balance: 1,
         },
         resultado:
-          'Dijiste que le tocaba a otro. El otro la llevó dos años y vos jugaste tranquilo los mejores partidos de tu vida.',
+          'Dijiste que le tocaba a otro. El otro la llevó dos años y tú jugaste tranquilo los mejores partidos de tu vida.',
       },
       {
         id: 'compartir',
@@ -468,7 +468,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           relatoBien:
             'Los dos que sobraban se fueron en junio y el equipo empezó a funcionar. En diciembre levantaste una copa con la cinta puesta.',
           relatoMal:
-            'Se filtró tu lista. Medio vestuario dejó de hablarte y el equipo terminó peleando el descenso con vos de capitán.',
+            'Se filtró tu lista. Medio vestuario dejó de hablarte y el equipo terminó peleando el descenso contigo de capitán.',
         },
         resultado: 'Aceptaste con una lista de tres nombres que sobraban.',
       },
@@ -699,7 +699,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'callado',
         texto: 'Ir sin decírselo a nadie',
-        pista: 'Ni una publicación. Solo vos y la camiseta.',
+        pista: 'Ni una publicación. Solo tú y la camiseta.',
         efectos: {
           vida: { confianza: 10, exposicion: -6, felicidad: 8 },
           personalidad: { profesionalismo: 5 },
@@ -724,7 +724,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       {
         id: 'agarrar',
         texto: 'Agarrar el equipo y jugar todas',
-        pista: 'Si sale, sos ídolo para siempre. Si no, también te van a recordar.',
+        pista: 'Si sale, eres ídolo para siempre. Si no, también te van a recordar.',
         efectos: { personalidad: { ambicion: 6 }, vida: { estres: 18 } },
         riesgo: {
           prob: 0.5,
@@ -846,7 +846,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
       },
       {
         id: 'venderlo',
-        texto: 'Subirlo vos con música y todo',
+        texto: 'Subirlo tú con música y todo',
         pista: 'Millones de vistas. Y el vestuario mirándote de reojo.',
         efectos: {
           vida: { fama: 18, exposicion: 16 },
@@ -920,7 +920,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           },
           mal: { vida: { forma: -12, confianza: -10, condicion: -8 }, atributos: { ritmo: -1 }, balance: -6 },
           relatoBien:
-            'Descubriste que el lateral salía siempre por el mismo lado. Por ahí llegó el gol del título, y lo diste vos.',
+            'Descubriste que el lateral salía siempre por el mismo lado. Por ahí llegó el gol del título, y lo diste tú.',
           relatoMal:
             'Dormiste cuatro horas y se te notó desde el primer minuto. Te cambiaron a los cincuenta y viste la final desde el banco.',
         },

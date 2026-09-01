@@ -29,6 +29,7 @@ import {
   type Recuerdo,
   type Retiro,
   type Temporada,
+  type TonoDeTitular,
   type Trofeo,
   type Vinculo,
 } from './estado.js';
@@ -88,8 +89,8 @@ export type Eleccion =
 export interface Capitulo {
   /** La fila nueva de la línea de la carrera. Nula en el capítulo del debut. */
   fila: Temporada | null;
-  /** Una línea de prensa que resume el bienio. */
-  titular: string | null;
+  /** Una línea de prensa que resume el bienio, con el diario que la publica. */
+  titular: { texto: string; tono: TonoDeTitular } | null;
   /** Si la carta cambió de material, para la celebración. */
   ascenso: { de: Nivel; a: Nivel } | null;
   /** Cuánto se movió la media en el bienio. */
@@ -502,28 +503,45 @@ function titularDelBienio(
   fila: Temporada,
   trofeos: Trofeo[],
   mundo: Mundo,
-): string {
+): { texto: string; tono: TonoDeTitular } {
   const datos = datosDeTexto(carrera, mundo);
   const apellido = (datos.nombre.split(' ').at(-1) ?? datos.nombre).toUpperCase();
   const club = fila.clubNombre.toUpperCase();
+  const pais = datos.pais.toUpperCase();
 
+  if (trofeos.some((t) => t.clase === 'seleccion')) {
+    return { texto: `${apellido} LEVANTÓ LA COPA CON ${pais}`, tono: 'elogio' };
+  }
   if (trofeos.some((t) => t.clase === 'continental')) {
-    return `${apellido} TOCA EL CIELO: ${club} CAMPEÓN DE AMÉRICA`;
+    return { texto: `${apellido} TOCA EL CIELO: ${club} CAMPEÓN DE AMÉRICA`, tono: 'elogio' };
   }
   if (trofeos.some((t) => t.nombre.includes('Balón de Oro'))) {
-    return `EL MUNDO SE RINDE ANTE ${apellido}`;
+    return { texto: `EL MUNDO SE RINDE ANTE ${apellido}`, tono: 'elogio' };
   }
-  if (fila.campeonDeLiga) return `${club} CAMPEÓN, CON ${apellido} DE PROTAGONISTA`;
-  if (fila.goles >= 40) return `${fila.goles} GOLES EN DOS AÑOS: ${apellido} NO PARA`;
-  if (fila.lesiones > 0) return `DOS AÑOS DE PELEA CON EL CUERPO PARA ${apellido}`;
-  if (fila.notaMedia >= 7.4) return `${apellido}, LO MEJOR DE ${club}`;
-  if (fila.partidos < 20) return `POCOS MINUTOS PARA ${apellido} EN ${club}`;
-  if (fila.notaMedia < 6.2) return `DOS TEMPORADAS PARA OLVIDAR DE ${apellido}`;
-  return elegir(azar, [
-    `${apellido} SUMA RODAJE EN ${club}`,
-    `TEMPORADAS DE OFICIO PARA ${apellido}`,
-    `${club} SE APOYA EN ${apellido}`,
-  ]);
+  if (fila.campeonDeLiga) {
+    return { texto: `${club} CAMPEÓN, CON ${apellido} DE PROTAGONISTA`, tono: 'elogio' };
+  }
+  if (fila.goles >= 40) {
+    return { texto: `${fila.goles} GOLES EN DOS AÑOS: ${apellido} NO PARA`, tono: 'elogio' };
+  }
+  if (fila.lesiones > 0) {
+    return { texto: `DOS AÑOS DE PELEA CON EL CUERPO PARA ${apellido}`, tono: 'duda' };
+  }
+  if (fila.notaMedia >= 7.4) return { texto: `${apellido}, LO MEJOR DE ${club}`, tono: 'elogio' };
+  if (fila.partidos < 20) {
+    return { texto: `POCOS MINUTOS PARA ${apellido} EN ${club}`, tono: 'duda' };
+  }
+  if (fila.notaMedia < 6.2) {
+    return { texto: `DOS TEMPORADAS PARA OLVIDAR DE ${apellido}`, tono: 'duda' };
+  }
+  return {
+    texto: elegir(azar, [
+      `${apellido} SUMA RODAJE EN ${club}`,
+      `TEMPORADAS DE OFICIO PARA ${apellido}`,
+      `${club} SE APOYA EN ${apellido}`,
+    ]),
+    tono: 'neutro',
+  };
 }
 
 /**
@@ -1273,7 +1291,7 @@ function aplicarEfectos(carrera: Carrera, efectos: Efectos, capitulo: Capitulo, 
       .replaceAll('{RIVAL}', datos.rival.toUpperCase())
       .replaceAll('{CLUB}', datos.club.toUpperCase())
       .replaceAll('{DORSAL}', datos.dorsal);
-    capitulo.titular = texto;
+    capitulo.titular = { texto, tono: efectos.titular.tono };
     siguiente = {
       ...siguiente,
       titulares: [...siguiente.titulares, { temporada: carrera.anio, texto, tono: efectos.titular.tono }],

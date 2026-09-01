@@ -14,7 +14,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     rareza: 'infrecuente',
     titulo: 'El técnico de {pais} no te llama',
     texto:
-      'Llevás tres listas sin aparecer y sos el que más juega de los de tu puesto. Un periodista te pregunta en zona mixta.',
+      'Llevas tres listas sin aparecer y eres el que más juega de los de tu puesto. Un periodista te pregunta en zona mixta.',
     tipoDeRecuerdo: 'conflicto',
     condiciones: { ovrMin: 74, temporadasMin: 3 },
     cooldown: 6,
@@ -42,7 +42,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
           etiquetas: ['seleccion:paciente'],
           balance: 4,
         },
-        resultado: 'Dijiste que el técnico elige y que vos entrenás. Te llamaron en la lista siguiente.',
+        resultado: 'Dijiste que el técnico elige y que tú entrenas. Te llamaron en la lista siguiente.',
       },
       {
         id: 'llamarlo',
@@ -83,7 +83,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     rareza: 'raro',
     titulo: 'A tres semanas del Mundial',
     texto:
-      'Te desgarraste en el último partido de liga. El médico de la selección dice que llegás justo. El del club dice que no llegás.',
+      'Te desgarraste en el último partido de liga. El médico de la selección dice que llegas justo. El del club dice que no llegas.',
     tipoDeRecuerdo: 'lesion',
     condiciones: { ovrMin: 76, edadMin: 22 },
     cooldown: 8,
@@ -107,7 +107,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
             titular: { texto: '{APELLIDO} SE ROMPIÓ EN EL PRIMER ENTRENAMIENTO', tono: 'duda' },
             balance: -10,
           },
-          relatoBien: 'Llegaste al primer partido justo y jugaste los siete con infiltraciones antes de cada uno. Nadie te preguntó cómo estabas y vos tampoco lo dijiste.',
+          relatoBien: 'Llegaste al primer partido justo y jugaste los siete con infiltraciones antes de cada uno. Nadie te preguntó cómo estabas y tú tampoco lo dijiste.',
           relatoMal: 'Te rompiste en el primer entrenamiento y viste el Mundial desde el hotel.',
         },
         resultado: 'Subiste al avión con el muslo vendado.',
@@ -115,7 +115,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
       {
         id: 'avisar',
         texto: 'Avisar que no estás y quedarte',
-        pista: 'Te perdés el Mundial. Y el año que viene estás entero.',
+        pista: 'Te pierdes el Mundial. Y el año que viene estás entero.',
         efectos: {
           vida: { condicion: 14, felicidad: -16, estres: -6 },
           relaciones: { dt: { respeto: 10 }, club: { confianza: 12 } },
@@ -123,7 +123,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
           etiquetas: ['seleccion:renuncio-mundial'],
           balance: 2,
         },
-        resultado: 'Llamaste vos mismo al técnico. Fue la llamada más difícil de tu carrera.',
+        resultado: 'Llamaste tú mismo al técnico. Fue la llamada más difícil de tu carrera.',
       },
       {
         id: 'callar',
@@ -139,7 +139,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
       {
         id: 'infiltrarse',
         texto: 'Pedir que te infiltren para los partidos importantes',
-        pista: 'Jugás. El precio se paga después.',
+        pista: 'Juegas. El precio se paga después.',
         efectos: {
           vida: { condicion: -18, fama: 10 },
           atributos: { fisico: -3 },
@@ -157,7 +157,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     rareza: 'raro',
     titulo: 'La otra bandera',
     texto:
-      'Llevás años jugando afuera y el país donde vivís te ofrece la nacionalidad. Su selección juega el Mundial; la tuya está peleando por entrar.',
+      'Llevas años jugando afuera y el país donde vives te ofrece la nacionalidad. Su selección juega el Mundial; la tuya está peleando por entrar.',
     tipoDeRecuerdo: 'decision',
     condiciones: { clubesMin: 2, temporadasMin: 5, ovrMin: 74 },
     cooldown: 0,
@@ -165,7 +165,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
       {
         id: 'aceptar',
         texto: 'Aceptar la otra nacionalidad',
-        pista: 'Ganás un Mundial de chance. Perdés tu país.',
+        pista: 'Ganas un Mundial de chance. Pierdes tu país.',
         efectos: {
           vida: { carinoDeLaHinchada: -24, fama: 12, exposicion: 20 },
           relaciones: { hinchada: { rencor: 22 } },
@@ -229,7 +229,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     categoria: 'legado',
     rareza: 'raro',
     titulo: 'La cinta de tu país',
-    texto: 'El capitán histórico se retiró y el técnico te pregunta si querés la cinta.',
+    texto: 'El capitán histórico se retiró y el técnico te pregunta si quieres la cinta.',
     tipoDeRecuerdo: 'decision',
     condiciones: { ovrMin: 80, edadMin: 27, temporadasMin: 6 },
     cooldown: 0,
@@ -272,7 +272,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
       },
       {
         id: 'rechazar',
-        texto: 'Rechazarla: no querés el ruido',
+        texto: 'Rechazarla: no quieres el ruido',
         pista: 'Menos peso encima. Y menos historia también.',
         efectos: {
           vida: { estres: -12, exposicion: -8 },

@@ -43,7 +43,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
           personalidad: { profesionalismo: 4 },
           balance: 3,
         },
-        resultado: 'Grabaste cuatro palabras en el estribillo. Nadie supo que eras vos hasta meses después.',
+        resultado: 'Grabaste cuatro palabras en el estribillo. Nadie supo que eras tú hasta meses después.',
       },
       {
         id: 'condicion-club',
@@ -90,7 +90,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
       },
       {
         id: 'grabarla',
-        texto: 'Grabarla y subirla vos',
+        texto: 'Grabarla y subirla tú',
         pista: 'Se hace viral. Y se hace tuya.',
         efectos: {
           vida: { fama: 12, exposicion: 12, carinoDeLaHinchada: 10 },
@@ -108,7 +108,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
           personalidad: { ego: -6 },
           balance: 1,
         },
-        resultado: 'Pediste por micrófono que se la cantaran al equipo y no a vos. Siguieron cantándotela igual, y más fuerte, hasta el día que te fuiste del club.',
+        resultado: 'Pediste por micrófono que se la cantaran al equipo y no a ti. Siguieron cantándotela igual, y más fuerte, hasta el día que te fuiste del club.',
       },
       {
         id: 'nada',
@@ -124,7 +124,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
     categoria: 'relaciones',
     rareza: 'raro',
     titulo: 'Vas a ser padre',
-    texto: 'Te enterás en plena temporada, a mitad de una pelea por el descenso.',
+    texto: 'Te enteras en plena temporada, a mitad de una pelea por el descenso.',
     tipoDeRecuerdo: 'decision',
     condiciones: { edadMin: 23, temporadasMin: 4 },
     cooldown: 0,
@@ -164,7 +164,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
           etiquetas: ['vida:padre', 'social:pareja-publica'],
           balance: 4,
         },
-        resultado: 'Lo dedicaste con las dos manos en la boca. La foto la tenés colgada en el living.',
+        resultado: 'Lo dedicaste con las dos manos en la boca. La foto la tienes colgada en el living.',
       },
       {
         id: 'privado',
@@ -273,7 +273,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
     rareza: 'infrecuente',
     titulo: 'Alguien te está esperando',
     texto:
-      'Conociste a alguien en la presentación de una marca. Al día siguiente hay tres fotos suyas en los portales, y una tuya al lado.',
+      'Conociste a alguien en la presentación de una marca. Al día siguiente El Popular abre con tres fotos suyas y una tuya al lado.',
     tipoDeRecuerdo: 'romance',
     condiciones: { edadMin: 19, famaMin: 25, sinEtiquetas: ['vida:pareja-estable'] },
     cooldown: 6,
@@ -420,7 +420,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
           balance: -3,
         },
         resultado:
-          'Dejaste de buscarlo vos también. El equipo empezó a jugar de a diez y en tres meses los vendieron a los dos, cada uno a un país distinto.',
+          'Dejaste de buscarlo tú también. El equipo empezó a jugar de a diez y en tres meses los vendieron a los dos, cada uno a un país distinto.',
       },
     ],
   },

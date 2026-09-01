@@ -40,7 +40,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
       {
         id: 'denunciar',
         texto: 'Denunciarlo al club',
-        pista: 'Se acaba ahí. Y alguien se entera de que no sos de los que dicen que sí.',
+        pista: 'Se acaba ahí. Y alguien se entera de que no eres de los que dicen que sí.',
         efectos: {
           vida: { reputacion: 16, estres: 8 },
           relaciones: { club: { confianza: 18, respeto: 14 } },
@@ -94,7 +94,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
           luego: { eventoId: 'dinero-apuesta-investigacion', enCapitulos: 2 },
           balance: -8,
         },
-        resultado: 'Fue una mano en el área que nadie entendió, ni vos. Cobraron el penal, perdieron el partido y el dinero apareció el martes en una cuenta que no era tuya.',
+        resultado: 'Fue una mano en el área que nadie entendió, ni tú. Cobraron el penal, perdieron el partido y el dinero apareció el martes en una cuenta que no era tuya.',
       },
       {
         id: 'cortar',
@@ -110,8 +110,8 @@ export const EVENTOS_DE_DINERO: Evento[] = [
       },
       {
         id: 'denunciar',
-        texto: 'Denunciarlo ahora, con lo que sabés',
-        pista: 'Tenés dos conversaciones para contar. Una es tuya.',
+        texto: 'Denunciarlo ahora, con lo que sabes',
+        pista: 'Tienes dos conversaciones para contar. Una es tuya.',
         efectos: {
           vida: { reputacion: 10, estres: 18, exposicion: 12 },
           relaciones: { club: { confianza: 12 } },
@@ -141,7 +141,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     rareza: 'raro',
     titulo: 'La investigación',
     texto:
-      'Dos personas de la federación te esperan en el club. Traen un listado de partidos y tu nombre está en él.',
+      'Dos personas de la federación te esperan en el club con un listado de partidos donde está tu nombre. Afuera hay un móvil de La República.',
     tipoDeRecuerdo: 'caos',
     condiciones: { conEtiquetas: ['amanio:1'] },
     cooldown: 0,
@@ -212,7 +212,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
       {
         id: 'entregar',
         texto: 'Entregar la grabación que guardaste',
-        pista: 'Solo si la tenés. Te salva a vos y hunde a otros.',
+        pista: 'Solo si la tienes. Te salva a ti y hunde a otros.',
         efectos: {
           vida: { reputacion: 6, exposicion: 22, estres: 24 },
           relaciones: { club: { confianza: 8 } },
@@ -221,7 +221,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
           balance: 3,
         },
         resultado:
-          'Pusiste el teléfono sobre la mesa. Doce minutos de grabación y cuatro personas presas; a vos te dieron por colaborador.',
+          'Pusiste el teléfono sobre la mesa. Doce minutos de grabación y cuatro personas presas; a ti te dieron por colaborador.',
       },
     ],
   },
@@ -231,7 +231,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     rareza: 'comun',
     titulo: 'El negocio del primo',
     texto:
-      'Un primo tuyo tiene un proyecto y necesita capital. Dice que en dos años lo triplicás. Lo dice muy convencido.',
+      'Un primo tuyo tiene un proyecto y necesita capital. Dice que en dos años lo triplicas. Lo dice muy convencido.',
     tipoDeRecuerdo: 'decision',
     condiciones: { temporadasMin: 2, vida: { dinero: [1, 999] } },
     cooldown: 6,
@@ -239,7 +239,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
       {
         id: 'todo',
         texto: 'Poner una parte grande',
-        pista: 'Si sale, no trabajás nunca más. Si no sale, tampoco.',
+        pista: 'Si sale, no trabajas nunca más. Si no sale, tampoco.',
         efectos: { vida: { dinero: -1.5 }, personalidad: { riesgo: 6 }, etiquetas: ['dinero:negocio'] },
         riesgo: {
           prob: 0.42,
@@ -306,7 +306,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
       {
         id: 'aceptar',
         texto: 'Aceptar sin discutir',
-        pista: 'Sale caro. Y trabaja el doble para vos.',
+        pista: 'Sale caro. Y trabaja el doble para ti.',
         efectos: {
           vida: { dinero: -0.4 },
           relaciones: { representante: { confianza: 16, respeto: 10 } },
@@ -324,15 +324,15 @@ export const EVENTOS_DE_DINERO: Evento[] = [
           prob: 0.65,
           bien: { relaciones: { representante: { respeto: 12 } }, balance: 4 },
           mal: { relaciones: { representante: { rencor: 16 } }, etiquetas: ['dinero:representante-frio'], balance: -3 },
-          relatoBien: 'Cerraron en quince por ciento y con la mano estrechada. Trabajó el doble por vos ese año y te consiguió el traspaso de tu vida.',
-          relatoMal: 'Aceptó, pero desde ese día te empezó a ofrecer clubes que no eran para vos.',
+          relatoBien: 'Cerraron en quince por ciento y con la mano estrechada. Trabajó el doble por ti ese año y te consiguió el traspaso de tu vida.',
+          relatoMal: 'Aceptó, pero desde ese día te empezó a ofrecer clubes que no eran para ti.',
         },
         resultado: 'Le pusiste un número sobre la mesa.',
       },
       {
         id: 'cambiar',
         texto: 'Cambiar de representante',
-        pista: 'Empezás de cero con alguien que no te debe nada.',
+        pista: 'Empiezas de cero con alguien que no te debe nada.',
         efectos: {
           vida: { estres: 12 },
           relaciones: { representante: { confianza: -30, rencor: 20 } },
@@ -362,7 +362,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     rareza: 'raro',
     titulo: 'La carta que nadie quiere abrir',
     texto:
-      'Llega una notificación de la agencia tributaria. Hay tres años de derechos de imagen que tu estructura declaró en otro país.',
+      'Llega una notificación de la agencia tributaria y La República ya está preguntando: hay tres años de derechos de imagen que tu estructura declaró en otro país.',
     tipoDeRecuerdo: 'caos',
     condiciones: { famaMin: 45, temporadasMin: 4 },
     cooldown: 10,
@@ -439,7 +439,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     rareza: 'raro',
     titulo: 'La noche del casino',
     texto:
-      'Un compañero te lleva a un casino privado. En dos horas perdiste lo que ganás en un mes y te ofrecen seguir a crédito.',
+      'Un compañero te lleva a un casino privado. En dos horas perdiste lo que ganas en un mes y te ofrecen seguir a crédito.',
     tipoDeRecuerdo: 'caos',
     condiciones: { edadMin: 21, personalidad: { riesgo: [45, 100] } },
     cooldown: 6,
