@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { calcularVeredicto, type Carrera } from '@athena/leyenda';
+import { calcularVeredicto, fueraDeLaCancha, type Carrera } from '@athena/leyenda';
 import Carta from './Carta';
 
 /**
@@ -170,8 +170,9 @@ export default function Legado({ carrera, onEmpezarDeNuevo, codigo }: Props) {
           {carrera.temporadas.length > 0 && <Trazo carrera={carrera} />}
         </div>
 
-        {/* Qué te llevaste: la vitrina, con su propio scroll. */}
-        <div className="flex min-h-0 flex-col lg:border-l lg:border-border lg:pl-6">
+        {/* Qué te llevaste: la otra vida y la vitrina, con su propio scroll. */}
+        <div className="flex min-h-0 flex-col gap-3 lg:border-l lg:border-border lg:pl-6">
+          <FueraDeLaCancha carrera={carrera} />
           <Vitrina carrera={carrera} />
         </div>
       </div>
@@ -190,6 +191,75 @@ const ROTULO_DE_FINAL: Record<string, string> = {
   sancion: 'La carrera que terminó fuera de la cancha',
   accidente: 'La carrera que se apagó',
 };
+
+/**
+ * La otra mitad de la carrera.
+ *
+ * Un futbolista no es solo los goles. La fama, la reputación, las portadas y los escándalos ya movían
+ * el juego —un escándalo te cuesta el puesto dos años después— pero no se veían en ninguna parte, y
+ * una vida que no se mide es una vida que el jugador no sabe que tuvo.
+ */
+function FueraDeLaCancha({ carrera }: { carrera: Carrera }) {
+  const vida = useMemo(() => fueraDeLaCancha(carrera), [carrera]);
+
+  return (
+    <section className="rounded-xl border border-border bg-surface p-3">
+      <h2 className="font-display text-sm font-semibold uppercase tracking-label">Fuera de la cancha</h2>
+
+      <dl className="mt-2 grid grid-cols-4 gap-2">
+        {[
+          ['Fama', vida.fama],
+          ['Reputación', vida.reputacion],
+          ['Portadas', vida.portadas],
+          ['Escándalos', vida.escandalos],
+        ].map(([rotulo, valor]) => (
+          <div key={String(rotulo)}>
+            <dd className="font-display text-lg font-semibold leading-none tabular">{valor}</dd>
+            <dt className="mt-0.5 text-[9px] uppercase tracking-label text-ink-muted">{rotulo}</dt>
+          </div>
+        ))}
+      </dl>
+
+      {/* Las tres barras que cuentan qué clase de figura pública fuiste. */}
+      <div className="mt-3 flex flex-col gap-1.5">
+        {[
+          ['Te quiere la tribuna', vida.hinchada],
+          ['Te persigue la cámara', vida.exposicion],
+        ].map(([rotulo, valor]) => (
+          <div key={String(rotulo)} className="flex items-center gap-2">
+            <span className="w-36 shrink-0 text-[10px] uppercase tracking-label text-ink-muted">{rotulo}</span>
+            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-border">
+              <span
+                className="block h-full rounded-full bg-primary-ink"
+                style={{ width: `${Math.max(2, Number(valor))}%` }}
+              />
+            </span>
+            <span className="w-7 shrink-0 text-right text-[10px] tabular text-ink-muted">{valor}</span>
+          </div>
+        ))}
+      </div>
+
+      {vida.portadaMasFuerte && (
+        <blockquote
+          className={`mt-3 rounded-lg px-3 py-2 ${
+            vida.portadaMasFuerte.tono === 'polemica'
+              ? 'bg-card-red/10 text-card-red-ink'
+              : vida.portadaMasFuerte.tono === 'elogio'
+                ? 'bg-primary/10 text-primary-ink'
+                : 'bg-canvas-subtle text-ink-muted'
+          }`}
+        >
+          <p className="text-[9px] uppercase tracking-label opacity-70">La portada que te marcó</p>
+          <p className="font-display text-xs font-semibold uppercase leading-snug tracking-label">
+            {vida.portadaMasFuerte.texto}
+          </p>
+        </blockquote>
+      )}
+
+      <p className="mt-2 text-xs italic leading-snug text-ink-muted">{vida.veredicto}</p>
+    </section>
+  );
+}
 
 /**
  * Los clubes de tu vida.

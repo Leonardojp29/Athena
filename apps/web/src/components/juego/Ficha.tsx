@@ -21,10 +21,13 @@ import Carta, { type DatosDeCarta } from './Carta';
 export default function Ficha({
   carrera,
   ascenso,
+  salto,
   onEmpezarDeNuevo,
 }: {
   carrera: Carrera;
   ascenso: boolean;
+  /** Cuánto se movió la media en el bienio, para marcarlo sobre la carta. */
+  salto: number | null;
   onEmpezarDeNuevo: () => void;
 }) {
   const totales = carrera.temporadas.reduce(
@@ -82,7 +85,29 @@ export default function Ficha({
         />
       )}
       <div className="relative flex items-stretch gap-4 p-3 sm:gap-5 sm:p-4">
-        <Carta datos={datosDeCarta} tamano="chica" asciende={ascenso} class="shrink-0" />
+        {/*
+          El salto de media vive acá y no en una pantalla completa: subir dos puntos es una buena
+          noticia, no un acontecimiento. La marca sale de la carta, sube y se va.
+        */}
+        <div className="relative shrink-0">
+          <Carta datos={datosDeCarta} tamano="chica" asciende={ascenso} />
+          {salto !== null && salto !== 0 && (
+            <span
+              key={`${carrera.capitulo}-${salto}`}
+              data-salto-de-media
+              aria-hidden="true"
+              className={`pointer-events-none absolute -right-2 top-6 rounded-lg px-2 py-1 font-display text-lg font-semibold leading-none tabular shadow-magnet ${
+                salto > 0 ? 'bg-primary text-primary-contrast' : 'bg-card-red text-chalk'
+              }`}
+            >
+              {salto > 0 ? '+' : '−'}
+              {Math.abs(salto)}
+            </span>
+          )}
+          <span className="sr-only" aria-live="polite">
+            {salto ? `Tu media ${salto > 0 ? 'subió' : 'bajó'} ${Math.abs(salto)} puntos.` : ''}
+          </span>
+        </div>
 
         <div className="relative flex min-w-0 flex-1 flex-col justify-between gap-3 overflow-hidden py-0.5">
           {/* El escudo, gigante y casi invisible: la camiseta se ve antes de que leas su nombre. */}

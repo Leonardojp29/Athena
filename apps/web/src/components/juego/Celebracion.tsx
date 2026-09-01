@@ -21,10 +21,14 @@ interface Props {
 type Escena =
   | { clase: 'resultado'; resultado: Resultado }
   | { clase: 'trofeo'; trofeo: Trofeo }
-  | { clase: 'nivel'; de: string; a: string }
-  | { clase: 'media'; de: number; a: number };
+  | { clase: 'nivel'; de: string; a: string };
 
-const MS_POR_ESCENA = 1500;
+/*
+ * Un trofeo se mira dos segundos; una consecuencia se lee. La escena de resultado espera al jugador
+ * en lugar de irse sola: es la respuesta a la pregunta que acaba de hacerse y llevaba texto que
+ * desaparecía antes de terminar de leerlo.
+ */
+const MS_POR_ESCENA = 2600;
 
 /** Lo que merece pantalla, en orden de importancia: primero lo que ganaste, después lo que subiste. */
 export function escenasDe(capitulo: Capitulo): Escena[] {
@@ -55,12 +59,14 @@ export function escenasDe(capitulo: Capitulo): Escena[] {
     });
   }
 
-  /* Un punto de media no es noticia; cinco sí. */
-  const salto = capitulo.saltoDeOvr;
-  if (salto && salto.a - salto.de >= 3) escenas.push({ clase: 'media', de: salto.de, a: salto.a });
+  /*
+   * El salto de media **no** entra acá. Subir dos puntos es una buena noticia, no un acontecimiento
+   * que justifique tapar la pantalla: eso se ve en la carta, que es donde vive el número, con el
+   * contador subiendo y su marca al lado. Lo que se lleva la pantalla es lo que pasa una vez.
+   */
 
-  /* Cinco escenas es el techo: a la sexta la celebración deja de premiar y empieza a estorbar. */
-  return escenas.slice(0, 5);
+  /* Cuatro escenas es el techo: a la quinta la celebración deja de premiar y empieza a estorbar. */
+  return escenas.slice(0, 4);
 }
 
 export default function Celebracion({ capitulo, onCerrar }: Props) {
@@ -127,28 +133,6 @@ export default function Celebracion({ capitulo, onCerrar }: Props) {
             </p>
             <p className="mt-3 text-sm text-chalk-dim">
               Dejaste atrás <span className="text-chalk">{escena.de}</span>.
-            </p>
-          </>
-        )}
-        {escena.clase === 'media' && (
-          <>
-            <p className="text-2xs font-medium uppercase tracking-label text-chalk-dim">Tu media subió</p>
-            <p className="mt-2 flex items-baseline gap-4">
-              <span className="font-display text-4xl font-semibold tabular text-chalk-dim">
-                {escena.de}
-              </span>
-              <span aria-hidden="true" className="font-display text-2xl text-chalk-dim">
-                →
-              </span>
-              <span
-                data-celebracion-titulo
-                className="font-display text-7xl font-semibold leading-none tabular text-primary sm:text-8xl"
-              >
-                {escena.a}
-              </span>
-            </p>
-            <p className="mt-3 text-sm text-chalk-dim">
-              {escena.a - escena.de} puntos en dos años.
             </p>
           </>
         )}

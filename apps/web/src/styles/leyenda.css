@@ -341,6 +341,38 @@
   animation: celebracion-entra var(--a-motion-drama) var(--a-ease-out-expo) both;
 }
 
+/*
+ * La marca del salto de media: sale de la carta, sube y se va.
+ *
+ * Antes esto se llevaba la pantalla entera. Subir dos puntos es una buena noticia, no un
+ * acontecimiento: se ve donde vive el número y se va sola en dos segundos.
+ */
+@keyframes salto-de-media {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.7);
+  }
+  18% {
+    opacity: 1;
+    transform: translateY(0) scale(1.12);
+  }
+  30% {
+    transform: translateY(0) scale(1);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-26px) scale(0.92);
+  }
+}
+
+[data-salto-de-media] {
+  animation: salto-de-media 2.6s var(--a-ease-out-expo) both;
+}
+
 /* --------------------------------------------------------- la línea de la carrera */
 
 /*
@@ -599,6 +631,7 @@ li:nth-child(4) > [data-oferta] {
   [data-celebracion-objeto],
   [data-celebracion-titulo],
   [data-celebracion-luz],
+  [data-salto-de-media],
   [data-oferta],
   [data-resumen] {
     animation: none !important;

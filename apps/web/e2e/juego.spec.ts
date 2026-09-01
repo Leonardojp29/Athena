@@ -7,7 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
  * duración **es** el diseño —la versión anterior tardaba casi dos minutos y por eso nadie llegaba al
  * final— y por eso el recorrido completo la mide en lugar de solo comprobar que no explota.
  */
-test.describe.configure({ timeout: 180_000 });
+test.describe.configure({ timeout: 240_000 });
 
 const CREAR = '/juegos/mi-leyenda';
 
@@ -27,19 +27,23 @@ async function crearFutbolista(
 /** La celebración tapa la pantalla hasta que alguien la cierra. */
 async function cerrarCelebracion(page: Page): Promise<void> {
   const celebracion = page.locator('[data-celebracion]');
-  for (let intentos = 0; intentos < 8 && (await celebracion.count()); intentos++) {
-    await celebracion.click({ force: true });
+  for (let intentos = 0; intentos < 6 && (await celebracion.count()); intentos++) {
+    await page.keyboard.press('Escape');
     await page.waitForTimeout(160);
   }
 }
 
 /** Da un paso del juego. Devuelve false cuando no hay nada que hacer (la carrera terminó). */
 async function unPaso(page: Page): Promise<boolean> {
-  /* La celebración se pone delante de todo: hay que sacarla antes de seguir jugando. */
+  /*
+   * La celebración se pone delante de todo: hay que sacarla antes de seguir jugando. Escape la cierra
+   * entera de una vez; el clic solo pasa a la escena siguiente, y con tres o cuatro escenas por
+   * capítulo eso multiplicaba los pasos del recorrido completo por tres.
+   */
   const celebracion = page.locator('[data-celebracion]');
   if (await celebracion.count()) {
-    await celebracion.click();
-    await page.waitForTimeout(120);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(140);
     return true;
   }
 

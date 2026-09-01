@@ -229,13 +229,24 @@ export default function Estadio({ momento, contexto, colorRival, onJugar }: Prop
     };
   }, [camara, colorRival, desde, momento]);
 
-  /* Cuando la jugada se resuelve, se le avisa al motor una sola vez. */
+  /*
+   * Cuando la jugada se resuelve, se le avisa al motor una sola vez, con un segundo de aire para que
+   * el jugador vea el resultado.
+   *
+   * El aviso vive detrás de una referencia y no en las dependencias del efecto. Con `onJugar` en las
+   * dependencias, cada redibujado del padre —y el padre se redibuja— rearmaba el efecto: la limpieza
+   * cancelaba el temporizador, el cuerpo salía por el guardia de "ya enviado" y el temporizador no se
+   * volvía a crear nunca. La escena se quedaba con el "¡Gol!" en pantalla y el juego colgado.
+   */
+  const avisar = useRef(onJugar);
+  avisar.current = onJugar;
+
   useEffect(() => {
     if (fase !== 'resuelto' || enviado.current || !intencion.current) return;
     enviado.current = true;
-    const reloj = window.setTimeout(() => onJugar(intencion.current as Intencion), 1200);
+    const reloj = window.setTimeout(() => avisar.current(intencion.current as Intencion), 1200);
     return () => window.clearTimeout(reloj);
-  }, [fase, onJugar]);
+  }, [fase]);
 
   const puntoDelEvento = (evento: React.PointerEvent) => {
     const caja = lienzo.current?.getBoundingClientRect();

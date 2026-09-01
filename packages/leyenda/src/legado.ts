@@ -191,6 +191,87 @@ export function calcularAdn(carrera: Carrera): Arquetipo {
   };
 }
 
+/**
+ * La otra mitad de la carrera.
+ *
+ * Un futbolista no es solo los goles: es la fama que juntó, la reputación que le quedó, las veces que
+ * fue portada y las que salió a explicar algo. Todo eso el motor ya lo movía —los escándalos y las
+ * fiestas cambian el rol del bienio siguiente— pero no se veía en ninguna parte, y una vida que no se
+ * mide es una vida que el jugador no sabe que tuvo.
+ */
+export interface FueraDeLaCancha {
+  fama: number;
+  reputacion: number;
+  /** Cuánto te persigue la cámara, 0-100. */
+  exposicion: number;
+  /** Lo que la tribuna siente por ti, 0-100. */
+  hinchada: number;
+  portadas: number;
+  escandalos: number;
+  romances: number;
+  /** El titular más fuerte que te dedicaron, con su tono. */
+  portadaMasFuerte: { texto: string; tono: string } | null;
+  /** Una línea que resume cómo te recuerdan fuera de la cancha. */
+  veredicto: string;
+}
+
+export function fueraDeLaCancha(carrera: Carrera): FueraDeLaCancha {
+  const { vida, titulares, recuerdos } = carrera;
+  const escandalos = recuerdos.filter((r) => ['polemica', 'caos', 'conflicto'].includes(r.tipo)).length;
+  const romances = recuerdos.filter((r) => r.tipo === 'romance').length;
+  const polemicas = titulares.filter((t) => t.tono === 'polemica');
+  const elogios = titulares.filter((t) => t.tono === 'elogio');
+
+  /* El titular que más pesa: primero la polémica más reciente, y si no hubo, el mejor elogio. */
+  const portadaMasFuerte = polemicas.at(-1) ?? elogios.at(-1) ?? titulares.at(-1) ?? null;
+
+  return {
+    fama: Math.round(vida.fama),
+    reputacion: Math.round(vida.reputacion),
+    exposicion: Math.round(vida.exposicion),
+    hinchada: Math.round(vida.carinoDeLaHinchada),
+    portadas: titulares.length,
+    escandalos,
+    romances,
+    portadaMasFuerte: portadaMasFuerte ? { texto: portadaMasFuerte.texto, tono: portadaMasFuerte.tono } : null,
+    veredicto: veredictoDeLaVida({ ...vida, escandalos, polemicas: polemicas.length, elogios: elogios.length }),
+  };
+}
+
+function veredictoDeLaVida(datos: {
+  fama: number;
+  reputacion: number;
+  carinoDeLaHinchada: number;
+  escandalos: number;
+  polemicas: number;
+  elogios: number;
+}): string {
+  /*
+   * El orden importa: primero lo que más define, después lo que matiza. Un jugador con cuatro
+   * escándalos y la fama por las nubes no es "el que hizo poco ruido" por mucho que la tribuna lo
+   * quiera, y ese era justo el veredicto que salía antes.
+   */
+  if (datos.escandalos >= 4 && datos.fama >= 60) {
+    return 'Vendiste más diarios fuera de la cancha que dentro. Nadie se aburrió contigo.';
+  }
+  if (datos.escandalos >= 3 && datos.reputacion < 45) {
+    return 'Te acordás de las portadas mejor que de los goles, y no porque fueran buenas.';
+  }
+  if (datos.polemicas > datos.elogios && datos.polemicas >= 3) {
+    return 'La prensa te tuvo de tapa por lo que decías, no por lo que hacías.';
+  }
+  if (datos.reputacion >= 70 && datos.escandalos <= 1) {
+    return 'Ni una portada incómoda en toda tu carrera. En este oficio eso es casi un título.';
+  }
+  if (datos.carinoDeLaHinchada >= 75 && datos.escandalos <= 2) {
+    return 'Afuera hiciste poco ruido y adentro te quisieron igual: en la tribuna todavía te cantan.';
+  }
+  if (datos.fama <= 35) {
+    return 'Jugaste al fútbol y te fuiste a tu casa. Hay carreras enteras de las que nadie escribió nada.';
+  }
+  return 'Ni santo ni escándalo: una vida de futbolista con sus portadas justas.';
+}
+
 export interface Veredicto {
   prime: Prime | null;
   adn: Arquetipo;

@@ -22,6 +22,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'casa-familia',
         texto: 'Comprarle la casa a tu familia',
+        pista: 'Se va casi todo. Y no lo vas a lamentar nunca.',
         efectos: {
           vida: { dinero: -0.6, felicidad: 18 },
           personalidad: { lealtad: 5 },
@@ -33,6 +34,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'ahorrar',
         texto: 'Guardar todo',
+        pista: 'Aburrido y correcto.',
         efectos: {
           vida: { dinero: 0.3, felicidad: -2 },
           personalidad: { profesionalismo: 3 },
@@ -44,6 +46,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'auto',
         texto: 'Comprarte el auto que soñabas',
+        pista: 'Todo el mundo va a saber cuánto ganas.',
         efectos: {
           vida: { dinero: -0.4, felicidad: 12, exposicion: 8 },
           relaciones: { companeros: { confianza: 4 } },
@@ -85,6 +88,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'firmar',
         texto: 'Firmar',
+        pista: 'Dinero seguro y tu cara en todas partes.',
         efectos: {
           vida: { dinero: 1.8, fama: 8, exposicion: 10 },
           etiquetas: ['dinero:patrocinio'],
@@ -107,6 +111,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'rechazar',
         texto: 'Concentrarte solo en jugar',
+        pista: 'Ni un peso ni una distracción.',
         efectos: {
           vida: { estres: -5, exposicion: -4 },
           personalidad: { profesionalismo: 4 },
@@ -155,6 +160,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'quedarse',
         texto: 'Quedarte con el de siempre',
+        pista: 'Menos puertas. Alguien que te debe la vida.',
         efectos: {
           relaciones: { representante: { confianza: 20, respeto: 15 } },
           personalidad: { lealtad: 6 },
@@ -204,34 +210,68 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'ganarselo',
         texto: 'Ir a buscarlo y ponerte a disposición',
-        efectos: {
-          relaciones: { dt: { confianza: 10 } },
-          vida: { estres: 4 },
-          balance: 4,
+        pista: 'Le caes bien desde el primer día. O le pareces un adulón.',
+        efectos: { personalidad: { ambicion: 4 } },
+        riesgo: {
+          prob: 0.58,
+          bien: {
+            relaciones: { dt: { confianza: 20, respeto: 12 } },
+            vida: { forma: 8, confianza: 12 },
+            atributos: { pase: 1 },
+            balance: 6,
+          },
+          mal: {
+            relaciones: { dt: { rencor: 12 }, companeros: { rencor: 10 } },
+            vida: { confianza: -10, forma: -6 },
+            etiquetas: ['conflicto:vestuario'],
+            balance: -5,
+          },
+          relatoBien:
+            'Fuiste el primero en golpearle la puerta y le dijiste que hacías el puesto que hiciera falta. Arrancó la temporada contigo de titular y jugaste treinta y un partidos.',
+          relatoMal:
+            'Te escuchó de pie, sin sentarse, y contestó "eso se demuestra corriendo". El vestuario se enteró de que habías ido y te lo hicieron notar toda la pretemporada.',
         },
-        resultado: 'Fuiste el primero en golpearle la puerta. Arrancó la temporada contigo de titular.',
+        resultado: 'Golpeaste su puerta el primer día.',
       },
       {
         id: 'esperar',
         texto: 'Esperar que te vea entrenar',
-        efectos: {
-          relaciones: { dt: { confianza: -3 } },
-          balance: 1,
+        pista: 'Que hable el trabajo. Si es que mira.',
+        efectos: { personalidad: { profesionalismo: 5 } },
+        riesgo: {
+          prob: 0.5,
+          bien: {
+            relaciones: { dt: { respeto: 16, confianza: 8 } },
+            vida: { forma: 6, confianza: 8 },
+            balance: 5,
+          },
+          mal: {
+            vida: { confianza: -12, felicidad: -6 },
+            relaciones: { dt: { confianza: -10 } },
+            etiquetas: ['futbol:olvidado'],
+            balance: -5,
+          },
+          relatoBien:
+            'No hablaste con él en tres semanas y a la cuarta te puso de titular sin decirte nada. Después contó en rueda de prensa que le gustó que no fueras a pedirle nada.',
+          relatoMal:
+            'Nunca te miró. Trajo a dos de su club anterior para tu puesto y en diciembre te enteraste por la lista de transferibles.',
         },
-        resultado: 'No fuiste a buscarlo. Tardó cinco fechas en darte una oportunidad.',
+        resultado: 'No fuiste a verlo: te pusiste a entrenar y esperaste.',
       },
       {
         id: 'estudiarlo',
         texto: 'Estudiar todos sus equipos anteriores',
-        pista: 'Llegás sabiendo qué te va a pedir.',
+        pista: 'Llegas sabiendo qué te va a pedir.',
         efectos: {
           atributos: { pase: 2, defensa: 2 },
-          relaciones: { dt: { respeto: 12 } },
+          relaciones: { dt: { respeto: 14 } },
           personalidad: { profesionalismo: 8 },
+          vida: { forma: 6 },
           etiquetas: ['futbol:estudioso'],
           balance: 6,
         },
-        resultado: 'Viste catorce partidos suyos antes de la pretemporada. Lo notó en el primer entrenamiento.',
+        resultado:
+          'Viste catorce partidos suyos antes de la pretemporada. En el primer entrenamiento te moviste como si llevaras un año con él, y se lo dijo al ayudante delante de todos.',
       },
       {
         id: 'pedir-salida',
@@ -240,10 +280,12 @@ export const EVENTOS_DE_VIDA: Evento[] = [
         efectos: {
           relaciones: { dt: { rencor: 12 }, club: { confianza: -8 } },
           personalidad: { riesgo: 5 },
+          vida: { confianza: -6 },
           etiquetas: ['futbol:quiere-jugar'],
-          balance: -2,
+          balance: -3,
         },
-        resultado: 'Pediste salir en junio. El equipo terminó campeón sin vos.',
+        resultado:
+          'Pediste salir en junio sin darle una sola práctica. El equipo terminó campeón sin ti y el técnico lo recordó en la vuelta olímpica, con nombre y apellido.',
       },
     ],
   },
@@ -274,6 +316,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'firmar-camisetas',
         texto: 'Firmarles camisetas a los hinchas del rival',
+        pista: 'Tu club no va a estar contento. El país sí.',
         efectos: {
           vida: { reputacion: 10, carinoDeLaHinchada: -4 },
           relaciones: { prensa: { respeto: 6 } },
@@ -285,6 +328,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'dormir',
         texto: 'Dormir en el suelo con la campera de almohada',
+        pista: 'Nadie se acuerda de vos. Y llegas descansado.',
         efectos: { vida: { condicion: -4, felicidad: 2 }, balance: 1 },
         resultado: 'Dormiste doce horas en el piso del aeropuerto y llegaste al partido como pudiste.',
       },
@@ -317,6 +361,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'ir',
         texto: 'Ir y jugar el personaje',
+        pista: 'Vas a ser tendencia. Por esto, no por el fútbol.',
         efectos: {
           vida: { fama: 14, exposicion: 16, felicidad: 8, reputacion: -4 },
           etiquetas: ['caos:tv'],
@@ -328,8 +373,9 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'no-ir',
         texto: 'Decir que no, amablemente',
+        pista: 'Nada cambia.',
         efectos: { vida: { reputacion: 3, exposicion: -3 }, balance: 2 },
-        resultado: 'Mandaste una nota de agradecimiento y no fuiste. Insistieron cuatro años.',
+        resultado: 'Mandaste una nota de agradecimiento y no fuiste. Insistieron cuatro años seguidos y el productor terminó siendo amigo tuyo sin que hayas puesto un pie en el estudio.',
       },
       {
         id: 'cobrarlo',
@@ -352,7 +398,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           personalidad: { carisma: 4 },
           balance: 3,
         },
-        resultado: 'Fue el tercer arquero y la rompió. Todavía te lo agradece.',
+        resultado: 'Fue el tercer arquero en tu lugar y la rompió: consiguió un contrato de publicidad y una novia. Todavía te lo agradece cada vez que se cruzan.',
       },
     ],
   },
@@ -370,6 +416,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'buscarlo',
         texto: 'Buscarlo después del partido',
+        pista: 'Puede ser el comienzo de algo o de nada.',
         efectos: {
           vida: { felicidad: 20, carinoDeLaHinchada: 14, reputacion: 8 },
           relaciones: { hinchada: { confianza: 20 } },
@@ -382,6 +429,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'guardarlo',
         texto: 'Guardártelo para siempre',
+        pista: 'Solo vos vas a saber que pasó.',
         efectos: {
           vida: { felicidad: 12 },
           etiquetas: ['caos:mitico'],
@@ -428,6 +476,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'aceptar',
         texto: 'Aceptar, con la familia presente',
+        pista: 'La foto de tu vida, con los tuyos ahí.',
         efectos: {
           vida: { felicidad: 20, reputacion: 14, carinoDeLaHinchada: 16 },
           etiquetas: ['legado:numero-retirado'],
@@ -440,6 +489,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'pedir-que-siga',
         texto: 'Pedir que la use el próximo chico de la cantera',
+        pista: 'Menos foto, más huella.',
         efectos: {
           vida: { reputacion: 18, carinoDeLaHinchada: 12 },
           personalidad: { ego: -6 },
@@ -492,6 +542,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'seguir',
         texto: 'Seguir mientras el cuerpo aguante',
+        pista: 'Un año más. El cuerpo ya avisó una vez.',
         efectos: {
           vida: { condicion: -6, felicidad: 6 },
           personalidad: { ambicion: 3 },
@@ -568,11 +619,12 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           titular: { texto: '{APELLIDO} SE VA POR UNA FORTUNA', tono: 'duda' },
           balance: -2,
         },
-        resultado: 'Firmaste. Te llovió el dinero y desapareciste de las conversaciones futbolísticas.',
+        resultado: 'Firmaste por dos años y cobraste en una temporada lo de cinco. Jugaste en estadios medio vacíos, dejaste de aparecer en los resúmenes y a los treinta y cuatro nadie de Europa se acordaba de tu nombre.',
       },
       {
         id: 'quedarse',
         texto: 'Quedarte a competir',
+        pista: 'Menos dinero, más fútbol.',
         efectos: {
           vida: { reputacion: 10, carinoDeLaHinchada: 8 },
           personalidad: { ambicion: 4, lealtad: 4 },
@@ -607,7 +659,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
             titular: { texto: 'EN EL CLUB NO LE PERDONAN A {APELLIDO} HABER USADO LA OFERTA', tono: 'duda' },
             balance: -5,
           },
-          relatoBien: 'Te mejoraron el contrato en cuarenta y ocho horas.',
+          relatoBien: 'Te mejoraron el contrato en cuarenta y ocho horas y te subieron la cláusula. El presidente lo contó como un triunfo suyo y quedaron los dos contentos.',
           relatoMal: 'Te dijeron que si querías irte, que te fueras. Y no mejoraron nada.',
         },
         resultado: 'Le llevaste la oferta al presidente.',

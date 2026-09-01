@@ -88,6 +88,30 @@ Es lo que hace que una decisión sea una decisión, y hasta hace poco no existí
   números que se movieron —media, dinero, confianza, forma, físico, fama, hinchada, estrés— y la
   celebración los muestra como muestra un título. Antes se decidía, se leían dos líneas de texto y
   venía la pregunta siguiente sin que nada pareciera haber pasado.
+- **El salto de media no se lleva la pantalla.** Vive en la carta, con su marca saliendo del número.
+  Un título pasa una vez y merece el overlay; subir dos puntos es una buena noticia, no un
+  acontecimiento.
+
+### La regla del resultado
+
+**El resultado cuenta el desenlace, no la acción.** "Dijiste que iban a ganar. La frase quedó en la
+portada" no es una consecuencia: es la crónica de lo que el jugador ya sabe que hizo. La consecuencia
+es si ganaron el clásico y qué le pasó a él después.
+
+De ahí que casi toda opción interesante lleve `riesgo`: cuando el desenlace es incierto por
+naturaleza —un clásico, una promesa pública, pedir la titularidad, una fiesta el jueves— el juego lo
+tira y cuenta dos finales concretos. Y una mala salida **puede restar media**: el cuerpo y la cabeza
+se pagan en la carta.
+
+Tres tests lo vigilan: toda opción tiene `pista`, ningún desenlace baja de doce palabras —un
+desenlace no cabe en ocho— y una opción con riesgo tiene que contar las dos caras.
+
+### La otra mitad de la carrera
+
+`fueraDeLaCancha(carrera)` en `legado.ts` mide lo que no es fútbol: fama, reputación, exposición,
+cariño de la tribuna, portadas, escándalos y romances, más la portada que más pesó y una línea de
+veredicto. Todo eso el motor ya lo movía —un escándalo te cuesta el puesto dos años después— pero no
+se veía en ninguna parte, y una vida que no se mide es una vida que el jugador no sabe que tuvo.
 
 ## Sumar un evento
 

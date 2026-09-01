@@ -522,6 +522,46 @@ describe('el catálogo', () => {
     }
   });
 
+  it('toda opción avisa qué tipo de consecuencia tiene', () => {
+    /*
+     * La pista es la única información que el jugador tiene antes de decidir. Sin ella, elegir es
+     * apretar un botón a ciegas y el juego deja de ser un juego de decisiones.
+     */
+    const sinPista = CATALOGO.flatMap((e) => e.opciones.map((o) => [e.id, o.id, o.pista] as const)).filter(
+      ([, , pista]) => !pista,
+    );
+    expect(sinPista.map(([e, o]) => `${e}/${o}`)).toEqual([]);
+  });
+
+  it('el resultado cuenta qué pasó, no solo qué hiciste', () => {
+    /*
+     * La queja que este test existe para que no vuelva: "Dijiste que iban a ganar. La frase quedó en
+     * la portada" no es una consecuencia, es la crónica de lo que el jugador ya sabe que hizo. Una
+     * consecuencia tiene desenlace, y un desenlace no cabe en ocho palabras.
+     */
+    const cortos: string[] = [];
+    for (const evento of CATALOGO) {
+      for (const opcion of evento.opciones) {
+        /*
+         * Con riesgo, el desenlace vive en los dos relatos; sin riesgo, en el resultado. Cuando la
+         * rama termina la carrera, el desenlace lo cuenta el texto del final y el relato es el golpe
+         * seco que lo precede: ahí lo corto es lo correcto.
+         */
+        const ramas: Array<[string, { final?: unknown } | undefined]> = opcion.riesgo
+          ? [
+              [opcion.riesgo.relatoBien, opcion.riesgo.bien],
+              [opcion.riesgo.relatoMal, opcion.riesgo.mal],
+            ]
+          : [[opcion.resultado, opcion.efectos]];
+        for (const [texto, efectos] of ramas) {
+          if (efectos?.final) continue;
+          if (texto.split(' ').length < 12) cortos.push(`${evento.id}/${opcion.id}: "${texto}"`);
+        }
+      }
+    }
+    expect(cortos).toEqual([]);
+  });
+
   it('toda opción arriesgada avisa en la pista y cuenta las dos caras', () => {
     for (const evento of CATALOGO) {
       for (const opcion of evento.opciones) {
