@@ -51,7 +51,10 @@ export default function Legado({ carrera, onEmpezarDeNuevo, codigo }: Props) {
      * ventana —quién fuiste, qué hiciste, qué te llevaste— y cada una hace su propio scroll si le
      * falta lugar. En el teléfono la atadura se suelta y todo fluye.
      */
-    <div className="mx-auto flex w-full max-w-[104rem] flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:gap-4 lg:px-6 lg:py-4">
+    <div
+      data-legado-fin
+      className="mx-auto flex w-full max-w-[104rem] flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:gap-4 lg:px-6 lg:py-4"
+    >
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
         <div className="min-w-0">
           <p className="text-2xs font-medium uppercase tracking-label text-ink-muted">
@@ -111,7 +114,7 @@ export default function Legado({ carrera, onEmpezarDeNuevo, codigo }: Props) {
         </div>
 
         {/* Qué hiciste: los números, el prime, las dos decisiones y la forma. */}
-        <div className="flex min-h-0 flex-col gap-3 lg:overflow-y-auto lg:pr-1 lg:[mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]">
+        <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-x-hidden lg:overflow-y-auto lg:pr-1 lg:[mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]">
           <dl className="grid grid-cols-4 gap-2">
             {[
               ['Temporadas', totales.temporadas],
@@ -411,16 +414,16 @@ function Vitrina({ carrera }: { carrera: Carrera }) {
   }
 
   return (
-    <section className="flex min-h-0 flex-col">
+    <section className="flex min-h-0 min-w-0 flex-col">
       <h2 className="mb-2 flex items-baseline justify-between font-display text-sm font-semibold uppercase tracking-label">
         La vitrina
         <span className="text-2xs tabular text-ink-muted">{carrera.trofeos.length}</span>
       </h2>
-      <ul className="grid min-h-0 gap-2 lg:overflow-y-auto lg:pr-1">
+      <ul className="grid min-h-0 min-w-0 gap-2 overflow-x-hidden lg:overflow-y-auto lg:pr-1">
         {grupos.map((grupo) => (
           <li
             key={`${grupo.nombre}-${grupo.clase}`}
-            className={`flex items-center gap-3 rounded-xl border p-3 ${
+            className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 ${
               grupo.clase === 'individual'
                 ? 'border-data/30 bg-data/8'
                 : grupo.clase === 'seleccion'

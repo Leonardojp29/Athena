@@ -14,176 +14,10 @@ import type { Evento } from './motor.js';
 
 export const EVENTOS_DE_FUTBOL: Evento[] = [
   {
-    id: 'futbol-primer-entrenamiento',
-    categoria: 'futbol',
-    rareza: 'comun',
-    titulo: 'El primer entrenamiento con los grandes',
-    texto:
-      'Te suben a entrenar con el plantel profesional de {club}. En el primer rondo te toca al lado de los referentes y todos miran cómo te mueves.',
-    tipoDeRecuerdo: 'debut',
-    condiciones: { temporadasMin: 0, edadMax: 22 },
-    cooldown: 0,
-    peso: 2.5,
-    opciones: [
-      {
-        id: 'mostrarse',
-        texto: 'Pedir la pelota y jugar como sabes',
-        pista: 'O te ganan el respeto en veinte minutos, o te comen.',
-        efectos: { personalidad: { ambicion: 5 } },
-        riesgo: {
-          prob: 0.6,
-          bien: {
-            vida: { confianza: 14, forma: 6 },
-            relaciones: { companeros: { respeto: 14 }, dt: { confianza: 10 } },
-            atributos: { regate: 1 },
-            balance: 6,
-          },
-          mal: {
-            vida: { confianza: -14 },
-            relaciones: { companeros: { rencor: 8 } },
-            balance: -4,
-          },
-          relatoBien:
-            'Pediste la pelota diecisiete veces y no la perdiste ninguna. El capitán te fue a saludar al final y el técnico te dejó con el grupo.',
-          relatoMal:
-            'Te la quitaron tres veces seguidas en el rondo y el vestuario se rió. Volviste a la reserva esa misma tarde.',
-        },
-        resultado: 'Entraste al rondo pidiendo la pelota desde el primer minuto.',
-      },
-      {
-        id: 'perfil-bajo',
-        texto: 'No arriesgar y pasarla siempre a la primera',
-        pista: 'Nadie se acuerda de ti. Tampoco nadie se queja.',
-        efectos: {
-          personalidad: { profesionalismo: 4, ego: -3 },
-          relaciones: { companeros: { confianza: 4 } },
-          balance: 1,
-        },
-        resultado:
-          'Diste ochenta pases de dos toques y ni uno se perdió. El técnico dijo "está bien" y no volvió a mirarte en tres semanas.',
-      },
-      {
-        id: 'mirar',
-        texto: 'Mirar y aprender antes de pedir la pelota',
-        pista: 'Llegas sabiendo cómo se mueven todos. Pierdes un día.',
-        efectos: {
-          personalidad: { profesionalismo: 6, ego: -3 },
-          relaciones: { companeros: { confianza: 5 } },
-          atributos: { pase: 1 },
-          balance: 3,
-        },
-        resultado:
-          'Te pasaste dos horas leyendo por dónde salía cada uno. A la semana siguiente sabías dónde iba a estar el delantero antes que él.',
-      },
-      {
-        id: 'marcar-al-crack',
-        texto: 'Ir a marcar al mejor del plantel',
-        pista: 'O te respetan desde el primer día, o te ganas un problema.',
-        efectos: { personalidad: { ambicion: 6, temperamento: 5 }, etiquetas: ['futbol:atrevido'] },
-        riesgo: {
-          prob: 0.5,
-          bien: {
-            relaciones: { companeros: { respeto: 16 }, dt: { confianza: 10 } },
-            vida: { confianza: 10 },
-            atributos: { defensa: 2 },
-            balance: 6,
-          },
-          mal: {
-            relaciones: { companeros: { rencor: 14 } },
-            vida: { confianza: -12 },
-            atributos: { ritmo: -1 },
-            balance: -5,
-          },
-          relatoBien:
-            'Le ganaste dos y a la tercera te aplaudió él. Desde ese día te buscaba en cada ejercicio y el técnico tomó nota.',
-          relatoMal:
-            'Te hizo un caño, se dio vuelta y te lo hizo otra vez. El video circuló por el vestuario una semana y te quedó el apodo.',
-        },
-        resultado: 'Te fuiste derecho a marcar al que lleva la diez.',
-      },
-    ],
-  },
-  {
-    id: 'futbol-doble-turno',
-    categoria: 'futbol',
-    rareza: 'comun',
-    titulo: 'Doble turno',
-    texto:
-      'El preparador físico te ofrece quedarte a un segundo turno tres veces por semana. Nadie más lo hace.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1, edadMax: 29 },
-    cooldown: 6,
-    opciones: [
-      {
-        id: 'aceptar',
-        texto: 'Quedarte a entrenar',
-        pista: 'El cuerpo cambia. También se puede romper.',
-        efectos: { personalidad: { profesionalismo: 8 } },
-        riesgo: {
-          prob: 0.75,
-          bien: {
-            atributos: { fisico: 3, ritmo: 2 },
-            vida: { condicion: 8, forma: 8 },
-            balance: 6,
-          },
-          mal: {
-            vida: { condicion: -18, forma: -12 },
-            atributos: { ritmo: -2 },
-            etiquetas: ['lesion:sobrecarga'],
-            balance: -6,
-          },
-          relatoBien:
-            'Tres meses después corrías los últimos veinte minutos como los primeros. El técnico te puso de titular sin avisar.',
-          relatoMal:
-            'A la sexta semana el sóleo dijo basta. Dos meses afuera por entrenar de más, que es la lesión más tonta que existe.',
-        },
-        resultado: 'Te quedaste tres tardes por semana con el preparador.',
-      },
-      {
-        id: 'descansar',
-        texto: 'Descansar como manda el plan',
-        pista: 'Llegas fresco al fin de semana. Nada más y nada menos.',
-        efectos: {
-          vida: { condicion: 6, forma: 3 },
-          personalidad: { profesionalismo: 3 },
-          balance: 3,
-        },
-        resultado:
-          'Cumpliste el plan al pie de la letra y llegaste entero a diciembre, que es más de lo que puede decir medio plantel.',
-      },
-      {
-        id: 'tecnica',
-        texto: 'Pedir cambiarlo por trabajo con pelota',
-        pista: 'Menos músculo, más pie.',
-        efectos: {
-          atributos: { regate: 2, pase: 2 },
-          vida: { confianza: 6 },
-          relaciones: { dt: { confianza: 4 } },
-          balance: 5,
-        },
-        resultado:
-          'Cambiaste el gimnasio por doscientos centros por tarde. En marzo te salió uno igual en un partido y fue gol.',
-      },
-      {
-        id: 'gimnasio-propio',
-        texto: 'Pagarte un preparador aparte',
-        pista: 'Cuesta dinero y nadie del club se entera.',
-        efectos: {
-          vida: { dinero: -0.3, condicion: 9, forma: 6 },
-          atributos: { fisico: 2 },
-          personalidad: { profesionalismo: 7 },
-          etiquetas: ['futbol:obsesivo'],
-          balance: 5,
-        },
-        resultado:
-          'Entrenabas a las siete de la mañana con alguien que solo trabaja para ti. Nadie supo por qué llegaste distinto a la pretemporada.',
-      },
-    ],
-  },
-  {
     id: 'futbol-pedir-titularidad',
     categoria: 'futbol',
     rareza: 'comun',
+    picante: 1,
     titulo: 'Tres partidos en el banco',
     texto:
       '{dt} te dejó fuera del once tres partidos seguidos. Tienes la puerta de su oficina a diez metros.',
@@ -275,6 +109,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     id: 'futbol-clasico',
     categoria: 'futbol',
     rareza: 'comun',
+    picante: 1,
     titulo: 'Semana de clásico',
     texto: 'Se viene {rival}. Líbero abre con la previa cinco días antes, la ciudad no habla de otra cosa y a ti te preguntan en cada semáforo.',
     tipoDeRecuerdo: 'declaracion',
@@ -382,6 +217,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     id: 'futbol-capitania',
     categoria: 'futbol',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'La cinta',
     texto: 'Se fue el capitán y {dt} te pregunta si la quieres llevar tú.',
     tipoDeRecuerdo: 'decision',
@@ -415,7 +251,8 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           relatoMal:
             'Te la pusiste y el equipo se cayó igual. Cada derrota te la preguntaron a ti y en tres meses habías envejecido cinco años.',
         },
-        resultado: 'Aceptaste la cinta.',
+        resultado:
+          'Aceptaste la cinta en el vestuario, delante de todos. Esa misma semana tuviste que ir a la oficina a pelear una prima que no era tuya y a decirle a un compañero de treinta y cuatro años que no iba a jugar el domingo.',
       },
       {
         id: 'rechazar',
@@ -475,95 +312,10 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     ],
   },
   {
-    id: 'futbol-racha-negra',
-    categoria: 'futbol',
-    rareza: 'comun',
-    titulo: 'Once partidos sin marcar',
-    texto:
-      'No la metes desde agosto. En el estadio, cada vez que tocas la pelota se escucha un murmullo distinto.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 2, notaMax: 6.9 },
-    cooldown: 4,
-    opciones: [
-      {
-        id: 'doble-turno',
-        texto: 'Quedarte a tirar al arco después de cada práctica',
-        pista: 'Lo que hacen todos. A veces funciona.',
-        efectos: { personalidad: { profesionalismo: 7 } },
-        riesgo: {
-          prob: 0.66,
-          bien: {
-            vida: { forma: 12, confianza: 14 },
-            atributos: { tiro: 2 },
-            balance: 6,
-          },
-          mal: { vida: { confianza: -10, estres: 12 }, atributos: { tiro: -1 }, balance: -4 },
-          relatoBien:
-            'Cien remates por día durante tres semanas. La rompiste el domingo catorce y después metiste en seis partidos seguidos.',
-          relatoMal:
-            'Cien remates por día y en el partido seguías tirándole al arquero. Cuanto más entrenabas, peor le pegabas.',
-        },
-        resultado: 'Te quedabas una hora más, solo, tirando al arco vacío.',
-      },
-      {
-        id: 'psicologo',
-        texto: 'Ir al psicólogo del club',
-        pista: 'El problema puede no estar en el pie.',
-        efectos: {
-          vida: { confianza: 20, estres: -16 },
-          personalidad: { profesionalismo: 5 },
-          etiquetas: ['vida:cabeza'],
-          balance: 6,
-        },
-        resultado:
-          'A la tercera sesión descubriste que hacía cuatro meses que no dormías bien. Arreglaste eso primero y los goles volvieron solos en noviembre.',
-      },
-      {
-        id: 'cambiar-puesto',
-        texto: 'Pedirle al técnico jugar más atrás',
-        pista: 'Dejas de ser el que la mete. Vuelves a jugar bien.',
-        efectos: {
-          vida: { forma: 8, confianza: 10 },
-          atributos: { pase: 3, tiro: -1 },
-          relaciones: { dt: { confianza: 8 } },
-          etiquetas: ['futbol:reinventado'],
-          balance: 4,
-        },
-        resultado:
-          'Retrocediste veinte metros y volviste a tocar la pelota. Terminaste el año con menos goles y con el doble de asistencias, y nadie volvió a murmurar.',
-      },
-      {
-        id: 'forzar',
-        texto: 'Tirar al arco de donde sea hasta que entre una',
-        pista: 'Sale una. O sale la silbatina.',
-        efectos: { personalidad: { ego: 5, riesgo: 6 } },
-        riesgo: {
-          prob: 0.42,
-          bien: {
-            vida: { confianza: 22, carinoDeLaHinchada: 14, forma: 12 },
-            atributos: { tiro: 2 },
-            titular: { texto: 'EL GOLAZO DE TREINTA METROS CON EL QUE {APELLIDO} SE SACÓ LA MOCHILA', tono: 'elogio' },
-            balance: 7,
-          },
-          mal: {
-            vida: { confianza: -18, carinoDeLaHinchada: -16 },
-            relaciones: { dt: { rencor: 12 }, hinchada: { rencor: 14 } },
-            atributos: { tiro: -2 },
-            balance: -8,
-          },
-          relatoBien:
-            'Le pegaste desde treinta metros y entró por el ángulo. Se acabó la racha en un segundo y el estadio se vino abajo.',
-          relatoMal:
-            'Tiraste catorce veces afuera en tres partidos. Te silbaron al salir y el técnico te sacó del once una semana después.',
-        },
-        resultado: 'Empezaste a rematar desde donde fuera.',
-      },
-    ],
-  },
-  {
     id: 'futbol-lesion-grave',
     categoria: 'futbol',
     rareza: 'infrecuente',
+    picante: 1,
     titulo: 'Se cortó algo',
     texto: 'Sentiste el tirón en el minuto sesenta y saliste sin que nadie te tocara.',
     tipoDeRecuerdo: 'lesion',
@@ -630,84 +382,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           balance: -4,
         },
         resultado:
-          'No apareciste por el predio en cuatro meses. Cuando volviste, la mitad del plantel era nueva y ninguno sabía quién eras.',
-      },
-    ],
-  },
-  {
-    id: 'futbol-seleccion-primera',
-    categoria: 'futbol',
-    rareza: 'infrecuente',
-    titulo: 'Te llaman de la selección',
-    texto: 'Suena el teléfono con un número que no conoces. Es el cuerpo técnico de {pais}.',
-    tipoDeRecuerdo: 'seleccion',
-    condiciones: { ovrMin: 70, sinEtiquetas: ['seleccion:debut'] },
-    cooldown: 0,
-    peso: 2,
-    opciones: [
-      {
-        id: 'ir',
-        texto: 'Ir sin dudarlo',
-        pista: 'Es lo que soñaste. Y ahora hay que estar a la altura.',
-        efectos: { etiquetas: ['seleccion:debut'], personalidad: { ambicion: 5 } },
-        riesgo: {
-          prob: 0.62,
-          bien: {
-            vida: { fama: 18, confianza: 16, carinoDeLaHinchada: 12 },
-            atributos: { pase: 1 },
-            titular: { texto: 'DEBUT Y ASISTENCIA: {APELLIDO} SE GANÓ LA CAMISETA DE {pais}', tono: 'elogio' },
-            balance: 8,
-          },
-          mal: {
-            vida: { confianza: -14, fama: 6, exposicion: 10 },
-            relaciones: { prensa: { rencor: 8 } },
-            balance: -4,
-          },
-          relatoBien:
-            'Entraste a los sesenta, tocaste catorce pelotas y diste el pase del segundo gol. Al otro día tu cara estaba en la portada de tu país.',
-          relatoMal:
-            'Entraste a los ochenta y dos, tocaste dos pelotas y perdiste las dos. Tardaron dos años en volver a llamarte.',
-        },
-        resultado: 'Contestaste que sí antes de que terminara la frase.',
-      },
-      {
-        id: 'nervioso',
-        texto: 'Pedir unos días para pensarlo',
-        pista: 'Nadie pide unos días para esto.',
-        efectos: {
-          vida: { estres: 10, confianza: -6 },
-          relaciones: { dt: { confianza: -8 } },
-          etiquetas: ['seleccion:debut'],
-          balance: -2,
-        },
-        resultado:
-          'Pediste dos días. Te llamaron igual, pero el técnico contó la anécdota en una entrevista y te quedó el mote de "el que lo pensó".',
-      },
-      {
-        id: 'familia',
-        texto: 'Ir y llevarte a toda tu familia',
-        pista: 'Cuesta un dineral. Se acuerdan toda la vida.',
-        efectos: {
-          vida: { dinero: -0.3, felicidad: 24, fama: 6, confianza: 10 },
-          personalidad: { lealtad: 6 },
-          etiquetas: ['seleccion:debut', 'vida:familia'],
-          balance: 6,
-        },
-        resultado:
-          'Pagaste catorce pasajes. Tu abuela escuchó el himno desde la tribuna y esa foto es la única que tienes colgada en tu casa.',
-      },
-      {
-        id: 'callado',
-        texto: 'Ir sin decírselo a nadie',
-        pista: 'Ni una publicación. Solo tú y la camiseta.',
-        efectos: {
-          vida: { confianza: 10, exposicion: -6, felicidad: 8 },
-          personalidad: { profesionalismo: 5 },
-          etiquetas: ['seleccion:debut', 'social:reservado'],
-          balance: 3,
-        },
-        resultado:
-          'No lo publicaste en ningún lado. Tu vieja se enteró viendo la lista en la tele y te llamó llorando desde la cocina.',
+          'No apareciste por el complejo en cuatro meses. Cuando volviste, la mitad del plantel era nueva y ninguno sabía quién eras.',
       },
     ],
   },
@@ -715,6 +390,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     id: 'futbol-descenso',
     categoria: 'futbol',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Se juega el descenso',
     texto: 'Última fecha, {club} se salva ganando y se va perdiendo. Cuarenta mil personas en la cancha.',
     tipoDeRecuerdo: 'decision',
@@ -792,152 +468,6 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
         },
         resultado:
           'Dijiste que hacía tres años que no se armaba un equipo. La hinchada te aplaudió y el club te rescindió el contrato en junio.',
-      },
-    ],
-  },
-  {
-    id: 'futbol-golazo',
-    categoria: 'futbol',
-    rareza: 'infrecuente',
-    titulo: 'El gol del año',
-    texto: 'La agarraste de espaldas, te diste vuelta y la clavaste en un ángulo desde fuera del área.',
-    tipoDeRecuerdo: 'gol',
-    condiciones: { temporadasMin: 1 },
-    cooldown: 6,
-    opciones: [
-      {
-        id: 'festejo',
-        texto: 'Correr a festejarlo con la tribuna',
-        pista: 'La foto del año. Y una amarilla.',
-        efectos: {
-          vida: { carinoDeLaHinchada: 20, fama: 12, confianza: 12 },
-          relaciones: { hinchada: { confianza: 18 } },
-          etiquetas: ['leyenda:hinchada'],
-          balance: 6,
-        },
-        resultado:
-          'Saltaste el alambrado y te comieron a abrazos. Te sacaron amarilla, saliste en todos los resúmenes del continente y esa imagen es la portada del club desde entonces.',
-      },
-      {
-        id: 'dedicarlo',
-        texto: 'Dedicárselo a alguien de tu vida',
-        pista: 'La cámara lo va a agarrar todo.',
-        efectos: {
-          vida: { carinoDeLaHinchada: 14, felicidad: 18, exposicion: 10, confianza: 8 },
-          personalidad: { carisma: 5 },
-          etiquetas: ['vida:familia'],
-          balance: 6,
-        },
-        resultado:
-          'Levantaste la camiseta con un nombre escrito abajo. Fue la foto del año en tu país y esa persona todavía la tiene enmarcada.',
-      },
-      {
-        id: 'nada',
-        texto: 'Festejarlo como si fuera uno más',
-        pista: 'Serio, profesional, frío.',
-        efectos: {
-          personalidad: { profesionalismo: 6, ego: -4 },
-          relaciones: { dt: { respeto: 10 } },
-          vida: { confianza: 8 },
-          balance: 3,
-        },
-        resultado:
-          'Señalaste al que te la pasó y volviste caminando al círculo. El técnico lo contó en rueda de prensa como ejemplo y desde ahí fuiste intocable para él.',
-      },
-      {
-        id: 'venderlo',
-        texto: 'Subirlo tú con música y todo',
-        pista: 'Millones de vistas. Y el vestuario mirándote de reojo.',
-        efectos: {
-          vida: { fama: 18, exposicion: 16 },
-          personalidad: { ego: 7, carisma: 4 },
-          relaciones: { companeros: { rencor: 10 } },
-          etiquetas: ['social:viral'],
-          balance: 1,
-        },
-        resultado:
-          'Lo subiste esa noche editado y con música. Cuatro millones de vistas, dos marcas escribiéndote y un compañero preguntando en voz alta quién le pasó la pelota.',
-      },
-    ],
-  },
-  {
-    id: 'futbol-final',
-    categoria: 'futbol',
-    rareza: 'raro',
-    titulo: 'La final',
-    texto: 'Se juega el título el domingo. En el hotel, la noche antes, no duerme nadie.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 3, clubFuerzaMin: 68 },
-    cooldown: 8,
-    opciones: [
-      {
-        id: 'hablar-antes',
-        texto: 'Hablarle al plantel antes de salir',
-        pista: 'Si sale bien, es tu equipo desde hoy.',
-        efectos: { personalidad: { carisma: 8 }, etiquetas: ['social:lider'] },
-        riesgo: {
-          prob: 0.6,
-          bien: {
-            vida: { carinoDeLaHinchada: 18, confianza: 16, fama: 10 },
-            relaciones: { companeros: { respeto: 20, confianza: 14 } },
-            balance: 8,
-          },
-          mal: {
-            vida: { confianza: -12, estres: 14 },
-            relaciones: { companeros: { rencor: 8 } },
-            balance: -5,
-          },
-          relatoBien:
-            'Hablaste dos minutos y no se escuchó ni una respiración. Salieron a comerse la cancha y ganaron 3-1: el vestuario es tuyo desde esa tarde.',
-          relatoMal:
-            'Hablaste dos minutos y salieron duros como una tabla. Perdieron 2-0 y alguien dijo en el micro que "hablar antes trae mala suerte".',
-        },
-        resultado: 'Pediste silencio en el vestuario y hablaste.',
-      },
-      {
-        id: 'rutina',
-        texto: 'Hacer exactamente lo mismo de siempre',
-        pista: 'Una final es un partido. Convéncete.',
-        efectos: {
-          vida: { estres: -14, confianza: 10, forma: 6 },
-          personalidad: { profesionalismo: 8 },
-          balance: 5,
-        },
-        resultado:
-          'La misma música, la misma comida, la misma siesta. Saliste a la cancha como un martes cualquiera y fuiste el único que jugó su partido de siempre.',
-      },
-      {
-        id: 'no-dormir',
-        texto: 'Quedarte despierto mirando videos del rival',
-        pista: 'Vas a saberlo todo. Con cuatro horas de sueño.',
-        efectos: { personalidad: { profesionalismo: 5 }, vida: { condicion: -6 } },
-        riesgo: {
-          prob: 0.5,
-          bien: {
-            atributos: { defensa: 2, pase: 1 },
-            vida: { confianza: 12 },
-            balance: 6,
-          },
-          mal: { vida: { forma: -12, confianza: -10, condicion: -8 }, atributos: { ritmo: -1 }, balance: -6 },
-          relatoBien:
-            'Descubriste que el lateral salía siempre por el mismo lado. Por ahí llegó el gol del título, y lo diste tú.',
-          relatoMal:
-            'Dormiste cuatro horas y se te notó desde el primer minuto. Te cambiaron a los cincuenta y viste la final desde el banco.',
-        },
-        resultado: 'Te quedaste hasta las tres de la mañana mirando videos.',
-      },
-      {
-        id: 'llamar',
-        texto: 'Llamar a casa y cortar con todo lo demás',
-        pista: 'Nada de fútbol por una hora.',
-        efectos: {
-          vida: { estres: -18, felicidad: 12, confianza: 10 },
-          personalidad: { lealtad: 4 },
-          etiquetas: ['vida:familia'],
-          balance: 5,
-        },
-        resultado:
-          'Hablaste una hora de cualquier cosa menos de fútbol y dormiste como un tronco. Al día siguiente eras el único tranquilo en la cancha.',
       },
     ],
   },

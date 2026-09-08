@@ -15,11 +15,12 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     id: 'dinero-apuesta-uno',
     categoria: 'dinero',
     rareza: 'infrecuente',
+    picante: 3,
     titulo: 'El hombre del maletín',
     texto:
       'Un tipo que dice trabajar para una casa de apuestas te para en el estacionamiento. Quiere una amarilla en el primer tiempo del domingo. Ofrece más de lo que ganas en un año.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 2, edadMin: 19, sinEtiquetas: ['amanio:investigado'] },
+    condiciones: { temporadasMin: 2, edadMin: 28, sinEtiquetas: ['amanio:investigado'] },
     cooldown: 6,
     peso: 1.3,
     opciones: [
@@ -77,6 +78,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     id: 'dinero-apuesta-vuelve',
     categoria: 'dinero',
     rareza: 'raro',
+    picante: 3,
     titulo: 'Volvió con el doble',
     texto: 'El mismo tipo, el mismo estacionamiento, el doble encima de la mesa. Esta vez quiere un penal.',
     tipoDeRecuerdo: 'decision',
@@ -139,6 +141,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     id: 'dinero-apuesta-investigacion',
     categoria: 'caos',
     rareza: 'raro',
+    picante: 3,
     titulo: 'La investigación',
     texto:
       'Dos personas de la federación te esperan en el club con un listado de partidos donde está tu nombre. Afuera hay un móvil de La República.',
@@ -163,7 +166,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
       {
         id: 'negar',
         texto: 'Negarlo todo',
-        pista: 'Si tienen pruebas, esto se acaba acá. Para siempre.',
+        pista: 'Si tienen pruebas, esto se acaba aquí. Para siempre.',
         efectos: { vida: { estres: 28 }, personalidad: { riesgo: 8 } },
         riesgo: {
           prob: 0.4,
@@ -229,6 +232,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     id: 'dinero-inversion',
     categoria: 'dinero',
     rareza: 'comun',
+    picante: 2,
     titulo: 'El negocio del primo',
     texto:
       'Un primo tuyo tiene un proyecto y necesita capital. Dice que en dos años lo triplicas. Lo dice muy convencido.',
@@ -293,76 +297,13 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     ],
   },
   {
-    id: 'dinero-representante',
-    categoria: 'dinero',
-    rareza: 'infrecuente',
-    titulo: 'Tu representante quiere más',
-    texto:
-      'Te llevó desde los quince y ahora pide subir su comisión al veinte por ciento. Dice que es lo que cobran todos.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 3, famaMin: 25 },
-    cooldown: 8,
-    opciones: [
-      {
-        id: 'aceptar',
-        texto: 'Aceptar sin discutir',
-        pista: 'Sale caro. Y trabaja el doble para ti.',
-        efectos: {
-          vida: { dinero: -0.4 },
-          relaciones: { representante: { confianza: 16, respeto: 10 } },
-          etiquetas: ['dinero:representante-fiel'],
-          balance: 3,
-        },
-        resultado: 'Le dijiste que sí en dos minutos. Desde entonces atiende tu teléfono a cualquier hora.',
-      },
-      {
-        id: 'negociar',
-        texto: 'Negociar hasta la mitad',
-        pista: 'Vas a quedar bien parado. O no.',
-        efectos: { personalidad: { ambicion: 4 } },
-        riesgo: {
-          prob: 0.65,
-          bien: { relaciones: { representante: { respeto: 12 } }, balance: 4 },
-          mal: { relaciones: { representante: { rencor: 16 } }, etiquetas: ['dinero:representante-frio'], balance: -3 },
-          relatoBien: 'Cerraron en quince por ciento y con la mano estrechada. Trabajó el doble por ti ese año y te consiguió el traspaso de tu vida.',
-          relatoMal: 'Aceptó, pero desde ese día te empezó a ofrecer clubes que no eran para ti.',
-        },
-        resultado: 'Le pusiste un número sobre la mesa.',
-      },
-      {
-        id: 'cambiar',
-        texto: 'Cambiar de representante',
-        pista: 'Empiezas de cero con alguien que no te debe nada.',
-        efectos: {
-          vida: { estres: 12 },
-          relaciones: { representante: { confianza: -30, rencor: 20 } },
-          etiquetas: ['dinero:cambio-agente'],
-          balance: -2,
-        },
-        resultado: 'Firmaste con una agencia grande. El que te llevó desde los quince se enteró por la prensa.',
-      },
-      {
-        id: 'familia',
-        texto: 'Poner a alguien de tu familia a manejarlo',
-        pista: 'Nadie te va a robar. Nadie va a saber tampoco.',
-        efectos: {
-          vida: { dinero: 0.3, estres: 8 },
-          personalidad: { lealtad: 8 },
-          relaciones: { representante: { rencor: 24 } },
-          etiquetas: ['dinero:agente-familia'],
-          balance: 0,
-        },
-        resultado: 'Tu hermano dejó su trabajo para manejarte. Nunca había negociado nada en su vida.',
-      },
-    ],
-  },
-  {
     id: 'dinero-hacienda',
     categoria: 'dinero',
     rareza: 'raro',
+    picante: 3,
     titulo: 'La carta que nadie quiere abrir',
     texto:
-      'Llega una notificación de la agencia tributaria y La República ya está preguntando: hay tres años de derechos de imagen que tu estructura declaró en otro país.',
+      'Llega una notificación de la SUNAT y La República ya está preguntando: hay tres años de derechos de imagen que tu estructura declaró en otro país.',
     tipoDeRecuerdo: 'caos',
     condiciones: { famaMin: 45, temporadasMin: 4 },
     cooldown: 10,
@@ -376,7 +317,7 @@ export const EVENTOS_DE_DINERO: Evento[] = [
           personalidad: { profesionalismo: 5 },
           balance: 3,
         },
-        resultado: 'Pagaste hasta el último peso antes de que saliera en los diarios. No salió nunca.',
+        resultado: 'Pagaste hasta el último sol antes de que saliera en los diarios. No salió nunca.',
       },
       {
         id: 'pelear',
@@ -437,11 +378,12 @@ export const EVENTOS_DE_DINERO: Evento[] = [
     id: 'dinero-casino',
     categoria: 'caos',
     rareza: 'raro',
+    picante: 3,
     titulo: 'La noche del casino',
     texto:
       'Un compañero te lleva a un casino privado. En dos horas perdiste lo que ganas en un mes y te ofrecen seguir a crédito.',
     tipoDeRecuerdo: 'caos',
-    condiciones: { edadMin: 21, personalidad: { riesgo: [45, 100] } },
+    condiciones: { edadMin: 28, personalidad: { riesgo: [45, 100] } },
     cooldown: 6,
     opciones: [
       {

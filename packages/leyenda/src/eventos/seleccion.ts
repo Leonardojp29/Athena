@@ -12,6 +12,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     id: 'seleccion-dt-no-te-quiere',
     categoria: 'relaciones',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'El técnico de {pais} no te llama',
     texto:
       'Llevas tres listas sin aparecer y eres el que más juega de los de tu puesto. Un periodista te pregunta en zona mixta.',
@@ -60,7 +61,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
           relatoBien: 'Te atendió, te explicó qué le faltaba a tu juego y en tres meses eras titular.',
           relatoMal: 'Te contestó que esas cosas no se preguntan y colgó a los cuarenta segundos. Tardaste tres listas más en volver a estar, y esa llamada la contó él mismo años después.',
         },
-        resultado: 'Conseguiste su número y lo llamaste un martes a la noche.',
+        resultado: 'Conseguiste su número y lo llamaste un martes en la noche.',
       },
       {
         id: 'renunciar',
@@ -81,6 +82,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     id: 'seleccion-lesionado-antes-del-mundial',
     categoria: 'futbol',
     rareza: 'raro',
+    picante: 2,
     titulo: 'A tres semanas del Mundial',
     texto:
       'Te desgarraste en el último partido de liga. El médico de la selección dice que llegas justo. El del club dice que no llegas.',
@@ -155,6 +157,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
     id: 'seleccion-doble-nacionalidad',
     categoria: 'relaciones',
     rareza: 'raro',
+    picante: 2,
     titulo: 'La otra bandera',
     texto:
       'Llevas años jugando afuera y el país donde vives te ofrece la nacionalidad. Su selección juega el Mundial; la tuya está peleando por entrar.',
@@ -183,7 +186,7 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
           vida: { carinoDeLaHinchada: 26, felicidad: 10 },
           relaciones: { hinchada: { confianza: 22, respeto: 18 } },
           personalidad: { lealtad: 10 },
-          titular: { texto: '"NACÍ ACÁ Y ME RETIRO ACÁ", DIJO {APELLIDO}', tono: 'elogio' },
+          titular: { texto: '"NACÍ AQUÍ Y ME RETIRO AQUÍ", DIJO {APELLIDO}', tono: 'elogio' },
           etiquetas: ['leyenda:hinchada', 'seleccion:fiel'],
           balance: 8,
         },
@@ -226,12 +229,13 @@ export const EVENTOS_DE_SELECCION: Evento[] = [
   },
   {
     id: 'seleccion-capitania',
-    categoria: 'legado',
+    categoria: 'profesional',
     rareza: 'raro',
+    picante: 3,
     titulo: 'La cinta de tu país',
     texto: 'El capitán histórico se retiró y el técnico te pregunta si quieres la cinta.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { ovrMin: 80, edadMin: 27, temporadasMin: 6 },
+    condiciones: { ovrMin: 80, edadMin: 28, temporadasMin: 6 },
     cooldown: 0,
     opciones: [
       {

@@ -15,6 +15,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     id: 'prensa-jamas-jugaria',
     categoria: 'prensa',
     rareza: 'comun',
+    picante: 1,
     titulo: 'La pregunta trampa',
     texto:
       'En una nota de radio te preguntan, medio en broma, si algún día jugarías en {rival}. El periodista sonríe esperando el título.',
@@ -36,7 +37,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
           balance: 5,
         },
         resultado:
-          'Lo dijiste sin pensarlo dos veces y el audio se cortó y se compartió cincuenta mil veces esa misma noche. En la tribuna apareció un trapo con tu frase el domingo siguiente.',
+          'Lo dijiste sin pensarlo dos veces y el audio se cortó y se compartió cincuenta mil veces esa misma noche. En la tribuna apareció una bandera con tu frase el domingo siguiente.',
       },
       {
         id: 'diplomatico',
@@ -49,7 +50,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
           balance: 2,
         },
         resultado:
-          'Contestaste como un manual y el periodista pasó a otro tema. En la tribuna alguien colgó un trapo preguntando de qué lado estabas.',
+          'Contestaste como un manual y el periodista pasó a otro tema. En la tribuna alguien colgó una bandera preguntando de qué lado estabas.',
       },
       {
         id: 'chiste',
@@ -96,6 +97,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     id: 'prensa-cumple-promesa',
     categoria: 'prensa',
     rareza: 'raro',
+    picante: 2,
     titulo: 'Te citan tu propia frase',
     texto:
       'Un periodista saca en vivo tu declaración de hace años, con el año en pantalla y tu cara de niño. Debajo, tu camiseta nueva.',
@@ -174,6 +176,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     id: 'prensa-critica-dura',
     categoria: 'prensa',
     rareza: 'comun',
+    picante: 2,
     titulo: 'El panelista',
     texto:
       'Un panelista dijo en televisión que eres "el jugador más sobrevalorado de {liga}", Líbero lo puso en portada y el clip tiene cuatro millones de vistas.',
@@ -267,7 +270,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
           relatoMal:
             'Fue con un camarógrafo, no entrenó nada y escribió una nota sobre lo poco que se exige en tu club. Te ganaste el enojo del vestuario entero.',
         },
-        resultado: 'Lo invitaste al predio en vivo, delante de todos.',
+        resultado: 'Lo invitaste al complejo en vivo, delante de todos.',
       },
     ],
   },
@@ -275,6 +278,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     id: 'prensa-documental',
     categoria: 'prensa',
     rareza: 'raro',
+    picante: 3,
     titulo: 'Quieren filmar tu vida',
     texto:
       'Una plataforma propone un documental de tres capítulos sobre ti. Quieren entrar a tu casa y hablar con tu familia.',
@@ -349,98 +353,10 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     ],
   },
   {
-    id: 'prensa-programa-de-chismes',
-    categoria: 'prensa',
-    rareza: 'comun',
-    titulo: 'Te sentaron en el panel',
-    texto:
-      'El Popular te puso en portada y un programa de espectáculos le dedicó veinte minutos. Dos panelistas hablan de ti y uno dice conocerte.',
-    tipoDeRecuerdo: 'polemica',
-    condiciones: { famaMin: 30, temporadasMin: 2 },
-    cooldown: 4,
-    opciones: [
-      {
-        id: 'ignorar',
-        texto: 'No mirarlo siquiera',
-        pista: 'Se apaga en cuatro días.',
-        efectos: {
-          vida: { exposicion: 6, estres: 4 },
-          personalidad: { sensibilidadMediatica: -5 },
-          balance: 2,
-        },
-        resultado:
-          'No lo viste ni te lo contaron. A la semana hablaban de otro y de todo eso no quedó ni un recorte.',
-      },
-      {
-        id: 'llamar-en-vivo',
-        texto: 'Llamar al programa en vivo',
-        pista: 'Puede quedar enorme. O puede quedar peor que el chisme.',
-        efectos: { vida: { exposicion: 22, fama: 8 }, personalidad: { carisma: 5 } },
-        riesgo: {
-          prob: 0.5,
-          bien: {
-            vida: { reputacion: 16, carinoDeLaHinchada: 12 },
-            relaciones: { prensa: { respeto: 12 } },
-            titular: { texto: 'EL LLAMADO DE {APELLIDO} QUE DEJÓ MUDO AL PANEL', tono: 'elogio' },
-            balance: 7,
-          },
-          mal: {
-            vida: { reputacion: -18, exposicion: 14 },
-            relaciones: { prensa: { rencor: 18 } },
-            titular: { texto: '{APELLIDO} PERDIÓ LOS PAPELES EN VIVO', tono: 'polemica' },
-            balance: -8,
-          },
-          relatoBien:
-            'Los desarmaste en dos minutos sin levantar la voz. El conductor pidió disculpas al aire y el clip de tu llamado tuvo más vistas que el programa entero.',
-          relatoMal:
-            'Te calentaste, dijiste tres cosas de más y una fue sobre la madre de un panelista. Ese audio se pasa hasta hoy cada vez que hablan de ti.',
-        },
-        resultado: 'Marcaste el número que salía en pantalla.',
-      },
-      {
-        id: 'abogado',
-        texto: 'Mandarles una carta documento',
-        pista: 'Se callan hoy. Se acuerdan siempre.',
-        efectos: {
-          vida: { dinero: -0.1, exposicion: -8 },
-          relaciones: { prensa: { rencor: 14 } },
-          personalidad: { profesionalismo: 4 },
-          balance: 1,
-        },
-        resultado:
-          'La recibieron en el corte y cambiaron de tema en el aire. No volvieron a nombrarte en un año, y cuando lo hicieron fue para hablar de una lesión con una sonrisa de más.',
-      },
-      {
-        id: 'invitar',
-        texto: 'Ir tú al programa',
-        pista: 'Terreno ajeno. Y toda la audiencia.',
-        efectos: { vida: { fama: 12, exposicion: 18, dinero: 0.15 }, personalidad: { carisma: 5 } },
-        riesgo: {
-          prob: 0.62,
-          bien: {
-            vida: { reputacion: 12, carinoDeLaHinchada: 10, fama: 10 },
-            relaciones: { prensa: { confianza: 16 } },
-            etiquetas: ['prensa:televisivo'],
-            balance: 6,
-          },
-          mal: {
-            vida: { reputacion: -12, estres: 14 },
-            titular: { texto: 'LA ENTREVISTA INCÓMODA DE {APELLIDO}', tono: 'duda' },
-            balance: -5,
-          },
-          relatoBien:
-            'Fuiste, te reíste de todo y contestaste lo que nadie esperaba. Ganaste a la mitad del panel y te invitaron dos veces más.',
-          relatoMal:
-            'Te hicieron una pregunta que no esperabas y se te notó en la cara diez segundos. Ese silencio es el clip que se usa cada vez que te nombran.',
-        },
-        resultado: 'Fuiste al programa un jueves a la noche.',
-      },
-    ],
-  },
-  {
     id: 'prensa-publicacion-nocturna',
     categoria: 'prensa',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Lo publicaste a las tres de la mañana',
     texto:
       'Perdieron de local y escribiste algo sobre el arbitraje. Cuando te despertaste tenía cuarenta mil compartidas.',
@@ -507,6 +423,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     id: 'prensa-excompanero',
     categoria: 'prensa',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Un ex compañero habló de más',
     texto:
       'Salió a contar cómo era el vestuario cuando estabas tú. No dio nombres, pero dio detalles suficientes.',
@@ -574,6 +491,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     id: 'prensa-carpeta',
     categoria: 'prensa',
     rareza: 'raro',
+    picante: 3,
     titulo: 'El periodista con la carpeta',
     texto:
       'Un periodista de La República te muestra una carpeta con movimientos de tus empresas y te dice que la publica el domingo. Salvo que hablen.',

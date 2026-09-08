@@ -12,117 +12,10 @@ import type { Evento } from './motor.js';
 
 export const EVENTOS_DE_FARANDULA: Evento[] = [
   {
-    id: 'social-cantante',
-    categoria: 'social',
-    rareza: 'infrecuente',
-    titulo: 'El videoclip',
-    texto:
-      'Tato Belmonte, el cantante del momento, te quiere en su próximo video. Sale en dos semanas y lo va a ver medio continente.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 40, edadMin: 20 },
-    cooldown: 8,
-    opciones: [
-      {
-        id: 'hacerlo',
-        texto: 'Hacerlo',
-        pista: 'Millones de vistas. Y una foto que te va a seguir.',
-        efectos: {
-          vida: { fama: 20, exposicion: 20, dinero: 0.4, felicidad: 8 },
-          personalidad: { carisma: 6, vidaSocial: 5 },
-          etiquetas: ['social:jet-set'],
-          balance: 2,
-        },
-        resultado: 'Saliste ocho segundos apoyado en un auto y fue lo más comentado del video. La canción llegó a número uno y tu nombre se buscó más esa semana que en todo el año.',
-      },
-      {
-        id: 'solo-audio',
-        texto: 'Prestar la voz, no la cara',
-        pista: 'Estás sin estar.',
-        efectos: {
-          vida: { fama: 8, dinero: 0.2 },
-          personalidad: { profesionalismo: 4 },
-          balance: 3,
-        },
-        resultado: 'Grabaste cuatro palabras en el estribillo. Nadie supo que eras tú hasta meses después.',
-      },
-      {
-        id: 'condicion-club',
-        texto: 'Hacerlo si el club da el visto bueno',
-        pista: 'Más lento, sin problemas después.',
-        efectos: {
-          vida: { fama: 12, exposicion: 12, dinero: 0.3 },
-          relaciones: { club: { confianza: 10 } },
-          personalidad: { profesionalismo: 5 },
-          balance: 4,
-        },
-        resultado: 'El club dijo que sí en tres días y hasta lo publicó en sus redes.',
-      },
-      {
-        id: 'no',
-        texto: 'Decir que no',
-        pista: 'Nada cambia.',
-        efectos: { personalidad: { vidaSocial: -3 }, balance: 1 },
-        resultado: 'Dijiste que no tenías tiempo. Fue otro y le cambió el año.',
-      },
-    ],
-  },
-  {
-    id: 'social-hinchada-te-canta',
-    categoria: 'social',
-    rareza: 'infrecuente',
-    titulo: 'Te hicieron una canción',
-    texto: 'La tribuna estrenó un tema con tu apellido y no paró de cantarlo los noventa minutos.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 3, vida: { carinoDeLaHinchada: [55, 100] } },
-    cooldown: 6,
-    opciones: [
-      {
-        id: 'devolver',
-        texto: 'Ir a la tribuna al final del partido',
-        pista: 'Diez minutos que la gente cuenta veinte años.',
-        efectos: {
-          vida: { carinoDeLaHinchada: 20, felicidad: 16 },
-          relaciones: { hinchada: { confianza: 20, respeto: 14 } },
-          etiquetas: ['leyenda:hinchada'],
-          balance: 7,
-        },
-        resultado: 'Fuiste hasta el alambrado y te la cantaron a un metro. No dormiste esa noche.',
-      },
-      {
-        id: 'grabarla',
-        texto: 'Grabarla y subirla tú',
-        pista: 'Se hace viral. Y se hace tuya.',
-        efectos: {
-          vida: { fama: 12, exposicion: 12, carinoDeLaHinchada: 10 },
-          personalidad: { carisma: 5 },
-          balance: 4,
-        },
-        resultado: 'La subiste esa misma noche. En dos días la cantaba gente de otros clubes.',
-      },
-      {
-        id: 'incomodo',
-        texto: 'Pedir que no la canten: te incomoda',
-        pista: 'Es raro. También es honesto.',
-        efectos: {
-          vida: { carinoDeLaHinchada: -8, reputacion: 6 },
-          personalidad: { ego: -6 },
-          balance: 1,
-        },
-        resultado: 'Pediste por micrófono que se la cantaran al equipo y no a ti. Siguieron cantándotela igual, y más fuerte, hasta el día que te fuiste del club.',
-      },
-      {
-        id: 'nada',
-        texto: 'Disfrutarla en silencio',
-        pista: 'Nada afuera. Todo adentro.',
-        efectos: { vida: { felicidad: 12, confianza: 8 }, balance: 3 },
-        resultado: 'No dijiste nada en ningún lado. La escuchabas en el auto camino al predio.',
-      },
-    ],
-  },
-  {
     id: 'relaciones-hijo',
     categoria: 'relaciones',
     rareza: 'raro',
+    picante: 2,
     titulo: 'Vas a ser padre',
     texto: 'Te enteras en plena temporada, a mitad de una pelea por el descenso.',
     tipoDeRecuerdo: 'decision',
@@ -184,6 +77,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
     id: 'social-fiesta',
     categoria: 'social',
     rareza: 'comun',
+    picante: 1,
     titulo: 'La fiesta',
     texto:
       'Un compañero cumple años y arma algo grande. Es jueves, y el domingo se juega contra el segundo de {liga}.',
@@ -263,7 +157,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
           balance: 6,
         },
         resultado:
-          'Convenciste a todos de cambiar el boliche por un asado en tu casa. Terminó a las once, ganaron el domingo y el técnico lo contó en rueda de prensa como el punto de quiebre del año.',
+          'Convenciste a todos de cambiar la discoteca por una parrilla en tu casa. Terminó a las once, ganaron el domingo y el técnico lo contó en rueda de prensa como el punto de quiebre del año.',
       },
     ],
   },
@@ -271,11 +165,12 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
     id: 'social-romance',
     categoria: 'relaciones',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Alguien te está esperando',
     texto:
       'Conociste a alguien en la presentación de una marca. Al día siguiente El Popular abre con tres fotos suyas y una tuya al lado.',
     tipoDeRecuerdo: 'romance',
-    condiciones: { edadMin: 19, famaMin: 25, sinEtiquetas: ['vida:pareja-estable'] },
+    condiciones: { edadMin: 22, famaMin: 25, sinEtiquetas: ['vida:pareja-estable'] },
     cooldown: 6,
     opciones: [
       {
@@ -350,6 +245,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
     id: 'relaciones-conflicto-companero',
     categoria: 'relaciones',
     rareza: 'comun',
+    picante: 1,
     titulo: 'El que no te pasa la pelota',
     texto:
       'Hace seis partidos que un compañero no te mira aunque estés solo. En el vestuario ya se nota y el técnico también.',
@@ -421,70 +317,6 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
         },
         resultado:
           'Dejaste de buscarlo tú también. El equipo empezó a jugar de a diez y en tres meses los vendieron a los dos, cada uno a un país distinto.',
-      },
-    ],
-  },
-  {
-    id: 'social-vida-tranquila',
-    categoria: 'social',
-    rareza: 'comun',
-    titulo: 'La ciudad te queda chica',
-    texto:
-      'No puedes ir al supermercado sin firmar veinte camisetas. Tu representante te propone mudarte lejos del centro.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 40, temporadasMin: 3 },
-    cooldown: 8,
-    opciones: [
-      {
-        id: 'mudarse',
-        texto: 'Mudarte lejos del centro',
-        pista: 'Una hora de auto por día a cambio de que nadie te toque el timbre.',
-        efectos: {
-          vida: { exposicion: -20, felicidad: 14, estres: -16, condicion: -3 },
-          personalidad: { vidaSocial: -5 },
-          etiquetas: ['social:reservado'],
-          balance: 4,
-        },
-        resultado:
-          'Te fuiste a vivir a cuarenta kilómetros. Manejas una hora por día y duermes ocho por primera vez en cinco años; el preparador dijo que fue lo mejor que hiciste por tu cuerpo.',
-      },
-      {
-        id: 'quedarse',
-        texto: 'Quedarte y aguantar',
-        pista: 'La gente te quiere. Y te quiere todo el tiempo.',
-        efectos: {
-          vida: { carinoDeLaHinchada: 14, estres: 10, felicidad: 4 },
-          relaciones: { hinchada: { confianza: 14 } },
-          personalidad: { carisma: 4 },
-          balance: 2,
-        },
-        resultado:
-          'Seguiste haciendo las compras en el mismo lugar y firmando todo lo que te pusieran delante. Te cansó, y también hizo que en esa ciudad te quieran para siempre.',
-      },
-      {
-        id: 'seguridad',
-        texto: 'Contratar gente que te acompañe',
-        pista: 'Tranquilidad comprada. Y una distancia que se nota.',
-        efectos: {
-          vida: { dinero: -0.5, estres: -12, carinoDeLaHinchada: -10, exposicion: 6 },
-          relaciones: { hinchada: { rencor: 8 } },
-          balance: 0,
-        },
-        resultado:
-          'Empezaste a moverte con dos personas al lado. Dejaron de molestarte y también dejaron de acercarse: en la tribuna alguien colgó un trapo que decía "antes eras uno de nosotros".',
-      },
-      {
-        id: 'barrio',
-        texto: 'Volver a vivir a tu barrio',
-        pista: 'Ahí nadie te pide una foto. Ahí te conocen.',
-        efectos: {
-          vida: { felicidad: 20, estres: -14, carinoDeLaHinchada: 16, exposicion: -8 },
-          personalidad: { lealtad: 8 },
-          etiquetas: ['leyenda:hinchada', 'vida:familia'],
-          balance: 6,
-        },
-        resultado:
-          'Volviste a la casa de tres cuadras de donde creciste. Los vecinos te saludan por tu apodo de la infancia y nadie te pidió una foto en cinco años.',
       },
     ],
   },

@@ -26,9 +26,10 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     id: 'salseo-ampay',
     categoria: 'prensa',
     rareza: 'comun',
+    picante: 2,
     titulo: 'Te ampayaron',
     texto:
-      'El programa de la noche anuncia "ampay exclusivo" con tu silueta pixelada y música de suspenso, y El Popular ya tiene la portada armada. Sales de una pollería a la una de la mañana, tres días antes del clásico con {rival}.',
+      'El programa de la noche anuncia "ampay exclusivo" con tu silueta pixelada y música de suspenso, y El Popular ya tiene la portada armada: te grabaron saliendo del hotel de concentración a la una de la mañana, tres días antes del clásico con {rival}. El utilero te vio volver.',
     tipoDeRecuerdo: 'polemica',
     condiciones: { famaMin: 25, temporadasMin: 1 },
     cooldown: 4,
@@ -44,7 +45,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
           bien: {
             vida: { fama: 16, carinoDeLaHinchada: 14, reputacion: 8 },
             relaciones: { prensa: { respeto: 12 } },
-            titular: { texto: 'EL "AMPAY" DE {APELLIDO} ERA UN CUARTO DE POLLO', tono: 'elogio' },
+            titular: { texto: 'EL "AMPAY" DE {APELLIDO} ERA UNA FARMACIA DE TURNO', tono: 'elogio' },
             balance: 6,
           },
           mal: {
@@ -54,9 +55,9 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
             balance: -5,
           },
           relatoBien:
-            'Subiste el video entero: eras tú, un cuarto de pollo y tu primo. El programa tuvo que emitir el "ampay" con la gente ya riéndose y el conductor cambió de tema en dos minutos.',
+            'Subiste el video entero: eras tú cruzando a la farmacia de la esquina por el jarabe de tu hija, catorce minutos de reloj y el utilero abriéndote la puerta. El programa tuvo que emitir el "ampay" con la gente ya riéndose y el conductor cambió de tema en dos minutos.',
           relatoMal:
-            'Subiste el video y en el segundo cuarenta se escuchaba a alguien decir tu apodo y el nombre de un local que no era la pollería. Ese audio duró más que el ampay original.',
+            'Subiste el video y en el segundo cuarenta se escuchaba a alguien decir tu apodo y el nombre de un sitio que no era ninguna farmacia. Ese audio duró más que el ampay original.',
         },
         resultado: 'Publicaste el video completo a las ocho de la noche, una hora antes del programa.',
       },
@@ -81,7 +82,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
             balance: -6,
           },
           relatoBien:
-            'Fuiste, pediste un cuarto de pollo en vivo y le convidaste al conductor. El clip llegó a tres millones y la hinchada te sacó una canción con la palabra "pollería" adentro.',
+            'Fuiste con el jarabe en la mano, lo puso sobre la mesa del set y contaste la noche entera sin adornos. El clip llegó a tres millones y la hinchada te sacó una canción con la palabra "concentración" adentro.',
           relatoMal:
             'Fuiste, hiciste chistes veinte minutos y no hablaste de fútbol ni una vez. El técnico lo vio, no dijo nada y el domingo empezaste en el banco.',
         },
@@ -102,7 +103,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
           mal: {
             vida: { carinoDeLaHinchada: -18, exposicion: 16, confianza: -12 },
             atributos: { tiro: -1 },
-            titular: { texto: 'DEL POLLO AL BANCO: LA SEMANA DE {APELLIDO}', tono: 'polemica' },
+            titular: { texto: 'DEL HOTEL AL BANCO: LA SEMANA DE {APELLIDO}', tono: 'polemica' },
             balance: -8,
           },
           relatoBien:
@@ -133,11 +134,12 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     id: 'salseo-reality',
     categoria: 'social',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Te quieren en el reality',
     texto:
       'Los productores de "Guerreros del Sur" te ofrecen entrar como refuerzo por cuatro semanas. Pagan bien, es en horario de entrenamiento y hay que competir en una piscina con arnés.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 35, edadMin: 20 },
+    condiciones: { famaMin: 35, edadMin: 22 },
     cooldown: 8,
     opciones: [
       {
@@ -166,7 +168,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
           relatoBien:
             'Ganaste el reality, cobraste el premio y volviste al plantel con el país entero conociéndote. El club terminó vendiendo tres mil camisetas con tu nombre ese mes.',
           relatoMal:
-            'Te doblaste el tobillo en la prueba del arnés en el capítulo tres. El club te abrió expediente, la mutual no cubrió nada y volviste a jugar recién en agosto.',
+            'Te doblaste el tobillo en la prueba del arnés en el capítulo tres. El club te abrió expediente, el seguro no cubrió nada por ser fuera de actividad y volviste a jugar recién en agosto.',
         },
         resultado: 'Firmaste por cuatro semanas de reality.',
       },
@@ -211,92 +213,10 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     ],
   },
   {
-    id: 'salseo-cumbia',
-    categoria: 'social',
-    rareza: 'infrecuente',
-    titulo: 'La orquesta te escribió una canción',
-    texto:
-      'La orquesta de cumbia más escuchada de la región sacó un tema con tu apellido en el coro. Te invitan a subir al escenario el sábado, en un concierto de doce mil personas.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 30, temporadasMin: 2 },
-    cooldown: 6,
-    opciones: [
-      {
-        id: 'subir',
-        texto: 'Subir y cantar el coro',
-        pista: 'Va a ser el video de la semana. Cantes bien o cantes mal.',
-        efectos: { vida: { fama: 20, exposicion: 20, felicidad: 12 }, personalidad: { carisma: 6 } },
-        riesgo: {
-          prob: 0.55,
-          bien: {
-            vida: { carinoDeLaHinchada: 22, reputacion: 6 },
-            relaciones: { hinchada: { confianza: 20 } },
-            titular: { texto: '{APELLIDO} CANTÓ, EL ESTADIO APRENDIÓ: LA CUMBIA DEL AÑO', tono: 'elogio' },
-            etiquetas: ['leyenda:hinchada'],
-            balance: 6,
-          },
-          mal: {
-            vida: { reputacion: -10, exposicion: 14 },
-            titular: { texto: 'MEJOR QUÉDATE EN LA CANCHA: EL SOLO DE {APELLIDO}', tono: 'polemica' },
-            balance: -3,
-          },
-          relatoBien:
-            'Subiste, cantaste desafinado y las doce mil personas lo cantaron por ti. La cumbia se volvió el tema del estadio y todavía la ponen cuando entras al campo.',
-          relatoMal:
-            'Subiste, agarraste el micrófono y te comiste dos versos. El video con el título "el peor coro de la historia" lo vieron ocho millones y en la cancha te lo cantan al revés.',
-        },
-        resultado: 'Subiste al escenario el sábado a la medianoche.',
-      },
-      {
-        id: 'aparecer',
-        texto: 'Ir, saludar y no cantar',
-        pista: 'La foto sin el ridículo.',
-        efectos: {
-          vida: { fama: 12, carinoDeLaHinchada: 12, felicidad: 8 },
-          personalidad: { carisma: 4 },
-          balance: 5,
-        },
-        resultado:
-          'Subiste, levantaste la mano, te sacaste la foto con el cantante y bajaste. Esa foto fue portada de dos diarios y ni una sola nota habló de tu voz.',
-      },
-      {
-        id: 'regalias',
-        texto: 'Pedir que te den un porcentaje del tema',
-        pista: 'Es tu apellido. También es su canción.',
-        efectos: { vida: { dinero: 0.5, carinoDeLaHinchada: -10 }, personalidad: { ambicion: 6 } },
-        riesgo: {
-          prob: 0.5,
-          bien: { vida: { dinero: 1.2 }, balance: 3 },
-          mal: {
-            vida: { reputacion: -12, carinoDeLaHinchada: -12 },
-            titular: { texto: '"LE PEDÍ UN SALUDO Y ME MANDÓ UN ABOGADO", DIJO EL CANTANTE', tono: 'polemica' },
-            balance: -6,
-          },
-          relatoBien:
-            'Aceptaron darte un porcentaje y el tema explotó: cobraste durante tres años algo que ni sabías que existía.',
-          relatoMal:
-            'El cantante lo contó en una entrevista y la frase se hizo meme. Sacaron el tema de todas las plataformas y en la tribuna dejaron de cantarlo.',
-        },
-        resultado: 'Le mandaste una carta pidiendo tu parte.',
-      },
-      {
-        id: 'ignorar',
-        texto: 'Agradecer por mensaje y no ir',
-        pista: 'Amable y sin ruido.',
-        efectos: {
-          vida: { carinoDeLaHinchada: 4, condicion: 3, forma: 3 },
-          personalidad: { profesionalismo: 5 },
-          balance: 3,
-        },
-        resultado:
-          'Mandaste un mensaje agradeciendo y te quedaste en tu casa durmiendo. El domingo corriste más que nadie y el cantante te dedicó el tema igual.',
-      },
-    ],
-  },
-  {
     id: 'salseo-primo-manager',
     categoria: 'relaciones',
     rareza: 'comun',
+    picante: 2,
     titulo: 'Tu primo se hizo tu mánager',
     texto:
       'Tu primo imprimió tarjetas que dicen "representante de imagen" y ya está cerrando cosas por su cuenta. Ayer prometió tu presencia en la inauguración de una cevichería.',
@@ -375,6 +295,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     id: 'salseo-figureti',
     categoria: 'prensa',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Te dicen figureti',
     texto:
       'Líbero publicó una tabla con tus apariciones en televisión de este mes al lado de tus goles. Los números no te ayudan y el título es "¿futbolista o invitado?".',
@@ -393,7 +314,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
           balance: 6,
         },
         resultado:
-          'Borraste las redes, no diste una nota en tres meses y metiste nueve goles en ese tramo. El mismo panelista abrió su programa diciendo que se había equivocado con vos... y lo dijo mal, con tu apellido mal pronunciado.',
+          'Borraste las redes, no diste una nota en tres meses y metiste nueve goles en ese tramo. El mismo panelista abrió su programa diciendo que se había equivocado contigo... y lo dijo mal, con tu apellido mal pronunciado.',
       },
       {
         id: 'mas-television',
@@ -456,150 +377,108 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     ],
   },
   {
-    id: 'salseo-mototaxi',
-    categoria: 'caos',
-    rareza: 'raro',
-    titulo: 'Se te fue el carro',
-    texto:
-      'Vas tarde al entrenamiento y el tráfico está parado desde hace cuarenta minutos. Un mototaxi se te pone al lado y el conductor te reconoce.',
-    tipoDeRecuerdo: 'caos',
-    condiciones: { temporadasMin: 1 },
-    cooldown: 8,
-    opciones: [
-      {
-        id: 'subirse',
-        texto: 'Subirte al mototaxi con el bolso y todo',
-        pista: 'Llegas. Y alguien lo va a filmar, seguro.',
-        efectos: { vida: { exposicion: 16 }, personalidad: { carisma: 5 } },
-        riesgo: {
-          prob: 0.7,
-          bien: {
-            vida: { fama: 14, carinoDeLaHinchada: 20, felicidad: 10 },
-            relaciones: { hinchada: { confianza: 18 }, dt: { confianza: 6 } },
-            titular: { texto: 'LLEGÓ EN MOTOTAXI Y ENTRENÓ: EL VIDEO DE {APELLIDO} QUE EMOCIONÓ AL PAÍS', tono: 'elogio' },
-            etiquetas: ['leyenda:hinchada', 'social:del-barrio'],
-            balance: 7,
-          },
-          mal: {
-            vida: { condicion: -12, reputacion: -6, exposicion: 18 },
-            relaciones: { club: { rencor: 12 } },
-            titular: { texto: 'EL CLUB LE PROHÍBE A {APELLIDO} VOLVER A SUBIRSE A UN MOTOTAXI', tono: 'duda' },
-            balance: -4,
-          },
-          relatoBien:
-            'Llegaste doce minutos antes, con el casco del mototaxista puesto y el bolso en la falda. El video llegó a cuatro millones, el conductor salió en televisión y el club le regaló una camiseta firmada.',
-          relatoMal:
-            'A tres cuadras del predio el mototaxi frenó de golpe y te golpeaste la rodilla contra el fierro. Nada grave, pero el club te prohibió por contrato subirte a otro y te multó por el susto.',
-        },
-        resultado: 'Le pediste que te llevara y te subiste con el bolso en la falda.',
-      },
-      {
-        id: 'esperar',
-        texto: 'Quedarte en el carro y avisar que llegas tarde',
-        pista: 'Correcto y aburrido.',
-        efectos: {
-          vida: { estres: 8 },
-          relaciones: { dt: { confianza: -6 } },
-          personalidad: { profesionalismo: 3 },
-          balance: 1,
-        },
-        resultado:
-          'Llamaste al utilero, avisaste y llegaste cincuenta minutos tarde. El técnico te hizo entrenar aparte y no dijo una palabra, que a veces es peor.',
-      },
-      {
-        id: 'correr',
-        texto: 'Bajarte y correr las veinte cuadras que faltan',
-        pista: 'Llegas cansado. Y con una historia.',
-        efectos: {
-          vida: { condicion: -6, carinoDeLaHinchada: 14, forma: 4, exposicion: 12 },
-          relaciones: { dt: { respeto: 14 } },
-          personalidad: { profesionalismo: 7 },
-          titular: { texto: 'CORRIÓ VEINTE CUADRAS PARA NO FALTAR: {APELLIDO}', tono: 'elogio' },
-          balance: 6,
-        },
-        resultado:
-          'Dejaste el carro estacionado en doble fila y corriste veinte cuadras con el bolso. Llegaste empapado, entrenaste igual y el preparador dijo que era el mejor calentamiento que había visto.',
-      },
-      {
-        id: 'no-ir',
-        texto: 'Dar la vuelta y no ir',
-        pista: 'Nadie llega. Todos se enteran.',
-        efectos: {
-          vida: { dinero: -0.05, forma: -6 },
-          relaciones: { dt: { rencor: 16 }, companeros: { confianza: -8 } },
-          personalidad: { profesionalismo: -7 },
-          etiquetas: ['futbol:olvidado'],
-          balance: -5,
-        },
-        resultado:
-          'Diste la vuelta y te fuiste a tu casa. Te multaron con el diez por ciento del mes, el técnico te dejó fuera del viaje y en el vestuario alguien contó el chiste del tráfico todo el año.',
-      },
-    ],
-  },
-  {
+    /*
+     * La pollada tenía un chico enfermo y trescientas personas de buena fe, y el jugador tenía razón:
+     * así no tiene nada de picante. Lo picante es que tu nombre ya está vendido y no lo vendiste tú,
+     * y que el que lo vendió no es cualquiera.
+     */
     id: 'salseo-pollada',
     categoria: 'social',
     rareza: 'comun',
-    titulo: 'La pollada del barrio',
+    picante: 2,
+    titulo: 'Están vendiendo tu nombre',
     texto:
-      'En tu barrio organizan una pollada para operar al hijo de un vecino. Te invitaron a las siete de la tarde y hay trescientas personas esperando ver si apareces.',
+      'En tu barrio venden entradas para una pollada "con la presencia confirmada de {nombre}". Nadie te preguntó. Van cuatrocientas vendidas a veinte soles y el que organiza es un dirigente de la barra de {club}.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1 },
+    condiciones: { famaMin: 20, temporadasMin: 1 },
     cooldown: 6,
-    peso: 1.4,
+    peso: 1.5,
     opciones: [
       {
-        id: 'ir-y-quedarse',
-        texto: 'Ir, servir platos y quedarte hasta el final',
-        pista: 'Ese barrio no te va a olvidar nunca.',
+        id: 'ir',
+        texto: 'Ir igual y quedarte hasta el final',
+        pista: 'Cuatrocientas personas no tienen culpa. El que organiza, sí.',
+        efectos: { vida: { exposicion: 12, felicidad: 6 }, personalidad: { lealtad: 6 } },
+        riesgo: {
+          prob: 0.5,
+          bien: {
+            vida: { carinoDeLaHinchada: 24, reputacion: 8 },
+            relaciones: { hinchada: { confianza: 20, respeto: 14 } },
+            etiquetas: ['social:del-barrio'],
+            titular: { texto: '{APELLIDO} FUE, SIRVIÓ Y NO COBRÓ NADA', tono: 'elogio' },
+            balance: 6,
+          },
+          mal: {
+            vida: { reputacion: -14, exposicion: 22 },
+            relaciones: { club: { rencor: 16 } },
+            etiquetas: ['barra:te-conocen'],
+            titular: { texto: '{APELLIDO} Y EL DIRIGENTE DE LA BARRA, EN LA MISMA FOTO', tono: 'polemica' },
+            balance: -7,
+          },
+          relatoBien:
+            'Fuiste, te pusiste el mandil y serviste hasta que se acabó el pollo. La plata se contó delante de todos y alcanzó. Nadie habló del organizador porque no hubo nada que hablar.',
+          relatoMal:
+            'La foto que dio la vuelta no fue la del mandil: fue la del abrazo con el organizador, que tiene dos denuncias abiertas. El club te pidió explicaciones por escrito y desde entonces esa gente te llama por tu nombre de pila.',
+        },
+        resultado: 'Fuiste sin avisarle a nadie del club.',
+      },
+      {
+        id: 'desmentir',
+        texto: 'Desmentirlo público y pedir que devuelvan la plata',
+        pista: 'Lo correcto. Y cuatrocientas personas con la entrada en la mano.',
         efectos: {
-          vida: { carinoDeLaHinchada: 26, felicidad: 18, reputacion: 12, dinero: -0.05 },
-          relaciones: { hinchada: { confianza: 22, respeto: 18 } },
-          personalidad: { lealtad: 9, carisma: 6 },
-          etiquetas: ['leyenda:hinchada', 'social:del-barrio'],
-          titular: { texto: '{APELLIDO} SIRVIÓ POLLO Y JUNTÓ PARA LA OPERACIÓN', tono: 'elogio' },
-          balance: 9,
+          vida: { reputacion: 12, exposicion: 16, carinoDeLaHinchada: -16 },
+          relaciones: { hinchada: { rencor: 14 }, prensa: { confianza: 8 } },
+          personalidad: { profesionalismo: 7 },
+          titular: { texto: '{APELLIDO}: "NO AUTORICÉ NADA Y NO VOY A IR"', tono: 'neutro' },
+          balance: 1,
         },
         resultado:
-          'Fuiste, te pusiste el mandil y sirviste platos cuatro horas. Se juntó el doble de lo que faltaba, el chico se operó en dos semanas y en la puerta de esa casa hay una foto tuya con el mandil puesto.',
+          'Publicaste el comunicado un miércoles. Devolvieron ciento veinte entradas y las otras doscientas ochenta se quedaron sin devolución y sin pollada. En el barrio quedó la idea de que te habías puesto difícil.',
       },
       {
         id: 'pagar',
-        texto: 'Pagar la operación completa y no ir',
-        pista: 'Resuelves el problema. No la foto.',
+        texto: 'Pagar la operación completa por tu cuenta y cancelar la pollada',
+        pista: 'El problema se resuelve. El de la barra se queda sin su recaudación.',
         efectos: {
-          vida: { dinero: -0.7, reputacion: 16, carinoDeLaHinchada: 8 },
+          vida: { dinero: -0.7, reputacion: 14 },
           personalidad: { lealtad: 6, ego: -4 },
-          balance: 6,
+          balance: 5,
         },
-        resultado:
-          'Transferiste todo el lunes y pediste que no lo contaran. Se enteró el barrio igual, en dos semanas lo sabía la ciudad y a ti te siguió incomodando cada vez que te lo agradecían.',
+        riesgo: {
+          prob: 0.62,
+          bien: {
+            vida: { carinoDeLaHinchada: 14, felicidad: 10 },
+            relaciones: { hinchada: { confianza: 12 } },
+            balance: 5,
+          },
+          mal: {
+            vida: { exposicion: 18, estres: 14 },
+            etiquetas: ['barra:te-conocen'],
+            titular: { texto: 'LE CANTARON A {APELLIDO} EN SU PROPIO ESTADIO', tono: 'duda' },
+            balance: -5,
+          },
+          relatoBien:
+            'Transferiste el lunes, la operación se hizo el jueves y la pollada nunca se hizo. El papá del chico lo contó en una nota chica de un diario chico y ahí se terminó.',
+          relatoMal:
+            'El chico se operó y el organizador perdió ocho mil soles que ya tenía contados. Tres domingos después, en la tribuna donde él manda, cantaron tu nombre con una palabra al lado.',
+        },
+        resultado: 'Llamaste a la clínica el domingo en la noche y arreglaste todo por tu cuenta.',
       },
       {
-        id: 'aparecer',
-        texto: 'Pasar veinte minutos y sacarte fotos',
-        pista: 'Cumples. A medias.',
+        id: 'callar',
+        texto: 'No decir nada y no aparecer',
+        pista: 'La forma más barata de quedar mal con todos.',
         efectos: {
-          vida: { carinoDeLaHinchada: 8, exposicion: 10, felicidad: 4 },
-          personalidad: { carisma: 3 },
-          balance: 2,
-        },
-        resultado:
-          'Llegaste, te sacaste cuarenta fotos y te fuiste antes de las ocho. Se juntó lo que se tenía que juntar, pero alguien dijo en voz alta "vino por la foto" y esa frase quedó dando vueltas.',
-      },
-      {
-        id: 'no-ir',
-        texto: 'No ir y no explicar nada',
-        pista: 'Trescientas personas esperando.',
-        efectos: {
-          vida: { carinoDeLaHinchada: -22, reputacion: -12 },
-          relaciones: { hinchada: { rencor: 20 } },
+          vida: { carinoDeLaHinchada: -24, reputacion: -14 },
+          relaciones: { hinchada: { rencor: 22 } },
           personalidad: { lealtad: -8 },
           etiquetas: ['social:aparte'],
-          balance: -7,
+          titular: { texto: 'CUATROCIENTAS PERSONAS ESPERARON A {APELLIDO} CUATRO HORAS', tono: 'polemica' },
+          balance: -8,
         },
         resultado:
-          'No fuiste y no avisaste. La pollada se hizo igual, faltó plata y el papá del chico salió en una nota diciendo que "el que se hace grande se olvida". En ese barrio te lo recordaron toda la carrera.',
+          'No fuiste y no dijiste nada. El organizador contó que te habías arrepentido y se quedó con la plata sin que nadie le preguntara. El papá del chico salió en una nota diciendo que "el que se hace grande se olvida", y en ese barrio te lo recordaron toda la carrera.',
       },
     ],
   },
@@ -607,6 +486,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     id: 'salseo-urraca',
     categoria: 'prensa',
     rareza: 'raro',
+    picante: 3,
     titulo: 'Tienes cámara en la puerta',
     texto:
       'Hay una camioneta parada frente a tu casa desde el martes. Cuando sales, dos personas bajan corriendo con la cámara ya encendida y te preguntan por algo que no hiciste.',
@@ -694,13 +574,14 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
   },
   {
     id: 'salseo-chibolo',
-    categoria: 'legado',
+    categoria: 'social',
     rareza: 'infrecuente',
+    picante: 3,
     titulo: 'El chibolo que quiere ser tú',
     texto:
       'Un chico de quince de la cantera imita todo lo que haces: tus botines, tu festejo, tu forma de pararse en los tiros libres. Ayer le preguntaron a quién admiraba y dijo tu nombre en televisión.',
     tipoDeRecuerdo: 'legado',
-    condiciones: { temporadasMin: 5, edadMin: 26 },
+    condiciones: { temporadasMin: 5, edadMin: 28 },
     cooldown: 6,
     opciones: [
       {
@@ -771,6 +652,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     id: 'salseo-apuesta-amigos',
     categoria: 'dinero',
     rareza: 'comun',
+    picante: 2,
     titulo: 'La apuesta del grupo',
     texto:
       'En el grupo del barrio armaron una polla para la fecha y te preguntan por dónde va tu partido. Son tus patas de toda la vida y hay dinero de verdad en juego.',
@@ -836,7 +718,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
           balance: -5,
         },
         resultado:
-          'Les contaste que el arquero titular estaba tocado. Ganaron todos, te agradecieron con un asado, y tres semanas después un desconocido te habló en el estacionamiento sabiendo tu nombre y esa historia.',
+          'Les contaste que el arquero titular estaba tocado. Ganaron todos, te agradecieron con una parrilla, y tres semanas después un desconocido te habló en el estacionamiento sabiendo tu nombre y esa historia.',
       },
     ],
   },

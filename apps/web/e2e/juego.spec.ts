@@ -48,32 +48,29 @@ async function unPaso(page: Page): Promise<boolean> {
   }
 
   const oferta = page.locator('[data-oferta]');
-  const cancha = page.locator('[data-escena] canvas, canvas');
+  const zona = page.locator('[data-zona]:not([disabled])');
+  const remate = page.locator('[data-remate]');
+  const cancha = page.locator('[data-cancha-juego]');
   const decision = page.locator('[data-escena] ul button');
   const quedarse = page.getByRole('button', { name: /quedarme|^seguir$/i });
 
   if (await cancha.count()) {
     /*
-     * Espacio patea; el motor resuelve y avanza solo un segundo después. Se espera a que la escena
-     * se vaya en lugar de dormir un tiempo fijo: dormir metía dos segundos de test en la medición de
-     * cuánto tarda una carrera, que es justo lo que este test existe para vigilar.
+     * La jugada son dos toques: a qué zona y cómo la pegas. Después la escena anima el veredicto que
+     * el motor ya decidió y se suelta sola. No se comprueba que la cancha desaparezca: al capítulo
+     * siguiente puede tocar otra jugada, y entonces hay una cancha nueva aunque la anterior se haya
+     * resuelto perfectamente.
      */
-    /*
-     * Espacio patea y el motor resuelve solo un segundo después. Se reintenta porque una celebración
-     * puede aparecer entre la comprobación y la tecla y se lleva la primera pulsación. No se
-     * comprueba que el lienzo desaparezca: al capítulo siguiente puede tocar otra jugada, y entonces
-     * hay un lienzo nuevo aunque la anterior se haya resuelto perfectamente.
-     */
-    for (let intentos = 0; intentos < 2; intentos++) {
-      await cancha.first().focus();
-      await page.keyboard.press('Space');
-      await page.waitForTimeout(2000);
-      const avanzo =
-        (await page.locator('[data-celebracion]').count()) +
-        (await page.locator('[data-oferta]').count()) +
-        (await page.locator('[data-escena] ul button').count());
-      if (avanzo > 0 || (await cancha.count()) === 0) break;
-    }
+    if (await zona.count()) await zona.first().click({ force: true });
+    await remate.first().waitFor({ state: 'visible', timeout: 4000 });
+    await remate.first().click({ force: true });
+    /* La animación tiene tope de reloj: si en ocho segundos no soltó la escena, es un cuelgue. */
+    await page
+      .locator(
+        '[data-cancha-juego][data-fase="zona"], [data-celebracion], [data-oferta], [data-escena] ul button',
+      )
+      .first()
+      .waitFor({ state: 'visible', timeout: 8000 });
   } else if (await oferta.count()) {
     await oferta.first().click({ force: true });
   } else if (await decision.count()) {
@@ -289,7 +286,12 @@ test.describe('Mi Leyenda', () => {
     /* `press` sobre el propio locator lo vuelve a enfocar: si React redibujó la lista entre medio,
        la tecla llegaba a un nodo que ya no estaba en la pantalla. */
     await oferta.press('Enter');
-    /* Firmó: el mercado se cerró y el juego siguió, sea con una decisión o con una jugada. */
-    await expect(page.locator('[data-oferta]')).toHaveCount(0, { timeout: 10_000 });
+    /*
+     * Firmó, y firmar contesta: aparece la consecuencia con lo que dejó el fichaje. No se comprueba
+     * que el mercado desaparezca, porque el mercado abre en **todos** los capítulos: cerrada la
+     * consecuencia, lo primero que vuelve a haber es la pregunta de si te quedas o te vas.
+     */
+    await expect(page.locator('[data-celebracion]')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[data-celebracion-escena]')).not.toBeEmpty();
   });
 });

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import {
   abrirCarrera,
   avanzarCapitulo,
@@ -8,7 +8,10 @@ import {
   puedeRenovar,
   type Capitulo,
   type Carrera,
+  type ClaseDeMomento,
+  type ContextoDeMomento,
   type Eleccion,
+  type Jugada,
   type Mundo,
 } from '@athena/leyenda';
 import { borrarPartida, codificarLegado, guardarPartida, leerPartida } from '../../lib/leyenda';
@@ -94,6 +97,12 @@ function codigoDelLegado(carrera: Carrera): string {
  * El color del rival para las siluetas de la escena. Sale del club actual invertido —si jugás de
  * rojo, enfrente hay alguien que no es rojo— con una vuelta al azul del vestuario si no hay dato.
  */
+/** La escena que la cancha está mostrando, que sobrevive a que el motor resuelva. */
+interface MomentoEnCurso {
+  momento: ClaseDeMomento;
+  contexto: ContextoDeMomento;
+}
+
 function colorDelRival(carrera: Carrera): string {
   const propio = carrera.clubActual?.primario;
   if (!propio || !/^[0-9a-f]{6}$/i.test(propio)) return '#1b2a36';
@@ -116,6 +125,14 @@ export default function Tablero({ mundo, arranque, onReiniciar }: Props) {
   const [ascenso, setAscenso] = useState(false);
   /* Lo que hay que celebrar antes de seguir jugando: títulos, cambio de material, salto de media. */
   const [celebrando, setCelebrando] = useState<Capitulo | null>(null);
+  /*
+   * El veredicto de la jugada que la cancha está animando.
+   *
+   * El motor resuelve en el momento en que el jugador elige, así que `carrera.pendiente` deja de ser
+   * un momento de inmediato. Sin esto la escena desaparecía antes de que la pelota saliera: acá se
+   * sostiene hasta que la animación termina y recién entonces sigue el capítulo.
+   */
+  const [animando, setAnimando] = useState<{ jugada: Jugada; escena: MomentoEnCurso } | null>(null);
 
   /*
    * La partida se guarda mientras se juega y **se borra cuando termina**. No hay historial de
@@ -142,15 +159,40 @@ export default function Tablero({ mundo, arranque, onReiniciar }: Props) {
       const resultado = avanzarCapitulo(carrera, eleccion, mundo);
       setCarrera(resultado.carrera);
       setCapitulo(resultado.capitulo);
+      /* Si la elección fue una jugada, primero se ve; lo que dejó se cuenta cuando la pelota pare. */
+      const enCurso = carrera.pendiente?.clase === 'momento' ? carrera.pendiente : null;
+      if (resultado.capitulo.jugada && enCurso) {
+        setAnimando({
+          jugada: resultado.capitulo.jugada,
+          escena: { momento: enCurso.momento, contexto: enCurso.contexto },
+        });
+        return;
+      }
       if (escenasDe(resultado.capitulo).length > 0) setCelebrando(resultado.capitulo);
     },
     [carrera, mundo],
   );
 
+  /*
+   * La cancha terminó de contar la jugada: ahora sí entran los festejos que dejó.
+   *
+   * El capítulo se lee de una referencia y no del updater de `setCapitulo`: disparar un `setState`
+   * desde dentro de otro es un efecto adentro de un reducer, y React puede volver a invocarlo.
+   */
+  const ultimoCapitulo = useRef<Capitulo | null>(null);
+  ultimoCapitulo.current = capitulo;
+
+  const terminarJugada = useCallback(() => {
+    setAnimando(null);
+    const cerrado = ultimoCapitulo.current;
+    if (cerrado && escenasDe(cerrado).length > 0) setCelebrando(cerrado);
+  }, []);
+
   const empezarDeNuevo = useCallback(() => {
     borrarPartida();
     setCapitulo(null);
     setCelebrando(null);
+    setAnimando(null);
     onReiniciar();
   }, [onReiniciar]);
 
@@ -165,6 +207,8 @@ export default function Tablero({ mundo, arranque, onReiniciar }: Props) {
   }
 
   const momento = carrera.pendiente?.clase === 'momento' ? carrera.pendiente : null;
+  /* La escena sigue en pantalla mientras la pelota viaja, aunque el motor ya haya resuelto. */
+  const enCancha = momento ?? animando?.escena ?? null;
   const decision = carrera.pendiente?.clase === 'decision' ? eventoPendiente(carrera, mundo) : null;
 
   /*
@@ -178,17 +222,20 @@ export default function Tablero({ mundo, arranque, onReiniciar }: Props) {
     </Suspense>
   ) : null;
 
-  if (momento) {
+  if (enCancha) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-3 py-3 lg:h-[calc(100dvh-5.5rem)] lg:py-4">
         {celebracion}
-        {capitulo && <ResumenDelCapitulo capitulo={capitulo} />}
+        {capitulo && !animando && <ResumenDelCapitulo capitulo={capitulo} />}
         <div className="min-h-0 flex-1">
           <Estadio
-            momento={momento.momento}
-            contexto={momento.contexto}
+            key={`${enCancha.momento}-${enCancha.contexto.minuto}-${enCancha.contexto.escena}`}
+            momento={enCancha.momento}
+            contexto={enCancha.contexto}
             colorRival={colorDelRival(carrera)}
-            onJugar={(intencion) => avanzar({ tipo: 'jugar-momento', intencion })}
+            jugada={animando?.jugada ?? null}
+            onElegir={(intencion) => avanzar({ tipo: 'jugar-momento', intencion })}
+            onListo={terminarJugada}
           />
         </div>
       </div>

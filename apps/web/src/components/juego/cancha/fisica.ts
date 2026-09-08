@@ -12,7 +12,16 @@
  *
  * Sin librerías. Un integrador de Euler semi-implícito a paso fijo entra en cien líneas y corre a
  * 60 fps en un teléfono; matter.js pesa noventa kilobytes por lo mismo.
+ *
+ * Lo que este archivo **no** hace es decidir. El desenlace lo dicta el motor y acá se construye la
+ * trayectoria que lo cuenta: `objetivoDe` traduce el veredicto a un punto del arco y `apuntarA`
+ * resuelve la velocidad que lleva la pelota exactamente ahí. Antes había un `resolverPaso` que
+ * juzgaba la jugada desde el canvas —una segunda verdad que podía contradecir a la crónica— y que
+ * solo terminaba si la pelota cruzaba la línea: un remate al palo rebotaba hacia atrás y la escena
+ * se quedaba congelada para siempre.
  */
+
+import type { Desenlace as DesenlaceDeJugada, Remate, Zona } from '@athena/leyenda';
 
 /** Metros. El arco reglamentario, para que las proporciones sean las del fútbol. */
 export const ARCO = { ancho: 7.32, alto: 2.44, profundidad: 2 } as const;
@@ -43,22 +52,10 @@ const REBOTE_PALO = 0.62;
 /** La red frena casi todo: la pelota queda adentro en lugar de volver. */
 const REBOTE_RED = 0.12;
 
-export type Desenlace = 'volando' | 'gol' | 'palo' | 'afuera' | 'atajada' | 'barrera';
-
-export interface Mundo {
-  /** Dónde está el arquero, en metros desde el centro del arco. */
-  arqueroX: number;
-  arqueroY: number;
-  /** Qué tan estirado está: 0 quieto, 1 volando del todo. */
-  arqueroExtension: number;
-  /** La barrera, si la hay: centro y ancho en metros. */
-  barrera: { x: number; ancho: number; alto: number } | null;
-}
-
 /**
  * Un paso de simulación. `dt` va fijo (1/120 s) y el bucle de dibujo acumula el tiempo real: así la
- * física es idéntica en un monitor de 60 Hz y en uno de 144, y el resultado nunca depende de la
- * máquina de quien juega.
+ * física es idéntica en un monitor de 60 Hz y en uno de 144, y el vuelo nunca depende de la máquina
+ * de quien juega.
  */
 export function integrar(pelota: Pelota, dt: number): void {
   const velocidad = Math.hypot(pelota.vx, pelota.vy, pelota.vz);
@@ -91,48 +88,6 @@ export function integrar(pelota: Pelota, dt: number): void {
   }
 }
 
-/**
- * Qué le pasó a la pelota en este paso: entró, pegó en el palo, se fue o la atajaron.
- *
- * Se evalúa contra el plano del arco (y = 0) y solo cuando lo cruza, que es la única forma honesta de
- * decidir un gol: mirar dónde estaba la pelota **al pasar la línea**, no dónde terminó.
- */
-export function resolverPaso(pelota: Pelota, previa: Pelota, mundo: Mundo): Desenlace {
-  const medioAncho = ARCO.ancho / 2;
-
-  /* La barrera: un muro corto delante del arco. */
-  if (mundo.barrera && previa.y > mundo.barrera.x && pelota.y <= mundo.barrera.x) {
-    const dentro = Math.abs(pelota.x) <= mundo.barrera.ancho / 2;
-    if (dentro && pelota.z <= mundo.barrera.alto) return 'barrera';
-  }
-
-  /* El arquero: dos cajas, el cuerpo y el alcance de las manos al estirarse. */
-  if (previa.y > 0.6 && pelota.y <= 0.6) {
-    const alcance = 0.55 + mundo.arqueroExtension * 1.9;
-    const cerca = Math.abs(pelota.x - mundo.arqueroX) <= alcance;
-    const altura = pelota.z <= 0.7 + mundo.arqueroExtension * 1.7;
-    if (cerca && altura) return 'atajada';
-  }
-
-  /* El plano del arco. */
-  if (previa.y > 0 && pelota.y <= 0) {
-    const dentroDelAncho = Math.abs(pelota.x) <= medioAncho - pelota.r;
-    const bajoElTravesano = pelota.z <= ARCO.alto - pelota.r;
-
-    /* Los palos: una franja del grosor de la pelota a cada lado. */
-    const rozaPalo =
-      Math.abs(Math.abs(pelota.x) - medioAncho) < pelota.r ||
-      Math.abs(pelota.z - ARCO.alto) < pelota.r;
-    if (rozaPalo) return 'palo';
-    if (dentroDelAncho && bajoElTravesano) return 'gol';
-    return 'afuera';
-  }
-
-  /* Ya adentro: la red la frena. */
-  if (pelota.y < -ARCO.profundidad) return 'gol';
-  return 'volando';
-}
-
 /** Rebote en el palo: invierte y pierde energía. */
 export function rebotarEnPalo(pelota: Pelota): void {
   pelota.vy = Math.abs(pelota.vy) * REBOTE_PALO;
@@ -148,37 +103,102 @@ export function frenarEnRed(pelota: Pelota): void {
   pelota.spin = 0;
 }
 
+export const copiar = (p: Pelota): Pelota => ({ ...p });
+
+/** El centro de cada zona del arco, en metros. Es a lo que apunta el jugador cuando elige. */
+export const PUNTO_DE_ZONA: Record<Zona, { x: number; z: number }> = {
+  'izq-alta': { x: -(ARCO.ancho / 2 - 0.7), z: ARCO.alto - 0.4 },
+  'centro-alta': { x: 0, z: ARCO.alto - 0.45 },
+  'der-alta': { x: ARCO.ancho / 2 - 0.7, z: ARCO.alto - 0.4 },
+  'izq-baja': { x: -(ARCO.ancho / 2 - 0.7), z: 0.4 },
+  'centro-baja': { x: 0, z: 0.5 },
+  'der-baja': { x: ARCO.ancho / 2 - 0.7, z: 0.4 },
+};
+
 /**
- * Del gesto del jugador a la velocidad inicial.
+ * A dónde tiene que ir la pelota para que se vea lo que el motor ya dictó.
  *
- * `apunte` es dónde tocó, en coordenadas del arco (x de −1 a 1, z de 0 a 1); `fuerza` de 0 a 1 y
- * `comba` de −1 a 1. La cuenta resuelve el tiro como un problema de tiro parabólico: con la
- * distancia y el tiempo de vuelo deseado sale la velocidad, y la altura se corrige por la gravedad.
- * Es lo que hace que apuntar arriba obligue a pegarle más fuerte, igual que en la cancha.
+ * Acá se cierra el bug que hacía que la pantalla cantara una atajada sobre un gol: el desenlace
+ * llega decidido y la trayectoria se construye **para** ese desenlace. Un gol entra por dentro del
+ * palo, un tiro al palo pega en el fierro y un remate afuera se va por afuera de verdad.
  */
-export function patear(
-  desde: number,
-  apunte: { x: number; z: number },
-  fuerza: number,
-  comba: number,
-): Pelota {
-  const destinoX = apunte.x * (ARCO.ancho / 2 + 0.6);
-  const destinoZ = apunte.z * (ARCO.alto + 0.9);
+export function objetivoDe(zona: Zona, desenlace: DesenlaceDeJugada): { x: number; z: number } {
+  const punto = PUNTO_DE_ZONA[zona];
+  const lado = Math.sign(punto.x);
+  const alta = punto.z > ARCO.alto / 2;
 
-  /* Un remate fuerte tarda medio segundo desde el punto del penal; uno suave, casi el doble. */
-  const tiempo = (desde / 26) * (1.7 - fuerza * 0.85);
-
-  return {
-    x: 0,
-    y: desde,
-    z: 0.11,
-    vx: (destinoX - 0) / tiempo,
-    vy: -desde / tiempo,
-    /* La componente vertical incluye lo que la gravedad se va a comer en el camino. */
-    vz: (destinoZ - 0.11) / tiempo + 0.5 * GRAVEDAD * tiempo,
-    spin: comba * 320,
-    r: 0.11,
-  };
+  if (desenlace === 'palo') {
+    /* Sin lado definido no hay poste que buscar: se va al travesaño. */
+    if (lado === 0) return { x: 0, z: ARCO.alto };
+    return alta ? { x: lado * (ARCO.ancho / 2), z: ARCO.alto } : { x: lado * (ARCO.ancho / 2), z: punto.z };
+  }
+  if (desenlace === 'afuera') {
+    if (lado === 0) return { x: punto.x, z: ARCO.alto + 1.3 };
+    return alta
+      ? { x: lado * (ARCO.ancho / 2 + 0.9), z: ARCO.alto + 0.8 }
+      : { x: lado * (ARCO.ancho / 2 + 1.4), z: punto.z };
+  }
+  if (desenlace === 'barrera') return { x: punto.x * 0.35, z: 1.6 };
+  return punto;
 }
 
-export const copiar = (p: Pelota): Pelota => ({ ...p });
+/**
+ * Cuánto tarda el vuelo según cómo la pegó. Una picada flota; una potente no se ve venir.
+ *
+ * La velocidad crece con la distancia porque en la cancha también: a un tiro libre desde treinta
+ * metros se le pega con todo, y calcular el tiempo como distancia partido por una velocidad fija
+ * daba vuelos de casi dos segundos que ni se ven bien ni existen.
+ */
+export function vueloDe(remate: Remate, desde: number): number {
+  const base = remate === 'potente' ? 22 : remate === 'colocada' ? 16 : 11;
+  return desde / (base + desde * 0.38);
+}
+
+/** El giro de cada remate. Positivo curva a la derecha, y se compensa para que igual caiga en el punto. */
+export function combaDe(remate: Remate, zona: Zona): number {
+  const lado = Math.sign(PUNTO_DE_ZONA[zona].x);
+  if (remate === 'colocada') return -lado * 0.55;
+  if (remate === 'potente') return -lado * 0.18;
+  return -lado * 0.12;
+}
+
+/**
+ * La velocidad inicial que lleva la pelota a un punto exacto del arco.
+ *
+ * La parábola de manual no alcanza: el arrastre del aire y el efecto Magnus desvían el vuelo, así que
+ * apuntar con la fórmula cerrada deja la pelota a medio metro de donde tenía que ir —y medio metro es
+ * la diferencia entre un gol y el palo—. Se resuelve como un problema de tiro: se simula el vuelo, se
+ * mide el error en el plano del arco y se corrige. Ocho pasadas dejan el error por debajo del
+ * centímetro incluso en los vuelos largos, y como corre una sola vez por jugada no cuesta nada.
+ */
+export function apuntarA(
+  desde: number,
+  destino: { x: number; z: number },
+  tiempo: number,
+  comba: number,
+): Pelota {
+  const spin = comba * 320;
+  const vy = -desde / tiempo;
+  let vx = destino.x / tiempo;
+  let vz = (destino.z - 0.11) / tiempo + 0.5 * GRAVEDAD * tiempo;
+
+  for (let intento = 0; intento < 8; intento++) {
+    const prueba: Pelota = { x: 0, y: desde, z: 0.11, vx, vy, vz, spin, r: 0.11 };
+    const cruce = cruzarElPlano(prueba);
+    if (!cruce) break;
+    vx += (destino.x - cruce.x) / cruce.tiempo;
+    vz += (destino.z - cruce.z) / cruce.tiempo;
+  }
+
+  return { x: 0, y: desde, z: 0.11, vx, vy, vz, spin, r: 0.11 };
+}
+
+/** Dónde y cuándo cruza el plano del arco. Nulo si nunca lo cruza, que es lo que evita un lazo infinito. */
+function cruzarElPlano(pelota: Pelota): { x: number; z: number; tiempo: number } | null {
+  const p = copiar(pelota);
+  for (let paso = 1; paso <= 600; paso++) {
+    integrar(p, 1 / 120);
+    if (p.y <= 0) return { x: p.x, z: p.z, tiempo: paso / 120 };
+  }
+  return null;
+}

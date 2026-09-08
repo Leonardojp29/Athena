@@ -24,6 +24,30 @@ export type Categoria =
 
 export type Rareza = 'comun' | 'infrecuente' | 'raro' | 'epico' | 'legendario' | 'mitico';
 
+/**
+ * Cuánto quema un evento.
+ *
+ * La rareza dice cada cuánto sale; el picante dice **cuándo puede salir**. Son cosas distintas y
+ * mezclarlas era el problema: a los dieciocho el juego ofrecía un rondo y un doble turno mientras la
+ * cadena de las apuestas —que puede terminar en inhabilitación de por vida— también era alcanzable, y
+ * de los veinticuatro a los treinta y seis no cambiaba nada.
+ *
+ * 1 es la vida de un chico que recién llegó: el vestuario, el primer sueldo, la concentración, la
+ * pichanga del domingo. 2 es un profesional con nombre: la farándula, el representante, el ampay, la
+ * huelga. 3 es lo que solo le pasa a alguien con plata y con prensa encima: el maletín, el casino, la
+ * carpeta del periodista, las cuatro de la mañana en la carretera.
+ */
+export type Picante = 1 | 2 | 3;
+
+/** Desde qué capítulo se destraba cada nivel. Doce capítulos, de los 16 a los 38. */
+export const CAPITULO_DE_PICANTE: Record<Picante, number> = { 1: 0, 2: 3, 3: 6 };
+
+export const picanteDe = (evento: Evento): Picante => evento.picante ?? 1;
+
+/** ¿Este evento ya puede pasar a esta altura de la carrera? */
+export const alcanzaElPicante = (evento: Evento, capitulo: number): boolean =>
+  capitulo >= CAPITULO_DE_PICANTE[picanteDe(evento)];
+
 /** Cuánto pesa cada rareza. Lo mítico tiene que ser mítico de verdad. */
 export const PESO_DE_RAREZA: Record<Rareza, number> = {
   comun: 100,
@@ -143,6 +167,8 @@ export interface Evento {
   id: string;
   categoria: Categoria;
   rareza: Rareza;
+  /** Cuánto quema. Sin declararlo, un evento es de nivel 1 y puede salir desde el principio. */
+  picante?: Picante;
   /** Cómo lo cuenta el juego. `{nombre}`, `{club}`, `{rival}`, `{dt}`, `{liga}` se reemplazan. */
   titulo: string;
   texto: string;
@@ -233,6 +259,11 @@ export function elegirEvento(
   catalogo: Evento[],
   opciones: OpcionesDeSorteo = {},
 ): Evento | null {
+  /*
+   * Un evento agendado entra sí o sí, y a propósito **no** pasa por el filtro del picante: la factura
+   * de lo que hiciste llega cuando le toca, no cuando la carrera esté lo bastante madura para
+   * recibirla. Lo que gradúa el escándalo es dónde **empieza** una cadena, no dónde termina.
+   */
   if (opciones.forzado) {
     const forzado = catalogo.find((e) => e.id === opciones.forzado);
     if (forzado) return forzado;
@@ -241,6 +272,7 @@ export function elegirEvento(
   const posibles = catalogo.filter(
     (e) =>
       (!opciones.categorias || opciones.categorias.includes(e.categoria)) &&
+      alcanzaElPicante(e, carrera.capitulo) &&
       disponible(e, carrera) &&
       cumple(e, carrera, etiquetas),
   );
@@ -253,7 +285,17 @@ export function elegirEvento(
 /** Reemplaza los huecos del texto con los nombres de esta carrera. */
 export function redactar(
   texto: string,
-  datos: { nombre: string; club: string; rival: string; dt: string; liga: string; pais: string },
+  datos: {
+    nombre: string;
+    club: string;
+    rival: string;
+    dt: string;
+    liga: string;
+    pais: string;
+    figura?: string;
+    periodista?: string;
+    companero?: string;
+  },
 ): string {
   return texto
     .replaceAll('{nombre}', datos.nombre)
@@ -262,5 +304,8 @@ export function redactar(
     .replaceAll('{rival}', datos.rival)
     .replaceAll('{dt}', datos.dt)
     .replaceAll('{liga}', datos.liga)
-    .replaceAll('{pais}', datos.pais);
+    .replaceAll('{pais}', datos.pais)
+    .replaceAll('{figura}', datos.figura ?? 'una figura de la televisión')
+    .replaceAll('{periodista}', datos.periodista ?? 'un periodista')
+    .replaceAll('{companero}', datos.companero ?? 'un compañero');
 }

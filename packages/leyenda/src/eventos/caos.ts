@@ -14,6 +14,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     id: 'caos-cobrar-la-deuda',
     categoria: 'caos',
     rareza: 'raro',
+    picante: 3,
     titulo: 'Vinieron a cobrar',
     texto:
       'Dos personas te esperan a la salida del entrenamiento. No levantan la voz. Solo recuerdan cuánto debes y desde cuándo.',
@@ -58,7 +59,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
             etiquetas: ['caos:agresion'],
             balance: -12,
           },
-          relatoBien: 'Aparecieron dos veces más en la puerta del predio y después dejaron de venir. Nunca supiste quién les pagó ni por qué, y preferiste no averiguarlo.',
+          relatoBien: 'Aparecieron dos veces más en la puerta del complejo y después dejaron de venir. Nunca supiste quién les pagó ni por qué, y preferiste no averiguarlo.',
           relatoMal: 'Te esperaron una noche en el garaje. Estuviste cuatro meses sin jugar.',
         },
         resultado: 'Les dijiste que la semana que viene.',
@@ -81,6 +82,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     id: 'caos-otra-vez-al-volante',
     categoria: 'caos',
     rareza: 'raro',
+    picante: 3,
     titulo: 'Otra vez a las cuatro de la mañana',
     texto:
       'Ya te pasó una vez y la rodilla todavía se acuerda. Estás en el mismo lugar, a la misma hora, con las llaves en la mano.',
@@ -112,14 +114,14 @@ export const EVENTOS_DE_CAOS: Evento[] = [
             final: {
               motivo: 'accidente',
               texto:
-                'La curva de siempre, la hora de siempre. Esta vez no saliste caminando: la carrera —y todo lo demás— se apagó esa madrugada, a los {edad}, con el auto contra el guardarraíl.',
+                'La misma curva de la Costa Verde, la misma hora. Esta vez no saliste caminando: la carrera —y todo lo demás— se apagó esa madrugada, a los {edad}, con el carro contra el muro de contención.',
             },
             balance: -25,
           },
           relatoBien: 'Llegaste. Te temblaban las manos al abrir la puerta de tu casa.',
           relatoMal: 'No llegaste.',
         },
-        resultado: 'Subiste al auto igual.',
+        resultado: 'Subiste al carro igual.',
       },
       {
         id: 'quedarse',
@@ -152,6 +154,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     id: 'caos-pelea-vestuario',
     categoria: 'caos',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'A las manos en el vestuario',
     texto:
       'Perdieron el clásico y un compañero te echó la culpa delante de todos. Está a dos metros y no piensa retroceder.',
@@ -181,7 +184,8 @@ export const EVENTOS_DE_CAOS: Evento[] = [
           relatoBien: 'Los separaron antes de que llegara el segundo golpe y el lunes se dieron la mano delante del plantel. El sábado siguiente ganaron y él te buscó para el abrazo.',
           relatoMal: 'Alguien lo filmó desde el pasillo. El video se vio ocho millones de veces.',
         },
-        resultado: 'Fuiste al choque.',
+        resultado:
+          'Fuiste al choque en la mitad del vestuario y los separaron cuatro personas. El técnico entró a los diez segundos y no dijo nada; al día siguiente los puso a los dos de titulares, juntos, y les hizo dar la vuelta al campo tomados del hombro delante del plantel.',
       },
       {
         id: 'contestar',
@@ -224,6 +228,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     id: 'caos-lesion-grave',
     categoria: 'caos',
     rareza: 'raro',
+    picante: 3,
     titulo: 'La rodilla',
     texto:
       'Caíste mal en un entrenamiento. El médico mira la resonancia dos veces antes de decirte cuánto tiempo.',
@@ -307,6 +312,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     id: 'caos-filtracion',
     categoria: 'prensa',
     rareza: 'infrecuente',
+    picante: 2,
     titulo: 'Se filtró el audio',
     texto:
       'Un audio tuyo del grupo del plantel llegó a un programa de televisión. Hablas del técnico y no bien.',
@@ -377,9 +383,10 @@ export const EVENTOS_DE_CAOS: Evento[] = [
     id: 'caos-hinchada-en-la-puerta',
     categoria: 'caos',
     rareza: 'raro',
+    picante: 2,
     titulo: 'Fueron a esperarte',
     texto:
-      'Después de la cuarta derrota seguida, treinta personas están en la puerta del predio. Piden hablar con el plantel.',
+      'Después de la cuarta derrota seguida, cuando el entrenamiento termina, treinta personas de la barra están adentro del complejo. Piden hablar con el plantel y no se van a ir solos.',
     tipoDeRecuerdo: 'caos',
     condiciones: { temporadasMin: 3, notaMax: 6.7 },
     cooldown: 8,
@@ -420,7 +427,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
           relaciones: { hinchada: { rencor: 16 } },
           balance: -4,
         },
-        resultado: 'Se fueron a las once de la noche. En el partido siguiente hubo una bandera con tu nombre.',
+        resultado: 'Se fueron a las seis, cuando ya estaba oscuro. En el partido siguiente hubo una bandera con tu nombre.',
       },
       {
         id: 'policia',
@@ -433,7 +440,7 @@ export const EVENTOS_DE_CAOS: Evento[] = [
           etiquetas: ['conflicto:hinchada'],
           balance: -8,
         },
-        resultado: 'Llegaron dos patrullas y desalojaron el predio a las once de la noche. En la tribuna colgaron tu nombre con una cruz y te lo cantaron durante tres temporadas.',
+        resultado: 'Llegaron dos patrullas y los sacaron del complejo antes de que anocheciera. En la tribuna colgaron tu nombre con una cruz y te lo cantaron durante tres temporadas.',
       },
     ],
   },

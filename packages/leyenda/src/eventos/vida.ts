@@ -9,134 +9,10 @@ import type { Evento } from './motor.js';
 
 export const EVENTOS_DE_VIDA: Evento[] = [
   {
-    id: 'dinero-primer-contrato',
-    categoria: 'dinero',
-    rareza: 'comun',
-    titulo: 'El primer sueldo de verdad',
-    texto: 'Firmaste tu primer contrato profesional. Es más dinero del que vio tu familia junta.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { edadMax: 21, temporadasMin: 1, sinEtiquetas: ['dinero:primer-sueldo'] },
-    cooldown: 0,
-    peso: 2,
-    opciones: [
-      {
-        id: 'casa-familia',
-        texto: 'Comprarle la casa a tu familia',
-        pista: 'Se va casi todo. Y no lo vas a lamentar nunca.',
-        efectos: {
-          vida: { dinero: -0.6, felicidad: 18 },
-          personalidad: { lealtad: 5 },
-          etiquetas: ['dinero:primer-sueldo', 'vida:familia'],
-          balance: 6,
-        },
-        resultado: 'Los sacaste del barrio en el que crecieron. Tu viejo lloró y no te lo dijo nunca.',
-      },
-      {
-        id: 'ahorrar',
-        texto: 'Guardar todo',
-        pista: 'Aburrido y correcto.',
-        efectos: {
-          vida: { dinero: 0.3, felicidad: -2 },
-          personalidad: { profesionalismo: 3 },
-          etiquetas: ['dinero:primer-sueldo', 'dinero:prudente'],
-          balance: 4,
-        },
-        resultado: 'No gastaste un peso. Tu representante te dijo que era la mejor decisión de tu vida.',
-      },
-      {
-        id: 'auto',
-        texto: 'Comprarte el auto que soñabas',
-        pista: 'Todo el mundo va a saber cuánto ganas.',
-        efectos: {
-          vida: { dinero: -0.4, felicidad: 12, exposicion: 8 },
-          relaciones: { companeros: { confianza: 4 } },
-          etiquetas: ['dinero:primer-sueldo', 'dinero:ostentoso'],
-          balance: 0,
-        },
-        resultado: 'Llegaste al entrenamiento con el auto y el plantel entero salió a mirarlo.',
-      },
-      {
-        id: 'invertir',
-        texto: 'Ponerlo todo en algo que crezca',
-        pista: 'A los treinta y cinco lo vas a agradecer. O no.',
-        efectos: {
-          vida: { dinero: -0.5 },
-          personalidad: { ambicion: 5 },
-          etiquetas: ['dinero:primer-sueldo', 'dinero:negocio'],
-        },
-        riesgo: {
-          prob: 0.6,
-          bien: { vida: { dinero: 1.4 }, balance: 5 },
-          mal: { vida: { dinero: -0.2, estres: 10 }, balance: -3 },
-          relatoBien: 'A los cinco años valía el triple y ya no dependías del fútbol.',
-          relatoMal: 'El fondo se hundió y aprendiste a leer contratos a los veinte años.',
-        },
-        resultado: 'Firmaste con un asesor que te recomendó el club.',
-      },
-    ],
-  },
-  {
-    id: 'dinero-patrocinio',
-    categoria: 'dinero',
-    rareza: 'infrecuente',
-    titulo: 'Una marca te busca',
-    texto: 'Una marca de ropa deportiva te ofrece un contrato de imagen por tres años.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 35 },
-    cooldown: 6,
-    opciones: [
-      {
-        id: 'firmar',
-        texto: 'Firmar',
-        pista: 'Dinero seguro y tu cara en todas partes.',
-        efectos: {
-          vida: { dinero: 1.8, fama: 8, exposicion: 10 },
-          etiquetas: ['dinero:patrocinio'],
-          balance: 4,
-        },
-        resultado: 'Firmaste. Tu cara apareció en la vitrina de todos los centros comerciales del país.',
-      },
-      {
-        id: 'negociar',
-        texto: 'Pedir el doble',
-        pista: 'Pueden aceptar. Pueden irse con otro.',
-        efectos: {
-          vida: { dinero: 3.4, reputacion: -3 },
-          personalidad: { ambicion: 4 },
-          etiquetas: ['dinero:patrocinio'],
-          balance: 3,
-        },
-        resultado: 'Pediste el doble y lo pagaron sin discutir. Aprendiste algo ese día.',
-      },
-      {
-        id: 'rechazar',
-        texto: 'Concentrarte solo en jugar',
-        pista: 'Ni un peso ni una distracción.',
-        efectos: {
-          vida: { estres: -5, exposicion: -4 },
-          personalidad: { profesionalismo: 4 },
-          balance: 2,
-        },
-        resultado: 'Dijiste que no te querías distraer. Tu representante no te habló por tres días.',
-      },
-      {
-        id: 'club-primero',
-        texto: 'Consultarlo con el club antes de firmar',
-        pista: 'Se pierde tiempo. Se gana tranquilidad.',
-        efectos: {
-          vida: { dinero: 0.4 },
-          relaciones: { club: { confianza: 12, respeto: 8 } },
-          personalidad: { profesionalismo: 6 },
-          balance: 4,
-        },
-        resultado: 'Lo pasaste por el departamento comercial. Tardó un mes y salió sin un solo problema.',
-      },
-    ],
-  },
-  {
     id: 'profesional-representante',
     categoria: 'profesional',
     rareza: 'infrecuente',
+    picante: 1,
     titulo: 'Cambiar de representante',
     texto:
       'Una agencia grande te ofrece manejar tu carrera. El que te acompaña desde los 14 se enteró por la prensa.',
@@ -172,7 +48,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'probar',
         texto: 'Darle seis meses de prueba',
-        pista: 'Si funciona, sigues. Si no, chau.',
+        pista: 'Si funciona, sigues. Si no, se acabó.',
         efectos: {
           relaciones: { representante: { confianza: 8 } },
           personalidad: { profesionalismo: 5 },
@@ -196,281 +72,14 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     ],
   },
   {
-    id: 'profesional-nuevo-dt',
-    categoria: 'profesional',
-    rareza: 'comun',
-    titulo: 'Llega un técnico nuevo',
-    texto:
-      'Echaron a {dt}. El que llega tiene fama de no creer en los jugadores que encontró en el plantel.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1 },
-    cooldown: 4,
-    peso: 1.5,
-    opciones: [
-      {
-        id: 'ganarselo',
-        texto: 'Ir a buscarlo y ponerte a disposición',
-        pista: 'Le caes bien desde el primer día. O le pareces un adulón.',
-        efectos: { personalidad: { ambicion: 4 } },
-        riesgo: {
-          prob: 0.58,
-          bien: {
-            relaciones: { dt: { confianza: 20, respeto: 12 } },
-            vida: { forma: 8, confianza: 12 },
-            atributos: { pase: 1 },
-            balance: 6,
-          },
-          mal: {
-            relaciones: { dt: { rencor: 12 }, companeros: { rencor: 10 } },
-            vida: { confianza: -10, forma: -6 },
-            etiquetas: ['conflicto:vestuario'],
-            balance: -5,
-          },
-          relatoBien:
-            'Fuiste el primero en golpearle la puerta y le dijiste que hacías el puesto que hiciera falta. Arrancó la temporada contigo de titular y jugaste treinta y un partidos.',
-          relatoMal:
-            'Te escuchó de pie, sin sentarse, y contestó "eso se demuestra corriendo". El vestuario se enteró de que habías ido y te lo hicieron notar toda la pretemporada.',
-        },
-        resultado: 'Golpeaste su puerta el primer día.',
-      },
-      {
-        id: 'esperar',
-        texto: 'Esperar que te vea entrenar',
-        pista: 'Que hable el trabajo. Si es que mira.',
-        efectos: { personalidad: { profesionalismo: 5 } },
-        riesgo: {
-          prob: 0.5,
-          bien: {
-            relaciones: { dt: { respeto: 16, confianza: 8 } },
-            vida: { forma: 6, confianza: 8 },
-            balance: 5,
-          },
-          mal: {
-            vida: { confianza: -12, felicidad: -6 },
-            relaciones: { dt: { confianza: -10 } },
-            etiquetas: ['futbol:olvidado'],
-            balance: -5,
-          },
-          relatoBien:
-            'No hablaste con él en tres semanas y a la cuarta te puso de titular sin decirte nada. Después contó en rueda de prensa que le gustó que no fueras a pedirle nada.',
-          relatoMal:
-            'Nunca te miró. Trajo a dos de su club anterior para tu puesto y en diciembre te enteraste por la lista de transferibles.',
-        },
-        resultado: 'No fuiste a verlo: te pusiste a entrenar y esperaste.',
-      },
-      {
-        id: 'estudiarlo',
-        texto: 'Estudiar todos sus equipos anteriores',
-        pista: 'Llegas sabiendo qué te va a pedir.',
-        efectos: {
-          atributos: { pase: 2, defensa: 2 },
-          relaciones: { dt: { respeto: 14 } },
-          personalidad: { profesionalismo: 8 },
-          vida: { forma: 6 },
-          etiquetas: ['futbol:estudioso'],
-          balance: 6,
-        },
-        resultado:
-          'Viste catorce partidos suyos antes de la pretemporada. En el primer entrenamiento te moviste como si llevaras un año con él, y se lo dijo al ayudante delante de todos.',
-      },
-      {
-        id: 'pedir-salida',
-        texto: 'Pedir salir antes de que empiece',
-        pista: 'Nunca vas a saber si te iba a poner.',
-        efectos: {
-          relaciones: { dt: { rencor: 12 }, club: { confianza: -8 } },
-          personalidad: { riesgo: 5 },
-          vida: { confianza: -6 },
-          etiquetas: ['futbol:quiere-jugar'],
-          balance: -3,
-        },
-        resultado:
-          'Pediste salir en junio sin darle una sola práctica. El equipo terminó campeón sin ti y el técnico lo recordó en la vuelta olímpica, con nombre y apellido.',
-      },
-    ],
-  },
-  {
-    id: 'caos-vuelo',
-    categoria: 'caos',
-    rareza: 'raro',
-    titulo: 'El avión que no salió',
-    texto:
-      'Una tormenta dejó al plantel doce horas en un aeropuerto. En el hall hay un piano y cincuenta hinchas del rival.',
-    tipoDeRecuerdo: 'caos',
-    cooldown: 10,
-    opciones: [
-      {
-        id: 'piano',
-        texto: 'Sentarte a tocar el piano',
-        pista: 'Nadie sabía que sabías.',
-        efectos: {
-          vida: { fama: 10, exposicion: 12, felicidad: 8 },
-          relaciones: { companeros: { confianza: 8 } },
-          etiquetas: ['caos:piano'],
-          titular: { texto: 'EL VIDEO DE {APELLIDO} TOCANDO EL PIANO EN EL AEROPUERTO', tono: 'elogio' },
-          balance: 3,
-        },
-        resultado:
-          'Toques dos canciones y alguien lo filmó. El video tiene más vistas que tus goles y todavía no lo puedes creer.',
-      },
-      {
-        id: 'firmar-camisetas',
-        texto: 'Firmarles camisetas a los hinchas del rival',
-        pista: 'Tu club no va a estar contento. El país sí.',
-        efectos: {
-          vida: { reputacion: 10, carinoDeLaHinchada: -4 },
-          relaciones: { prensa: { respeto: 6 } },
-          etiquetas: ['caos:gesto'],
-          balance: 3,
-        },
-        resultado: 'Firmaste cincuenta camisetas del rival. En tu club no les gustó nada; el país lo aplaudió.',
-      },
-      {
-        id: 'dormir',
-        texto: 'Dormir en el suelo con la campera de almohada',
-        pista: 'Nadie se acuerda de ti. Y llegas descansado.',
-        efectos: { vida: { condicion: -4, felicidad: 2 }, balance: 1 },
-        resultado: 'Dormiste doce horas en el piso del aeropuerto y llegaste al partido como pudiste.',
-      },
-      {
-        id: 'ayudar',
-        texto: 'Ayudar a la tripulación con los que peor la pasan',
-        pista: 'Nadie te lo pidió.',
-        efectos: {
-          vida: { estres: 6, reputacion: 8 },
-          relaciones: { companeros: { respeto: 18 } },
-          personalidad: { carisma: 6, temperamento: -4 },
-          etiquetas: ['social:lider'],
-          balance: 5,
-        },
-        resultado: 'Te pasaste el vuelo sentado al lado del que más miedo tenía. No lo olvidó nunca.',
-      },
-    ],
-  },
-  {
-    id: 'caos-invitacion-absurda',
-    categoria: 'caos',
-    rareza: 'epico',
-    titulo: 'La invitación más rara de tu carrera',
-    texto:
-      'Un programa de televisión te invita a competir cocinando contra el arquero del rival. En vivo. Con delantal.',
-    tipoDeRecuerdo: 'caos',
-    condiciones: { famaMin: 45 },
-    cooldown: 0,
-    opciones: [
-      {
-        id: 'ir',
-        texto: 'Ir y jugar el personaje',
-        pista: 'Vas a ser tendencia. Por esto, no por el fútbol.',
-        efectos: {
-          vida: { fama: 14, exposicion: 16, felicidad: 8, reputacion: -4 },
-          etiquetas: ['caos:tv'],
-          titular: { texto: '{APELLIDO} EN LA TELE, CON DELANTAL Y TODO', tono: 'neutro' },
-          balance: 1,
-        },
-        resultado: 'Fuiste, se te quemó todo y fue el momento más visto del programa en el año.',
-      },
-      {
-        id: 'no-ir',
-        texto: 'Decir que no, amablemente',
-        pista: 'Nada cambia.',
-        efectos: { vida: { reputacion: 3, exposicion: -3 }, balance: 2 },
-        resultado: 'Mandaste una nota de agradecimiento y no fuiste. Insistieron cuatro años seguidos y el productor terminó siendo amigo tuyo sin que hayas puesto un pie en el estudio.',
-      },
-      {
-        id: 'cobrarlo',
-        texto: 'Ir solo si pagan lo que pides',
-        pista: 'Si es un circo, que al menos pague.',
-        efectos: {
-          vida: { dinero: 0.6, fama: 8, exposicion: 10 },
-          personalidad: { ambicion: 6 },
-          balance: 2,
-        },
-        resultado: 'Pediste una cifra absurda pensando que dirían que no. Dijeron que sí.',
-      },
-      {
-        id: 'mandar-a-otro',
-        texto: 'Mandar a un compañero en tu lugar',
-        pista: 'A él le viene bien y a ti no te cuesta nada.',
-        efectos: {
-          relaciones: { companeros: { confianza: 14 } },
-          vida: { exposicion: -4 },
-          personalidad: { carisma: 4 },
-          balance: 3,
-        },
-        resultado: 'Fue el tercer arquero en tu lugar y la rompió: consiguió un contrato de publicidad y una novia. Todavía te lo agradece cada vez que se cruzan.',
-      },
-    ],
-  },
-  {
-    id: 'caos-mitico',
-    categoria: 'caos',
-    rareza: 'mitico',
-    titulo: 'Algo que nadie va a creer',
-    texto:
-      'Un hincha corrió a la cancha, te abrazó llorando y te dijo que su papá pidió ser enterrado con tu camiseta. Después se fue como si nada.',
-    tipoDeRecuerdo: 'caos',
-    condiciones: { temporadasMin: 2, famaMin: 40 },
-    cooldown: 0,
-    opciones: [
-      {
-        id: 'buscarlo',
-        texto: 'Buscarlo después del partido',
-        pista: 'Puede ser el comienzo de algo o de nada.',
-        efectos: {
-          vida: { felicidad: 20, carinoDeLaHinchada: 14, reputacion: 8 },
-          relaciones: { hinchada: { confianza: 20 } },
-          etiquetas: ['caos:mitico', 'leyenda:hinchada'],
-          balance: 8,
-        },
-        resultado:
-          'Pediste que lo buscaran y estuviste una hora con él en el vestuario. Nunca contaste de qué hablaron.',
-      },
-      {
-        id: 'guardarlo',
-        texto: 'Guardártelo para siempre',
-        pista: 'Solo tú vas a saber que pasó.',
-        efectos: {
-          vida: { felicidad: 12 },
-          etiquetas: ['caos:mitico'],
-          balance: 4,
-        },
-        resultado: 'No se lo contaste a nadie. Cada vez que entras a una cancha te acuerdas de ese abrazo.',
-      },
-      {
-        id: 'contarlo',
-        texto: 'Contarlo en una entrevista',
-        pista: 'Nadie te va a creer. Todos lo van a repetir.',
-        efectos: {
-          vida: { fama: 14, exposicion: 16 },
-          relaciones: { prensa: { confianza: 10 } },
-          personalidad: { carisma: 6 },
-          etiquetas: ['prensa:leyenda-urbana'],
-          balance: 3,
-        },
-        resultado: 'Lo contaste en televisión y se convirtió en una historia que la gente jura que vio.',
-      },
-      {
-        id: 'negarlo',
-        texto: 'Negar que haya pasado',
-        pista: 'Se apaga. O crece el doble.',
-        efectos: {
-          vida: { exposicion: 8 },
-          personalidad: { sensibilidadMediatica: 5 },
-          balance: 1,
-        },
-        resultado: 'Dijiste que era mentira. Al mes había tres versiones distintas dando vueltas.',
-      },
-    ],
-  },
-  {
     id: 'legado-numero-retirado',
     categoria: 'legado',
     rareza: 'legendario',
+    picante: 3,
     titulo: 'Quieren retirar tu número',
     texto: 'El club te avisa que nadie más va a usar la {dorsal}. Van a poner tu nombre en una tribuna.',
     tipoDeRecuerdo: 'legado',
-    condiciones: { edadMin: 32, temporadasMin: 6, famaMin: 60 },
+    condiciones: { edadMin: 34, temporadasMin: 6, famaMin: 60 },
     cooldown: 0,
     opciones: [
       {
@@ -484,12 +93,12 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           balance: 10,
         },
         resultado:
-          'El estadio entero cantó tu nombre con tu vieja en el círculo central. No pudiste hablar por el micrófono.',
+          'El estadio entero cantó tu nombre con tu mamá en el círculo central. No pudiste hablar por el micrófono.',
       },
       {
         id: 'pedir-que-siga',
         texto: 'Pedir que la use el próximo chico de la cantera',
-        pista: 'Menos foto, más huella.',
+        pista: 'El número sigue vivo. Con alguien más adentro.',
         efectos: {
           vida: { reputacion: 18, carinoDeLaHinchada: 12 },
           personalidad: { ego: -6 },
@@ -503,7 +112,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
       {
         id: 'pedir-tribuna',
         texto: 'Pedir que en vez del dorsal le pongan tu nombre a la escuela del club',
-        pista: 'Menos foto, más huella.',
+        pista: 'Menos vitrina, más chicos entrando por la puerta.',
         efectos: {
           vida: { carinoDeLaHinchada: 22, felicidad: 16 },
           relaciones: { club: { respeto: 20 }, hinchada: { confianza: 18 } },
@@ -533,6 +142,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     id: 'legado-ultimo-baile',
     categoria: 'legado',
     rareza: 'raro',
+    picante: 3,
     titulo: 'La última decisión',
     texto: 'El cuerpo ya no responde como antes. Tienes una temporada más adentro, tal vez dos.',
     tipoDeRecuerdo: 'decision',
@@ -575,25 +185,22 @@ export const EVENTOS_DE_VIDA: Evento[] = [
           etiquetas: ['legado:cuerpo-tecnico'],
           balance: 5,
         },
-        resultado: 'Dejaste de jugar en diciembre y en enero estabas con el buzo puesto en el mismo predio.',
+        resultado: 'Dejaste de jugar en diciembre y en enero estabas con el buzo puesto en el mismo complejo.',
       },
       {
-        id: 'una-mas',
-        texto: 'Estirarlo una temporada más',
-        pista: 'El cuerpo ya avisó una vez.',
+        id: 'volver-abajo',
+        texto: 'Bajar de categoría para retirarte en tu primer club',
+        pista: 'Se termina la vitrina. Empieza la despedida que quieres.',
         efectos: {
-          vida: { condicion: -14, felicidad: 8 },
-          personalidad: { ambicion: 6 },
-          etiquetas: ['legado:una-mas'],
+          vida: { dinero: -0.4, felicidad: 22, carinoDeLaHinchada: 20, fama: -8 },
+          relaciones: { hinchada: { confianza: 24, respeto: 20 } },
+          personalidad: { lealtad: 10, ego: -8 },
+          etiquetas: ['legado:volvio-a-casa'],
+          titular: { texto: '{APELLIDO} VUELVE A DONDE EMPEZÓ PARA COLGAR LOS BOTINES', tono: 'elogio' },
+          balance: 7,
         },
-        riesgo: {
-          prob: 0.55,
-          bien: { vida: { carinoDeLaHinchada: 14, fama: 6 }, balance: 3 },
-          mal: { vida: { condicion: -18, forma: -16, felicidad: -12 }, etiquetas: ['lesion:apurada'], balance: -6 },
-          relatoBien: 'Jugaste un año más y te fuiste levantando algo. No todos pueden decir eso.',
-          relatoMal: 'El cuerpo aguantó cuatro meses. El resto lo viste desde la tribuna.',
-        },
-        resultado: 'Firmaste una temporada más.',
+        resultado:
+          'Firmaste por un tercio de lo que cobrabas, en el club donde debutaste, que ahora juega en la segunda. Fueron nueve mil personas a un estadio para seis mil el día de tu último partido, y la mitad no te había visto jugar nunca en vivo.',
       },
     ],
   },
@@ -601,6 +208,7 @@ export const EVENTOS_DE_VIDA: Evento[] = [
     id: 'profesional-oferta-arabe',
     categoria: 'profesional',
     rareza: 'raro',
+    picante: 3,
     titulo: 'Una cifra que no tiene sentido',
     texto:
       'Llega una oferta de un club sin historia y con dinero infinito. Te ofrecen en un año lo que ganarías en seis.',

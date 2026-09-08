@@ -88,20 +88,31 @@ export default function Celebracion({ capitulo, onCerrar }: Props) {
       onCerrar();
       return;
     }
+    /*
+     * Un trofeo se mira y se pasa; una consecuencia se lee. La escena de resultado no se va sola: es
+     * la respuesta a la pregunta que el jugador acaba de hacerse y su texto desaparecía antes de que
+     * terminara de leerlo.
+     */
+    if (escenas[i]?.clase === 'resultado') return;
     const reloj = window.setTimeout(siguiente, MS_POR_ESCENA);
     return () => window.clearTimeout(reloj);
-  }, [i, escenas.length, siguiente, onCerrar]);
+  }, [i, escenas, siguiente, onCerrar]);
 
   useEffect(() => {
     const teclas = (evento: KeyboardEvent) => {
-      if (['Escape', ' ', 'Enter'].includes(evento.key)) {
+      if (evento.key === 'Escape') {
         evento.preventDefault();
         onCerrar();
+        return;
+      }
+      if (evento.key === ' ' || evento.key === 'Enter') {
+        evento.preventDefault();
+        siguiente();
       }
     };
     window.addEventListener('keydown', teclas);
     return () => window.removeEventListener('keydown', teclas);
-  }, [onCerrar]);
+  }, [onCerrar, siguiente]);
 
   const escena = escenas[i];
   if (!escena) return null;
@@ -112,7 +123,7 @@ export default function Celebracion({ capitulo, onCerrar }: Props) {
       role="dialog"
       aria-live="polite"
       aria-label="Lo que ganaste"
-      onClick={onCerrar}
+      onClick={siguiente}
       className="fixed inset-0 z-50 grid cursor-pointer place-items-center px-6 backdrop-blur-sm"
       style={{ background: 'oklch(0.13 0.012 285 / 0.94)' }}
     >
@@ -169,9 +180,14 @@ function EscenaDeResultado({ resultado }: { resultado: Resultado }) {
   return (
     <>
       <p className={`text-2xs font-medium uppercase tracking-label ${color}`}>{rotulo}</p>
+      {/*
+        La consecuencia se **lee**: va en caja baja, con interlínea de lectura y ancho de línea
+        acotado. En mayúsculas de display estaba bien para un "CAMPEÓN" de una palabra y muy mal para
+        cuarenta, que es lo que dura una consecuencia contada de verdad.
+      */}
       <p
         data-celebracion-titulo
-        className="mt-3 max-w-2xl text-balance font-display text-2xl font-semibold uppercase leading-tight tracking-label text-chalk sm:text-3xl"
+        className="mt-4 max-w-[46ch] text-balance text-xl font-medium leading-snug text-chalk sm:text-2xl sm:leading-snug"
       >
         {resultado.texto}
       </p>
@@ -216,15 +232,21 @@ function Chip({ cambio }: { cambio: Cambio }) {
   );
 }
 
+/**
+ * El título, en el orden en que se lee.
+ *
+ * Primero el escudo, después **CAMPEÓN** grande, y al final el nombre de la competencia y el año. Antes
+ * era al revés —"Campeón" en diez píxeles arriba del logo y el nombre de la liga como protagonista— y
+ * el jugador lo dijo con todas las letras: "se ve el título de Primera División sobre el logo, a las
+ * justas vi lo de campeón". Lo que se celebra es haber ganado; qué se ganó es el subtítulo.
+ */
 function EscenaDeTrofeo({ trofeo }: { trofeo: Trofeo }) {
   const individual = trofeo.clase === 'individual';
+  const grito = individual ? 'Premiado' : trofeo.clase === 'seleccion' ? 'Campeón' : 'Campeón';
+
   return (
     <>
-      <p className="text-2xs font-medium uppercase tracking-label text-chalk-dim">
-        {individual ? 'Premio individual' : trofeo.clase === 'seleccion' ? 'Con tu selección' : 'Campeón'}
-      </p>
-
-      <span data-celebracion-objeto className="relative mt-4 grid size-40 place-items-center sm:size-48">
+      <span data-celebracion-objeto className="relative grid size-36 place-items-center sm:size-44">
         {trofeo.escudo ? (
           <img
             src={trofeo.escudo}
@@ -238,14 +260,18 @@ function EscenaDeTrofeo({ trofeo }: { trofeo: Trofeo }) {
 
       <p
         data-celebracion-titulo
-        className="mt-5 max-w-md font-display text-3xl font-semibold uppercase leading-tight tracking-label text-chalk sm:text-4xl"
+        className="mt-9 font-display text-6xl font-bold uppercase leading-[0.85] tracking-label text-primary sm:mt-10 sm:text-7xl"
       >
+        {grito}
+      </p>
+
+      <p className="mt-5 max-w-md font-display text-lg font-semibold uppercase leading-tight tracking-label text-chalk sm:text-xl">
         {trofeo.nombre}
       </p>
-      <p className="mt-2 text-sm tabular text-chalk-dim">
+      <p className="mt-1.5 text-xs tabular text-chalk-dim">
         {trofeo.clubNombre} · {trofeo.temporada}
       </p>
-      {trofeo.detalle && <p className="mt-2 max-w-sm text-xs italic text-chalk-dim">{trofeo.detalle}</p>}
+      {trofeo.detalle && <p className="mt-3 max-w-sm text-xs italic text-chalk-dim">{trofeo.detalle}</p>}
     </>
   );
 }

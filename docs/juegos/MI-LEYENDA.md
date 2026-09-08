@@ -108,10 +108,21 @@ desenlace no cabe en ocho— y una opción con riesgo tiene que contar las dos c
 
 ### El salseo
 
-`eventos/salseo.ts` es el bloque que hace que la carrera se sienta una vida y no una planilla: el
-ampay antes del clásico, el reality con la prueba del arnés, la orquesta de cumbia que te saca un
-tema, el primo que se imprimió tarjetas de "representante de imagen", la pollada del barrio, el
-mototaxi cuando el tráfico no avanza y el chibolo de la cantera que te imita todo.
+`eventos/salseo.ts` y `eventos/peru.ts` son el bloque que hace que la carrera se sienta una vida y no
+una planilla: el ampay saliendo de la concentración tres días antes del clásico, la huelga porque el
+club debe cuatro meses, la barra entrando al complejo cuando termina la práctica, el domingo en Cusco
+a tres mil cuatrocientos metros, la pichanga del barrio que el contrato prohíbe, el dirigente que te
+ofrece pagarte sin planilla, el periodista que te da la portada si hablas mal de tu técnico, y tu
+representante cobrando de los dos lados.
+
+**El contexto se estudia o no se escribe.** El evento que había antes empezaba con el jugador saliendo
+de una pollería a la una de la mañana, y el propio evento se delataba: el titular de la salida buena
+era *"EL «AMPAY» DE {APELLIDO} ERA UN CUARTO DE POLLO"*. Comer pollo después de un partido de noche es
+lo que hace un plantel entero: no es un escándalo, es la cena. Lo que sí lo es —y es lo que de verdad
+le pasa a un futbolista peruano— es escaparse del hotel de concentración con el utilero mirando.
+Igual con las instituciones y la moneda: acá se dice **carta notarial** y no carta documento, **SUNAT**
+y no agencia tributaria, y se cuenta en **soles**. Un test recorre el catálogo y falla si vuelve a
+aparecer un giro rioplatense o una moneda de otro país.
 
 Tres reglas de tono, ninguna negociable:
 
@@ -126,6 +137,29 @@ diarios del grupo —**El Popular** la farándula, **Líbero** el fútbol, **La 
 nombre aparece encima de la frase. No es adorno: una polémica no la saca el mismo medio que una nota
 de fútbol, y ver quién la publica cambia cómo se lee.
 
+### La escalera del picante
+
+La rareza dice cada cuánto sale un evento; el **picante** dice cuándo puede salir. Son cosas distintas
+y mezclarlas era el problema: a los dieciocho el juego ofrecía un rondo y un doble turno mientras la
+cadena del amaño —que puede terminar en inhabilitación de por vida— también era alcanzable, y de los
+veinticuatro a los treinta y seis no cambiaba nada.
+
+| Nivel | Desde | Edad | De qué se habla |
+|---|---|---|---|
+| 1 | capítulo 0 | 16-20 | el vestuario, la concentración, la pichanga, la cábala, el primer clásico |
+| 2 | capítulo 3 | 22+ | la farándula, el representante, la selección, la huelga, el ampay |
+| 3 | capítulo 6 | 28+ | el maletín, el casino, SUNAT, la carpeta del periodista, la plata sin planilla |
+
+Una factura agendada con `luego` entra **sin** pasar por este filtro, a propósito: la cuenta de lo que
+hiciste llega cuando le toca, no cuando la carrera esté lo bastante madura para recibirla. Lo que se
+gradúa es dónde **empieza** una cadena, no dónde termina.
+
+El arreglo de fondo, además del nivel, fue abrir `prensa` y `caos` desde el primer capítulo. Empezaban
+en el tercero —o sea a los veintidós— y ahí vivía la mitad del material que vale: los dieciocho y los
+veinte, que son la edad más escandalizable que existe, eran el tramo tibio de la carrera. Lo que evita
+que a un chico de dieciocho lo persiga un programa de espectáculos es el `famaMin` que esos eventos ya
+traían, no un portón cerrado por categoría.
+
 ### La otra mitad de la carrera
 
 `fueraDeLaCancha(carrera)` en `legado.ts` mide lo que no es fútbol: fama, reputación, exposición,
@@ -135,13 +169,17 @@ se veía en ninguna parte, y una vida que no se mide es una vida que el jugador 
 
 ## Sumar un evento
 
-Se agrega un objeto al catálogo (`eventos/futbol.ts`, `prensa.ts`, `vida.ts`) y no se toca el motor.
+Se agrega un objeto al catálogo (`eventos/futbol.ts`, `prensa.ts`, `peru.ts`…) y no se toca el motor.
+`catalogo.test.ts` vigila las reglas: cuatro opciones siempre, ninguna repitiendo el texto ni la pista
+de otra, toda opción con pista y con un resultado que cuente algo, ninguna condición de edad que la
+categoría vuelva imposible, y ningún evento de nivel 3 alcanzable antes del capítulo 6.
 
 ```ts
 {
   id: 'futbol-algo-nuevo',
   categoria: 'futbol',
   rareza: 'infrecuente',          // pesa 45 contra 100 de lo común; 'mitico' pesa 0,4
+  picante: 2,                     // 1 desde el principio · 2 desde el cap. 3 · 3 desde el cap. 6
   titulo: 'El título',
   texto: 'Lo que pasa. {club}, {rival}, {dt}, {liga}, {pais} se reemplazan.',
   tipoDeRecuerdo: 'decision',
@@ -241,22 +279,47 @@ páginas.
 
 Cuatro, y pocos a propósito: si todo el partido fuera jugable, ningún momento sería importante.
 
-| Momento | Mecánica | Quién lo juega |
+Se juegan con **dos toques** y la misma dinámica en los cuatro: primero a qué zona del arco —seis
+botones dibujados sobre la boca real que calcula la proyección— y después cómo la pegas. Con teclado,
+los números del 1 al 6 y del 1 al 3. Nada de arrastrar el puntero: el gesto era impreciso, no se podía
+jugar sin ratón y la potencia salía del largo del arrastre, que es un dato que nadie sabe medir con el
+dedo.
+
+El segundo toque es el que convierte la jugada en una decisión, porque se juega contra la lectura del
+arquero, que el jugador no conoce:
+
+| | Gana contra | Pierde contra |
 |---|---|---|
-| Penal | Arrastrar desde la pelota: largo = fuerza, curva del gesto = comba | todos menos el arquero |
-| Mano a mano | Definir mientras el arquero sale a achicar | delanteros y extremos |
-| Tiro libre | El arco del arrastre pasa la barrera y baja | medios y mediapuntas |
-| Atajada | Desde el arco: elegir zona y momento del vuelo | arqueros |
+| **Colocada** | el arquero que se queda | el que adivina el palo |
+| **Potente** | cualquier arquero: no le da tiempo | el travesaño y el palo |
+| **Picarla** | el que se tira temprano | el que no se mueve: papelón |
 
-Se juegan sobre un motor propio en `apps/web/src/components/juego/cancha/`: `fisica.ts` integra la
-pelota en tres dimensiones a paso fijo con gravedad, rozamiento y efecto Magnus —la comba sale de la
-simulación, no de una animación—, `escena.ts` proyecta esa física a la pantalla y dibuja el estadio
-nocturno, y `arquero.ts` la silueta que vuela. Todo con teclado también: flechas apuntan, espacio
-define.
+En el mano a mano las tres son *definir ya / cruzarla fuerte / amagar*, y en la atajada *esperar /
+volar / adelantarte*. El arquero elige lado con el azar semillado, no con `Math.random()`.
 
-La interfaz manda **la intención** (dónde, cuánta fuerza, con qué timing) y el motor decide con los
-atributos, la presión de la escena y el azar semillado. Nada se resuelve en el navegador, así que un
-resultado no se puede falsear ni depende de la velocidad de la máquina.
+| Momento | Quién lo juega | Cuánto entra |
+|---|---|---|
+| Penal | todos menos el arquero | ~80% |
+| Mano a mano | delanteros y extremos | ~55% |
+| Tiro libre | medios y mediapuntas | ~42% (la zona baja del centro la tapa la barrera) |
+| Atajada | arqueros | ~45% de atajadas |
+
+**El motor decide y la pantalla anima.** `resolverMomento` devuelve un `desenlace` —gol, atajada,
+palo, afuera, barrera— junto al relato, y la escena construye la trayectoria **para** ese desenlace:
+`objetivoDe` traduce el veredicto a un punto del arco y `apuntarA` resuelve la velocidad que lleva la
+pelota exactamente ahí, corrigiendo el arrastre y el Magnus con cuatro pasadas de simulación. Antes
+había dos resoluciones en paralelo, una en el canvas y otra en el motor, y podían contradecirse: la
+pantalla cantaba "¡La atajó!" mientras la crónica contaba el gol.
+
+La física sigue siendo de verdad: `fisica.ts` integra la pelota en tres dimensiones a paso fijo con
+gravedad, rozamiento y efecto Magnus —la comba sale de la simulación, no de una animación—,
+`escena.ts` la proyecta y dibuja el estadio nocturno, y `arquero.ts` la silueta que vuela.
+
+**Y no puede colgarse.** El vuelo termina por tiempo y no por geometría: tope de pasos, tope de reloj
+y un último temporizador que suelta la escena aunque todo lo demás falle. El cuelgue viejo era
+exactamente lo contrario —un remate al palo rebotaba hacia atrás y ninguna condición volvía a
+cumplirse, así que la escena se congelaba con la pelota rodando en el 7,3% de los tiros— y por eso
+`resolverPaso`, que era el que juzgaba desde el canvas, ya no existe.
 
 ## Guardado y compartir
 
@@ -272,7 +335,7 @@ resultado no se puede falsear ni depende de la velocidad de la máquina.
 ## Balance: los números que importan
 
 Medido sobre 1.500 carreras completas, jugando siempre la oferta más grande —la ruta más codiciosa
-que existe—: **22,8 decisiones por carrera** (14,3 eventos, 5,4 de mercado, 3,0 momentos) y títulos
+que existe—: **23,0 decisiones por carrera** (12,0 de mercado, 7,5 eventos, 3,5 momentos) y títulos
 colectivos en p25 6 · p50 8 · p75 11 · p95 14. Ese rango es el objetivo: una gran carrera deja ocho o
 diez títulos, no veinticinco.
 
@@ -287,16 +350,27 @@ Tres calibraciones que ya se pagaron caras y conviene no repetir:
   seis casilleros: para que la media suba un punto hay que repartir bastante más que un punto. Sin esa
   cuenta (`repartirCrecimiento`), un juvenil crecía la sexta parte de lo que debía y nadie pasaba de
   65.
-- **El mercado no abre todos los años.** Con contrato largo firmado, solo una de cada cinco veces
-  aparece una oferta. Sin el freno, una carrera terminaba con catorce camisetas y el fichaje dejaba de
-  ser una decisión.
+- **El mercado abre en todos los capítulos, y el freno está en la oferta.** La primera de las dos
+  preguntas de cada bienio es siempre la misma —¿me quedo o me voy?— porque antes salían cinco
+  mercados en una carrera entera y el jugador pasaba diez años sin que nadie le preguntara dónde
+  quería jugar. Lo que evita el carrusel de doce camisetas es qué se ofrece: con contrato vigente solo
+  llega lo que está ocho puntos de renombre por encima, y con el contrato vigente **siempre** se puede
+  quedar, porque un contrato es un contrato y una mala temporada no te echa a la calle.
+- **El capítulo del debut no reparte títulos.** A los dieciséis, con trece partidos de reserva, el
+  campeón fue el club. Salir campeón en el mismo capítulo en que eliges tu primer equipo vaciaba de
+  sentido a todos los títulos que venían después.
 
 ## Verificar
 
 ```bash
-pnpm --filter @athena/leyenda test      # motor: determinismo, tope de 4 ofertas, prime, arquetipos
+pnpm --filter @athena/leyenda test   # motor, catálogo, momentos, y la carrera entera 600 veces
+pnpm --filter @athena/web test       # el vuelo de la pelota: que caiga donde el veredicto manda
 pnpm --filter @athena/web exec playwright test e2e/juego.spec.ts
 ```
+
+Los tests del paquete corren contra `mundo.fixture.json`, una copia de las veinte ligas reales. Hace
+falta: con un mundo de tres clubes cualquiera sale campeón todos los años y el número de títulos no
+significa nada —medía diecisiete donde el mundo de verdad mide ocho—.
 
 El e2e juega una carrera entera hasta el retiro y **mide cuánto tarda**: si pasa de veinte segundos o
 de dieciséis pasos, el juego volvió a ser largo y el test falla. Comprueba además los escudos de la

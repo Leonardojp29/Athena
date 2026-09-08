@@ -43,7 +43,7 @@ import {
   type MotivoDeFinal,
 } from './eventos/index.js';
 import { armarOfertas, ofertaDePrestamo, ofertasDeDebut, quiereRenovar, rivalDe } from './mercado.js';
-import { momentoParaPuesto, resolverMomento, type Intencion } from './momentos.js';
+import { momentoParaPuesto, resolverMomento, type Intencion, type Jugada } from './momentos.js';
 import { calcularOvr, nivelDe, valorDeMercado } from './ovr.js';
 import { elencoDe } from './personajes/index.js';
 import {
@@ -106,6 +106,13 @@ export interface Capitulo {
    * veían en ninguna parte.
    */
   resultado: Resultado | null;
+  /**
+   * El veredicto de la jugada, para que la cancha lo anime.
+   *
+   * La pantalla no resuelve nada: recibe el desenlace ya decidido y apunta la pelota a donde
+   * corresponde. Antes el canvas tiraba sus propios dados y podía cantar una atajada sobre un gol.
+   */
+  jugada: Jugada | null;
 }
 
 export interface Cambio {
@@ -135,6 +142,7 @@ const vacio = (): Capitulo => ({
   trofeos: [],
   consecuencia: null,
   resultado: null,
+  jugada: null,
 });
 
 /* --------------------------------------------------------------------- contexto */
@@ -158,6 +166,17 @@ function datosDeTexto(carrera: Carrera, mundo: Mundo) {
     rival: rival?.nombre ?? 'el clásico rival',
     rivalSlug: rival?.slug ?? '',
     dt: elenco.dt,
+    /*
+     * La figura del espectáculo y el periodista del país donde juegas.
+     *
+     * El repertorio estaba escrito —Kiara del Solar, la orquesta Fuego de Chosica, el Chato Requena—
+     * y no llegaba a ninguna pantalla: se sorteaba el elenco entero y solo salía el técnico. Por eso
+     * los eventos terminaban con nombres puestos a mano y un peruano se cruzaba con la misma modelo
+     * en todas las partidas.
+     */
+    figura: elenco.figura,
+    periodista: elenco.periodista,
+    companero: elenco.companeros[0] ?? 'un compañero',
     liga: liga?.nombre ?? 'la liga',
     pais: carrera.futbolista.pais,
     dorsal: String(carrera.futbolista.dorsal),
@@ -280,11 +299,20 @@ function jugarBienio(carrera: Carrera, azar: Azar, capitulo: Capitulo, mundo: Mu
 
   let siguiente: Carrera = { ...carrera };
 
+  /*
+   * El bienio del debut no reparte títulos.
+   *
+   * A los dieciséis, con trece partidos de reserva y la primera oportunidad recién asomando, el
+   * campeón fue el club y no vos. Salir campeón en el mismo capítulo en que elegiste tu primer
+   * equipo vaciaba de sentido a todos los títulos que venían después.
+   */
+  const esDebut = carrera.capitulo === 0;
+
   /* La tabla, una vez por año del bienio: dos chances de salir campeón, como en la vida. */
   const trofeos: Trofeo[] = [...(bono?.trofeos ?? [])];
   let mejorPosicion: number | null = null;
   for (let anio = 0; anio < ANIOS_POR_CAPITULO; anio++) {
-    if (!liga) break;
+    if (!liga || esDebut) break;
     const { posicion } = posicionEnLaTabla(azar, liga, club, aporteDelJugador({ ...carrera, enCurso: fila }));
     mejorPosicion = mejorPosicion === null ? posicion : Math.min(mejorPosicion, posicion);
 
@@ -623,10 +651,16 @@ function prepararCapitulo(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
   const pasos: PasoDelCapitulo[] = [];
 
   /*
-   * El mercado va primero: firmar decide en qué club se juegan estos dos años, y si viniera después
-   * el bienio ya estaría jugado con la camiseta vieja.
+   * El mercado abre en todos los capítulos y va primero.
+   *
+   * Antes se abría con el contrato venciendo o con un quince por ciento de suerte, y salían cinco en
+   * una carrera entera: el jugador pasaba diez años sin que nadie le preguntara dónde quería jugar.
+   * Ahora la primera pregunta de cada bienio es siempre la misma —¿me quedo o me voy?— y la segunda
+   * es un evento o una jugada. Que no se convierta en un carrusel de doce camisetas lo resuelven las
+   * reglas que ya están: con contrato vigente solo se ofrece lo que es un paso real hacia arriba, y
+   * cuando no te quiere nadie la pregunta sigue siendo una pregunta —renovar o quedarte libre—.
    */
-  if (hayMercado(carrera, azar, mundo)) pasos.push({ tipo: 'mercado' });
+  pasos.push({ tipo: 'mercado' });
 
   /*
    * Los momentos jugables ya no están clavados en dos capítulos fijos: se sortean, y pesan más
@@ -700,19 +734,6 @@ function materializar(carrera: Carrera, paso: PasoDelCapitulo, azar: Azar, mundo
   return abrirMercado(carrera, azar, mundo);
 }
 
-/**
- * ¿Se abre el mercado?
- *
- * Cuando el contrato lo permite, o cada tanto porque llega algo irrechazable. Y solo si hay algo que
- * valga la pena: una oferta de un club de menos renombre que el actual no es una decisión, es ruido,
- * y era lo que llenaba las carreras de camisetas intercambiables.
- */
-function hayMercado(carrera: Carrera, azar: Azar, mundo: Mundo): boolean {
-  const contratoVence = (carrera.contrato?.hasta ?? 0) <= carrera.anio + 1;
-  if (!contratoVence && !chance(azar, 0.15)) return false;
-  return ofertasDelCapitulo(carrera, azar, mundo).length > 0;
-}
-
 function abrirMercado(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
   const ofertas = ofertasDelCapitulo(carrera, azar, mundo);
   const conFondo =
@@ -727,6 +748,16 @@ function abrirMercado(carrera: Carrera, azar: Azar, mundo: Mundo): Carrera {
 
 function ofertasDelCapitulo(carrera: Carrera, azar: Azar, mundo: Mundo): Oferta[] {
   const actual = carrera.clubActual?.renombre ?? 0;
+  /*
+   * Romper un contrato tiene precio: con contrato vigente solo llega lo que de verdad vale la pena,
+   * y con el contrato venciendo llega todo lo que sea un paso adelante.
+   *
+   * Es lo que evita que el mercado —que ahora abre en todos los capítulos— se convierta en un
+   * carrusel de doce camisetas. Un club del mismo tamaño no es una oferta a mitad de contrato: es
+   * ruido, y la respuesta obvia a la pregunta tiene que ser quedarse muchas veces.
+   */
+  const contratoVence = (carrera.contrato?.hasta ?? 0) <= carrera.anio + 1;
+  const margen = contratoVence ? 0 : 8;
   const ofertas = armarOfertas(azar, carrera, { mundo, actual: carrera.clubActual })
     /*
      * Solo se ofrece lo que es un paso adelante, salvo que traiga historia (volver a casa, el
@@ -736,7 +767,7 @@ function ofertasDelCapitulo(carrera: Carrera, azar: Azar, mundo: Mundo): Oferta[
     .filter(
       (o) =>
         carrera.clubActual === null ||
-        o.club.renombre >= actual ||
+        o.club.renombre >= actual + margen ||
         o.matices.length > 0 ||
         carrera.futbolista.edad >= 32,
     )
@@ -780,9 +811,16 @@ function probabilidadDeMomento(carrera: Carrera): number {
  * propia edad. Antes `dinero` empezaba a los 22 y su evento del primer contrato pedía `edadMax: 21`,
  * y `profesional` terminaba a los 20 mientras su oferta árabe pedía `edadMin: 27`: dos eventos
  * escritos que era imposible ver. Un test recorre el catálogo para que no vuelva a pasar.
+ *
+ * `prensa` y `caos` abren desde el primer capítulo, y eso cambia el juego. Empezaban en el tercero, o
+ * sea a los veintidós, y ahí vivía la mitad del material que vale —el ampay, el panelista, el audio
+ * filtrado, la pelea en el vestuario—: los dieciocho y los veinte, que son la edad más escandalizable
+ * que existe, eran el tramo tibio de la carrera. Lo que gradúa el escándalo ahora es el picante del
+ * evento, no un portón cerrado por categoría, y el `famaMin` que esos eventos ya traen hace que a
+ * nadie lo persiga la prensa antes de que la prensa sepa quién es.
  */
 export function categoriasDelPaso(paso: number): Categoria[] {
-  if (paso <= 2) return ['futbol', 'profesional', 'social', 'dinero', 'relaciones'];
+  if (paso <= 2) return ['futbol', 'profesional', 'social', 'dinero', 'relaciones', 'prensa', 'caos'];
   if (paso <= 5) return ['futbol', 'prensa', 'relaciones', 'dinero', 'social', 'caos', 'profesional'];
   if (paso <= 8) return ['prensa', 'dinero', 'caos', 'futbol', 'relaciones', 'social', 'profesional'];
   return ['legado', 'futbol', 'caos', 'prensa', 'relaciones', 'dinero', 'social', 'profesional'];
@@ -938,9 +976,7 @@ function firmar(carrera: Carrera, ofertaId: string, azar: Azar, capitulo: Capitu
     },
   };
 
-  capitulo.consecuencia = esDebut
-    ? `Debutas en ${oferta.club.nombre}.`
-    : `Fichas por ${oferta.club.nombre}${desde ? `, dejando ${desde}` : ''}.`;
+  capitulo.consecuencia = cronicaDelFichaje(azar, oferta, carrera, siguiente, desde, esDebut);
 
   siguiente = recordar(siguiente, {
     tipo: esDebut ? 'debut' : 'fichaje',
@@ -993,22 +1029,92 @@ function firmar(carrera: Carrera, ofertaId: string, azar: Azar, capitulo: Capitu
       mundo,
     );
   }
+
+  /*
+   * Firmar también rinde cuentas. Era la única decisión del juego que no contestaba nada: el jugador
+   * elegía un club, leía "Fichas por Boca Juniors" y venía la pregunta siguiente. Ahora pasa por la
+   * misma pantalla que el resto y muestra lo que movió.
+   */
+  capitulo.resultado = {
+    texto: capitulo.consecuencia ?? '',
+    salioBien: null,
+    cambios: cambiosEntre(carrera, siguiente),
+  };
   return siguiente;
+}
+
+/**
+ * Qué pasó después de firmar.
+ *
+ * No es la crónica de lo que el jugador acaba de hacer —eso ya lo sabe, lo eligió él— sino lo que
+ * vino: la presentación, el dorsal que había libre, lo que dijo el técnico y lo que espera la tribuna
+ * nueva. Y cuando el rol prometido no se cumplió, se dice acá, que es donde duele.
+ */
+function cronicaDelFichaje(
+  azar: Azar,
+  oferta: Oferta,
+  antes: Carrera,
+  despues: Carrera,
+  desde: string | null,
+  esDebut: boolean,
+): string {
+  const club = oferta.club.nombre;
+  const dorsal = antes.futbolista.dorsal;
+
+  if (esDebut) {
+    const casillero = elegir(azar, [
+      'Te dieron un casillero al fondo, al lado del utilero.',
+      'El primer día te hicieron cantar en la mitad del vestuario.',
+      'El capitán te dio la mano y te dijo el nombre de todos, uno por uno.',
+    ]);
+    return `Firmaste tu primer contrato en ${club}. ${casillero} La ${dorsal} estaba libre y es tuya.`;
+  }
+
+  const promesaCaida = despues.rol !== oferta.rolPrometido;
+  const camiseta = chance(azar, 0.55)
+    ? `Te dieron la ${dorsal}, como pediste.`
+    : `La ${dorsal} estaba ocupada: te tocó otra y no dijiste nada.`;
+
+  if (oferta.matices.includes('regreso')) {
+    return `Volviste a ${club}. Había gente esperándote en el aeropuerto a las dos de la mañana, con bombos. ${camiseta}`;
+  }
+  if (oferta.matices.includes('rival')) {
+    return `Te presentaron en ${club}${desde ? `, el rival de ${desde}` : ''}. En la puerta del estadio viejo aparecieron pintadas con tu nombre antes del mediodía.`;
+  }
+
+  const presentacion = promesaCaida
+    ? `En la conferencia el técnico habló del proyecto y no te nombró. Llegaste a pelear el puesto, no a tenerlo.`
+    : elegir(azar, [
+        `El técnico dijo en la conferencia que te pidió él.`,
+        `La presentación fue en el estadio, con gente en una tribuna. Te sacaste doscientas fotos.`,
+        `Te presentaron un martes, sin mucho ruido, y el jueves ya entrenabas con los titulares.`,
+      ]);
+  return `Firmaste en ${club}${desde ? `, dejando ${desde}` : ''}. ${presentacion} ${camiseta}`;
 }
 
 function renovar(carrera: Carrera, azar: Azar, capitulo: Capitulo): Carrera {
   const club = carrera.clubActual;
-  if (!club) return carrera;
+  if (!club) {
+    capitulo.consecuencia = 'Te quedaste sin club y sin ofertas. Entrenas solo y esperas que suene el teléfono.';
+    return { ...carrera, ofertas: [], pendiente: null };
+  }
+  /* Quedarse a mitad de contrato no es renovar: es seguir, y el club no tiene que aprobar nada. */
+  const contratoVigente = (carrera.contrato?.hasta ?? 0) > carrera.anio + 1;
   const temporadas = entre(azar, 2, 5);
-  capitulo.consecuencia = `Renuevas con ${club.nombre} por ${temporadas} temporadas.`;
+  capitulo.consecuencia = contratoVigente
+    ? `Te quedaste en ${club.nombre}. Escuchaste las ofertas, agradeciste y seguiste entrenando donde estabas.`
+    : `Renovaste con ${club.nombre} por ${temporadas} temporadas. El presidente sacó la foto con la camiseta y el contrato.`;
+  capitulo.resultado = { texto: capitulo.consecuencia, salioBien: null, cambios: [] };
   return {
     ...carrera,
-    contrato: {
-      clubSlug: club.slug,
-      hasta: carrera.anio + temporadas,
-      salario: Math.round((carrera.valor / 7) * 100) / 100,
-      rolPrometido: carrera.rol,
-    },
+    contrato: contratoVigente
+      ? carrera.contrato
+      : {
+          clubSlug: club.slug,
+          hasta: carrera.anio + temporadas,
+          salario: Math.round((carrera.valor / 7) * 100) / 100,
+          rolPrometido: carrera.rol,
+        },
     ofertas: [],
     pendiente: null,
     relaciones: {
@@ -1180,6 +1286,14 @@ function jugarMomento(carrera: Carrera, intencion: Intencion, azar: Azar, capitu
     pendiente.contexto,
     carrera.vida.confianza,
   );
+  capitulo.jugada = {
+    clase: pendiente.momento,
+    zona: intencion.zona,
+    remate: intencion.remate,
+    desenlace: resultado.desenlace,
+    arquero: resultado.arquero,
+  };
+
   const enJuego = pendiente.contexto.enJuego ?? null;
   capitulo.consecuencia = enJuego
     ? `${resultado.relato} ${resultado.exito ? `${enJuego.nombre} para ${enJuego.clubNombre}.` : `La copa se fue con ${pendiente.contexto.rival}.`}`
@@ -1290,6 +1404,8 @@ function aplicarEfectos(carrera: Carrera, efectos: Efectos, capitulo: Capitulo, 
       .replaceAll('{APELLIDO}', (datos.nombre.split(' ').at(-1) ?? datos.nombre).toUpperCase())
       .replaceAll('{RIVAL}', datos.rival.toUpperCase())
       .replaceAll('{CLUB}', datos.club.toUpperCase())
+      .replaceAll('{FIGURA}', datos.figura.toUpperCase())
+      .replaceAll('{PERIODISTA}', datos.periodista.toUpperCase())
       .replaceAll('{DORSAL}', datos.dorsal);
     capitulo.titular = { texto, tono: efectos.titular.tono };
     siguiente = {
@@ -1373,7 +1489,18 @@ function terminarPorLaMala(carrera: Carrera, motivo: MotivoDeFinal, relato: stri
 }
 
 /** ¿El club te quiere seguir? Es lo que decide si "quedarme" aparece como opción en el mercado. */
-export const puedeRenovar = (carrera: Carrera): boolean =>
-  carrera.clubActual !== null && quiereRenovar(carrera);
+/**
+ * ¿Puede quedarse?
+ *
+ * Con el contrato vigente, siempre: el contrato es un contrato y una mala temporada no te echa a la
+ * calle. La aprobación del club hace falta solo cuando hay que firmar de nuevo. Con el mercado
+ * abriéndose en todos los capítulos esto dejó de ser un detalle: sin la distinción, un año flojo a
+ * mitad de contrato te obligaba a cambiar de club.
+ */
+export const puedeRenovar = (carrera: Carrera): boolean => {
+  if (carrera.clubActual === null) return false;
+  const contratoVigente = (carrera.contrato?.hasta ?? 0) > carrera.anio + 1;
+  return contratoVigente || quiereRenovar(carrera);
+};
 
 export { CAPITULOS, edadDelCapitulo };
