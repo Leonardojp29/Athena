@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "pnpm install",
-  "buildCommand": "pnpm --filter @athena/tokens build && pnpm --filter @athena/domain build && pnpm --filter @athena/ui build && pnpm --filter @athena/web build"
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=@athena/web..."
 }
