@@ -15,6 +15,14 @@ import fixture from './mundo.fixture.json' with { type: 'json' };
 
 const mundo = fixture as unknown as Mundo;
 const NIVEL = new Map(CATALOGO.map((e) => [e.id, picanteDe(e)]));
+/* Las facturas de una cadena entran sin pasar por el filtro: lo que se gradúa es dónde empieza. */
+const FACTURAS = new Set(
+  CATALOGO.flatMap((e) =>
+    e.opciones.flatMap((o) =>
+      [o.efectos, o.riesgo?.bien, o.riesgo?.mal].flatMap((efectos) => efectos?.luego?.eventoId ?? []),
+    ),
+  ),
+);
 
 const datos: DatosDeCreacion = {
   nombre: 'Leonardo Jurado',
@@ -39,7 +47,7 @@ for (let semilla = 0; semilla < 400; semilla++) {
     if (pendiente?.clase === 'decision') {
       const abierto = eventoPendiente(carrera, mundo);
       const nivel = abierto ? NIVEL.get(abierto.evento.id) : undefined;
-      if (nivel) {
+      if (abierto && nivel && !FACTURAS.has(abierto.evento.id)) {
         const lista = porCapitulo.get(carrera.capitulo) ?? [];
         lista.push(nivel);
         porCapitulo.set(carrera.capitulo, lista);
@@ -78,10 +86,10 @@ describe('la escalera del picante', () => {
     }
   });
 
-  /* A los dieciocho pasa lo de un chico que recién llegó, y nada más que eso. */
-  it('a los 18 y a los 20 no hay nada del nivel más fuerte', () => {
+  /* A los dieciocho pasa lo de un chico que recién llegó; a los veinte entra la farándula, y nada más fuerte. */
+  it('a los 18 no sube del primer nivel, y hasta los 20 no hay nada del más fuerte', () => {
+    expect(proporcionDe(2, [1])).toBe(0);
     expect(proporcionDe(3, [1, 2])).toBe(0);
-    expect(proporcionDe(2, [1, 2])).toBe(0);
   });
 
   it('el escándalo sube tramo por tramo', () => {

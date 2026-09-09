@@ -229,7 +229,9 @@ describe('el catálogo', () => {
       'un peso',
       'pesos',
     ]) {
-      expect(texto.includes(giro), `aparece "${giro}"`).toBe(false);
+      /* El giro entero, no la subcadena: «toda la noche» no es «a la noche». */
+      const suelto = new RegExp(`(?<!\\p{L})${giro}(?!\\p{L})`, 'u');
+      expect(suelto.test(texto), `aparece "${giro}"`).toBe(false);
     }
   });
 });

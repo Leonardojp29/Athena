@@ -146,9 +146,12 @@ veinticuatro a los treinta y seis no cambiaba nada.
 
 | Nivel | Desde | Edad | De qué se habla |
 |---|---|---|---|
-| 1 | capítulo 0 | 16-20 | el vestuario, la concentración, la pichanga, la cábala, el primer clásico |
-| 2 | capítulo 3 | 22+ | la farándula, el representante, la selección, la huelga, el ampay |
+| 1 | capítulo 0 | 16-18 | el vestuario, la concentración, la pichanga, la cábala, el primer clásico |
+| 2 | capítulo 2 | 20+ | la farándula, el representante, la selección, la huelga, el ampay |
 | 3 | capítulo 6 | 28+ | el maletín, el casino, SUNAT, la carpeta del periodista, la plata sin planilla |
+
+El nivel 2 abre a los veinte y no a los veintidós: con el nivel 1 solo, el pozo de los dos primeros
+capítulos era de once eventos y las primeras preguntas de cada carrera terminaban siendo casi las mismas.
 
 Una factura agendada con `luego` entra **sin** pasar por este filtro, a propósito: la cuenta de lo que
 hiciste llega cuando le toca, no cuando la carrera esté lo bastante madura para recibirla. Lo que se
@@ -178,8 +181,8 @@ categoría vuelva imposible, y ningún evento de nivel 3 alcanzable antes del ca
 {
   id: 'futbol-algo-nuevo',
   categoria: 'futbol',
-  rareza: 'infrecuente',          // pesa 45 contra 100 de lo común; 'mitico' pesa 0,4
-  picante: 2,                     // 1 desde el principio · 2 desde el cap. 3 · 3 desde el cap. 6
+  rareza: 'infrecuente',          // pesa 78 contra 100 de lo común; 'mitico' pesa 4
+  picante: 2,                     // 1 desde el principio · 2 desde el cap. 2 · 3 desde el cap. 6
   titulo: 'El título',
   texto: 'Lo que pasa. {club}, {rival}, {dt}, {liga}, {pais} se reemplazan.',
   tipoDeRecuerdo: 'decision',

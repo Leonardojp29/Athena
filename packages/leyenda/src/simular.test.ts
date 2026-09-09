@@ -78,11 +78,14 @@ describe('el ritmo de una carrera', () => {
     for (const p of partidas) expect(p.carrera.etapa).toBe('legado');
   });
 
-  /* Dos decisiones por capítulo, doce capítulos: es el ritmo que el juego promete. */
+  /* El mercado y una pregunta en cada capítulo, y una jugada de vez en cuando: es el ritmo que el juego promete. */
   it('son dos decisiones por capítulo, y una es siempre el mercado', () => {
     const medias = partidas.reduce((s, p) => s + p.decisiones, 0) / CARRERAS;
-    expect(medias).toBeGreaterThan(20);
-    expect(medias).toBeLessThan(26);
+    expect(medias).toBeGreaterThanOrEqual(24);
+    expect(medias).toBeLessThan(30);
+    const jugadas = partidas.reduce((s, p) => s + p.jugadas, 0) / CARRERAS;
+    expect(jugadas).toBeGreaterThan(1);
+    expect(jugadas).toBeLessThan(5);
     /* El mercado abre en todos los capítulos: doce preguntas de "¿me quedo o me voy?" por carrera. */
     for (const p of partidas) expect(p.mercados).toBeGreaterThanOrEqual(12);
   });

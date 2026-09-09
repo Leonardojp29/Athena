@@ -234,7 +234,6 @@ export function crecimiento(
   },
 ): { delta: number; potencial: number } {
   const { edad, ovr, potencial, minutos, profesionalismo, lesiones } = params;
-  const margen = potencial - ovr;
   const porMinutos = limitar(minutos / 2200, 0.15, 1.15);
   const porOficio = 0.75 + (profesionalismo / 100) * 0.5;
 
@@ -287,8 +286,8 @@ export function crecimiento(
      * Nadie mejora así en dos años, y el techo baja con la edad porque el margen de mejora también.
      */
     const tope = edad <= 21 ? 6 : edad <= 27 ? 4.5 : 3;
-    const margenReal = Math.max(0, potencialNuevo - ovr);
-    return { delta: limitar(bruto, -2, Math.min(tope, margenReal)), potencial: potencialNuevo };
+    const margen = Math.max(0, potencialNuevo - ovr);
+    return { delta: limitar(bruto, -2, Math.min(tope, margen)), potencial: potencialNuevo };
   }
 
   /*
