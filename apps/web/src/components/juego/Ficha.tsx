@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   CAPITULOS,
   NOMBRE_DE_NIVEL,
@@ -7,6 +8,11 @@ import {
   type Carrera,
 } from '@athena/leyenda';
 import Carta, { type DatosDeCarta } from './Carta';
+import { plata, seguidores } from './cifras';
+import Confirmar from './Confirmar';
+import Tooltip from './Tooltip';
+import TrofeoContenido from './TrofeoContenido';
+import { agruparTrofeos } from './trofeos';
 
 /**
  * La identidad: quién sos, en una sola banda.
@@ -39,8 +45,7 @@ export default function Ficha({
     { partidos: 0, goles: 0, asistencias: 0 },
   );
   const club = carrera.clubActual;
-  const titulos = carrera.trofeos.filter((t) => t.clase !== 'individual').length;
-  const premios = carrera.trofeos.filter((t) => t.clase === 'individual').length;
+  const grupos = agruparTrofeos(carrera.trofeos);
   const tinte = club?.primario && /^[0-9a-f]{6}$/i.test(club.primario) ? `#${club.primario}` : null;
 
   const datosDeCarta: DatosDeCarta = {
@@ -57,22 +62,41 @@ export default function Ficha({
   };
 
   const jugados = carrera.temporadas.length;
-  const reiniciar = () => {
-    if (window.confirm('¿Empezar una leyenda nueva? La carrera actual se pierde.')) {
-      onEmpezarDeNuevo();
-    }
-  };
+  const [confirmando, setConfirmando] = useState(false);
 
-  const cifras: Array<[string, string | number]> = [
-    ['Partidos', totales.partidos],
-    ['Goles', totales.goles],
-    ['Asistencias', totales.asistencias],
-    [
-      'Valor',
-      carrera.valor >= 1
-        ? `${Math.round(carrera.valor)} M`
-        : `${Math.round(carrera.valor * 1000)} K`,
-    ],
+  /*
+   * Seguidores y patrimonio van acá y no dentro de la carta: la carta está apretada y estos dos
+   * números son de la vida, no del jugador. El valor y el patrimonio son cosas distintas —uno es lo
+   * que un club pagaría por ti y el otro lo que tienes— y verlos juntos es media historia de una
+   * carrera de futbolista.
+   */
+  /* Lo que hiciste en la cancha: cuerpo grande, con su signo para que no haga falta leer el rótulo. */
+  const cifras = [
+    { rotulo: 'Partidos', valor: totales.partidos, icono: <CanchaIcono /> },
+    { rotulo: 'Goles', valor: totales.goles, icono: <PelotaIcono /> },
+    { rotulo: 'Asistencias', valor: totales.asistencias, icono: <PaseIcono /> },
+  ];
+
+  /* Y lo que la carrera trajo: al costado del material, chico. */
+  const vida = [
+    {
+      rotulo: 'Seguidores',
+      valor: seguidores(carrera.vida.fama, carrera.vida.exposicion),
+      icono: <SeguidoresIcono />,
+      nota: 'Crece con tu fama: un título los multiplica y un escándalo también.',
+    },
+    {
+      rotulo: 'Patrimonio',
+      valor: plata(carrera.vida.dinero),
+      icono: <BilleteIcono />,
+      nota: 'Lo que juntaste con tus sueldos y tus decisiones.',
+    },
+    {
+      rotulo: 'Valor de mercado',
+      valor: plata(carrera.valor),
+      icono: <EtiquetaIcono />,
+      nota: 'Lo que un club pagaría por ti hoy. No es lo que tienes: es lo que vales.',
+    },
   ];
 
   return (
@@ -141,10 +165,37 @@ export default function Ficha({
               >
                 {NOMBRE_DE_NIVEL[carrera.nivel]}
               </span>
+
+              {/*
+                Los seguidores, el patrimonio y el valor viven acá y no en la fila de las cifras
+                grandes: son parte de la historia, no del rendimiento. Partidos, goles y asistencias
+                son lo que hiciste en la cancha y merecen el cuerpo grande; esto es lo que trajo.
+              */}
+              <span className="flex items-center gap-x-3 gap-y-1 tabular">
+                {vida.map(({ rotulo, valor, icono, nota }) => (
+                  <Tooltip
+                    key={rotulo}
+                    contenido={
+                      <>
+                        <span className="block font-display text-sm font-semibold uppercase leading-tight tracking-label text-ink">
+                          {rotulo}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-snug text-ink-muted">{nota}</span>
+                      </>
+                    }
+                  >
+                    <span className="flex items-center gap-1">
+                      <span className="text-ink-muted/70">{icono}</span>
+                      <span className="font-semibold text-ink">{valor}</span>
+                      <span className="sr-only">{rotulo}</span>
+                    </span>
+                  </Tooltip>
+                ))}
+              </span>
               {/* En el teléfono no hay riel derecho: la salida a una leyenda nueva vive acá. */}
               <button
                 type="button"
-                onClick={reiniciar}
+                onClick={() => setConfirmando(true)}
                 aria-label="Nueva leyenda"
                 className="ml-auto grid size-7 cursor-pointer place-items-center rounded-md border border-border text-ink-muted transition-colors hover:border-primary-ink hover:text-ink sm:hidden"
               >
@@ -172,10 +223,13 @@ export default function Ficha({
           </div>
 
           <dl className="relative flex flex-wrap items-end gap-x-7 gap-y-2">
-            {cifras.map(([rotulo, valor]) => (
+            {cifras.map(({ rotulo, valor, icono }) => (
               <div key={rotulo}>
                 <dd className="font-display text-xl font-semibold leading-none tabular">{valor}</dd>
-                <dt className="mt-1 text-[9px] uppercase tracking-label text-ink-muted">{rotulo}</dt>
+                <dt className="mt-1 flex items-center gap-1 text-[9px] uppercase tracking-label text-ink-muted">
+                  <span aria-hidden="true">{icono}</span>
+                  {rotulo}
+                </dt>
               </div>
             ))}
           </dl>
@@ -208,29 +262,57 @@ export default function Ficha({
             </p>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-2.5 text-xs tabular">
-              {titulos > 0 && (
-                <span className="flex items-center gap-1 text-card-yellow" title="Títulos">
-                  <TrofeoIcono /> {titulos}
-                </span>
-              )}
-              {premios > 0 && (
-                <span className="flex items-center gap-1 text-data" title="Premios individuales">
-                  <EstrellaIcono /> {premios}
-                </span>
-              )}
-              {titulos === 0 && premios === 0 && (
-                <span className="text-[10px] uppercase tracking-label text-ink-muted">
-                  Vitrina vacía
-                </span>
-              )}
-            </span>
+          {/*
+            La vitrina, chiquita y mientras juegas. Un contador que dice "3" no cuenta nada: con el
+            escudo de cada competencia y su ×N se ve de un golpe **qué** ganaste, y el nombre y los
+            años viven en el hover. La banda tenía este espacio vacío desde siempre.
+          */}
+          <div className="flex flex-col gap-2">
+            {grupos.length > 0 ? (
+              <span className="flex flex-wrap items-center gap-2.5 text-xs tabular">
+                {grupos.map((grupo) => (
+                  <Tooltip key={`${grupo.nombre}-${grupo.clase}`} contenido={<TrofeoContenido grupo={grupo} />}>
+                  <span
+                    className={`flex items-center gap-1.5 rounded-md border border-border bg-canvas-subtle px-2 py-1.5 ${
+                      grupo.clase === 'individual'
+                        ? 'text-data-ink'
+                        : grupo.clase === 'seleccion'
+                          ? 'text-primary-ink'
+                          : 'text-card-yellow'
+                    }`}
+                  >
+                    {grupo.escudo ? (
+                      <img
+                        src={grupo.escudo}
+                        alt=""
+                        width={22}
+                        height={22}
+                        loading="lazy"
+                        className="size-[22px] object-contain"
+                      />
+                    ) : grupo.clase === 'individual' ? (
+                      <EstrellaIcono grande />
+                    ) : (
+                      <TrofeoIcono grande />
+                    )}
+                    {grupo.escudo &&
+                      (grupo.clase === 'individual' ? <EstrellaIcono grande /> : <TrofeoIcono grande />)}
+                    {grupo.veces > 1 && (
+                      <span className="font-display text-sm font-semibold text-ink">×{grupo.veces}</span>
+                    )}
+                    <span className="sr-only">{grupo.detalle}</span>
+                  </span>
+                  </Tooltip>
+                ))}
+              </span>
+            ) : (
+              <span className="text-[10px] uppercase tracking-label text-ink-muted">Vitrina vacía</span>
+            )}
 
             <button
               type="button"
-              onClick={reiniciar}
-              className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[10px] uppercase tracking-label text-ink-muted transition-colors duration-200 hover:border-primary-ink hover:bg-primary/8 hover:text-ink"
+              onClick={() => setConfirmando(true)}
+              className="flex cursor-pointer items-center justify-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-[10px] uppercase tracking-label text-ink-muted transition-colors duration-200 hover:border-primary-ink hover:bg-primary/8 hover:text-ink"
             >
               <ReinicioIcono />
               Nueva leyenda
@@ -238,13 +320,94 @@ export default function Ficha({
           </div>
         </div>
       </div>
+
+      {confirmando && (
+        <Confirmar
+          titulo="¿Empezar una leyenda nueva?"
+          texto="La carrera actual se pierde y no se puede recuperar: no hay historial de leyendas."
+          confirmar="Empezar de nuevo"
+          cancelar="Seguir jugando"
+          onConfirmar={onEmpezarDeNuevo}
+          onCancelar={() => setConfirmando(false)}
+        />
+      )}
     </section>
   );
 }
 
-function TrofeoIcono() {
+/*
+ * Los seis signos de las cifras. SVG en línea, heredando `currentColor` y sin ningún hex propio, que
+ * es la regla del proyecto: nada de emojis y nada de iconos que no se adapten al tema.
+ */
+
+/** Partidos: la cancha vista desde arriba. */
+function CanchaIcono() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="14" rx="1.5" />
+      <path d="M12 5v14" />
+      <circle cx="12" cy="12" r="2.6" />
+    </svg>
+  );
+}
+
+/** Goles: la pelota. */
+function PelotaIcono() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.4l3.4 2.5-1.3 4h-4.2l-1.3-4z" />
+      <path d="M12 3.2v4.2M20.4 9.9l-4.9 0M18 19.4l-3.9-3.5M6 19.4l3.9-3.5M3.6 9.9l4.9 0" />
+    </svg>
+  );
+}
+
+/** Asistencias: el pase que deja a otro de cara al gol. */
+function PaseIcono() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 17.5c4.5-9 11-11.5 18-11.5" />
+      <path d="M15.5 4l5.5 2-2 5.5" />
+    </svg>
+  );
+}
+
+/** Seguidores: la gente que te sigue. */
+function SeguidoresIcono() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+      <path d="M16.5 5.6a3.2 3.2 0 0 1 0 5.4M18.5 19.5c0-2.2-.8-3.9-2.2-4.8" />
+    </svg>
+  );
+}
+
+/** Patrimonio: lo que tienes guardado. */
+function BilleteIcono() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.5" y="6.5" width="19" height="11" rx="1.8" />
+      <circle cx="12" cy="12" r="2.4" />
+      <path d="M6 10v4M18 10v4" />
+    </svg>
+  );
+}
+
+/** Valor de mercado: lo que un club pagaría por ti. */
+function EtiquetaIcono() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12.6 3.5H20a.5.5 0 0 1 .5.5v7.4a2 2 0 0 1-.6 1.4l-6.9 6.9a1.4 1.4 0 0 1-2 0l-6.5-6.5a1.4 1.4 0 0 1 0-2l6.9-6.9a2 2 0 0 1 1.2-.8z" />
+      <circle cx="16.6" cy="7.4" r="1.4" />
+    </svg>
+  );
+}
+
+function TrofeoIcono({ grande = false }: { grande?: boolean }) {
+  const lado = grande ? 16 : 13;
+  return (
+    <svg viewBox="0 0 24 24" width={lado} height={lado} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M8 4.5h8v4.2a4 4 0 0 1-8 0z" />
       <path d="M8 5.5H5.2v1.8A3.2 3.2 0 0 0 8.4 10.5M16 5.5h2.8v1.8a3.2 3.2 0 0 1-3.2 3.2" />
       <path d="M12 12.7v3.3M8.5 19.5h7" />
@@ -252,9 +415,10 @@ function TrofeoIcono() {
   );
 }
 
-function EstrellaIcono() {
+function EstrellaIcono({ grande = false }: { grande?: boolean }) {
+  const lado = grande ? 16 : 13;
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width={lado} height={lado} fill="currentColor" aria-hidden="true">
       <path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.5 9.8l5.9-.8z" />
     </svg>
   );

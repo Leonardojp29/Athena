@@ -68,16 +68,42 @@ const CORTES: Array<{ nivel: Nivel; desde: number }> = [
   { nivel: 'cantera', desde: 0 },
 ];
 
+/** Hasta esta edad se puede ser cantera o promesa. Después, el piso es profesional. */
+const EDAD_DE_JUVENIL = 23;
+
 /**
  * El nivel de la carta. Ícono e inmortal piden además una carrera detrás —títulos y premios—:
  * un número alto en una temporada buena no convierte a nadie en ícono, y esa es justamente la
  * diferencia entre un crack y una leyenda.
+ *
+ * Y los dos materiales de abajo exigen juventud. El declive por edad resta hasta seis puntos y medio
+ * por bienio, así que sin este piso la carta desandaba la escalera: medido, el 63% de las carreras
+ * terminaba etiquetada como **cantera** a los 38 años. Un capitán con trescientos partidos y tres
+ * títulos no es una promesa de nada. El declive se ve donde tiene que verse —el número, los
+ * atributos, el valor de mercado— y no en un rótulo que dice que el veterano acaba de llegar.
  */
-export function nivelDe(ovr: number, logros: { trofeos: number; premios: number }): Nivel {
+export function nivelDe(ovr: number, logros: { trofeos: number; premios: number }, edad: number): Nivel {
   const porNumero = CORTES.find((c) => ovr >= c.desde)?.nivel ?? 'cantera';
   if (porNumero === 'inmortal' && (logros.premios < 2 || logros.trofeos < 6)) return 'icono';
   if (porNumero === 'icono' && logros.trofeos < 2) return 'clase-mundial';
+  if (edad > EDAD_DE_JUVENIL && (porNumero === 'cantera' || porNumero === 'promesa')) return 'profesional';
   return porNumero;
+}
+
+/**
+ * El material que le corresponde a la carta hoy, que nunca es peor que el que ya alcanzó.
+ *
+ * Si fuiste élite, sos élite. El material cuenta lo que llegaste a ser y por eso solo sube: es la
+ * misma idea que `nivelMaximo` en el legado, aplicada a la carta en vivo.
+ */
+export function nivelAlcanzado(
+  ovr: number,
+  logros: { trofeos: number; premios: number },
+  edad: number,
+  anterior: Nivel,
+): Nivel {
+  const ahora = nivelDe(ovr, logros, edad);
+  return indiceDeNivel(ahora) > indiceDeNivel(anterior) ? ahora : anterior;
 }
 
 export const indiceDeNivel = (nivel: Nivel): number => NIVELES.indexOf(nivel);

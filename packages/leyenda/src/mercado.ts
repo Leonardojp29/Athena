@@ -20,8 +20,14 @@ import {
   type Liga,
   type Mundo,
   type Oferta,
+  type Puesto,
   type Rol,
+  type Temporada,
 } from './estado.js';
+
+/** La liga de un club, o una liga neutra si el mundo no la trae: solo para rotular. */
+const ligaDelClub = (mundo: Mundo, club: Club): Pick<Liga, 'continente' | 'peso'> =>
+  mundo.ligas.find((l) => l.slug === club.ligaSlug) ?? { continente: club.continente, peso: 50 };
 
 /** El azar del clásico de tu club de origen: estable durante toda la carrera. */
 const crearAzarDeCasa = (carrera: Carrera): Azar => crearAzar((carrera.semilla + 31) >>> 0);
@@ -96,185 +102,287 @@ function proyectoDe(
  */
 const RENOMBRE_MINIMO = 55;
 
-/**
- * La escalera.
- *
- * El sueño de este juego es el mismo del fútbol de verdad: salir de un club mediano de tu país,
- * ganarte el grande de tu liga, cruzar a Brasil o Argentina y terminar en una de las cinco de
- * Europa. Cada escalón se gana con rendimiento, y el mercado tiene que **empujar hacia arriba**:
- * quedarse doce capítulos en la misma liga siendo el mejor de todos no es una carrera, es una
- * meseta.
- *
- * El número es el renombre del club, que ya combina el peso de su liga, dónde termina y cuántas
- * copas continentales juega.
- */
-/**
- * Los cinco escalones, por renombre del club. Una carrera los sube **de a uno**.
- *
- *   chico local → grande local → grande del continente → Europa → elite mundial
- *
- * Un pibe de Cienciano no ficha por el Barcelona, y que el juego lo permitiera arruinaba lo único
- * que esta clase de juego tiene para dar: la sensación de haber llegado. Ahora el salto se hace en
- * etapas y cada una hay que ganársela; solo la joya de veinte años con dos años enormes se saltea
- * un escalón, que es la excepción que también existe en el fútbol de verdad.
- */
-const ESCALONES = [
-  { hasta: 64, nombre: 'chico local' },
-  { hasta: 75, nombre: 'grande local' },
-  { hasta: 84, nombre: 'grande del continente' },
-  { hasta: 92, nombre: 'Europa' },
-  { hasta: 100, nombre: 'elite mundial' },
-] as const;
-
-export const escalonDe = (renombre: number): number =>
-  ESCALONES.findIndex((e) => renombre <= e.hasta) === -1
-    ? ESCALONES.length - 1
-    : ESCALONES.findIndex((e) => renombre <= e.hasta);
-
-export const nombreDelEscalon = (renombre: number): string =>
-  ESCALONES[escalonDe(renombre)]?.nombre ?? '';
+/* ───────────────────────────────────── el nivel del club ───────────────────────────────────── */
 
 /**
- * Cuánto por encima de tu nivel puede estar un club que te llame, según la edad.
+ * Los cinco niveles con los que el mercado razona.
  *
- * Es la regla más parecida a cómo fichan los clubes de verdad, y la que el juego no tenía: a los
- * diecinueve te compran por lo que vas a ser y una brecha de veinte puntos es normal; a los
- * veintiocho te compran por lo que sos y la brecha se cierra; a los treinta y cuatro nadie paga por
- * un futuro que no existe, así que solo te llaman clubes de tu nivel o por debajo.
+ *   1 chico · 2 grande local · 3 grande del continente / club de Europa · 4 grande de Europa · 5 millonario
+ *
+ * **No salen del renombre solo**, y eso es a propósito. El renombre viene de tablas recientes y no es
+ * comparable entre ligas: Brasil, México y la MLS están inflados diez u once puntos respecto de su
+ * fuerza, e Italia, Portugal y Países Bajos deflacionados hasta catorce. Con renombre crudo, Real
+ * Betis (97) y Freiburg (94) quedaban por encima de Juventus, Milan y PSG (90); Toluca (86) casi
+ * empataba a Ajax; y Lanús tenía 86, por lo que Boca (89) se leía como un paso lateral y no como el
+ * grande del país. Acá el nivel cruza renombre, fuerza y el peso de la liga, y el escalón de arriba
+ * es una lista declarada —igual que `clasicos.ts` declara los rivales—, porque quién es millonario lo
+ * dicen la historia y la plata, no la tabla del año pasado.
  */
-function brechaTolerada(edad: number): number {
-  if (edad <= 20) return 22;
-  if (edad <= 23) return 16;
-  if (edad <= 26) return 10;
-  if (edad <= 29) return 6;
-  if (edad <= 32) return 2;
-  return -2;
-}
+export type NivelDeClub = 1 | 2 | 3 | 4 | 5;
+
+const MILLONARIOS = new Set([
+  'real-madrid',
+  'barcelona',
+  'atletico-madrid',
+  'manchester-city',
+  'liverpool',
+  'arsenal',
+  'chelsea',
+  'manchester-united',
+  'bayern-munchen',
+  'borussia-dortmund',
+  'paris-saint-germain',
+  'inter',
+  'ac-milan',
+  'juventus',
+]);
 
 /**
- * Cuánto le interesa tu edad a este club.
- *
- * Un grande quiere el prime —veintitrés a veintinueve— y paga por una promesa con techo, pero no
- * gasta una plaza en alguien de treinta y cinco. Un club mediano vive del que sube y del que baja, y
- * un club chico es donde uno empieza y donde uno termina. Es la curva que hace que la carrera tenga
- * forma: te suben cuando toca y te devuelven a casa cuando toca.
+ * Los que compran joven con proyección para vender después. Son el peldaño natural entre el grande
+ * del continente y el millonario, y el motor antes no los conocía.
  */
-function ajustePorEdad(club: Club, edad: number, potencial: number, ovr: number): number {
-  const grande = club.renombre >= 84;
-  const mediano = club.renombre >= 70;
-  const techo = potencial - ovr;
-
-  if (edad <= 21) {
-    /* Al pibe lo compra el que cree en su techo; con poco margen, nadie apuesta. */
-    return grande ? (techo >= 10 ? 28 : -25) : mediano ? 14 : 6;
-  }
-  if (edad <= 26) return grande ? 22 : mediano ? 16 : 0;
-  if (edad <= 29) return grande ? 14 : mediano ? 12 : 2;
-  if (edad <= 32) return grande ? -12 : mediano ? 4 : 12;
-  /* Pasados los 33 el mercado se invierte: los grandes no llaman y los de abajo sí. */
-  return grande ? -60 : mediano ? -20 : 22;
-}
+const VENDEDORES = new Set([
+  'fc-porto',
+  'benfica',
+  'sporting-cp',
+  'ajax',
+  'psv-eindhoven',
+  'feyenoord',
+  'flamengo',
+  'palmeiras',
+  'boca-juniors',
+  'river-plate',
+  'racing-club',
+]);
 
 /**
- * ¿Este club te querría? Devuelve el peso con el que aparecería entre las ofertas; 0 es "no te
- * llama". Un club nunca te llama si estás muy por debajo de su nivel, y pierde interés si estás muy
- * por encima del suyo salvo que seas de la casa.
+ * Las ligas de destino tardío: la plata grande a los treinta, no un lugar donde empezar.
  *
- * Dos cosas mandan, como en cualquier juego de fútbol: **la media y la edad**. La media dice si das
- * el nivel; la edad dice si te compran por lo que sos o por lo que vas a ser. Todo lo demás —la
- * fama, el bienio, la escalera— ajusta alrededor de esas dos.
- *
- * La escalera es la clave del juego: **el mercado tiene que llevarte hacia arriba**. Un club de menos
- * renombre que el tuyo casi no llama, y la carrera camina de la liga local a Europa en lugar de
- * rebotar entre equipos que nadie conoce.
+ * Declaradas por slug y no por `peso < 52`, que marcaba a Perú (54) como casi tardío y dejaba a Egipto
+ * (52) adentro por un punto. No es un juicio sobre esas ligas: nadie sueña con debutar en la MLS, pero
+ * el retiro dorado ahí, o la oferta millonaria de Arabia, es una decisión con sabor.
  */
-export function interesDe(club: Club, carrera: Carrera, esDeLaCasa: boolean): number {
-  const { ovr, futbolista, vida } = carrera;
-  const brecha = club.fuerza - ovr;
-
-  /* Los clubes que nadie ubica no existen para el juego, salvo que sea tu casa. */
-  if (club.renombre < RENOMBRE_MINIMO && !esDeLaCasa) return 0;
-
-  /* La brecha que tu edad permite. Es la puerta: si no la pasás, este club no te mira. */
-  if (brecha > brechaTolerada(futbolista.edad) && !esDeLaCasa) return 0;
-
-  /*
-   * Y la puerta de salida de los grandes. A los treinta y tres, un club que te queda por encima ya no
-   * te ficha: se busca a alguien de veinticinco. Sin esto, una carrera terminaba de titular en el
-   * Madrid a los treinta y ocho, que es lo único que ningún jugador de fútbol logra.
-   */
-  if (futbolista.edad >= 33 && club.fuerza > ovr + 2 && !esDeLaCasa) return 0;
-
-  /*
-   * El salto grande hay que ganárselo. Un club muy por encima de tu nivel solo mira a alguien que
-   * viene de dos años enormes: sin esto, cualquier juvenil de una liga chica pasaba a la Juventus en
-   * su primer capítulo y el ascenso —que es el corazón del juego— salía gratis.
-   */
-  const ultima = carrera.temporadas.at(-1);
-  const bienioGrande = (ultima?.notaMedia ?? 0) >= 7.2 || (ultima?.goles ?? 0) >= 30;
-  if (brecha > 8 && !bienioGrande) return 0;
-
-  /*
-   * La escalera, de a un escalón por vez. La joya de veinte años que viene de romperla puede saltear
-   * uno —el pibe que un grande de Europa va a buscar a Sudamérica—, pero es la excepción y hay que
-   * merecerla.
-   */
-  const escalonActual = escalonDe(carrera.clubActual?.renombre ?? 0);
-  const salto2 = escalonDe(club.renombre) - escalonActual;
-  const joya = futbolista.edad <= 21 && bienioGrande && (ultima?.notaMedia ?? 0) >= 7.5;
-  if (salto2 > (joya ? 2 : 1)) return 0;
-
-  let peso = 100 - Math.abs(brecha) * 4;
-  if (brecha > 0) peso += Math.max(0, 12 - brecha) * 2;
-  peso += (vida.fama / 100) * 12;
-  peso += (carrera.temporadas.at(-1)?.notaMedia ?? 6.5) >= 7.2 ? 18 : 0;
-  /* La curva de la edad de este club: es lo que decide quién te llama y a qué altura de tu carrera. */
-  peso += ajustePorEdad(club, futbolista.edad, futbolista.potencial, ovr);
-  if (esDeLaCasa) peso += 40;
-
-  /*
-   * Subir de categoría pesa mucho; bajar casi nunca pasa antes de los treinta. Esto es lo que
-   * convierte una sucesión de fichajes en una carrera con forma.
-   */
-  const actual = carrera.clubActual?.renombre ?? 0;
-  const salto = club.renombre - actual;
-  if (salto > 0) peso += Math.min(salto * 1.6, 45);
-  else if (salto < -2 && futbolista.edad < 31) {
-    /* Bajar de categoría en pleno ascenso no es una carrera: es dar marcha atrás. Se vuelve raro. */
-    peso *= 0.12;
-  }
-
-  /*
-   * Y el que ya se comió su liga tiene que poder irse. Si tu nivel supera al club más grande de
-   * donde jugás, los de tu misma liga dejan de llamarte y el salto al exterior se vuelve el camino
-   * natural: es exactamente lo que le pasa a un crack en una liga chica.
-   */
-  const mismaLiga = club.ligaSlug === carrera.clubActual?.ligaSlug;
-  if (mismaLiga && ovr > actual + 6) peso *= 0.2;
-
-  /* El escalón inmediatamente superior es el que más pesa: es el camino que la carrera quiere tomar. */
-  if (salto2 === 1 && ovr >= club.fuerza - 6) peso += 30;
-
-  return Math.max(0, peso);
-}
-
-/**
- * Las ligas de destino tardío: Asia, África y las de peso bajo.
- *
- * No es un juicio sobre esas ligas, es una decisión de narrativa: nadie sueña con debutar en la liga
- * canadiense, pero la oferta millonaria de Arabia a los 31 —o el retiro dorado en la MLS— es una
- * decisión con sabor. Se abren a partir de los treinta.
- */
-const DESTINOS_DE_MADUREZ = new Set(['major-league-soccer']);
+const DESTINOS_TARDIOS = new Set([
+  'major-league-soccer',
+  'pro-league',
+  'j1-league',
+  'canadian-premier-league',
+  'premier-league-egypt',
+]);
 
 export function esDestinoTardio(liga: { slug: string; continente: string; peso: number }): boolean {
-  return (
-    liga.continente === 'asia' ||
-    liga.continente === 'africa' ||
-    liga.peso < 52 ||
-    DESTINOS_DE_MADUREZ.has(liga.slug)
-  );
+  return DESTINOS_TARDIOS.has(liga.slug) || liga.continente === 'africa';
 }
+
+export function nivelDeClub(club: Club, liga: Pick<Liga, 'continente' | 'peso'>): NivelDeClub {
+  if (MILLONARIOS.has(club.slug)) return 5;
+  if (liga.continente === 'europa') {
+    if (club.renombre >= 86 || club.fuerza >= 82) return 4;
+    if (club.renombre >= 70 || club.fuerza >= 76) return 3;
+    if (club.renombre >= 60 || club.fuerza >= 70) return 2;
+    return 1;
+  }
+  /* En América, el grande del continente es el que pesa en su liga y la liga pesa: Toluca queda en 2. */
+  if (club.renombre >= 85 && liga.peso >= 75) return 3;
+  if (club.renombre >= 70) return 2;
+  return 1;
+}
+
+/** El rótulo que ve el jugador en la tarjeta. Es lo que le cuenta en qué escalón está parado. */
+export function nombreDelNivelDeClub(nivel: NivelDeClub, liga: Pick<Liga, 'continente'>): string {
+  if (nivel === 5) return 'Millonario';
+  if (nivel === 4) return 'Grande de Europa';
+  if (nivel === 3) return liga.continente === 'europa' ? 'Club de Europa' : 'Grande del continente';
+  if (nivel === 2) return 'Grande local';
+  return 'Club chico';
+}
+
+/* ───────────────────────────────────── la cotización ───────────────────────────────────── */
+
+/**
+ * Cómo te ve un scout. Cinco números y la edad, y con eso el mercado decide quién te mira.
+ *
+ * Antes la única señal de rendimiento era el último bienio —nota alta o treinta goles— y un 72 con
+ * siete partidos se veía idéntico a un 72 con cuarenta. Por eso Boca quería al chico de Lanús que
+ * había jugado siete. Toda la materia prima de acá ya estaba en `Temporada` y nadie la leía.
+ */
+export interface Cotizacion {
+  /** Lo que sos hoy: el OVR. */
+  nivel: number;
+  edad: number;
+  /** Lo que demostraste, 0-100. Siete partidos ≈ 15; una temporada de titular ≈ 50; un ícono ≈ 90. */
+  pruebas: number;
+  /** Quién puede verte, 0-100: la liga donde jugás, la copa continental, la selección, la fama. */
+  visibilidad: number;
+  /** Tu techo, 0-100. Solo cuenta hasta los 24: después ya no se compra futuro. */
+  proyeccion: number;
+  /** Subís, estás o bajás, según los dos últimos bienios. */
+  trayectoria: -1 | 0 | 1;
+}
+
+/** Goles más asistencias por partido que se le piden a cada puesto para decir que rindió. */
+const APORTE_ESPERADO: Record<Puesto, number> = {
+  POR: 0.02,
+  DFC: 0.08,
+  LAT: 0.15,
+  MC: 0.25,
+  MO: 0.45,
+  EXT: 0.5,
+  DC: 0.6,
+};
+
+/** Cuánto demostró en un bienio, 0-100. */
+function pruebasDelBienio(t: Temporada | undefined, puesto: Puesto): number {
+  if (!t || t.partidos === 0) return 0;
+  /* Cincuenta partidos en dos años es un titular pleno. */
+  const porPartidos = Math.min(t.partidos / 50, 1) * 40;
+  /* El aporte por partido vale poco con una muestra chica: siete partidos no prueban nada. */
+  const aporte = (t.goles + t.asistencias) / t.partidos;
+  const porAporte = Math.min(aporte / APORTE_ESPERADO[puesto], 1.6) * 20 * Math.min(t.partidos / 25, 1);
+  const porNota = limitar((t.notaMedia - 6) * 12, 0, 25);
+  const porTitulos = Math.min(t.trofeos.length, 2) * 5;
+  return Math.min(porPartidos + porAporte + porNota + porTitulos, 100);
+}
+
+export function cotizacionDe(carrera: Carrera, mundo: Mundo): Cotizacion {
+  const { ovr, futbolista, vida } = carrera;
+  const ultima = carrera.temporadas.at(-1);
+  const previa = carrera.temporadas.at(-2);
+
+  /* Los dos últimos bienios, el reciente pesa más: lo que hiciste hace cuatro años ya se olvidó a medias. */
+  const pruebas = pruebasDelBienio(ultima, futbolista.puesto) * 0.65 + pruebasDelBienio(previa, futbolista.puesto) * 0.35;
+
+  const liga = mundo.ligas.find((l) => l.slug === carrera.clubActual?.ligaSlug);
+  /* La copa continental te muestra si la jugaste: el club clasificado y vos con minutos. */
+  const jugoContinental = [ultima, previa].some(
+    (t) => t !== undefined && (t.posicionEnLaTabla ?? 99) <= 4 && t.partidos >= 15,
+  );
+  const convocatorias = (ultima?.seleccion.convocatorias ?? 0) + (previa?.seleccion.convocatorias ?? 0);
+  /*
+   * Y nadie te vio si no jugaste. La liga y la copa te exponen en proporción a los minutos: el chico
+   * de siete partidos en Lanús daba 46 de visibilidad —el mundo— por el peso de la liga argentina, y
+   * lo llamaban Heerenveen y Leeds. Con siete partidos no lo vio ni Rosario.
+   */
+  const vistoJugando = 0.35 + 0.65 * Math.min(pruebas / 35, 1);
+  const visibilidad = Math.min(
+    100,
+    ((liga?.peso ?? 45) * 0.4 + (jugoContinental ? 12 : 0) + Math.min(convocatorias, 20) + vida.fama * 0.25) *
+      vistoJugando,
+  );
+
+  const proyeccion = futbolista.edad <= 24 ? limitar((futbolista.potencial - ovr) * 5, 0, 100) : 0;
+
+  const delta = [ultima, previa].reduce((suma, t) => suma + (t ? t.ovrFin - t.ovrInicio : 0), 0);
+  const trayectoria: Cotizacion['trayectoria'] = delta >= 2 ? 1 : delta <= -2 ? -1 : 0;
+
+  return { nivel: ovr, edad: futbolista.edad, pruebas, visibilidad, proyeccion, trayectoria };
+}
+
+/* ───────────────────────────────────── quién te quiere ───────────────────────────────────── */
+
+interface Candidato {
+  club: Club;
+  liga: Liga;
+  nivel: NivelDeClub;
+  deseo: number;
+  matices: string[];
+}
+
+interface Contexto {
+  nivelActual: NivelDeClub;
+  paisActual: string | null;
+  continenteActual: string;
+  enElBanco: boolean;
+  esDeLaCasa: boolean;
+  esRival: boolean;
+}
+
+/** Por qué un club no te mira. `nivel` es la única que puede convertirse en sorpresa. */
+type Rechazo = 'geografia' | 'tardio' | 'nivel' | 'sentido';
+
+/**
+ * ¿Este club te querría, y cuánto? Una puerta por nivel y tres reglas de sentido que valen para
+ * todos, en lugar de las ocho puertas apiladas que había antes.
+ *
+ * Las puertas por nivel dicen qué compra cada escalón: el millonario compra un 85 probado en su prime
+ * o la joya de veintidós que viene en alza; el grande local compra a cualquiera de 60 que haya jugado
+ * una temporada. Las reglas de sentido dicen qué movimiento es una carrera y cuál no: nadie te ficha
+ * si no te vio, no se baja en pleno ascenso, y pasados los treinta y tres el camino es hacia abajo.
+ */
+function quiere(club: Club, liga: Liga, nivel: NivelDeClub, cot: Cotizacion, ctx: Contexto): number | Rechazo {
+  const historia = ctx.esDeLaCasa || ctx.esRival;
+  const joya = cot.edad <= 22 && cot.trayectoria === 1 && cot.proyeccion >= 30;
+  const mismoPais = club.paisCodigo === ctx.paisActual;
+  const mismoContinente = liga.continente === ctx.continenteActual;
+
+  /* Los destinos tardíos recién a los veintinueve, o a los veintisiete si ya vas en bajada. */
+  if (esDestinoTardio(liga) && !(cot.edad >= 29 || (cot.edad >= 27 && cot.trayectoria === -1))) return 'tardio';
+
+  /*
+   * La puerta de cada nivel va primero, y la única que la salta es tu casa. El rival puede saltarse
+   * la geografía y el sentido —es la oferta que hace la historia— pero tiene que **querer**: Boca
+   * entraba a buscar a un chico de siete partidos solo por ser el clásico de Lanús.
+   */
+  const pasa = (() => {
+    switch (nivel) {
+      case 5:
+        return (
+          (cot.nivel >= 85 && cot.pruebas >= 60 && cot.visibilidad >= 50 && cot.edad <= 29) ||
+          (cot.edad <= 22 && cot.nivel >= 80 && cot.trayectoria === 1 && cot.pruebas >= 40 && cot.visibilidad >= 40)
+        );
+      case 4:
+        return (
+          (cot.nivel >= 78 && cot.pruebas >= 40 && cot.visibilidad >= 35 && cot.edad <= 31) ||
+          (cot.edad <= 23 && cot.nivel >= 74 && cot.trayectoria === 1 && cot.pruebas >= 30)
+        );
+      case 3:
+        return (
+          (cot.nivel >= 70 && cot.pruebas >= 25 && cot.visibilidad >= 25 && cot.edad <= 32) ||
+          (cot.edad <= 21 && cot.nivel >= 68 && cot.pruebas >= 20)
+        );
+      case 2:
+        return cot.nivel >= 60 && cot.pruebas >= 15;
+      default:
+        /* Un chico no puede pagar a alguien muy por encima de su nivel, salvo que venga de vuelta. */
+        return !(cot.nivel > club.fuerza + 12 && cot.edad < 30 && cot.trayectoria >= 0);
+    }
+  })();
+  if (!pasa && !ctx.esDeLaCasa) {
+    /* Si te rechaza el nivel pero te podría haber visto, es candidato a sorpresa. */
+    return mismoContinente || cot.visibilidad >= 30 ? 'nivel' : 'geografia';
+  }
+
+  /*
+   * Geografía por visibilidad. A un chico de dieciocho en Cusco lo vio Perú; al que ganó la Libertadores
+   * lo vio el continente y algún scout de Porto o Ajax; al que juega en Europa lo ve el mundo.
+   */
+  if (!historia) {
+    const vendedorEuropeo = VENDEDORES.has(club.slug) && liga.continente === 'europa';
+    if (cot.visibilidad < 30 && !mismoPais) return 'geografia';
+    if (cot.visibilidad < 55 && !mismoContinente && !(vendedorEuropeo && joya)) return 'geografia';
+  }
+
+  /* No se baja en pleno ascenso. Hasta los 22 se permite un escalón para jugar; el banco también. */
+  const bajada = ctx.nivelActual - nivel;
+  if (!historia && !ctx.enElBanco && cot.edad < 30 && cot.trayectoria >= 0) {
+    if (bajada >= 2) return 'sentido';
+    if (bajada === 1 && cot.edad > 22) return 'sentido';
+  }
+  /* El descenso de los treinta y tres: solo de tu nivel para abajo, salvo tu casa. */
+  if (cot.edad >= 33 && nivel > ctx.nivelActual && !ctx.esDeLaCasa) return 'sentido';
+
+  /* Cuánto te quiere, para ordenar dentro del nivel: el que más te necesita y al que más le encajás. */
+  let deseo = nivel === 5 ? 60 : 60 - Math.abs(cot.nivel - club.fuerza) * 1.5;
+  deseo += cot.pruebas * 0.2;
+  if (nivel >= 4 && cot.edad >= 22 && cot.edad <= 27) deseo += 15;
+  if (VENDEDORES.has(club.slug) && cot.edad <= 23) deseo += 10 + cot.proyeccion * 0.2;
+  if (nivel > ctx.nivelActual) deseo += 12;
+  if (ctx.esDeLaCasa) deseo += 30;
+  if (ctx.esRival) deseo += 15;
+  return Math.max(1, deseo);
+}
+
+/* ───────────────────────────────────── las cuatro ofertas ───────────────────────────────────── */
 
 export interface ParametrosDeMercado {
   mundo: Mundo;
@@ -282,124 +390,160 @@ export interface ParametrosDeMercado {
   actual: Club | null;
 }
 
+const esDeTitular = (rol: Rol): boolean => rol === 'titular' || rol === 'estrella' || rol === 'capitan';
+
 /**
- * Arma las ofertas de la ventana. Nunca más de cuatro, y siempre variadas: se toma como mucho una
- * por liga para que las cuatro no sean el mismo destino con otro escudo, salvo el rival y la casa,
- * que entran por derecho propio porque son las decisiones que el jugador va a recordar.
+ * Las cuatro ofertas de la ventana: cuatro caminos, no cuatro sorteos.
+ *
+ * Antes se sacaban cuatro al azar entre todos los que te querían, una por liga. Con 90 de media hay
+ * cuarenta clubes europeos interesados y los ocho millonarios son el 20% del pozo: perdían el sorteo
+ * contra Roma y PSV tantas veces como lo ganaban. Ahora cada casillero tiene un sentido:
+ *
+ *   1. el salto — el club del nivel más alto que te quiere;
+ *   2. el puesto — el mejor club donde jugarías de titular, de otra liga;
+ *   3. la historia — la casa, el rival o el club al que juraste no ir; si no hay, otro país, y si sos
+ *      élite, el segundo millonario;
+ *   4. el comodín — el préstamo si estás en el banco, el destino tardío si tenés la edad, la sorpresa
+ *      uno de cada cinco mercados, o el siguiente mejor.
+ *
+ * **Siempre son cuatro.** Si las reglas de sentido no alcanzan, se relaja "otra liga"; si sigue
+ * faltando, se completa con clubes chicos de tu país, que siempre existen. La mala carrera no se siente
+ * en que falten ofertas: se siente en que las cuatro sean chicas.
  */
 export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeMercado): Oferta[] {
   const { mundo, actual } = params;
-  const candidatos: Array<{ club: Club; liga: Liga; peso: number; matices: string[] }> = [];
+  const cot = cotizacionDe(carrera, mundo);
 
   const ligaActual = mundo.ligas.find((l) => l.slug === actual?.ligaSlug) ?? null;
   const rival = actual && ligaActual ? rivalDe(azar, ligaActual, actual) : null;
   const casa = carrera.clubDeOrigen;
-
-  /*
-   * El último capítulo de una carrera es volver.
-   *
-   * Pasados los 33 el club donde debutaste —y su clásico rival, que es la otra gran historia— entran
-   * siempre entre las ofertas, cueste lo que cueste en el resto de las cuentas. Retirarse en casa o
-   * hacerlo enfrente son los dos finales que la gente recuerda, y el juego tiene que ofrecerlos.
-   */
-  const vuelveACasa = carrera.futbolista.edad >= 33 && casa !== null;
-
-  /*
-   * Europa se gana, no se sortea.
-   *
-   * La escalera real de un sudamericano es club chico → grande de su país → un país grande del mismo
-   * continente → Europa: un pibe de veinte que la rompe en Perú no ficha en la Bundesliga, primero
-   * pasa por Brasil, Argentina o México. La excepción es la joya —el que sale con una media que no se
-   * discute—, porque esa también es una historia real, solo que rara. Quien empieza en Europa no
-   * tiene puerta que abrir.
-   */
-  const continenteDeOrigen =
-    mundo.ligas.find((l) => l.slug === carrera.clubDeOrigen?.ligaSlug)?.continente ?? null;
-  const pesoMaximoJugado = carrera.temporadas.reduce(
-    (alto, t) => Math.max(alto, mundo.ligas.find((l) => l.slug === t.ligaSlug)?.peso ?? 0),
-    0,
-  );
-  const listoParaEuropa =
-    continenteDeOrigen === null ||
-    continenteDeOrigen === 'europa' ||
-    pesoMaximoJugado >= 72 ||
-    carrera.ovr >= 84;
   const ligaDeCasa = casa ? (mundo.ligas.find((l) => l.slug === casa.ligaSlug) ?? null) : null;
   const rivalDeCasa = casa && ligaDeCasa ? rivalDe(crearAzarDeCasa(carrera), ligaDeCasa, casa) : null;
+  /* El último capítulo de una carrera es volver: la casa y su clásico entran siempre pasados los 33. */
+  const vuelveACasa = cot.edad >= 33 && casa !== null;
 
+  const base: Omit<Contexto, 'esDeLaCasa' | 'esRival'> = {
+    nivelActual: actual && ligaActual ? nivelDeClub(actual, ligaActual) : 1,
+    paisActual: actual?.paisCodigo ?? carrera.futbolista.paisCodigo,
+    continenteActual: ligaActual?.continente ?? ligaDeCasa?.continente ?? 'sudamerica',
+    enElBanco: carrera.rol === 'suplente' || carrera.rol === 'promesa',
+  };
+
+  const candidatos: Candidato[] = [];
+  const rechazadosPorNivel: Candidato[] = [];
   for (const liga of mundo.ligas) {
-    /* Arabia, Japón o Canadá recién a los 30: antes rompen la carrera en lugar de darle sabor. */
-    if (esDestinoTardio(liga) && carrera.futbolista.edad < 30) continue;
-    if (liga.continente === 'europa' && !listoParaEuropa) continue;
     for (const club of liga.clubes) {
       if (club.slug === actual?.slug) continue;
       const esDeLaCasa = club.slug === casa?.slug;
-      const peso = interesDe(club, carrera, esDeLaCasa);
-      if (peso <= 0) continue;
+      const esRival = club.slug === rival?.slug || (vuelveACasa && club.slug === rivalDeCasa?.slug);
+      if (club.renombre < RENOMBRE_MINIMO && !esDeLaCasa && !esRival) continue;
 
+      const nivel = nivelDeClub(club, liga);
       const matices: string[] = [];
       if (club.slug === rival?.slug) matices.push('rival');
       if (esDeLaCasa && carrera.clubes.length > 1) matices.push('regreso');
+      if (vuelveACasa && club.slug === rivalDeCasa?.slug && club.slug !== rival?.slug) matices.push('rival', 'regreso-rival');
       if (liga.slug !== actual?.ligaSlug) matices.push('afuera');
-      /* Si alguna vez juraste no ir a este club, el juego lo sabe y la oferta llega marcada. */
-      if (carrera.recuerdos.some((r) => r.etiquetas.includes(`promesa:nunca:${club.slug}`))) {
-        matices.push('promesa-rota');
+      if (carrera.recuerdos.some((r) => r.etiquetas.includes(`promesa:nunca:${club.slug}`))) matices.push('promesa-rota');
+
+      /* Al final de la carrera la casa y su rival entran aunque las cuentas digan otra cosa. */
+      if (vuelveACasa && (esDeLaCasa || club.slug === rivalDeCasa?.slug)) {
+        candidatos.push({ club, liga, nivel, deseo: 160, matices });
+        continue;
       }
-      candidatos.push({ club, liga, peso, matices });
+      const veredicto = quiere(club, liga, nivel, cot, { ...base, esDeLaCasa, esRival });
+      if (typeof veredicto === 'number') candidatos.push({ club, liga, nivel, deseo: veredicto, matices });
+      else if (veredicto === 'nivel') rechazadosPorNivel.push({ club, liga, nivel, deseo: 1, matices });
     }
   }
 
-  /* Al final de la carrera, la casa y su rival entran aunque las cuentas digan otra cosa. */
-  if (vuelveACasa && ligaDeCasa) {
-    for (const club of [casa, rivalDeCasa]) {
-      if (!club || club.slug === actual?.slug) continue;
-      if (candidatos.some((c) => c.club.slug === club.slug)) continue;
-      candidatos.push({
-        club,
-        liga: ligaDeCasa,
-        peso: 160,
-        matices: club.slug === casa?.slug ? ['regreso'] : ['rival', 'regreso-rival'],
-      });
-    }
+  const elegidos: Candidato[] = [];
+  const yaEsta = (c: Candidato) => elegidos.some((e) => e.club.slug === c.club.slug);
+  const otraLiga = (c: Candidato) => !elegidos.some((e) => e.liga.slug === c.liga.slug);
+  const otroPais = (c: Candidato) => !elegidos.some((e) => e.club.paisCodigo === c.club.paisCodigo);
+  /*
+   * Cuántas de afuera caben, según cuánto te vieron: ninguna mientras solo te conoce tu país, una
+   * cuando el continente empieza a mirar, dos cuando ya te siguen, todas cuando te ve el mundo. La
+   * casa y el rival no cuentan: son la historia, vengan de donde vengan.
+   */
+  const cupoDeAfuera = cot.visibilidad < 30 ? 0 : cot.visibilidad < 45 ? 1 : cot.visibilidad < 55 ? 2 : MAX_OFERTAS;
+  const esLocal = (c: Candidato) => c.club.paisCodigo === base.paisActual;
+  const cabe = (c: Candidato) =>
+    esLocal(c) ||
+    c.matices.includes('regreso') ||
+    c.matices.includes('rival') ||
+    elegidos.filter((e) => !esLocal(e)).length < cupoDeAfuera;
+  const sortear = (lista: Candidato[]): Candidato | null =>
+    pesado(azar, lista.filter(cabe).map((c) => ({ item: c, peso: c.deseo })));
+  const tomar = (c: Candidato | null) => {
+    if (c && !yaEsta(c)) elegidos.push(c);
+  };
+
+  const nivelMax = candidatos.reduce<NivelDeClub>((alto, c) => (c.nivel > alto ? c.nivel : alto), 1);
+
+  /* 1. El salto. */
+  tomar(sortear(candidatos.filter((c) => c.nivel === nivelMax)));
+
+  /* 2. El puesto: donde jugarías de titular, en otra liga. */
+  tomar(
+    sortear(
+      candidatos.filter(
+        (c) =>
+          !yaEsta(c) &&
+          otraLiga(c) &&
+          c.nivel >= nivelMax - 1 &&
+          esDeTitular(rolPrometido(azar, c.club, cot.nivel, cot.edad)),
+      ),
+    ),
+  );
+
+  /* 3. La historia, o el segundo millonario, o otro país. */
+  const historia = candidatos
+    .filter((c) => !yaEsta(c) && c.matices.some((m) => m === 'regreso' || m === 'rival' || m === 'promesa-rota'))
+    .sort((a, b) => b.deseo - a.deseo)[0];
+  if (historia && (vuelveACasa || chance(azar, 0.55))) tomar(historia);
+  else if (nivelMax === 5) tomar(sortear(candidatos.filter((c) => !yaEsta(c) && c.nivel === 5 && otraLiga(c))));
+  if (elegidos.length < 3) tomar(sortear(candidatos.filter((c) => !yaEsta(c) && otroPais(c))));
+
+  /* 4. El comodín: préstamo, destino tardío, la sorpresa, o el siguiente mejor. */
+  const prestamo = ofertaDePrestamo(azar, carrera, mundo);
+  const tardio = sortear(candidatos.filter((c) => !yaEsta(c) && esDestinoTardio(c.liga)));
+  const sorpresaPosible = rechazadosPorNivel.filter(
+    (c) => c.nivel === nivelMax + 1 && !(c.nivel === 5 && (cot.edad < 22 || cot.pruebas < 30)),
+  );
+  const sorpresa = chance(azar, 0.25) ? sortear(sorpresaPosible) : null;
+  if (prestamo) {
+    /* el préstamo se agrega abajo ya como Oferta */
+  } else if (sorpresa) tomar({ ...sorpresa, matices: [...sorpresa.matices, 'sorpresa'] });
+  else if (tardio && cot.edad >= 29) tomar(tardio);
+  else tomar(sortear(candidatos.filter((c) => !yaEsta(c) && otraLiga(c))));
+
+  /* Siempre cuatro: primero se relaja "otra liga", después entran los chicos de tu país. */
+  const tope = prestamo ? MAX_OFERTAS - 1 : MAX_OFERTAS;
+  while (elegidos.length < tope) {
+    const siguiente = sortear(candidatos.filter((c) => !yaEsta(c)));
+    if (!siguiente) break;
+    tomar(siguiente);
   }
-
-  if (candidatos.length === 0) return [];
-
-  const elegidos: Array<{ club: Club; liga: Liga; matices: string[] }> = [];
-  const ligasTomadas = new Set<string>();
-
-  /* El rival y la casa entran primero: son las ofertas que hacen la historia. */
-  for (const especial of ['rival', 'regreso']) {
-    const encontrado = candidatos.find((c) => c.matices.includes(especial));
-    if (encontrado && elegidos.length < MAX_OFERTAS && (vuelveACasa || chance(azar, 0.55))) {
-      elegidos.push(encontrado);
-      ligasTomadas.add(encontrado.liga.slug);
+  if (elegidos.length < tope) {
+    const delPais = mundo.ligas
+      .flatMap((l) => l.clubes.map((club) => ({ club, liga: l })))
+      .filter(({ club }) => club.paisCodigo === base.paisActual && club.slug !== actual?.slug)
+      .filter(({ club }) => !elegidos.some((e) => e.club.slug === club.slug))
+      .sort((a, b) => Math.abs(a.club.fuerza - cot.nivel) - Math.abs(b.club.fuerza - cot.nivel));
+    for (const { club, liga } of delPais) {
+      if (elegidos.length >= tope) break;
+      elegidos.push({ club, liga, nivel: nivelDeClub(club, liga), deseo: 1, matices: liga.slug !== actual?.ligaSlug ? ['afuera'] : [] });
     }
-  }
-
-  const resto = mezclar(
-    azar,
-    candidatos.filter((c) => !elegidos.includes(c)),
-  ).map((c) => ({ item: c, peso: c.peso }));
-
-  while (elegidos.length < MAX_OFERTAS && resto.length > 0) {
-    const elegido = pesado(azar, resto);
-    if (!elegido) break;
-    const indice = resto.findIndex((r) => r.item === elegido);
-    resto.splice(indice, 1);
-    /* Una por liga: cuatro ofertas de la misma liga no son cuatro caminos distintos. */
-    if (ligasTomadas.has(elegido.liga.slug)) continue;
-    ligasTomadas.add(elegido.liga.slug);
-    elegidos.push(elegido);
   }
 
   const usados = new Set<string>();
-  return elegidos.map((e, i) => {
-    const rol = rolPrometido(azar, e.club, carrera.ovr, carrera.futbolista.edad);
-    const riesgo: 'bajo' | 'medio' | 'alto' =
-      e.matices.includes('rival') || e.club.fuerza - carrera.ovr > 8
+  const ofertas: Oferta[] = elegidos.map((e, i) => {
+    const rol = rolPrometido(azar, e.club, cot.nivel, cot.edad);
+    const riesgo: Oferta['riesgo'] =
+      e.matices.includes('rival') || e.matices.includes('sorpresa') || e.club.fuerza - cot.nivel > 8
         ? 'alto'
-        : e.club.fuerza - carrera.ovr > 0
+        : e.club.fuerza - cot.nivel > 0
           ? 'medio'
           : 'bajo';
     return {
@@ -408,13 +552,14 @@ export function armarOfertas(azar: Azar, carrera: Carrera, params: ParametrosDeM
       salario: salarioDe(azar, e.club, carrera.valor, rol),
       rolPrometido: rol,
       proyecto: proyectoDe(azar, e.club, rol, riesgo, usados),
-      /* Cuatro a ocho años: dos a cuatro capítulos. Con contratos de dos años el mercado abría en
-         todos los capítulos y una carrera terminaba con ocho camisetas. */
+      /* Cuatro a ocho años: dos a cuatro capítulos. */
       temporadas: entre(azar, 4, 8),
       matices: e.matices,
       riesgo,
+      escalon: nombreDelNivelDeClub(e.nivel, e.liga),
     } satisfies Oferta;
   });
+  return prestamo ? [...ofertas, prestamo] : ofertas;
 }
 
 /**
@@ -499,6 +644,7 @@ export function ofertasDeDebut(azar: Azar, carrera: Carrera, liga: Liga): Oferta
       ),
       temporadas: entre(azar, 4, 6),
       matices: ['debut'],
+      escalon: nombreDelNivelDeClub(nivelDeClub(club, liga), liga),
       riesgo: club.fuerza > carrera.ovr + 8 ? 'medio' : 'bajo',
     } satisfies Oferta;
   });
@@ -541,6 +687,7 @@ export function ofertaDePrestamo(azar: Azar, carrera: Carrera, mundo: Mundo): Of
     temporadas: 2,
     matices: ['prestamo'],
     riesgo: 'bajo',
+    escalon: nombreDelNivelDeClub(nivelDeClub(club, ligaDelClub(mundo, club)), ligaDelClub(mundo, club)),
   };
 }
 

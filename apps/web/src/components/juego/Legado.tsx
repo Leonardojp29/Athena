@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { calcularVeredicto, fueraDeLaCancha, type Carrera } from '@athena/leyenda';
 import Carta from './Carta';
+import Tooltip from './Tooltip';
+import TrofeoContenido from './TrofeoContenido';
+import { agruparTrofeos } from './trofeos';
 
 /**
  * El cierre.
@@ -61,7 +64,7 @@ export default function Legado({ carrera, onEmpezarDeNuevo, codigo }: Props) {
             {ROTULO_DE_FINAL[carrera.retiro?.motivo ?? 'edad'] ??
               (carrera.retiro?.enCasa ? 'Se retiró en casa' : 'Fin de la carrera')}
           </p>
-          <h1 className="font-display text-3xl font-semibold uppercase leading-none tracking-label sm:text-4xl">
+          <h1 className="mt-1 font-display text-3xl font-semibold uppercase leading-[1.05] tracking-label sm:text-4xl">
             {veredicto.adn.titulo}
           </h1>
         </div>
@@ -386,22 +389,7 @@ function TarjetasDeClub({ carrera }: { carrera: Carrera }) {
  * etiquetas de texto iguales. Es el objeto de colección de la partida y tiene que verse como uno.
  */
 function Vitrina({ carrera }: { carrera: Carrera }) {
-  const grupos = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; escudo: string | null; clase: string; veces: number; anios: number[] }>();
-    for (const trofeo of carrera.trofeos) {
-      const clave = `${trofeo.nombre}|${trofeo.clase}`;
-      const previo = mapa.get(clave);
-      mapa.set(clave, {
-        nombre: trofeo.nombre,
-        escudo: trofeo.escudo ?? null,
-        clase: trofeo.clase,
-        veces: (previo?.veces ?? 0) + 1,
-        anios: [...(previo?.anios ?? []), trofeo.temporada],
-      });
-    }
-    const orden: Record<string, number> = { seleccion: 0, continental: 1, liga: 2, copa: 3, individual: 4 };
-    return [...mapa.values()].sort((a, b) => (orden[a.clase] ?? 9) - (orden[b.clase] ?? 9) || b.veces - a.veces);
-  }, [carrera.trofeos]);
+  const grupos = useMemo(() => agruparTrofeos(carrera.trofeos), [carrera.trofeos]);
 
   if (grupos.length === 0) {
     return (
@@ -419,38 +407,54 @@ function Vitrina({ carrera }: { carrera: Carrera }) {
         La vitrina
         <span className="text-2xs tabular text-ink-muted">{carrera.trofeos.length}</span>
       </h2>
-      <ul className="grid min-h-0 min-w-0 gap-2 overflow-x-hidden lg:overflow-y-auto lg:pr-1">
-        {grupos.map((grupo) => (
-          <li
-            key={`${grupo.nombre}-${grupo.clase}`}
-            className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 ${
-              grupo.clase === 'individual'
-                ? 'border-data/30 bg-data/8'
-                : grupo.clase === 'seleccion'
-                  ? 'border-primary/40 bg-primary/8'
-                  : 'border-card-yellow/30 bg-card-yellow/8'
-            }`}
-          >
-            <span className="flex size-11 shrink-0 items-center justify-center">
-              {grupo.escudo ? (
-                <img src={grupo.escudo} alt="" width={44} height={44} className="max-h-11 max-w-11 object-contain" loading="lazy" />
-              ) : (
-                <span className={grupo.clase === 'individual' ? 'text-data' : 'text-card-yellow'}>
-                  <Trofeo grande />
+      {/*
+        Cada copa es una fila corta: el escudo de la competencia, el símbolo del trofeo y el ×N. Nada
+        de insignias en las esquinas —con `overflow` en el contenedor, cualquier cosa posicionada por
+        fuera de la caja se corta, y era exactamente lo que estaba pasando—. La identidad de cada
+        competencia vive en el hover, con `title` nativo más un `sr-only`: es el patrón del proyecto y
+        además deja de depender del color como único canal.
+      */}
+      <ul className="grid min-h-0 min-w-0 grid-cols-2 content-start gap-2 overflow-x-hidden lg:overflow-y-auto lg:pr-1">
+        {grupos.map((grupo) => {
+          const detalle = grupo.detalle;
+          const tinte =
+            grupo.clase === 'individual'
+              ? 'border-data/30 bg-data/8 text-data'
+              : grupo.clase === 'seleccion'
+                ? 'border-primary/40 bg-primary/8 text-primary'
+                : 'border-card-yellow/30 bg-card-yellow/8 text-card-yellow';
+          return (
+            <li key={`${grupo.nombre}-${grupo.clase}`} className="min-w-0">
+              <Tooltip contenido={<TrofeoContenido grupo={grupo} />}>
+              <span
+                className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 text-xs tabular ${tinte}`}
+              >
+                <span className="grid size-7 shrink-0 place-items-center">
+                  {grupo.escudo ? (
+                    <img
+                      src={grupo.escudo}
+                      alt=""
+                      width={28}
+                      height={28}
+                      className="max-h-7 max-w-7 object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <Trofeo />
+                  )}
                 </span>
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium leading-tight">{grupo.nombre}</span>
-              <span className="block truncate text-[10px] tabular text-ink-muted">
-                {grupo.anios.sort((a, b) => a - b).join(' · ')}
+                <span aria-hidden="true" className="shrink-0">
+                  <Trofeo />
+                </span>
+                <span className="ml-auto font-display text-sm font-semibold text-ink">
+                  {grupo.veces > 1 ? `×${grupo.veces}` : ''}
+                </span>
+                <span className="sr-only">{detalle}</span>
               </span>
-            </span>
-            {grupo.veces > 1 && (
-              <span className="shrink-0 font-display text-xl font-semibold tabular">×{grupo.veces}</span>
-            )}
-          </li>
-        ))}
+              </Tooltip>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

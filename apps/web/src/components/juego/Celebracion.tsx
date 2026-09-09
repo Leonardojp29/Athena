@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NOMBRE_DE_NIVEL, type Cambio, type Capitulo, type Resultado, type Trofeo } from '@athena/leyenda';
+import { plata } from './cifras';
 
 /**
  * Lo que se celebra.
@@ -209,10 +210,11 @@ function EscenaDeResultado({ resultado }: { resultado: Resultado }) {
 function Chip({ cambio }: { cambio: Cambio }) {
   /* El estrés es el único al revés: que suba es una mala noticia. */
   const bueno = cambio.rotulo === 'Estrés' ? cambio.delta < 0 : cambio.delta > 0;
+  const signo = cambio.delta > 0 ? '+' : '−';
   const valor =
     cambio.formato === 'millones'
-      ? `${cambio.delta > 0 ? '+' : '−'}${Math.abs(cambio.delta).toFixed(1)} M`
-      : `${cambio.delta > 0 ? '+' : '−'}${Math.abs(Math.round(cambio.delta))}`;
+      ? `${signo}${plata(Math.abs(cambio.delta))}`
+      : `${signo}${Math.abs(Math.round(cambio.delta))}`;
 
   return (
     <span

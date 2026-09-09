@@ -197,7 +197,7 @@ export function crearCarrera(datos: DatosDeCreacion): Carrera {
     retiro: null,
     clubes: [],
     ovr,
-    nivel: nivelDe(ovr, { trofeos: 0, premios: 0 }),
+    nivel: nivelDe(ovr, { trofeos: 0, premios: 0 }, edad),
     valor: valorDeMercado(ovr, edad, potencial),
   };
 }
@@ -222,8 +222,17 @@ export function crecimiento(
     minutos: number;
     profesionalismo: number;
     lesiones: number;
+    /** La nota media del bienio: es lo que el club vio de ti. */
+    nota: number;
+    /** Goles y partidos del bienio, para saber si fuiste decisivo o solo estuviste. */
+    goles: number;
+    partidos: number;
+    /** Lo que ganaste en estos dos años. Ganar enseña. */
+    titulos: number;
+    /** El peso de la liga donde jugaste, 0-100. */
+    pesoDeLaLiga: number;
   },
-): number {
+): { delta: number; potencial: number } {
   const { edad, ovr, potencial, minutos, profesionalismo, lesiones } = params;
   const margen = potencial - ovr;
   const porMinutos = limitar(minutos / 2200, 0.15, 1.15);
@@ -238,14 +247,55 @@ export function crecimiento(
   else if (edad <= 33) base = -4;
   else base = -6.5;
 
+  /*
+   * Cuánto valió el bienio. Antes el crecimiento no miraba **nada** de lo que pasó en la cancha:
+   * meter veinte goles y salir campeón te subía lo mismo que meter dos y terminar duodécimo, y por
+   * eso la media se sentía estancada. Ahora las tres cosas que el jugador percibe entran en la
+   * cuenta: cómo rendiste, qué ganaste y en qué liga lo hiciste.
+   */
+  const porNota = limitar(0.62 + (params.nota - 6.4) * 0.45, 0.6, 1.7);
+  const porGol = limitar(1 + (params.goles / Math.max(10, params.partidos) - 0.14) * 1.5, 0.9, 1.45);
+  const porTitulos = 1 + Math.min(params.titulos, 3) * 0.15;
+  /* Europa exige más y enseña más: la misma temporada rinde un veinte por ciento más de aprendizaje. */
+  const porLiga = 0.9 + (limitar(params.pesoDeLaLiga, 30, 100) / 100) * 0.45;
+  const rendimiento = limitar(porNota * porGol * porTitulos * porLiga, 0.55, 1.85);
+
+  /*
+   * El techo se mueve, y solo hacia arriba.
+   *
+   * A un chico de dieciséis nadie le escribió el techo en la frente: un bienio enorme en un grande de
+   * Europa lo corre. Es lo que evita que la media se muera contra un número decidido en la creación,
+   * que era la otra mitad de "avanza muy poco".
+   */
+  const seGanoElTecho =
+    base > 0 && edad <= 28 && rendimiento > 1.62 && params.pesoDeLaLiga >= 70 && params.titulos > 0;
+  const potencialNuevo = seGanoElTecho
+    ? Math.min(93, potencial + Math.min(2, Math.round(1 + (rendimiento - 1.62) * 4)))
+    : potencial;
+
   if (base > 0) {
-    /* Cerca del techo, cada punto cuesta el doble. */
-    const acercamiento = limitar(margen / 14, 0, 1);
-    const bruto = base * porMinutos * porOficio * acercamiento + campana(azar, 0, 1.2);
-    return limitar(bruto, -2, margen);
+    /*
+     * Cerca del techo cada punto cuesta más, pero ya no se apaga del todo: con el divisor en 14 y
+     * sin piso, un jugador a cuatro puntos de su techo crecía 0,3 por bienio y en pantalla eso es
+     * cero.
+     */
+    const acercamiento = limitar((potencialNuevo - ovr) / 17, 0.1, 1);
+    const bruto = base * porMinutos * porOficio * acercamiento * rendimiento + campana(azar, 0, 1.2);
+    /*
+     * Y un tope por bienio, que es lo que faltaba. Sin él, un juvenil con dos años enormes saltaba
+     * once puntos de golpe y llegaba a 89 a los veinte: la escalera entera se saltaba en un capítulo.
+     * Nadie mejora así en dos años, y el techo baja con la edad porque el margen de mejora también.
+     */
+    const tope = edad <= 21 ? 6 : edad <= 27 ? 4.5 : 3;
+    const margenReal = Math.max(0, potencialNuevo - ovr);
+    return { delta: limitar(bruto, -2, Math.min(tope, margenReal)), potencial: potencialNuevo };
   }
 
-  /* La bajada se amortigua con oficio y se acelera con lesiones. */
+  /*
+   * La bajada se amortigua con oficio, se acelera con lesiones y **se frena si todavía rindes**: un
+   * veterano que sigue metiendo goles no se cae por el calendario.
+   */
   const castigo = 1 - (profesionalismo / 100) * 0.4 + lesiones * 0.12;
-  return base * castigo + campana(azar, 0, 0.9);
+  const delta = (base * castigo) / limitar(rendimiento, 0.85, 1.7) + campana(azar, 0, 0.9);
+  return { delta, potencial: potencialNuevo };
 }

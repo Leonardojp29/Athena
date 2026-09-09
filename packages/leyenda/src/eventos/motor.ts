@@ -39,8 +39,43 @@ export type Rareza = 'comun' | 'infrecuente' | 'raro' | 'epico' | 'legendario' |
  */
 export type Picante = 1 | 2 | 3;
 
-/** Desde qué capítulo se destraba cada nivel. Doce capítulos, de los 16 a los 38. */
-export const CAPITULO_DE_PICANTE: Record<Picante, number> = { 1: 0, 2: 3, 3: 6 };
+/**
+ * De qué fútbol habla un evento.
+ *
+ * Un evento sin ámbito sale en cualquier parte, porque la pelea en el vestuario, las apuestas, la
+ * lesión y el técnico son iguales en todos lados. Los que sí lo declaran solo salen ahí, y eso es lo
+ * que evita que el juego te pregunte por el mundialito del barrio mientras juegas en Alemania: eran
+ * veinticuatro eventos de sesenta y uno con color peruano disparándose en cualquier liga del mundo.
+ *
+ * La clasificación es la misma con la que `personajes/` ya elige los nombres de cada región, así que
+ * no se inventa dos veces.
+ */
+export type Ambito = 'andino' | 'rioplatense' | 'brasileno' | 'europeo';
+
+const PAISES_POR_AMBITO: Record<Ambito, string[]> = {
+  andino: ['PE', 'BO', 'EC'],
+  rioplatense: ['AR', 'UY', 'CL', 'PY'],
+  brasileno: ['BR'],
+  europeo: [],
+};
+
+/** En qué ámbito juega hoy. Sin club, en ninguno: los eventos con ámbito no salen. */
+export function ambitoDe(club: { paisCodigo: string | null; continente: string } | null): Ambito | null {
+  if (!club) return null;
+  for (const [ambito, paises] of Object.entries(PAISES_POR_AMBITO) as Array<[Ambito, string[]]>) {
+    if (club.paisCodigo && paises.includes(club.paisCodigo)) return ambito;
+  }
+  return club.continente === 'europa' ? 'europeo' : null;
+}
+
+/**
+ * Desde qué capítulo se destraba cada nivel. Doce capítulos, de los 16 a los 38.
+ *
+ * El nivel 2 abre en el capítulo 2 —a los veinte— y no en el tercero: con el nivel 1 solo, el pozo
+ * de los primeros capítulos era de once eventos y las primeras preguntas de cada carrera terminaban
+ * siendo casi las mismas. A los veinte, el ampay y la farándula ya tienen todo el sentido.
+ */
+export const CAPITULO_DE_PICANTE: Record<Picante, number> = { 1: 0, 2: 2, 3: 6 };
 
 export const picanteDe = (evento: Evento): Picante => evento.picante ?? 1;
 
@@ -48,14 +83,24 @@ export const picanteDe = (evento: Evento): Picante => evento.picante ?? 1;
 export const alcanzaElPicante = (evento: Evento, capitulo: number): boolean =>
   capitulo >= CAPITULO_DE_PICANTE[picanteDe(evento)];
 
-/** Cuánto pesa cada rareza. Lo mítico tiene que ser mítico de verdad. */
+/**
+ * Cuánto pesa cada rareza.
+ *
+ * La escala era mucho más empinada —100 contra 45, 18, 6, 2 y 0,4— y eso hacía que dos carreras
+ * distintas se parecieran demasiado: con una sola pregunta por capítulo se sortean once o doce
+ * eventos de setenta y seis, y con esos pesos los comunes se llevaban casi todos los turnos. El
+ * jugador lo notó jugando la segunda carrera: "siento que hay varias repetidas de la primera".
+ *
+ * Aplanada, el pozo efectivo se acerca al catálogo entero: dos carreras seguidas comparten uno o dos
+ * eventos en lugar de media docena. Lo raro sigue siendo raro, pero raro es raro, no invisible.
+ */
 export const PESO_DE_RAREZA: Record<Rareza, number> = {
   comun: 100,
-  infrecuente: 45,
-  raro: 18,
-  epico: 6,
-  legendario: 2,
-  mitico: 0.4,
+  infrecuente: 78,
+  raro: 52,
+  epico: 30,
+  legendario: 14,
+  mitico: 4,
 };
 
 export interface Condiciones {
@@ -93,6 +138,8 @@ export interface Condiciones {
    * profesionalismo bajo, no porque sí— y por eso son rangos y no umbrales sueltos.
    */
   vida?: Partial<Record<keyof Carrera['vida'], [number, number]>>;
+  /** Dónde tiene sentido este evento. Sin declararlo, en cualquier parte. */
+  ambito?: Ambito[];
 }
 
 /** El efecto de una opción sobre el estado. Todo es relativo: sumas y restas, nunca asignaciones. */
@@ -206,6 +253,11 @@ export function cumple(evento: Evento, carrera: Carrera, etiquetas: Set<string>)
   if (c.estresMin !== undefined && vida.estres < c.estresMin) return false;
   if (c.clubesMin !== undefined && carrera.clubes.length < c.clubesMin) return false;
 
+  if (c.ambito) {
+    const ambito = ambitoDe(carrera.clubActual);
+    if (!ambito || !c.ambito.includes(ambito)) return false;
+  }
+
   if (c.clubFuerzaMin !== undefined && (carrera.clubActual?.fuerza ?? 0) < c.clubFuerzaMin) return false;
   if (c.clubFuerzaMax !== undefined && (carrera.clubActual?.fuerza ?? 100) > c.clubFuerzaMax) return false;
 
@@ -238,12 +290,19 @@ export function cumple(evento: Evento, carrera: Carrera, etiquetas: Set<string>)
 }
 
 /** ¿Ya salió hace poco? Sin cooldown declarado, un evento no se repite nunca. */
+/**
+ * ¿Ya salió en esta carrera?
+ *
+ * Una pregunta no se repite **nunca** dentro de la misma carrera, y esa es la regla. Antes el
+ * `cooldown` estaba en años y un capítulo son dos, así que un `cooldown: 4` volvía a los dos
+ * capítulos: medido, el 63% de las carreras repetía por lo menos una pregunta. Con setenta y seis
+ * eventos escritos y once por carrera no hay ninguna razón para que eso pase.
+ *
+ * El `cooldown` de cada evento sigue declarado y sigue significando algo: es el orden en que la
+ * última red (`ignorarCooldown`) elige a quién repetir si algún día el pozo se vacía de verdad.
+ */
 function disponible(evento: Evento, carrera: Carrera): boolean {
-  const visto = carrera.vistos[evento.id];
-  if (visto === undefined) return true;
-  const cooldown = evento.cooldown ?? 0;
-  if (cooldown === 0) return false;
-  return carrera.anio - visto >= cooldown;
+  return carrera.vistos[evento.id] === undefined;
 }
 
 export interface OpcionesDeSorteo {
@@ -251,6 +310,8 @@ export interface OpcionesDeSorteo {
   categorias?: Categoria[];
   /** Un evento pedido explícitamente (el `luego` de otra decisión). */
   forzado?: string | null;
+  /** Última red: antes de dejar al jugador sin pregunta, se repite uno que ya vio. */
+  ignorarCooldown?: boolean;
 }
 
 export function elegirEvento(
@@ -273,7 +334,7 @@ export function elegirEvento(
     (e) =>
       (!opciones.categorias || opciones.categorias.includes(e.categoria)) &&
       alcanzaElPicante(e, carrera.capitulo) &&
-      disponible(e, carrera) &&
+      (opciones.ignorarCooldown || disponible(e, carrera)) &&
       cumple(e, carrera, etiquetas),
   );
   return pesado(
@@ -292,6 +353,8 @@ export function redactar(
     dt: string;
     liga: string;
     pais: string;
+    /** El país donde juega hoy, que no es lo mismo que su nacionalidad. */
+    paisDelClub?: string;
     figura?: string;
     periodista?: string;
     companero?: string;
@@ -305,6 +368,7 @@ export function redactar(
     .replaceAll('{dt}', datos.dt)
     .replaceAll('{liga}', datos.liga)
     .replaceAll('{pais}', datos.pais)
+    .replaceAll('{paisDelClub}', datos.paisDelClub ?? datos.pais)
     .replaceAll('{figura}', datos.figura ?? 'una figura de la televisión')
     .replaceAll('{periodista}', datos.periodista ?? 'un periodista')
     .replaceAll('{companero}', datos.companero ?? 'un compañero');

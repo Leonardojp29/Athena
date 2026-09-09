@@ -82,7 +82,7 @@ export const EVENTOS_DE_FARANDULA: Evento[] = [
     texto:
       'Un compañero cumple años y arma algo grande. Es jueves, y el domingo se juega contra el segundo de {liga}.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1, edadMax: 30 },
+    condiciones: { temporadasMin: 1 },
     cooldown: 5,
     peso: 1.5,
     opciones: [

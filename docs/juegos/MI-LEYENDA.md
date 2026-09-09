@@ -225,23 +225,51 @@ puede exigir (`conEtiquetas`) o excluir (`sinEtiquetas`) lo que ya pasó.
 ## La escalera
 
 La carrera soñada tiene una forma y el mercado la respeta: **club chico de tu país → grande local →
-un país grande del mismo continente → Europa, que es el techo → volver a casa o a la del rival**.
-Tres reglas la sostienen, todas en `mercado.ts`:
+un país grande del mismo continente → Europa → los millonarios, si llegás → volver a casa o a la del
+rival**. El mercado que la produce está en `mercado.ts` y razona como un director deportivo, en tres
+piezas y una regla de composición.
 
-- **Un escalón por vez.** `ESCALONES` parte el renombre en cinco tramos y una oferta normal sube como
-  mucho uno; saltar dos lo hace solo la joya, el que sale con una media que no se discute.
-- **Europa se gana.** Quien no nació en Europa la ve recién después de pasar por una liga de peso 72
-  o más —México, Argentina, Brasil— o de romperla con 84 de media. Sin esta regla, un pibe de veinte
-  pasaba de Cusco a la Bundesliga.
-- **Los destinos de madurez** —Asia, África, la MLS y las ligas de peso bajo— aparecen a partir de los
-  30, cuando son una decisión con sabor en lugar de un mal comienzo. Pasados los 33, el club donde
-  debutaste y su clásico rival entran siempre entre las ofertas.
+**La cotización** (`cotizacionDe`) es cómo te ve un scout: `nivel` (la media), `pruebas` —lo que
+demostraste en los dos últimos bienios: partidos, goles y asistencias por partido según el puesto,
+nota, títulos—, `visibilidad` —quién puede verte: la liga donde jugás, la copa continental si la
+jugaste, la selección, la fama, todo escalado por los minutos que tuviste—, `proyeccion` hasta los 24 y
+`trayectoria`. Antes la única señal de rendimiento era el último bienio y un 72 con siete partidos se
+veía idéntico a un 72 con cuarenta: por eso Boca quería al chico de Lanús que había jugado siete.
 
-**El mercado mira la media y la edad, en ese orden.** `brechaTolerada(edad)` dice cuánto por encima
-de tu nivel puede estar un club que te llame: veintidós puntos a los veinte —te compran por lo que
-vas a ser—, seis a los veintiocho y ninguno a partir de los treinta y tres, cuando un club que te
-queda por encima ya no te ficha. Y `ajustePorEdad` es la curva del club: un grande quiere el prime y
-paga por una promesa con techo, un club chico es donde uno empieza y donde uno vuelve.
+**El nivel del club** (`nivelDeClub`) tiene cinco escalones y **no sale del renombre solo**, porque
+el renombre no es comparable entre ligas —Brasil, México y la MLS están inflados diez puntos sobre su
+fuerza; Italia, Portugal y Países Bajos deflacionados hasta catorce—: con renombre crudo Betis y
+Freiburg quedaban por encima de PSG. El escalón de arriba, los **millonarios**, es una lista declarada
+(`MILLONARIOS`), igual que `clasicos.ts` declara los rivales: quién es millonario lo dicen la historia
+y la plata, no la tabla del año pasado. Hay dos marcas más: los **vendedores** (Porto, Ajax, PSV, los
+grandes de Brasil y Argentina), que compran joven con proyección, y los **destinos tardíos** (MLS,
+Arabia, Japón, Canadá, Egipto), que aparecen a los 29 o a los 27 si ya vas en bajada.
+
+**Quién te quiere** (`quiere`) es una puerta por nivel —el millonario compra un 85 probado en su prime
+o la joya de veintidós en alza; el grande local compra a cualquiera de 60 que haya jugado una
+temporada— más tres reglas de sentido: la geografía la fija la visibilidad (con menos de 30 solo te ve
+tu país, hasta 55 tu continente, después el mundo), no se baja en pleno ascenso salvo un escalón para
+jugar hasta los 22, y pasados los 33 el camino es hacia abajo. La única que salta la puerta de nivel
+es tu casa; el rival puede saltarse la geografía y el sentido, pero tiene que quererte.
+
+**Cuatro caminos, no cuatro sorteos** (`armarOfertas`). Cada casillero tiene un sentido: el salto (el
+nivel más alto que te quiere), el puesto (donde jugarías de titular, en otra liga), la historia (la
+casa, el rival, el club al que juraste no ir; si sos élite, el segundo millonario) y el comodín (el
+préstamo si estás en el banco, la sorpresa uno de cada cuatro mercados, el destino tardío si tenés la
+edad). **Siempre son cuatro**: si falta, entran los chicos de tu país. La mala carrera no se siente en
+que falten ofertas sino en que las cuatro sean chicas. Y las de afuera tienen cupo según la visibilidad:
+ninguna mientras solo te conoce tu país, una cuando el continente empieza a mirar, dos cuando ya te
+siguen, todas cuando te ve el mundo.
+
+**La sorpresa** es lo que lo vuelve juego: uno de cada cuatro mercados, el comodín trae un club un
+escalón por encima de lo que tu cotización permite —el grande que manda un scout y se la juega
+contigo—, marcado como riesgo alto y con rol de promesa. Nunca es un millonario antes de los 22.
+
+Medido sobre 400 carreras desde Perú: el primer mercado es 100% del país; el chico de 72 con siete
+partidos en Lanús recibe Independiente, San Lorenzo, Platense y Vélez; el ícono de 90 en Flamengo
+recibe Chelsea, Porto, la vuelta a Lanús y Barcelona; el 94% de las carreras que llegan a 85 ven un
+millonario; los catorce millonarios aparecen con frecuencias parejas; la casa o su rival está en el 98%
+de los mercados pasados los 33; y siempre hay cuatro ofertas salvo 14 mercados de 4.400.
 
 **El clásico no se deduce de la tabla: se hereda.** Tres capas, en `clasicos.ts` y `mercado.ts`: una
 tabla curada de ~70 derbis por slug (Universitario–Alianza, Boca–River, United–Liverpool,

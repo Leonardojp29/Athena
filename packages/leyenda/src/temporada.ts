@@ -226,13 +226,22 @@ export function rolSiguiente(azar: Azar, carrera: Carrera & { enCurso: Temporada
     rendimiento * 14 +
     (carrera.futbolista.edad < 20 ? -8 : 0);
 
+  /*
+   * Y un techo duro por nivel, que el rendimiento no compra.
+   *
+   * Los pesos de abajo nunca eran cero del todo —`titular` conservaba 0,3 incluso con el puntaje en
+   * contra— y con eso un jugador de 65 se sostenía de titular en el Manchester United temporada tras
+   * temporada. Rendir bien te mantiene en un plantel que te queda grande; no te pone en el once. Un
+   * club no alinea a alguien diez puntos por debajo de su nivel por mucho que se porte bien.
+   */
+  const brechaGrande = brecha > 10;
   const escala: Array<{ item: Rol; peso: number }> = [
     { item: 'promesa', peso: puntaje < -18 ? 3 : 0 },
-    { item: 'suplente', peso: puntaje < -6 ? 3 : 0.4 },
-    { item: 'rotacion', peso: puntaje >= -14 && puntaje < 8 ? 3 : 0.6 },
-    { item: 'titular', peso: puntaje >= 2 ? 3 : 0.3 },
-    { item: 'estrella', peso: puntaje >= 16 ? 2.4 : 0 },
-    { item: 'capitan', peso: puntaje >= 22 && carrera.futbolista.edad >= 27 ? 1.6 : 0 },
+    { item: 'suplente', peso: puntaje < -6 || brecha > 16 ? 3 : 0.4 },
+    { item: 'rotacion', peso: (puntaje >= -14 && puntaje < 8) || brechaGrande ? 3 : 0.6 },
+    { item: 'titular', peso: brechaGrande ? 0 : puntaje >= 2 ? 3 : 0.3 },
+    { item: 'estrella', peso: brecha > 4 ? 0 : puntaje >= 16 ? 2.4 : 0 },
+    { item: 'capitan', peso: brecha > 2 ? 0 : puntaje >= 22 && carrera.futbolista.edad >= 27 ? 1.6 : 0 },
   ];
   return pesado(azar, escala) ?? 'rotacion';
 }

@@ -1,4 +1,5 @@
-import { MAX_OFERTAS, NOMBRE_DE_ROL, type Club, type Oferta } from '@athena/leyenda';
+import { MAX_OFERTAS, NOMBRE_DE_ROL, type Club, type EstadoDelMercado, type Oferta } from '@athena/leyenda';
+import { plata } from './cifras';
 
 /**
  * Los clubes que te quieren.
@@ -16,9 +17,17 @@ interface Props {
   ofertas: Oferta[];
   esDebut: boolean;
   clubActual: Club | null;
-  puedeQuedarse: boolean;
+  /**
+   * En qué situación está: el club te renueva, el club no te quiere, o el club no te quiere y ya
+   * tienes edad para colgar los botines. El botón de quedarse antes aparecía o desaparecía, y cuando
+   * desaparecía no había forma de saber si el club no te quería o si el juego se había roto.
+   */
+  estado: EstadoDelMercado;
+  /** Pasados los 32, colgar los botines es una decisión que está siempre sobre la mesa. */
+  puedeRetirarse: boolean;
   onFirmar: (ofertaId: string) => void;
   onQuedarse: () => void;
+  onRetirarse: () => void;
   onRechazarTodo: () => void;
 }
 
@@ -38,16 +47,15 @@ const MATICES: Record<string, string> = {
   prestamo: 'A préstamo, para jugar',
 };
 
-const plata = (millones: number) =>
-  millones >= 1 ? `${millones.toFixed(1)} M` : `${Math.round(millones * 1000)} mil`;
-
 export default function Ofertas({
   ofertas,
   esDebut,
   clubActual,
-  puedeQuedarse,
+  estado,
+  puedeRetirarse,
   onFirmar,
   onQuedarse,
+  onRetirarse,
   onRechazarTodo,
 }: Props) {
   const cuantas = Math.min(ofertas.length, MAX_OFERTAS);
@@ -108,6 +116,8 @@ export default function Ofertas({
                     </span>
                     <span className="block truncate text-[10px] uppercase tracking-label text-ink-muted">
                       {oferta.club.ligaNombre} · {oferta.club.pais}
+                      <span className="text-ink-muted/60"> · </span>
+                      <span className="text-primary-ink">{oferta.escalon}</span>
                     </span>
                   </span>
                   <span className="shrink-0 rounded bg-canvas-subtle px-1.5 py-0.5 font-display text-sm font-semibold tabular">
@@ -154,22 +164,64 @@ export default function Ofertas({
         })}
       </ul>
 
-      {(ofertas.length === 0 || (puedeQuedarse && clubActual)) && (
-        <div className="flex flex-wrap gap-2">
-          {puedeQuedarse && clubActual && (
+      {(ofertas.length === 0 || clubActual) && (
+        <div className="flex flex-col gap-2">
+          {/* El club te quiere: te quedas y listo. */}
+          {estado === 'renovar' && clubActual && (
             <button
               type="button"
+              data-quedarse
               onClick={onQuedarse}
-              className="flex-1 cursor-pointer rounded-lg border border-border-strong px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-label transition-colors duration-200 hover:bg-canvas-subtle"
+              className="cursor-pointer rounded-lg border border-border-strong px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-label transition-colors duration-200 hover:bg-canvas-subtle"
             >
               Quedarme en {clubActual.nombre}
             </button>
           )}
-          {ofertas.length === 0 && (
+
+          {/*
+            El club no te quiere y todavía hay carrera por delante. El botón se muestra apagado en
+            lugar de desaparecer: que no se pueda no significa que no haya que explicarlo.
+          */}
+          {estado === 'bloqueado' && clubActual && (
+            <span
+              data-quedarse-bloqueado
+              className="flex flex-col gap-0.5 rounded-lg border border-dashed border-border px-4 py-2.5 text-center"
+            >
+              <span className="font-display text-sm font-semibold uppercase tracking-label text-ink-muted">
+                Quedarme en {clubActual.nombre}
+              </span>
+              <span className="text-[11px] text-ink-muted">
+                {clubActual.nombre} no quiere renovarte. Hay que buscar equipo.
+              </span>
+            </span>
+          )}
+
+          {/*
+            Y pasados los 32, el retiro. No hace falta que el club te eche: si quieres terminar tu
+            carrera acá, se termina acá. Firmar en cualquier parte para seguir existiendo no puede ser
+            la única salida.
+          */}
+          {puedeRetirarse && clubActual && (
+            <button
+              type="button"
+              data-retirarse
+              onClick={onRetirarse}
+              className="flex cursor-pointer flex-col gap-0.5 rounded-lg border border-card-yellow/45 bg-card-yellow/10 px-4 py-2.5 text-center transition-colors duration-200 hover:bg-card-yellow/18"
+            >
+              <span className="font-display text-sm font-semibold uppercase tracking-label">
+                Retirarme en {clubActual.nombre}
+              </span>
+              <span className="text-[11px] text-ink-muted">
+                Si quieres, esta puede ser la última: acá se termina la carrera.
+              </span>
+            </button>
+          )}
+
+          {ofertas.length === 0 && !puedeRetirarse && (
             <button
               type="button"
               onClick={onRechazarTodo}
-              className="flex-1 cursor-pointer rounded-lg bg-primary px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-label text-primary-contrast transition-opacity duration-200 hover:opacity-90"
+              className="cursor-pointer rounded-lg bg-primary px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-label text-primary-contrast transition-opacity duration-200 hover:opacity-90"
             >
               Seguir
             </button>

@@ -22,7 +22,7 @@ export const EVENTOS_DE_PRENSA: Evento[] = [
     tipoDeRecuerdo: 'promesa',
     condiciones: { temporadasMin: 1, edadMax: 27, sinEtiquetas: ['promesa:rota'] },
     cooldown: 6,
-    peso: 2.2,
+    peso: 1.3,
     opciones: [
       {
         id: 'jamas',

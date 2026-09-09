@@ -28,9 +28,9 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Tus patas del colegio juegan el campeonato del barrio y te piden que vayas a la final. Grass sintético, botines de la cancha y cero seguro. El contrato dice, con esas palabras, que no puedes jugar fútbol fuera del club.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { edadMax: 26, temporadasMin: 1 },
+    condiciones: { ambito: ['andino'], edadMax: 26, temporadasMin: 1  },
     cooldown: 5,
-    peso: 1.8,
+    peso: 1.3,
     opciones: [
       {
         id: 'jugar',
@@ -106,7 +106,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Un mundialito de barrio te ofrece dos mil soles por jugar un solo partido, en efectivo, un miércoles. Es en pleno campeonato y hay apuestas alrededor de la cancha.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { edadMax: 28, temporadasMin: 1 },
+    condiciones: { ambito: ['andino'], edadMax: 28, temporadasMin: 1  },
     cooldown: 6,
     peso: 1.3,
     opciones: [
@@ -181,9 +181,9 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Se juega en Cusco, a tres mil cuatrocientos metros. Llegaron el sábado a mediodía —lo justo para que la altura pegue en el peor momento— y el técnico te pregunta, mirándote a los ojos, si aguantas los noventa.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1 },
+    condiciones: { ambito: ['andino'], temporadasMin: 1  },
     cooldown: 4,
-    peso: 1.7,
+    peso: 1.2,
     opciones: [
       {
         id: 'decir-que-si',
@@ -254,85 +254,6 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     ],
   },
   {
-    id: 'peru-cabala',
-    categoria: 'relaciones',
-    rareza: 'comun',
-    picante: 1,
-    titulo: 'La cábala del vestuario',
-    texto:
-      'El plantel tiene una cábala desde la racha: nadie se baña antes del partido y todos salen tocando la misma pared. {companero} la maneja como si fuera religión. A ti te parece una payasada y ya lo dijiste en voz alta.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1 },
-    cooldown: 6,
-    peso: 1.4,
-    opciones: [
-      {
-        id: 'seguirla',
-        texto: 'Seguirla sin decir nada',
-        pista: 'Un vestuario no se gana teniendo razón.',
-        efectos: {
-          relaciones: { companeros: { confianza: 14, respeto: 8 } },
-          personalidad: { ego: -4, carisma: 4 },
-          balance: 3,
-        },
-        resultado:
-          'Tocaste la pared como todos, once domingos seguidos. La racha se cortó en el doce y nadie te miró a ti. Ese vestuario te empezó a tratar como si llevaras cinco años ahí.',
-      },
-      {
-        id: 'burlarse',
-        texto: 'Burlarte de la cábala delante de todos',
-        pista: 'Tienes razón. Eso no siempre alcanza.',
-        efectos: { personalidad: { ego: 6, temperamento: 5 } },
-        riesgo: {
-          prob: 0.35,
-          bien: {
-            relaciones: { companeros: { respeto: 10 } },
-            vida: { confianza: 8 },
-            personalidad: { carisma: 5 },
-            balance: 3,
-          },
-          mal: {
-            relaciones: { companeros: { rencor: 20 } },
-            vida: { estres: 14, forma: -6 },
-            etiquetas: ['vestuario:aparte'],
-            balance: -6,
-          },
-          relatoBien:
-            'Te bañaste, saliste sin tocar la pared y metiste dos. Al final del partido {companero} se rió el primero y la cábala se terminó ese día. Quedó claro quién tenía razón sin que hicieras falta insistir.',
-          relatoMal:
-            'Te bañaste, no tocaste nada y perdieron 3-0. Nadie te acusó de nada y no hizo falta: durante dos meses los pases fueron un poco más lentos cuando pedías la pelota.',
-        },
-        resultado: 'Te bañaste antes del partido y saliste último, sin tocar la pared.',
-      },
-      {
-        id: 'inventar-la-tuya',
-        texto: 'Inventarte una cábala propia y contársela a la prensa',
-        pista: 'Sales del grupo por arriba. Y te vuelves un personaje.',
-        efectos: {
-          vida: { exposicion: 14, fama: 8 },
-          relaciones: { prensa: { confianza: 10 } },
-          personalidad: { carisma: 7, ego: 5 },
-          titular: { texto: 'LA CÁBALA DE {APELLIDO}: LA MEDIA DERECHA PRIMERO', tono: 'neutro' },
-          balance: 1,
-        },
-        resultado:
-          'Contaste que te pones la media derecha primero desde los nueve años. Se hizo nota, se hizo meme y un programa lo repitió tres semanas. En el vestuario te dijeron "figuretti" con cariño, pero te lo dijeron.',
-      },
-      {
-        id: 'hablar-aparte',
-        texto: 'Hablarlo aparte con {companero}',
-        pista: 'La conversación que nadie tiene.',
-        efectos: {
-          relaciones: { companeros: { confianza: 10, respeto: 12 } },
-          personalidad: { carisma: 6, profesionalismo: 5 },
-          balance: 4,
-        },
-        resultado:
-          'Lo llevaste a un costado y le dijiste que la cábala te ponía nervioso a ti. Te escuchó, la mantuvo para él y te liberó a ti sin avisarle a nadie. Desde entonces cuando hay que decirle algo al grupo, te lo pide a ti.',
-      },
-    ],
-  },
-  {
     id: 'peru-huelga',
     categoria: 'profesional',
     rareza: 'raro',
@@ -341,7 +262,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'El club le debe cuatro meses al plantel. Se vota huelga y no viajar el domingo. Tú estás al día: tu representante negoció tu sueldo aparte, por fuera del acuerdo del plantel, y nadie lo sabe.',
     tipoDeRecuerdo: 'conflicto',
-    condiciones: { temporadasMin: 2, clubFuerzaMax: 80 },
+    condiciones: { ambito: ['andino'], temporadasMin: 2, clubFuerzaMax: 80  },
     cooldown: 6,
     peso: 1.6,
     opciones: [
@@ -425,7 +346,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'La presentación de verano: cuarenta mil personas, fuegos artificiales y el micrófono en la mano. Te toca hablar veinte segundos y todo el país está mirando.',
     tipoDeRecuerdo: 'declaracion',
-    condiciones: { temporadasMin: 1, clubFuerzaMin: 68 },
+    condiciones: { ambito: ['andino'], temporadasMin: 1, clubFuerzaMin: 68  },
     cooldown: 8,
     peso: 1.5,
     opciones: [
@@ -508,7 +429,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       '{figura} quiere anunciar la relación en el programa del sábado, con entrada en vivo y todo. Estás peleando el puesto y el técnico ya te dijo, sin decirlo, que te ve demasiado en la tele.',
     tipoDeRecuerdo: 'romance',
-    condiciones: { famaMin: 25, edadMin: 22, sinEtiquetas: ['vida:pareja-estable'] },
+    condiciones: { ambito: ['andino'], famaMin: 25, edadMin: 22, sinEtiquetas: ['vida:pareja-estable']  },
     cooldown: 6,
     peso: 1.4,
     opciones: [
@@ -590,9 +511,9 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Perdieron en casa y {periodista} te pone el micrófono en la boca del túnel, con la camiseta pegada al cuerpo y la tribuna silbando arriba. La primera pregunta es sobre el técnico.',
     tipoDeRecuerdo: 'declaracion',
-    condiciones: { temporadasMin: 1, notaMax: 7.1 },
+    condiciones: { ambito: ['andino'], temporadasMin: 1, notaMax: 7.1  },
     cooldown: 3,
-    peso: 2,
+    peso: 1.3,
     opciones: [
       {
         id: 'bancar-al-dt',
@@ -672,7 +593,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Te llamaron de la selección para dos amistosos en Asia y el club se juega la clasificación en esas mismas fechas. El médico te ofrece un parte con una molestia que no tienes.',
     tipoDeRecuerdo: 'seleccion',
-    condiciones: { temporadasMin: 2, ovrMin: 70 },
+    condiciones: { ambito: ['andino'], temporadasMin: 2, ovrMin: 70  },
     cooldown: 6,
     peso: 1.4,
     opciones: [
@@ -754,7 +675,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'El dirigente te propone subirte el sueldo un cuarenta por ciento, pero por fuera de la planilla: sin contrato, sin aportes y sin papel. Dice que es lo que hacen todos y que "en este país nadie declara todo".',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 3 },
+    condiciones: { ambito: ['andino'], temporadasMin: 3  },
     cooldown: 6,
     peso: 1.5,
     opciones: [
@@ -830,7 +751,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       '{periodista} te ofrece la portada de Líbero el domingo, con foto y entrevista de cuatro páginas, a cambio de una sola cosa: que digas en la nota que el técnico ya no te enseña nada.',
     tipoDeRecuerdo: 'polemica',
-    condiciones: { famaMin: 40, temporadasMin: 3 },
+    condiciones: { ambito: ['andino'], famaMin: 40, temporadasMin: 3  },
     cooldown: 6,
     peso: 1.3,
     opciones: [
@@ -914,7 +835,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Descubriste, por un mensaje que te llegó por error, que tu representante también cobra comisión del club que te compró. Le pagan los dos y hace once años que te maneja la carrera.',
     tipoDeRecuerdo: 'conflicto',
-    condiciones: { temporadasMin: 4, clubesMin: 2 },
+    condiciones: { ambito: ['andino'], temporadasMin: 4, clubesMin: 2  },
     cooldown: 8,
     peso: 1.3,
     opciones: [
@@ -994,7 +915,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Faltan seis semanas para las elecciones y un candidato al municipio de tu distrito te ofrece cuarenta mil soles por una foto con la camiseta de su lista. Creció a cuatro cuadras de tu casa y tu tío trabaja con él.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 35, temporadasMin: 3 },
+    condiciones: { ambito: ['andino'], famaMin: 35, temporadasMin: 3  },
     cooldown: 8,
     peso: 1.2,
     opciones: [
@@ -1073,7 +994,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Sientes el aductor desde el jueves y el médico del club te dice que "es carga, nada más". Se juega la final de vuelta el domingo. Tú ya tuviste esto y sabes exactamente qué es.',
     tipoDeRecuerdo: 'lesion',
-    condiciones: { temporadasMin: 3, edadMin: 28 },
+    condiciones: { ambito: ['andino'], temporadasMin: 3, edadMin: 28  },
     cooldown: 6,
     peso: 1.4,
     opciones: [
@@ -1165,7 +1086,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'Murió un hincha de catorce años que te escribía todas las semanas. La familia pide una sola cosa: que vayas al velorio en Comas, el sábado a las siete. El domingo se juega el clásico y la concentración empieza el sábado a las seis.',
     tipoDeRecuerdo: 'legado',
-    condiciones: { famaMin: 45, temporadasMin: 4 },
+    condiciones: { ambito: ['andino'], famaMin: 45, temporadasMin: 4  },
     cooldown: 0,
     peso: 1.2,
     opciones: [
@@ -1246,7 +1167,7 @@ export const EVENTOS_DEL_PERU: Evento[] = [
     texto:
       'La municipalidad de tu distrito quiere ponerle tu nombre al complejo deportivo donde aprendiste a jugar. Hay que estar en la ceremonia, con banda de música y discurso. La cancha sigue siendo de tierra.',
     tipoDeRecuerdo: 'legado',
-    condiciones: { edadMin: 34, temporadasMin: 6, famaMin: 50 },
+    condiciones: { ambito: ['andino'], edadMin: 34, temporadasMin: 6, famaMin: 50  },
     cooldown: 0,
     peso: 1.2,
     opciones: [

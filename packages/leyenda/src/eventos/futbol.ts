@@ -115,7 +115,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
     tipoDeRecuerdo: 'declaracion',
     condiciones: { temporadasMin: 1 },
     cooldown: 4,
-    peso: 1.8,
+    peso: 1.2,
     opciones: [
       {
         id: 'prometer',

@@ -31,9 +31,9 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     texto:
       'El programa de la noche anuncia "ampay exclusivo" con tu silueta pixelada y música de suspenso, y El Popular ya tiene la portada armada: te grabaron saliendo del hotel de concentración a la una de la mañana, tres días antes del clásico con {rival}. El utilero te vio volver.',
     tipoDeRecuerdo: 'polemica',
-    condiciones: { famaMin: 25, temporadasMin: 1 },
+    condiciones: { ambito: ['andino'], famaMin: 25, temporadasMin: 1  },
     cooldown: 4,
-    peso: 1.7,
+    peso: 1.3,
     opciones: [
       {
         id: 'adelantarse',
@@ -139,7 +139,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     texto:
       'Los productores de "Guerreros del Sur" te ofrecen entrar como refuerzo por cuatro semanas. Pagan bien, es en horario de entrenamiento y hay que competir en una piscina con arnés.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 35, edadMin: 22 },
+    condiciones: { ambito: ['andino'], famaMin: 35, edadMin: 22  },
     cooldown: 8,
     opciones: [
       {
@@ -219,9 +219,9 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     picante: 2,
     titulo: 'Tu primo se hizo tu mánager',
     texto:
-      'Tu primo imprimió tarjetas que dicen "representante de imagen" y ya está cerrando cosas por su cuenta. Ayer prometió tu presencia en la inauguración de una cevichería.',
+      'Tu primo imprimió tarjetas que dicen "representante de imagen" y ya firmó algo con tu nombre: cedió tu imagen por dos años a una marca de gaseosa por doce mil dólares, cuando tu contrato dice que eso pasa por el club. Cobró el adelanto y se compró una camioneta.',
     tipoDeRecuerdo: 'conflicto',
-    condiciones: { famaMin: 25, temporadasMin: 2 },
+    condiciones: { ambito: ['andino'], famaMin: 25, temporadasMin: 2  },
     cooldown: 6,
     opciones: [
       {
@@ -300,7 +300,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     texto:
       'Líbero publicó una tabla con tus apariciones en televisión de este mes al lado de tus goles. Los números no te ayudan y el título es "¿futbolista o invitado?".',
     tipoDeRecuerdo: 'polemica',
-    condiciones: { vida: { exposicion: [55, 100] }, temporadasMin: 2 },
+    condiciones: { ambito: ['andino'], vida: { exposicion: [55, 100] }, temporadasMin: 2  },
     cooldown: 5,
     opciones: [
       {
@@ -377,112 +377,6 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     ],
   },
   {
-    /*
-     * La pollada tenía un chico enfermo y trescientas personas de buena fe, y el jugador tenía razón:
-     * así no tiene nada de picante. Lo picante es que tu nombre ya está vendido y no lo vendiste tú,
-     * y que el que lo vendió no es cualquiera.
-     */
-    id: 'salseo-pollada',
-    categoria: 'social',
-    rareza: 'comun',
-    picante: 2,
-    titulo: 'Están vendiendo tu nombre',
-    texto:
-      'En tu barrio venden entradas para una pollada "con la presencia confirmada de {nombre}". Nadie te preguntó. Van cuatrocientas vendidas a veinte soles y el que organiza es un dirigente de la barra de {club}.',
-    tipoDeRecuerdo: 'decision',
-    condiciones: { famaMin: 20, temporadasMin: 1 },
-    cooldown: 6,
-    peso: 1.5,
-    opciones: [
-      {
-        id: 'ir',
-        texto: 'Ir igual y quedarte hasta el final',
-        pista: 'Cuatrocientas personas no tienen culpa. El que organiza, sí.',
-        efectos: { vida: { exposicion: 12, felicidad: 6 }, personalidad: { lealtad: 6 } },
-        riesgo: {
-          prob: 0.5,
-          bien: {
-            vida: { carinoDeLaHinchada: 24, reputacion: 8 },
-            relaciones: { hinchada: { confianza: 20, respeto: 14 } },
-            etiquetas: ['social:del-barrio'],
-            titular: { texto: '{APELLIDO} FUE, SIRVIÓ Y NO COBRÓ NADA', tono: 'elogio' },
-            balance: 6,
-          },
-          mal: {
-            vida: { reputacion: -14, exposicion: 22 },
-            relaciones: { club: { rencor: 16 } },
-            etiquetas: ['barra:te-conocen'],
-            titular: { texto: '{APELLIDO} Y EL DIRIGENTE DE LA BARRA, EN LA MISMA FOTO', tono: 'polemica' },
-            balance: -7,
-          },
-          relatoBien:
-            'Fuiste, te pusiste el mandil y serviste hasta que se acabó el pollo. La plata se contó delante de todos y alcanzó. Nadie habló del organizador porque no hubo nada que hablar.',
-          relatoMal:
-            'La foto que dio la vuelta no fue la del mandil: fue la del abrazo con el organizador, que tiene dos denuncias abiertas. El club te pidió explicaciones por escrito y desde entonces esa gente te llama por tu nombre de pila.',
-        },
-        resultado: 'Fuiste sin avisarle a nadie del club.',
-      },
-      {
-        id: 'desmentir',
-        texto: 'Desmentirlo público y pedir que devuelvan la plata',
-        pista: 'Lo correcto. Y cuatrocientas personas con la entrada en la mano.',
-        efectos: {
-          vida: { reputacion: 12, exposicion: 16, carinoDeLaHinchada: -16 },
-          relaciones: { hinchada: { rencor: 14 }, prensa: { confianza: 8 } },
-          personalidad: { profesionalismo: 7 },
-          titular: { texto: '{APELLIDO}: "NO AUTORICÉ NADA Y NO VOY A IR"', tono: 'neutro' },
-          balance: 1,
-        },
-        resultado:
-          'Publicaste el comunicado un miércoles. Devolvieron ciento veinte entradas y las otras doscientas ochenta se quedaron sin devolución y sin pollada. En el barrio quedó la idea de que te habías puesto difícil.',
-      },
-      {
-        id: 'pagar',
-        texto: 'Pagar la operación completa por tu cuenta y cancelar la pollada',
-        pista: 'El problema se resuelve. El de la barra se queda sin su recaudación.',
-        efectos: {
-          vida: { dinero: -0.7, reputacion: 14 },
-          personalidad: { lealtad: 6, ego: -4 },
-          balance: 5,
-        },
-        riesgo: {
-          prob: 0.62,
-          bien: {
-            vida: { carinoDeLaHinchada: 14, felicidad: 10 },
-            relaciones: { hinchada: { confianza: 12 } },
-            balance: 5,
-          },
-          mal: {
-            vida: { exposicion: 18, estres: 14 },
-            etiquetas: ['barra:te-conocen'],
-            titular: { texto: 'LE CANTARON A {APELLIDO} EN SU PROPIO ESTADIO', tono: 'duda' },
-            balance: -5,
-          },
-          relatoBien:
-            'Transferiste el lunes, la operación se hizo el jueves y la pollada nunca se hizo. El papá del chico lo contó en una nota chica de un diario chico y ahí se terminó.',
-          relatoMal:
-            'El chico se operó y el organizador perdió ocho mil soles que ya tenía contados. Tres domingos después, en la tribuna donde él manda, cantaron tu nombre con una palabra al lado.',
-        },
-        resultado: 'Llamaste a la clínica el domingo en la noche y arreglaste todo por tu cuenta.',
-      },
-      {
-        id: 'callar',
-        texto: 'No decir nada y no aparecer',
-        pista: 'La forma más barata de quedar mal con todos.',
-        efectos: {
-          vida: { carinoDeLaHinchada: -24, reputacion: -14 },
-          relaciones: { hinchada: { rencor: 22 } },
-          personalidad: { lealtad: -8 },
-          etiquetas: ['social:aparte'],
-          titular: { texto: 'CUATROCIENTAS PERSONAS ESPERARON A {APELLIDO} CUATRO HORAS', tono: 'polemica' },
-          balance: -8,
-        },
-        resultado:
-          'No fuiste y no dijiste nada. El organizador contó que te habías arrepentido y se quedó con la plata sin que nadie le preguntara. El papá del chico salió en una nota diciendo que "el que se hace grande se olvida", y en ese barrio te lo recordaron toda la carrera.',
-      },
-    ],
-  },
-  {
     id: 'salseo-urraca',
     categoria: 'prensa',
     rareza: 'raro',
@@ -491,7 +385,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     texto:
       'Hay una camioneta parada frente a tu casa desde el martes. Cuando sales, dos personas bajan corriendo con la cámara ya encendida y te preguntan por algo que no hiciste.',
     tipoDeRecuerdo: 'polemica',
-    condiciones: { famaMin: 55, temporadasMin: 4 },
+    condiciones: { ambito: ['andino'], famaMin: 55, temporadasMin: 4  },
     cooldown: 6,
     opciones: [
       {
@@ -581,7 +475,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     texto:
       'Un chico de quince de la cantera imita todo lo que haces: tus botines, tu festejo, tu forma de pararse en los tiros libres. Ayer le preguntaron a quién admiraba y dijo tu nombre en televisión.',
     tipoDeRecuerdo: 'legado',
-    condiciones: { temporadasMin: 5, edadMin: 28 },
+    condiciones: { ambito: ['andino'], temporadasMin: 5, edadMin: 28  },
     cooldown: 6,
     opciones: [
       {
@@ -657,7 +551,7 @@ export const EVENTOS_DE_SALSEO: Evento[] = [
     texto:
       'En el grupo del barrio armaron una polla para la fecha y te preguntan por dónde va tu partido. Son tus patas de toda la vida y hay dinero de verdad en juego.',
     tipoDeRecuerdo: 'decision',
-    condiciones: { temporadasMin: 1 },
+    condiciones: { ambito: ['andino'], temporadasMin: 1  },
     cooldown: 5,
     opciones: [
       {

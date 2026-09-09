@@ -297,6 +297,8 @@ export interface Oferta {
   /** Etiquetas que la decisión va a dejar en la memoria: `rival`, `regreso`, `promesa-rota`. */
   matices: string[];
   riesgo: 'bajo' | 'medio' | 'alto';
+  /** En qué escalón está el club: "Millonario", "Grande de Europa", "Grande local"… Es lo que le dice al jugador dónde está parado. */
+  escalon: string;
 }
 
 export interface Futbolista {

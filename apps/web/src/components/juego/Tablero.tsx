@@ -5,7 +5,8 @@ import {
   calcularVeredicto,
   crearCarrera,
   eventoPendiente,
-  puedeRenovar,
+  estadoDelMercado,
+  puedeRetirarse,
   type Capitulo,
   type Carrera,
   type ClaseDeMomento,
@@ -275,9 +276,11 @@ export default function Tablero({ mundo, arranque, onReiniciar }: Props) {
               ofertas={carrera.ofertas}
               esDebut={carrera.temporadas.length === 0}
               clubActual={carrera.clubActual}
-              puedeQuedarse={puedeRenovar(carrera)}
+              estado={estadoDelMercado(carrera)}
+              puedeRetirarse={puedeRetirarse(carrera)}
               onFirmar={(ofertaId) => avanzar({ tipo: 'firmar', ofertaId })}
               onQuedarse={() => avanzar({ tipo: 'renovar' })}
+              onRetirarse={() => avanzar({ tipo: 'retirarse' })}
               onRechazarTodo={() => avanzar({ tipo: 'renovar' })}
             />
           )}
