@@ -125,8 +125,10 @@ const diferencia = (row: StandingRow) => {
               {row.position}
             </td>
             <td class={alto}>
+              <!-- La tabla es la lista más mirada del sitio: su página se va trayendo mientras se lee. -->
               <a
                 href={hrefEquipo(row.team.slug)}
+                data-astro-prefetch="viewport"
                 class:list={[
                   'flex items-center transition-colors hover:text-primary-ink hover:underline',
                   grande ? 'gap-3 font-medium' : 'gap-2',

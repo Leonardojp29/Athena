@@ -65,7 +65,7 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
 
    | Variable | Valor |
    |---|---|
-   | `DATABASE_URL` | la del pooler (puerto 6543, `?pgbouncer=true`) |
+   | `DATABASE_URL` | la del pooler (puerto 6543, `?pgbouncer=true&connection_limit=10&pool_timeout=20`) |
    | `DIRECT_URL` | la directa (puerto 5432) |
    | `API_FOOTBALL_KEY` | igual que local |
    | `OPENAI_API_KEY` | igual que local |

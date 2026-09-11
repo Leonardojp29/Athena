@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Memoria } from './memoria.js';
+import { marcarOrigen } from './origen-de-la-vista.js';
 
 /**
  * Caché de vistas compuestas, en la memoria del proceso.
@@ -29,7 +30,10 @@ export class ViewCacheService {
     calcular: () => Promise<T>,
   ): Promise<T> {
     const guardado = this.memoria.get(`view:${clave}`);
-    if (guardado !== undefined) return guardado as T;
+    if (guardado !== undefined) {
+      marcarOrigen('hit');
+      return guardado as T;
+    }
 
     /* Diez visitantes al mismo tiempo sobre una vista fría la calculaban diez veces. */
     const pendiente = this.enVuelo.get(clave);

@@ -16,12 +16,3 @@ export async function getHomeView(): Promise<HomeView | null> {
     return ultimoBueno;
   }
 }
-
-export async function getEnVivo(): Promise<number> {
-  try {
-    const { live } = await api<{ live: number }>('/views/en-vivo');
-    return live;
-  } catch {
-    return 0;
-  }
-}

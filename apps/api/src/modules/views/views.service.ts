@@ -1281,6 +1281,7 @@ export class ViewsService {
     const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas] =
       await Promise.all([
         this.prisma.team.findUnique({
+          relationLoadStrategy: JOIN,
           where: { slug },
           select: {
             id: true,
@@ -1352,9 +1353,11 @@ export class ViewsService {
          * El año no se puede fijar: la Liga 1 corre 2026 y la Premier 2025 al mismo tiempo.
          * Se piden todos y se conserva la campaña más reciente que tenga el equipo.
          */
+        /* Solo la plantilla más reciente: traer todos los años para descartarlos en memoria era pedir
+           cinco temporadas de fichas para mostrar una. */
         this.prisma.squadMembership.findMany({
           relationLoadStrategy: JOIN,
-          where: { team: { slug } },
+          where: { team: { slug }, year: { gte: new Date().getFullYear() - 1 } },
           orderBy: [{ year: 'desc' }, { shirtNumber: 'asc' }],
           select: {
             year: true,

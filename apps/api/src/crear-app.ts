@@ -4,6 +4,7 @@ import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './shared/all-exceptions.filter.js';
+import { DuracionInterceptor } from './shared/duracion.interceptor.js';
 
 /**
  * El API armado y configurado, sin escuchar todavía.
@@ -28,6 +29,7 @@ export async function crearApp(): Promise<INestApplication> {
     .filter(Boolean);
   app.enableCors({ origin: origenes });
   app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalInterceptors(new DuracionInterceptor());
 
   const openApiConfig = new DocumentBuilder()
     .setTitle('Athena API')

@@ -203,7 +203,8 @@ Claves: `ai_insights`, `semantic_search`, `live_match_center`, `recommendations`
 | Sin insights nuevos | Revisa el flag `ai_insights` y el tope de tokens |
 | Previa ausente en un partido | Esperado si no hay tabla, historial ni forma previa: se omite a propósito |
 | La web muestra URLs viejas del API | Las variables `PUBLIC_*` se compilan: hay que reconstruir tras cambiarlas |
-| Todo se siente lento en local | Cada consulta viaja a Supabase (~800 ms por round-trip desde fuera de us-west-2). No es el código: en producción, con el API en la región de la base, son milisegundos. Mídelo con un `SELECT 1` antes de optimizar |
+| Todo se siente lento en local | Cada consulta viaja a Supabase (~760 ms por round-trip desde fuera de us-west-2). No es el código: en producción, con el API en la región de la base, son milisegundos. Mídelo con un `SELECT 1` antes de optimizar |
+| Una vista tarda y no se sabe por qué | La respuesta trae `x-cache: hit \| stale \| miss` y el log una línea `peticion` con `ms`. Un `miss` lento es cálculo; un `hit` lento no existe |
 
 Con `SENTRY_DSN` configurado, los errores 5xx y los jobs fallidos se reportan
 automáticamente; sin él, todo queda en los logs estructurados.

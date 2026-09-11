@@ -2,15 +2,14 @@
 import Icon from '../Icon.astro';
 import Logo from '../brand/Logo.astro';
 import Container from './Container.astro';
-import { getEnVivo } from '../../lib/live';
 
 interface Props {
-  /* El juego se abre sin el contador: es la única pantalla donde el header no debe costar una consulta. */
+  /* El juego se abre sin contador: ahí el header no compite con la carrera. */
   contador?: boolean;
 }
 
 const { contador = true } = Astro.props;
-const liveCount = contador ? await getEnVivo() : 0;
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
 ---
 
 <header class="sticky top-0 z-30 w-full border-b border-border bg-surface/72 backdrop-blur-xl">
@@ -58,13 +57,15 @@ const liveCount = contador ? await getEnVivo() : 0;
 
       <div class="ml-auto flex items-center gap-2 sm:gap-3">
         {
-          liveCount > 0 && (
+          contador && (
             <a
               href="/"
-              class="hidden items-center gap-1.5 rounded-full bg-live/12 px-2.5 py-1 text-2xs font-medium text-live-ink transition-colors hover:bg-live/20 sm:flex"
+              data-contador-vivo
+              hidden
+              class="items-center gap-1.5 rounded-full bg-live/12 px-2.5 py-1 text-2xs font-medium text-live-ink transition-colors hover:bg-live/20 sm:flex"
             >
-              <span data-live-dot class="size-1.5 rounded-full bg-live animate-live-pulse"></span>
-              {liveCount} en vivo
+              <span data-live-dot class="size-1.5 rounded-full bg-live animate-live-pulse" />
+              <span data-contador-vivo-texto />
             </a>
           )
         }
@@ -116,4 +117,25 @@ const liveCount = contador ? await getEnVivo() : 0;
     evento.preventDefault();
     buscador.focus();
   });
+</script>
+
+<!--
+  El contador se llena desde el navegador y no en el servidor.
+
+  Esperarlo dentro del componente encadenaba un segundo viaje al API después del de la página, y
+  como el HTML se guarda cinco minutos en el borde, el número que traía ya venía viejo. Acá el dato
+  es fresco en cada visita y no le cuesta un milisegundo al render.
+-->
+<script is:inline define:vars={{ apiUrl }}>
+  const pastilla = document.querySelector('[data-contador-vivo]');
+  if (pastilla) {
+    fetch(`${apiUrl}/v1/views/en-vivo`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((datos) => {
+        if (!datos?.live) return;
+        pastilla.querySelector('[data-contador-vivo-texto]').textContent = `${datos.live} en vivo`;
+        pastilla.hidden = false;
+      })
+      .catch(() => undefined);
+  }
 </script>

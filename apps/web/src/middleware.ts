@@ -9,9 +9,8 @@ import type { MiddlewareHandler } from 'astro';
  * todo el producto, y no depende de dónde se despliegue: si adelante hay un CDN que ya comprime,
  * este middleware se aparta al ver el `content-encoding` puesto.
  *
- * Se comprime en memoria y no en flujo: Astro puede emitir el HTML mientras lo arma, pero acá todos
- * los datos se piden antes de renderizar, así que armarlo cuesta milisegundos y esperarlo no retrasa
- * nada apreciable.
+ * Se comprime en memoria y no en flujo, así que en Vercel ni se intenta: su CDN ya comprime y
+ * bufferizar ahí solo retrasa el primer byte.
  */
 const COMPRIMIBLE = /^(?:text\/|application\/(?:json|javascript|xml)|image\/svg)/;
 
@@ -19,6 +18,8 @@ const COMPRIMIBLE = /^(?:text\/|application\/(?:json|javascript|xml)|image\/svg)
 const MINIMO = 1024;
 
 export const onRequest: MiddlewareHandler = async (context, next) => {
+  if (process.env.VERCEL) return next();
+
   const response = await next();
 
   if (!(context.request.headers.get('accept-encoding') ?? '').includes('gzip')) return response;
