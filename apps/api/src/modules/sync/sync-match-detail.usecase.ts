@@ -1,6 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '@athena/database';
-import type { FootballDataProvider, ProviderLineupPlayer } from '@athena/domain';
+import type {
+  FootballDataProvider,
+  ProviderLineup,
+  ProviderLineupPlayer,
+  ProviderMatchStatistics,
+} from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { ExternalReferenceService } from './external-reference.service.js';
@@ -67,10 +72,21 @@ export class SyncMatchDetailUseCase {
       this.provider.getMatchLineups(matchProviderRef),
     ]);
 
-    const teamRefs = [...new Set([...statistics, ...lineups].map((item) => item.teamRef))];
-    const teams = await this.refs.resolveMany(this.provider.name, 'team', teamRefs);
+    const [statsWritten, lineupsWritten] = await Promise.all([
+      this.escribirEstadisticas(matchId, statistics),
+      this.escribirAlineaciones(matchId, lineups),
+    ]);
 
-    let statsWritten = 0;
+    this.logger.log(
+      `Detalle de ${matchProviderRef}: ${statsWritten} equipos con stats, ${lineupsWritten} alineaciones`,
+    );
+    return { statistics: statsWritten, lineups: lineupsWritten };
+  }
+
+  async escribirEstadisticas(matchId: string, statistics: ProviderMatchStatistics[]): Promise<number> {
+    const teams = await this.equiposDe(statistics);
+
+    let escritas = 0;
     for (const stat of statistics) {
       const teamId = teams.get(stat.teamRef);
       if (!teamId) continue;
@@ -80,10 +96,15 @@ export class SyncMatchDetailUseCase {
         update: data,
         create: { matchId, teamId, ...data },
       });
-      statsWritten++;
+      escritas++;
     }
+    return escritas;
+  }
 
-    let lineupsWritten = 0;
+  async escribirAlineaciones(matchId: string, lineups: ProviderLineup[]): Promise<number> {
+    const teams = await this.equiposDe(lineups);
+
+    let escritas = 0;
     for (const lineup of lineups) {
       const teamId = teams.get(lineup.teamRef);
       if (!teamId) continue;
@@ -103,13 +124,15 @@ export class SyncMatchDetailUseCase {
         update: data,
         create: { matchId, teamId, ...data },
       });
-      lineupsWritten++;
+      escritas++;
     }
+    return escritas;
+  }
 
-    this.logger.log(
-      `Detalle de ${matchProviderRef}: ${statsWritten} equipos con stats, ${lineupsWritten} alineaciones`,
-    );
-    return { statistics: statsWritten, lineups: lineupsWritten };
+  private equiposDe(items: Array<{ teamRef: string }>): Promise<Map<string, string>> {
+    return this.refs.resolveMany(this.provider.name, 'team', [
+      ...new Set(items.map((item) => item.teamRef)),
+    ]);
   }
 
   /**

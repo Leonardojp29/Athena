@@ -74,6 +74,8 @@ model Season {
   matches          Match[]
   standings        Standing[]
   playerStatistics PlayerSeasonStatistics[]
+  /// Qué publica el proveedor de esta temporada: eventos, alineaciones, estadísticas, notas.
+  cobertura        Json?
 
   @@unique([competitionId, year])
   @@map("seasons")
@@ -296,6 +298,7 @@ model Match {
   statistics       MatchStatistics[]
   lineups          MatchLineup[]
   playerStatistics MatchPlayerStatistics[]
+  sync             MatchSync?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -303,6 +306,28 @@ model Match {
   @@index([seasonId, kickoffUtc])
   @@index([status, kickoffUtc])
   @@map("matches")
+}
+
+/// Qué facetas de un partido ya llegaron y cuándo volver a preguntar por las que faltan.
+model MatchSync {
+  match                Match     @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId              String    @id @map("match_id") @db.Uuid
+  eventosCompleto      Boolean   @default(false) @map("eventos_completo")
+  alineacionesCompleto Boolean   @default(false) @map("alineaciones_completo")
+  estadisticasCompleto Boolean   @default(false) @map("estadisticas_completo")
+  jugadoresCompleto    Boolean   @default(false) @map("jugadores_completo")
+  analisisCompleto     Boolean   @default(false) @map("analisis_completo")
+  intentos             Int       @default(0)
+  proximoIntento       DateTime  @default(now()) @map("proximo_intento")
+  ultimoIntento        DateTime? @map("ultimo_intento")
+  ultimoError          String?   @map("ultimo_error")
+  cobertura            Json?
+  cerradoEn            DateTime? @map("cerrado_en")
+  creadoEn             DateTime  @default(now()) @map("creado_en")
+  actualizadoEn        DateTime  @updatedAt @map("actualizado_en")
+
+  @@index([proximoIntento])
+  @@map("match_sync")
 }
 
 /// Estadísticas por equipo de un partido: solo los campos que el producto usa.
@@ -501,6 +526,7 @@ model Tarea {
   correDespues DateTime  @default(now()) @map("corre_despues")
   intentos     Int       @default(0)
   tomadaHasta  DateTime? @map("tomada_hasta")
+  ultimoError  String?   @map("ultimo_error")
   creadaEn     DateTime  @default(now()) @map("creada_en")
 
   @@index([prioridad, correDespues, id])

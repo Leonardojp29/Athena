@@ -13,7 +13,7 @@ Verificado contra el spec OpenAPI oficial v3.9.3 (2026-08). Esta es la referenci
 - **150,000 requests/día · 900/minuto** (~15 req/s; ráfagas se encolan, exceso sostenido → HTTP 429 y posible bloqueo de firewall).
 - Todos los endpoints, todas las competencias, todas las temporadas históricas (~2008+ en ligas grandes; verificar `coverage` por liga/temporada).
 - Sin sobrecostos: al agotar la cuota el API deja de servir.
-- Headers de cuota en cada respuesta: `x-ratelimit-requests-limit` / `x-ratelimit-requests-remaining` (día) y `X-RateLimit-Limit` / `X-RateLimit-Remaining` (minuto) → alimentan el presupuesto en Redis (ADR-004).
+- Headers de cuota en cada respuesta: `x-ratelimit-requests-limit` / `x-ratelimit-requests-remaining` (día) y `X-RateLimit-Limit` / `X-RateLimit-Remaining` (minuto) → alimentan el presupuesto en la tabla `kv` (ADR-005).
 
 ## Envelope y errores
 
@@ -34,6 +34,7 @@ Paginación solo en: `/odds` (10/pág), `/odds/mapping` (100/pág), `/players` (
 | `/players/profiles`, `/players/squads` | Bios y plantillas | semanal |
 | `/players?league&season` | Stats de temporada por jugador | diaria |
 | `/fixtures` | Calendario/resultados (por `date`, `league+season`, `ids=a-b-c`) | 15 s |
+| `/fixtures?ids=` | **Verificado 2026-09-11**: devuelve `events`, `lineups`, `statistics` y `players` embebidos, hasta 20 ids. Es como Athena cierra un partido: un request por cada veinte | 15 s |
 | `/fixtures?live=all` | **Todos** los partidos en juego, eventos embebidos, 1 request | 15 s |
 | `/fixtures/events`, `/lineups`, `/statistics`, `/players` | Detalle por fixture (~4 calls post-partido) | 15 s / 15 min / 1 min / 1 min |
 | `/standings?league&season` | Tablas (puede haber varias: grupos, apertura/clausura) | 1 h |
@@ -62,7 +63,7 @@ Peor caso (sábado, ~30 partidos simultáneos):
 |---|---|
 | `fixtures?live=all` cada 20 s | ~4,300 |
 | Stats por partido priorizado (1/min) | ~5,000 |
-| Cierre post-partido (~4 × ~50 fixtures) | ~200 |
+| Cierre post-partido (lotes de 20 vía `ids=`) | ~50 |
 | Standings + referencia + rankings | ~500 |
 | **Total** | **< 15,000 ≈ 10% de la cuota Mega** |
 

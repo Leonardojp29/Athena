@@ -33,6 +33,9 @@ interface Props {
 const { match, vistaPedida, live, enlaceDeVista } = Astro.props;
 
 const hayAlineaciones = match.lineups.length > 0;
+/* Mientras el cierre sigue abierto el dato puede estar en camino, y decirlo evita el "está roto". */
+const enCamino = match.sync !== null && !match.sync.cerrado;
+const faltaPorLlegar = 'Todavía no llegó; se actualiza solo en unos minutos';
 /* Los cambios salen de los eventos: la alineación del API trae el once y el banco, no quién entró. */
 const cambios = match.events.filter((e) => e.kind === 'substitution');
 const analisis = match.insight ?? match.preview;
@@ -45,8 +48,18 @@ const jornada = etiquetaDeRonda(match.round);
  */
 const TABS: Tab[] = [
   { id: 'resumen', label: 'Resumen' },
-  { id: 'alineaciones', label: 'Alineaciones', disabled: !hayAlineaciones },
-  { id: 'analisis', label: 'Análisis IA', disabled: analisis === null },
+  {
+    id: 'alineaciones',
+    label: 'Alineaciones',
+    disabled: !hayAlineaciones,
+    motivo: enCamino ? faltaPorLlegar : undefined,
+  },
+  {
+    id: 'analisis',
+    label: 'Análisis IA',
+    disabled: analisis === null,
+    motivo: enCamino ? faltaPorLlegar : undefined,
+  },
   { id: 'historial', label: 'Historial' },
 ];
 

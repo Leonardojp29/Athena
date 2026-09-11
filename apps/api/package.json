@@ -11,6 +11,7 @@
     "sync:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/sync-bootstrap.js",
     "ai:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/ai-bootstrap.js",
     "backfill:matches": "node --env-file-if-exists=../../.env dist/scripts/backfill-match-detail.js",
+    "cerrar:pendientes": "node --env-file-if-exists=../../.env dist/scripts/cerrar-pendientes.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src && pnpm run arch",
     "test": "vitest run",

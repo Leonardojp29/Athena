@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ApiBudgetExhaustedError } from '../../shared/api-budget.service.js';
 import { KvService } from '../../shared/kv.service.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { logJson, reportError } from '../../shared/observability.js';
@@ -7,6 +8,9 @@ import { SyncEmbeddingsUseCase } from '../search/sync-embeddings.usecase.js';
 import { CONFIGURED_COMPETITIONS } from '../sync/competitions.config.js';
 import { RecalcularColoresUseCase } from '../sync/recalcular-colores.usecase.js';
 import { OutboxService } from '../sync/outbox.service.js';
+import { CerrarPartidosUseCase } from '../sync/cerrar-partidos.usecase.js';
+import { ANTIGUEDAD_MAXIMA_MS } from '../sync/cierre-politica.js';
+import { MatchSyncService } from '../sync/match-sync.service.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
 import { SyncMatchDetailUseCase } from '../sync/sync-match-detail.usecase.js';
@@ -15,7 +19,7 @@ import { SyncMatchPlayersUseCase } from '../sync/sync-match-players.usecase.js';
 import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
-import { ColaDeTareas, type Tarea } from './cola-de-tareas.service.js';
+import { ColaDeTareas, ErrorNoReintentable, type Tarea } from './cola-de-tareas.service.js';
 import { SyncScheduleService } from './sync-schedule.service.js';
 
 /* El análisis espera a que aterricen los eventos y las estadísticas que lo respaldan. */
@@ -23,29 +27,10 @@ const INSIGHT_DELAY_MS = 3 * 60_000;
 /* Lo que tarda el proveedor en recalcular su tabla después del pitazo final, con margen. */
 const TABLA_REINTENTO_MS = 12 * 60_000;
 
-/*
- * Hasta cuándo un partido terminado merece que le pidamos su detalle. Lo del archivo llega marcado
- * como terminado igual que lo de anoche, y a tres pedidos por partido eso serían más de cien mil
- * requests de una cuota compartida.
- */
-const DETALLE_MAX_ANTIGUEDAD_MS = 7 * 24 * 3600_000;
-
-/* El proveedor publica la alineación unos 40 minutos antes del pitazo. */
-const LINEUP_LEAD_MS = 45 * 60_000;
-/* Cuánto atrás mira el tic para recuperar un partido que terminó sin su detalle. */
-const RECUPERACION_MS = 6 * 3600_000;
-
-/*
- * Cada cuánto se vuelven a pedir las notas de un partido en juego, y cuántos partidos por vuelta.
- *
- * Las notas y las estadísticas por jugador solo se pedían al terminar, así que durante el partido
- * la cancha mostraba a los once sin un número: justo cuando la gente está mirando. Cinco minutos es
- * el ritmo al que el proveedor las mueve, y el tope de quince partidos por vuelta acota el sábado
- * más cargado a un costo conocido: un request por partido cada cinco minutos.
- */
-const LIVE_PLAYERS_STALE_MS = 5 * 60_000;
-const LIVE_PLAYERS_MAX = 15;
-const LIVE_PLAYERS_ON = process.env.SYNC_LIVE_PLAYER_STATS !== 'false';
+/* Cuántos lotes de cierre entran en un tic: cada lote es un pedido y veinte partidos de escrituras. */
+const LOTES_DE_CIERRE_POR_TIC = 3;
+/* Con la cuota agotada no se insiste: el minuto se recupera solo, el día no. */
+const PAUSA_POR_CUOTA_S = { minute: 60, day: 3600 } as const;
 
 type SyncJob =
   | { name: 'competition'; data: { competitionRef: string } }
@@ -76,6 +61,8 @@ export class SyncQueueService {
     private readonly syncStandings: SyncStandingsUseCase,
     private readonly syncMatchEvents: SyncMatchEventsUseCase,
     private readonly syncMatchDetail: SyncMatchDetailUseCase,
+    private readonly cerrarPartidos: CerrarPartidosUseCase,
+    private readonly matchSync: MatchSyncService,
     private readonly syncMatchPlayers: SyncMatchPlayersUseCase,
     private readonly syncSquad: SyncSquadUseCase,
     private readonly colores: RecalcularColoresUseCase,
@@ -99,13 +86,21 @@ export class SyncQueueService {
      * dos veces. El que llega tarde se va sin trabajar; el candado expira solo antes del minuto.
      */
     if (!(await this.kv.marcar('tick:candado', 55))) return { vivos: 0, tareas: 0 };
+    await this.kv.fijar('tick:ultimo', Date.now(), 24 * 3600);
+    if (await this.pausada()) return { vivos: 0, tareas: 0 };
 
     const arranque = Date.now();
     await this.schedules.markRun('live-tick');
     const vivos = await this.liveTick();
+    await this.cerrarLoPendiente(arranque, presupuestoMs);
     await this.schedules.markRun('process-outbox');
     await this.processOutbox();
 
+    const hechas = await this.drenar(arranque, presupuestoMs);
+    return { vivos, tareas: hechas };
+  }
+
+  private async drenar(arranque: number, presupuestoMs: number): Promise<number> {
     let hechas = 0;
     while (Date.now() - arranque < presupuestoMs) {
       const tareas = await this.cola.tomar(3);
@@ -116,6 +111,11 @@ export class SyncQueueService {
           await this.cola.completar(tarea.id);
           hechas++;
         } catch (error) {
+          if (error instanceof ApiBudgetExhaustedError) {
+            await this.pausar(error);
+            await this.cola.posponer(tarea, PAUSA_POR_CUOTA_S[error.scope] * 1000, error.message);
+            return hechas;
+          }
           await this.cola.fallar(tarea, error);
           logJson('error', 'tarea_fallida', {
             tipo: tarea.tipo,
@@ -127,7 +127,40 @@ export class SyncQueueService {
         }
       }
     }
-    return { vivos, tareas: hechas };
+    return hechas;
+  }
+
+  private async pausada(): Promise<boolean> {
+    const marcas = await this.kv.leer(['cola:pausa']);
+    return marcas.has('cola:pausa');
+  }
+
+  private async pausar(error: ApiBudgetExhaustedError): Promise<void> {
+    const segundos = PAUSA_POR_CUOTA_S[error.scope];
+    await this.kv.fijar('cola:pausa', 1, segundos);
+    logJson('warn', 'cola_pausada', { motivo: error.scope, segundos });
+  }
+
+  /**
+   * Lo que le falta a los partidos terminados, en lotes de veinte y con un pedido cada uno.
+   *
+   * Corre en cada tic y no solo cuando hay algo en juego: un partido que terminó mientras el latido
+   * estaba caído tiene que poder recuperarse sin que nadie lo note.
+   */
+  private async cerrarLoPendiente(arranque: number, presupuestoMs: number): Promise<void> {
+    for (let lote = 0; lote < LOTES_DE_CIERRE_POR_TIC; lote++) {
+      if (Date.now() - arranque > presupuestoMs / 2) return;
+      try {
+        const { revisados, cerrados } = await this.cerrarPartidos.barrerTerminados();
+        for (const matchId of cerrados) {
+          await this.enqueue('match-insight', { matchId }, { delay: INSIGHT_DELAY_MS });
+        }
+        if (revisados === 0) return;
+      } catch (error) {
+        if (error instanceof ApiBudgetExhaustedError) return this.pausar(error);
+        throw error;
+      }
+    }
   }
 
   /**
@@ -174,7 +207,9 @@ export class SyncQueueService {
       case 'colores':
         return this.colores.execute();
       case 'match-insight':
-        return this.matchInsight.execute(job.data.matchId);
+        return this.matchInsight
+          .execute(job.data.matchId)
+          .then(() => this.matchSync.marcarAnalisis(job.data.matchId));
       case 'match-preview':
         return this.matchInsight.executePreview(job.data.matchId);
       case 'embeddings':
@@ -182,7 +217,7 @@ export class SyncQueueService {
           ? this.embeddings.syncTeams()
           : this.embeddings.syncPlayers();
       default:
-        throw new Error(`Tarea desconocida: ${tarea.tipo}`);
+        throw new ErrorNoReintentable(`Tarea desconocida: ${tarea.tipo}`);
     }
   }
 
@@ -211,135 +246,23 @@ export class SyncQueueService {
     if (candidates === 0) return 0;
 
     const escritos = await this.syncFixtures.syncLive();
-    await this.fetchMissingDetail();
-    await this.refreshLivePlayers();
+    await this.seguirLosEnCurso();
     return escritos;
   }
 
   /**
-   * Las notas por jugador de los partidos en juego.
+   * Alineaciones y estadísticas de lo que está por empezar o en juego.
    *
-   * Se pide solo lo que está viejo: un partido cuya nota más reciente tiene menos de cinco minutos
-   * no se vuelve a pedir. Así el costo no depende del ritmo del tick —que corre cada minuto— sino
-   * de cuántos partidos hay en cancha, y un partido de dos horas cuesta veinticuatro requests.
+   * El feed en vivo trae marcador y eventos, nunca la alineación ni la posesión. Un lote de veinte
+   * partidos cuesta un pedido, así que el sábado más cargado son dos pedidos cada cinco minutos.
    */
-  private async refreshLivePlayers(): Promise<number> {
-    if (!LIVE_PLAYERS_ON) return 0;
-
-    const enJuego = await this.prisma.match.findMany({
-      where: { status: { in: ['in_play', 'paused'] } },
-      select: {
-        id: true,
-        playerStatistics: { select: { updatedAt: true }, orderBy: { updatedAt: 'desc' }, take: 1 },
-      },
-      take: 60,
-    });
-
-    const limite = new Date(Date.now() - LIVE_PLAYERS_STALE_MS);
-    const pendientes = enJuego
-      .filter((m) => {
-        const ultima = m.playerStatistics[0]?.updatedAt;
-        return ultima === undefined || ultima < limite;
-      })
-      .slice(0, LIVE_PLAYERS_MAX);
-    if (pendientes.length === 0) return 0;
-
-    const refs = await this.prisma.externalReference.findMany({
-      where: {
-        provider: 'api-football',
-        entityType: 'match',
-        entityId: { in: pendientes.map((m) => m.id) },
-      },
-      select: { providerRef: true },
-    });
-
-    for (const { providerRef } of refs) {
-      await this.enqueue('match-players', { matchRef: providerRef });
+  private async seguirLosEnCurso(): Promise<void> {
+    try {
+      await this.cerrarPartidos.barrerEnCurso();
+    } catch (error) {
+      if (error instanceof ApiBudgetExhaustedError) return this.pausar(error);
+      throw error;
     }
-    logJson('info', 'live_players_encolados', { partidos: refs.length });
-    return refs.length;
-  }
-
-  /**
-   * Alineaciones y estadísticas de los partidos que están por empezar o en juego.
-   *
-   * El feed en vivo trae marcador y eventos, nunca la alineación, y el refresco diario solo
-   * mira partidos terminados: por eso un partido de hoy se abría sin cancha. El proveedor
-   * publica la alineación unos 40 minutos antes del pitazo, así que se pide desde ahí.
-   *
-   * Se pregunta una sola vez por partido: en cuanto la alineación existe, deja de pedirse.
-   */
-  private async fetchMissingDetail(): Promise<number> {
-    const sinDetalle = await this.prisma.match.findMany({
-      where: {
-        OR: [
-          { status: { in: ['in_play', 'paused'] } },
-          {
-            status: 'scheduled',
-            kickoffUtc: { lte: new Date(Date.now() + LINEUP_LEAD_MS), gte: new Date() },
-          },
-          /*
-           * Y los que ya terminaron y se quedaron sin alineación: un trabajo que se pierde —la cola
-           * borrada, el worker caído a mitad— dejaba el partido sin cancha hasta el refresco de las
-           * 05:00. Acá se recupera en el tic siguiente, y la ventana de seis horas evita que esto
-           * se convierta en un rastrillaje del archivo entero.
-           */
-          {
-            status: 'finished',
-            kickoffUtc: { gte: new Date(Date.now() - RECUPERACION_MS) },
-          },
-        ],
-        /*
-         * Sin alineación, o con una a medias: en una caída parcial el proveedor publicó los once
-         * sin `formation` ni posiciones —una cancha que no se puede dibujar— y las completó horas
-         * después. Una alineación sin formación se sigue pidiendo hasta que llegue entera.
-         */
-        AND: {
-          OR: [{ lineups: { none: {} } }, { lineups: { some: { formation: null } } }],
-        },
-      },
-      select: {
-        id: true,
-        status: true,
-        lineups: { select: { id: true }, take: 1 },
-      },
-      take: 40,
-    });
-    if (sinDetalle.length === 0) return 0;
-
-    const refs = await this.prisma.externalReference.findMany({
-      where: {
-        provider: 'api-football',
-        entityType: 'match',
-        entityId: { in: sinDetalle.map((m) => m.id) },
-      },
-      select: { entityId: true, providerRef: true },
-    });
-    const refPorId = new Map(refs.map((r) => [r.entityId, r.providerRef]));
-
-    let encolados = 0;
-    for (const match of sinDetalle) {
-      const providerRef = refPorId.get(match.id);
-      if (!providerRef) continue;
-      /*
-       * A un terminado —o a uno cuya alineación existe pero vino a medias— se le pregunta cada
-       * quince minutos, no cada tic. Cuando el proveedor tiene una caída parcial —pasó: eventos
-       * sí, alineaciones no, durante horas— reinsistir cada minuto con cada partido reciente eran
-       * hasta ochenta pedidos por minuto de una cuota que se comparte. Un dato que llega horas
-       * tarde no se pierde por esperarlo quince minutos. Los que están en juego o por empezar sin
-       * alineación alguna sí van en cada tic: ahí la alineación vale ahora o no vale.
-       */
-      if (match.status === 'finished' || match.lineups.length > 0) {
-        const primeraVez = await this.kv.marcar(`detalle:espera:${match.id}`, 900);
-        if (!primeraVez) continue;
-      }
-      await this.enqueue('match-detail', { matchRef: providerRef });
-      encolados++;
-    }
-    if (encolados > 0) {
-      this.logger.log(`${encolados} partidos sin alineación: encolados`);
-    }
-    return encolados;
   }
 
   private async processOutbox(): Promise<number> {
@@ -363,17 +286,11 @@ export class SyncQueueService {
   }
 
   /**
-   * La cadena derivada de un partido terminado: primero los datos, después el relato.
+   * Un partido que acaba de terminar entra en la cola del cierre y refresca su tabla.
    *
-   * Antes esto solo encolaba el análisis, así que un partido recién terminado tenía texto de IA
-   * pero ni alineaciones ni estadísticas: la cancha quedaba vacía hasta el refresco de las 05:00.
-   * El análisis va con retraso a propósito, porque su fact sheet se arma con los eventos y las
-   * estadísticas que encolamos acá arriba.
-   *
-   * Solo para partidos recientes. Importar el archivo —cinco temporadas de sesenta competencias—
-   * marca decenas de miles de partidos como terminados de golpe, y a tres pedidos cada uno serían
-   * más de cien mil requests de una cuota que se comparte con otros sistemas. El detalle de lo viejo
-   * se rellena a mano con `backfill:matches`, que es donde se decide cuánto gastar.
+   * El detalle ya no se pide acá: lo hace el barrido, que mira el estado y no depende de que este
+   * evento se haya disparado. Un partido que nació terminado —o que terminó con el latido caído—
+   * se recupera igual.
    */
   private async onMatchFinished(matchId: string): Promise<void> {
     const match = await this.prisma.match.findUnique({
@@ -385,29 +302,9 @@ export class SyncQueueService {
     });
     if (!match) return;
 
-    const antiguedad = Date.now() - match.kickoffUtc.getTime();
-    if (antiguedad > DETALLE_MAX_ANTIGUEDAD_MS) {
-      this.logger.debug?.(`Partido ${matchId} es del archivo: sin detalle ni análisis`);
-      return;
+    if (Date.now() - match.kickoffUtc.getTime() <= ANTIGUEDAD_MAXIMA_MS) {
+      await this.matchSync.agendarCierre(matchId);
     }
-
-    const ref = await this.prisma.externalReference.findUnique({
-      where: {
-        provider_entityType_entityId: {
-          provider: 'api-football',
-          entityType: 'match',
-          entityId: matchId,
-        },
-      },
-      select: { providerRef: true },
-    });
-
-    if (ref) {
-      await this.enqueue('match-events', { matchRef: ref.providerRef });
-      await this.enqueue('match-detail', { matchRef: ref.providerRef });
-      await this.enqueue('match-players', { matchRef: ref.providerRef });
-    }
-    await this.enqueue('match-insight', { matchId }, { delay: INSIGHT_DELAY_MS });
     await this.refrescarTabla(match.season);
   }
 
@@ -443,29 +340,8 @@ export class SyncQueueService {
   private async dailyRefresh(): Promise<void> {
     /* Red de seguridad: si el worker estuvo caído, acá se cierran los que quedaron colgados. */
     await this.syncFixtures.reconcileStale();
-    /* En tarea y no en línea: recorre ochocientos equipos y no cabe en una función serverless. */
-    await this.enqueue('colores', {});
-
-    const recentlyFinishedIds = (
-      await this.prisma.match.findMany({
-        where: { status: 'finished', kickoffUtc: { gte: new Date(Date.now() - 48 * 3600_000) } },
-        select: { id: true },
-      })
-    ).map((m) => m.id);
-
-    const recentlyFinished = await this.prisma.externalReference.findMany({
-      where: {
-        provider: 'api-football',
-        entityType: 'match',
-        entityId: { in: recentlyFinishedIds },
-      },
-      select: { providerRef: true },
-    });
-    for (const { providerRef } of recentlyFinished) {
-      await this.enqueue('match-events', { matchRef: providerRef });
-      await this.enqueue('match-detail', { matchRef: providerRef });
-      await this.enqueue('match-players', { matchRef: providerRef });
-    }
+    /* Del detalle de los terminados se ocupa el barrido de cada tic: acá solo se limpia lo viejo. */
+    await this.matchSync.podar();
 
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
       await this.enqueue('competition', { competitionRef: providerRef });
@@ -513,6 +389,10 @@ export class SyncQueueService {
       await this.enqueue('match-preview', { matchId: match.id });
     }
 
-    await this.enqueue('embeddings', { entityType: 'team' });
+    /* Los colores y los vectores recorren ochocientos equipos y no cambian de un día para otro. */
+    if (new Date().getUTCDay() === 1) {
+      await this.enqueue('colores', {});
+      await this.enqueue('embeddings', { entityType: 'team' });
+    }
   }
 }

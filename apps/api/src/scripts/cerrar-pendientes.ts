@@ -1,0 +1,62 @@
+import 'reflect-metadata';
+import { Module } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { ApiBudgetService } from '../shared/api-budget.service.js';
+import { SharedModule } from '../shared/shared.module.js';
+import { CerrarPartidosUseCase, PARTIDOS_POR_LOTE } from '../modules/sync/cerrar-partidos.usecase.js';
+import { MatchSyncService } from '../modules/sync/match-sync.service.js';
+import { SyncModule } from '../modules/sync/sync.module.js';
+
+@Module({ imports: [SharedModule, SyncModule] })
+class CerrarModule {}
+
+/**
+ * Cierra de una vez todos los partidos terminados que quedaron sin detalle.
+ *
+ * El barrido del tic hace esto solo, pero de a un lote por vuelta: cuando hay semanas de atraso
+ * —un latido caído, una migración recién desplegada— este script lo resuelve en minutos. Un lote de
+ * veinte partidos cuesta un pedido, así que dos semanas de fútbol son unas veinte llamadas.
+ *
+ *   LIMITE=1000      tope de partidos de esta corrida
+ *   PISO_CUOTA=5000  corta si la cuota real del día baja de esto
+ */
+async function main(): Promise<void> {
+  const app = await NestFactory.createApplicationContext(CerrarModule, {
+    logger: ['warn', 'error'],
+  });
+  const sync = app.get(MatchSyncService);
+  const cerrar = app.get(CerrarPartidosUseCase);
+  const budget = app.get(ApiBudgetService);
+
+  const limite = Number(process.env.LIMITE ?? 1000);
+  const pisoDeCuota = Number(process.env.PISO_CUOTA ?? 5000);
+
+  let revisados = 0;
+  let cerrados = 0;
+  let pedidos = 0;
+
+  while (revisados < limite) {
+    const { dayRemaining } = await budget.snapshot();
+    if (dayRemaining !== null && dayRemaining < pisoDeCuota) {
+      console.log(`Corte por cuota: quedan ${dayRemaining} pedidos del día`);
+      break;
+    }
+
+    const partidos = await sync.candidatosDeCierre(Math.min(PARTIDOS_POR_LOTE, limite - revisados));
+    if (partidos.length === 0) break;
+
+    const resultado = await cerrar.cerrarLote(partidos);
+    revisados += resultado.revisados;
+    cerrados += resultado.cerrados.length;
+    pedidos += resultado.pedidos;
+    console.log(`${revisados} revisados · ${cerrados} cerrados · ${pedidos} pedidos al proveedor`);
+  }
+
+  const resumen = await sync.resumen();
+  console.log(
+    `Pendientes de las últimas 48 h: ${resumen.pendientes} · completos del día: ${resumen.completosDelDia}/${resumen.terminadosDelDia}`,
+  );
+  await app.close();
+}
+
+void main();

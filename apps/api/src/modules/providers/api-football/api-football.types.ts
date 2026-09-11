@@ -17,6 +17,14 @@ export interface ApiFootballLeague {
     start: string;
     end: string;
     current: boolean;
+    coverage?: {
+      fixtures?: {
+        events?: boolean;
+        lineups?: boolean;
+        statistics_fixtures?: boolean;
+        statistics_players?: boolean;
+      };
+    };
   }>;
 }
 
@@ -70,8 +78,11 @@ export interface ApiFootballFixture {
     away: { id: number; name: string };
   };
   goals: { home: number | null; away: number | null };
-  // presente solo en fixtures?live=*
+  /* Las cuatro llegan juntas al pedir por `id`/`ids`; con `live` o `league+season` solo vienen los eventos. */
   events?: ApiFootballEvent[];
+  lineups?: ApiFootballLineup[];
+  statistics?: ApiFootballStatistics[];
+  players?: ApiFootballFixturePlayers[];
 }
 
 export interface ApiFootballStandings {

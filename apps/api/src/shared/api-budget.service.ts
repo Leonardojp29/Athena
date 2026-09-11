@@ -19,7 +19,10 @@ const PERSISTIR_CADA_MS = 5_000;
 const CONFIAR_EN_MEMORIA_MS = 10_000;
 
 export class ApiBudgetExhaustedError extends Error {
-  constructor(scope: 'day' | 'minute', remaining: number) {
+  constructor(
+    readonly scope: 'day' | 'minute',
+    remaining: number,
+  ) {
     super(`API-Football budget exhausted (${scope}): ${remaining} requests remaining`);
     this.name = 'ApiBudgetExhaustedError';
   }

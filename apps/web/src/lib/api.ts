@@ -685,8 +685,18 @@ export interface TeamLineup {
   substitutes: LineupPlayer[];
 }
 
+/** Qué le falta al partido y si el sync ya dio por cerrado el asunto. */
+export interface EstadoDelDetalle {
+  completo: boolean;
+  cerrado: boolean;
+  alineaciones: boolean;
+  estadisticas: boolean;
+  jugadores: boolean;
+}
+
 export type MatchView = MatchCard & {
   venue: VenueSummary | null;
+  sync: EstadoDelDetalle | null;
   events: MatchEventView[];
   insight: MatchInsight | null;
   preview: MatchPreviewInsight | null;

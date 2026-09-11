@@ -56,7 +56,8 @@ pnpm --filter @athena/web exec playwright install-deps --dry-run chromium
 | Tarea | Comando | Costo aproximado |
 |---|---|---|
 | Competencias, equipos, fixtures, tabla | `pnpm --filter @athena/api sync:bootstrap` | ~50 requests |
-| Eventos, estadísticas y alineaciones faltantes | `pnpm --filter @athena/api backfill:matches` | 3 requests por partido |
+| Eventos, estadísticas y alineaciones de lo reciente | `pnpm --filter @athena/api cerrar:pendientes` | 1 request por cada 20 partidos |
+| Lo mismo para el archivo viejo | `pnpm --filter @athena/api backfill:matches` | 3 requests por partido |
 | Bios, acumulados de temporada, plantillas y dorsales | `FASE=temporadas pnpm --filter @athena/api backfill:players` | ~30 requests por liga |
 | Rendimiento por jugador de cada partido | `FASE=partidos pnpm --filter @athena/api backfill:players` | 1 request por partido |
 | Revincular alineaciones con los jugadores que existen hoy | `pnpm --filter @athena/api relink:lineups` | 0 requests |
@@ -194,10 +195,11 @@ Claves: `ai_insights`, `semantic_search`, `live_match_center`, `recommendations`
 | Síntoma | Dónde mirar |
 |---|---|
 | Los datos no se actualizan | `.logs/worker.log` (o el cron de Supabase en producción); que el tic corra cada minuto |
-| Faltan alineaciones o estadísticas de partidos recientes | Que la cola tenga trabajos (`SELECT count(*) FROM tareas`); el tic recupera lo terminado en las últimas seis horas |
+| Faltan alineaciones o estadísticas de partidos recientes | `GET /v1/internal/salud` con el secreto del cron: dice cuántos terminados de las últimas 48 h siguen sin cerrar, el último tic y la cuota. Un partido puntual se arregla con `POST /v1/internal/partidos/:id/resincronizar` |
 | Un job falla siempre | Busca `job_failed` en el log: trae job, intentos y error |
 | Un 500 en la web | La respuesta trae `requestId`; búscalo en `.logs/api.log` |
-| Partidos sin estadísticas | Normal si son viejos: corre `backfill:matches` |
+| Partidos sin estadísticas | Si son de esta semana, el barrido los recupera solo (reintenta a los 15 min, 1 h, 6 h y 24 h). Si son del archivo, corre `backfill:matches` |
+| El latido parece vivo pero nada llega | `ultimoTickHaceSeg` en `/v1/internal/salud`: puede estar corriéndolo tu worker local contra la base de producción. En Supabase, `select jobname, command from cron.job` — la URL de ahí tiene que ser el dominio estable del proyecto, nunca un alias de despliegue |
 | Sin insights nuevos | Revisa el flag `ai_insights` y el tope de tokens |
 | Previa ausente en un partido | Esperado si no hay tabla, historial ni forma previa: se omite a propósito |
 | La web muestra URLs viejas del API | Las variables `PUBLIC_*` se compilan: hay que reconstruir tras cambiarlas |

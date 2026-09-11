@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { FootballDataProvider } from '@athena/domain';
+import type { FootballDataProvider, ProviderMatchPlayerStats } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { bulkUpsert } from './bulk-upsert.js';
@@ -61,6 +61,12 @@ export class SyncMatchPlayersUseCase {
     }
 
     const rows = await this.provider.getMatchPlayerStatistics(matchRef);
+    const escritos = await this.escribir(matchId, rows);
+    this.logger.log(`Partido ${matchRef}: ${escritos} jugadores con estadísticas`);
+    return escritos;
+  }
+
+  async escribir(matchId: string, rows: ProviderMatchPlayerStats[]): Promise<number> {
     if (rows.length === 0) return 0;
 
     const teamIds = await this.refs.resolveMany(
@@ -139,7 +145,6 @@ export class SyncMatchPlayersUseCase {
       touch: true,
     });
 
-    this.logger.log(`Partido ${matchRef}: ${filas.length} jugadores con estadísticas`);
     return filas.length;
   }
 }

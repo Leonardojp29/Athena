@@ -8,6 +8,7 @@ import type {
   ProviderLineup,
   ProviderLineupPlayer,
   ProviderMatch,
+  ProviderMatchDetail,
   ProviderMatchEvent,
   ProviderMatchStatistics,
   ProviderPlayer,
@@ -46,6 +47,14 @@ export function mapLeague(raw: ApiFootballLeague): ProviderRef<ProviderCompetiti
         startDate: s.start ?? null,
         endDate: s.end ?? null,
         isCurrent: s.current,
+        cobertura: s.coverage?.fixtures
+          ? {
+              eventos: s.coverage.fixtures.events ?? false,
+              alineaciones: s.coverage.fixtures.lineups ?? false,
+              estadisticas: s.coverage.fixtures.statistics_fixtures ?? false,
+              jugadores: s.coverage.fixtures.statistics_players ?? false,
+            }
+          : null,
       })),
     },
   };
@@ -139,6 +148,17 @@ export function mapFixture(raw: ApiFootballFixture): ProviderRef<ProviderMatch> 
       awayScore: raw.goals.away,
       venue: mapVenue(raw.fixture.venue),
     },
+  };
+}
+
+export function mapFixtureDetail(raw: ApiFootballFixture): ProviderMatchDetail {
+  const matchRef = String(raw.fixture.id);
+  return {
+    match: mapFixture(raw),
+    events: raw.events ? mapEvents(matchRef, raw.events) : null,
+    lineups: raw.lineups ? raw.lineups.map(mapLineup) : null,
+    statistics: raw.statistics ? raw.statistics.map(mapStatistics) : null,
+    playerStatistics: raw.players ? mapFixturePlayers(raw.players) : null,
   };
 }
 

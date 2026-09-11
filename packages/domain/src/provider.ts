@@ -14,6 +14,15 @@ export interface ProviderSeason {
   startDate: string | null;
   endDate: string | null;
   isCurrent: boolean;
+  cobertura: ProviderCoverage | null;
+}
+
+/** Qué publica el proveedor de una temporada; sin esto se piden datos que esa liga nunca tuvo. */
+export interface ProviderCoverage {
+  eventos: boolean;
+  alineaciones: boolean;
+  estadisticas: boolean;
+  jugadores: boolean;
 }
 
 export interface ProviderCompetition {
@@ -214,6 +223,20 @@ export interface ProviderLiveMatch {
   events: ProviderMatchEvent[];
 }
 
+/**
+ * Un partido con todo lo que se puede saber de él en un solo pedido.
+ *
+ * `null` distingue "el proveedor no mandó esta faceta" de "la mandó vacía": lo primero se
+ * reintenta por otro camino, lo segundo significa que todavía no existe.
+ */
+export interface ProviderMatchDetail {
+  match: ProviderRef<ProviderMatch>;
+  events: ProviderMatchEvent[] | null;
+  lineups: ProviderLineup[] | null;
+  statistics: ProviderMatchStatistics[] | null;
+  playerStatistics: ProviderMatchPlayerStats[] | null;
+}
+
 export interface FootballDataProvider {
   readonly name: string;
 
@@ -226,6 +249,8 @@ export interface FootballDataProvider {
    * está en juego: un partido que termina desaparece de ahí y nadie lo saca de "en juego".
    */
   getMatchesByRefs(matchRefs: string[]): Promise<ProviderRef<ProviderMatch>[]>;
+  /** Los mismos partidos con eventos, alineaciones y estadísticas: un pedido por cada veinte. */
+  getMatchDetails(matchRefs: string[]): Promise<ProviderMatchDetail[]>;
   getStandings(competitionRef: string, seasonYear: number): Promise<ProviderStanding[]>;
   getLiveMatches(): Promise<ProviderLiveMatch[]>;
   getMatchEvents(matchRef: string): Promise<ProviderMatchEvent[]>;

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { slugify, type FootballDataProvider } from '@athena/domain';
+import type { Prisma } from '@athena/database';
+import { slugify, type FootballDataProvider, type ProviderCoverage } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { CONFIGURED_COMPETITIONS } from './competitions.config.js';
@@ -76,6 +77,7 @@ export class SyncCompetitionUseCase {
           startDate: season.startDate ? new Date(season.startDate) : null,
           endDate: season.endDate ? new Date(season.endDate) : null,
           isCurrent: season.isCurrent,
+          cobertura: coberturaJson(season.cobertura),
         },
         create: {
           competitionId: competition.id,
@@ -83,6 +85,7 @@ export class SyncCompetitionUseCase {
           startDate: season.startDate ? new Date(season.startDate) : null,
           endDate: season.endDate ? new Date(season.endDate) : null,
           isCurrent: season.isCurrent,
+          cobertura: coberturaJson(season.cobertura),
         },
       });
     }
@@ -96,4 +99,8 @@ export class SyncCompetitionUseCase {
     const taken = await this.prisma.competition.findUnique({ where: { slug: base } });
     return taken ? slugify(`${data.name} ${data.country ?? ''}`) : base;
   }
+}
+
+function coberturaJson(cobertura: ProviderCoverage | null): Prisma.InputJsonValue | undefined {
+  return cobertura ? { ...cobertura } : undefined;
 }

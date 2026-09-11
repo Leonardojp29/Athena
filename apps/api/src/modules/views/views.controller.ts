@@ -19,6 +19,8 @@ const TTL = {
   matchEnJuego: 15,
   matchProgramado: 120,
   matchTerminado: 3600,
+  /* Un partido terminado al que le falta el detalle se repara en minutos: la caché no puede taparlo. */
+  matchIncompleto: 120,
   topPerformers: 300,
   sitemap: 3600,
   /* El mundo del juego cambia cuando cambian las tablas: una vez al día alcanza. */
@@ -108,12 +110,8 @@ export class ViewsController {
    */
   @Get('match/:id')
   async match(@Param('id', ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: RespuestaConCabeceras) {
-    const vista = await this.cache.wrap(
-      `match:${id}`,
-      (v: { status: string }) => ttlDePartido(v.status),
-      () => this.views.match(id),
-    );
-    const ttl = ttlDePartido(vista.status);
+    const vista = await this.cache.wrap(`match:${id}`, ttlDePartido, () => this.views.match(id));
+    const ttl = ttlDePartido(vista);
     res.setHeader(
       'Cache-Control',
       `public, s-maxage=${ttl}, stale-while-revalidate=${Math.min(ttl * 2, 3600)}`,
@@ -133,11 +131,11 @@ interface RespuestaConCabeceras {
   setHeader(nombre: string, valor: string): void;
 }
 
-/** En juego cambia cada minuto; programado casi nada; terminado, nunca más. */
-function ttlDePartido(status: string): number {
-  if (status === 'in_play' || status === 'paused') return TTL.matchEnJuego;
-  if (status === 'scheduled') return TTL.matchProgramado;
-  return TTL.matchTerminado;
+/** En juego cambia cada minuto; programado casi nada; terminado, solo si ya llegó todo. */
+function ttlDePartido(vista: { status: string; sync?: { cerrado: boolean } | null }): number {
+  if (vista.status === 'in_play' || vista.status === 'paused') return TTL.matchEnJuego;
+  if (vista.status === 'scheduled') return TTL.matchProgramado;
+  return vista.sync?.cerrado === false ? TTL.matchIncompleto : TTL.matchTerminado;
 }
 
 function limaToday(): string {

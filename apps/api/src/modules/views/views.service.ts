@@ -1539,7 +1539,8 @@ export class ViewsService {
    * enterarse de algo que las otras cuatro toleran: un id que no existe devuelve listas vacías.
    */
   async match(id: string) {
-    const [match, insights, statistics, lineups, playerStatistics, historial] = await Promise.all([
+    const [match, insights, statistics, lineups, playerStatistics, historial, sync] =
+      await Promise.all([
       this.prisma.match.findUnique({
         relationLoadStrategy: JOIN,
         where: { id },
@@ -1613,8 +1614,9 @@ export class ViewsService {
         orderBy: [{ isStarter: 'desc' }, { minutesPlayed: 'desc' }],
         select: { ...matchPlayerStats, player: playerLink },
       }),
-      this.historial(id),
-    ]);
+        this.historial(id),
+        this.prisma.matchSync.findUnique({ where: { matchId: id } }),
+      ]);
     if (!match) throw new NotFoundException('Partido no encontrado');
 
     const hydrate = (row: (typeof insights)[number]) => ({
@@ -1635,6 +1637,19 @@ export class ViewsService {
       lineups,
       playerStatistics,
       historial,
+      /* Qué le falta al partido: la pantalla distingue "todavía no llegó" de "no va a llegar". */
+      sync: sync && {
+        completo: Boolean(
+          sync.eventosCompleto &&
+            sync.alineacionesCompleto &&
+            sync.estadisticasCompleto &&
+            sync.jugadoresCompleto,
+        ),
+        cerrado: sync.cerradoEn !== null,
+        alineaciones: sync.alineacionesCompleto,
+        estadisticas: sync.estadisticasCompleto,
+        jugadores: sync.jugadoresCompleto,
+      },
     };
   }
 

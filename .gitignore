@@ -43,3 +43,4 @@ tmp-*.mjs
 
 # Vercel
 .vercel
+.scratch/

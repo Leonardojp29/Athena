@@ -5,6 +5,7 @@ import type {
   ProviderLineup,
   ProviderLiveMatch,
   ProviderMatch,
+  ProviderMatchDetail,
   ProviderMatchEvent,
   ProviderMatchPlayerStats,
   ProviderMatchStatistics,
@@ -30,6 +31,7 @@ import type {
 import {
   mapEvents,
   mapFixture,
+  mapFixtureDetail,
   mapFixturePlayers,
   mapLeague,
   mapLineup,
@@ -39,6 +41,13 @@ import {
   mapStatistics,
   mapTeam,
 } from './mappers.js';
+
+/** El proveedor acepta hasta veinte ids por llamada, separados por guion. */
+const MAXIMO_POR_LOTE = 20;
+
+function* enLotes<T>(items: T[], tamano: number): Generator<T[]> {
+  for (let i = 0; i < items.length; i += tamano) yield items.slice(i, i + tamano);
+}
 
 @Injectable()
 export class ApiFootballAdapter implements FootballDataProvider {
@@ -75,13 +84,24 @@ export class ApiFootballAdapter implements FootballDataProvider {
     return rows.map(mapFixture);
   }
 
-  /* El proveedor acepta hasta 20 ids por llamada, separados por guion. */
   async getMatchesByRefs(matchRefs: string[]): Promise<ProviderRef<ProviderMatch>[]> {
     const salida: ProviderRef<ProviderMatch>[] = [];
-    for (let i = 0; i < matchRefs.length; i += 20) {
-      const lote = matchRefs.slice(i, i + 20);
+    for (const lote of enLotes(matchRefs, MAXIMO_POR_LOTE)) {
       const rows = await this.client.get<ApiFootballFixture>('/fixtures', { ids: lote.join('-') });
       salida.push(...rows.map(mapFixture));
+    }
+    return salida;
+  }
+
+  /*
+   * Pedir por `ids` trae el partido con sus eventos, alineaciones, estadísticas y notas embebidos:
+   * veinte partidos cerrados con un request en lugar de sesenta.
+   */
+  async getMatchDetails(matchRefs: string[]): Promise<ProviderMatchDetail[]> {
+    const salida: ProviderMatchDetail[] = [];
+    for (const lote of enLotes(matchRefs, MAXIMO_POR_LOTE)) {
+      const rows = await this.client.get<ApiFootballFixture>('/fixtures', { ids: lote.join('-') });
+      salida.push(...rows.map(mapFixtureDetail));
     }
     return salida;
   }

@@ -11,6 +11,8 @@ export interface Tab {
   id: string;
   label: string;
   disabled?: boolean;
+  /** Por qué está apagada: "sin datos" y "todavía no llegó" no son lo mismo para quien mira. */
+  motivo?: string;
 }
 
 interface Props {
@@ -38,7 +40,7 @@ const { tabs, active, enlace } = Astro.props;
           type="button"
           disabled
           class="shrink-0 cursor-not-allowed border-b-2 border-transparent px-3 py-2.5 text-sm text-ink-muted/50"
-          title="Sin datos para este partido"
+          title={tab.motivo ?? 'Sin datos para este partido'}
         >
           {tab.label}
         </button>

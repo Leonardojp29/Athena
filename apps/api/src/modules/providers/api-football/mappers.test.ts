@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   mapEvents,
   mapFixture,
+  mapFixtureDetail,
   mapLeague,
   mapLineup,
   mapStandings,
@@ -148,5 +149,46 @@ describe('mapMatchStatus', () => {
 
   it('defaults unknown statuses to scheduled', () => {
     expect(mapMatchStatus('???')).toBe('scheduled');
+  });
+});
+
+describe('mapFixtureDetail', () => {
+  const detalles = () =>
+    fixture<Parameters<typeof mapFixtureDetail>[0]>('fixtures-ids.json').map(mapFixtureDetail);
+
+  it('un partido terminado llega con sus cuatro facetas en un solo pedido', () => {
+    const terminado = detalles().find((d) => d.match.providerRef === '1635628');
+
+    expect(terminado?.match.data.status).toBe('finished');
+    expect(terminado?.events?.length).toBeGreaterThan(0);
+    expect(terminado?.lineups?.length).toBe(2);
+    expect(terminado?.statistics?.length).toBe(2);
+    expect(terminado?.playerStatistics?.length).toBeGreaterThan(0);
+    expect(terminado?.lineups?.[0]?.formation).toBe('4-3-3');
+    expect(terminado?.statistics?.[0]?.possessionPercent).toBeGreaterThan(0);
+  });
+
+  it('un partido por empezar ya tiene alineación y todavía no tiene eventos', () => {
+    const programado = detalles().find((d) => d.match.providerRef === '1552162');
+
+    expect(programado?.match.data.status).toBe('scheduled');
+    expect(programado?.events).toEqual([]);
+    expect(programado?.lineups?.length).toBe(2);
+  });
+
+  /* Una faceta que el proveedor no manda no es una faceta vacía: la primera se reintenta, la segunda no. */
+  it('distingue la faceta ausente de la faceta vacía', () => {
+    const sinFacetas = mapFixtureDetail({
+      ...fixture<Parameters<typeof mapFixtureDetail>[0]>('fixtures-ids.json')[0]!,
+      events: undefined,
+      lineups: undefined,
+      statistics: undefined,
+      players: undefined,
+    });
+
+    expect(sinFacetas.events).toBeNull();
+    expect(sinFacetas.lineups).toBeNull();
+    expect(sinFacetas.statistics).toBeNull();
+    expect(sinFacetas.playerStatistics).toBeNull();
   });
 });

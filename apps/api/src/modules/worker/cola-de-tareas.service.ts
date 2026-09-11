@@ -20,9 +20,19 @@ export interface Tarea {
   intentos: number;
 }
 
-const MAX_INTENTOS = 3;
-/* La base del backoff: 5 s, 10 s, 20 s — el mismo espaciado que usaba BullMQ. */
-const BACKOFF_MS = 5_000;
+/** Un fallo que no se arregla esperando: la tarea se descarta en el primer intento. */
+export class ErrorNoReintentable extends Error {
+  constructor(mensaje: string) {
+    super(mensaje);
+    this.name = 'ErrorNoReintentable';
+  }
+}
+
+/*
+ * Tres intentos en veinte segundos era una condena para cualquier fallo que dure minutos: la caída
+ * de un proveedor se llevaba por delante toda la tanda. La escalera llega ahora hasta las dos horas.
+ */
+const ESPERAS_MS = [5_000, 10_000, 20_000, 5 * 60_000, 30 * 60_000, 2 * 3600_000];
 /* Si el proceso muere con la tarea tomada, a los dos minutos la retoma cualquier otro. */
 const CANDADO_MS = 2 * 60_000;
 
@@ -63,17 +73,31 @@ export class ColaDeTareas {
 
   /** Reintento con espera creciente; al agotar los intentos, la tarea se descarta y se reporta. */
   async fallar(tarea: Tarea, error: unknown): Promise<void> {
-    if (tarea.intentos + 1 >= MAX_INTENTOS) {
+    const motivo = String(error).slice(0, 200);
+    const espera = ESPERAS_MS[tarea.intentos];
+
+    if (espera === undefined || error instanceof ErrorNoReintentable) {
       await this.completar(tarea.id);
-      this.logger.error(
-        `Tarea ${tarea.tipo}#${tarea.id} descartada tras ${MAX_INTENTOS} intentos: ${String(error).slice(0, 160)}`,
-      );
+      this.logger.error(`Tarea ${tarea.tipo}#${tarea.id} descartada: ${motivo}`);
       return;
     }
-    const espera = BACKOFF_MS * 2 ** tarea.intentos;
+
     await this.prisma.$executeRaw`
-      UPDATE tareas SET intentos = intentos + 1, tomada_hasta = NULL,
+      UPDATE tareas SET intentos = intentos + 1, tomada_hasta = NULL, ultimo_error = ${motivo},
         corre_despues = now() + make_interval(secs => ${espera / 1000})
+      WHERE id = ${tarea.id}`;
+  }
+
+  /**
+   * La tarea vuelve a la cola sin gastar un intento.
+   *
+   * Es lo que separa "el trabajo falló" de "ahora no se puede trabajar": con la cuota agotada, tres
+   * reintentos en veinte segundos borraban tareas que no tenían nada malo.
+   */
+  async posponer(tarea: Tarea, esperaMs: number, motivo: string): Promise<void> {
+    await this.prisma.$executeRaw`
+      UPDATE tareas SET tomada_hasta = NULL, ultimo_error = ${motivo},
+        corre_despues = now() + make_interval(secs => ${esperaMs / 1000})
       WHERE id = ${tarea.id}`;
   }
 
@@ -81,5 +105,20 @@ export class ColaDeTareas {
     const [fila] = await this.prisma.$queryRaw<Array<{ n: bigint }>>`
       SELECT COUNT(*) AS n FROM tareas`;
     return Number(fila?.n ?? 0);
+  }
+
+  async resumen(): Promise<{ total: number; atrasadas: number; conFallos: number }> {
+    const [fila] = await this.prisma.$queryRaw<
+      Array<{ total: bigint; atrasadas: bigint; con_fallos: bigint }>
+    >`
+      SELECT COUNT(*) AS total,
+             COUNT(*) FILTER (WHERE corre_despues < now() - interval '10 minutes') AS atrasadas,
+             COUNT(*) FILTER (WHERE intentos > 0) AS con_fallos
+      FROM tareas`;
+    return {
+      total: Number(fila?.total ?? 0),
+      atrasadas: Number(fila?.atrasadas ?? 0),
+      conFallos: Number(fila?.con_fallos ?? 0),
+    };
   }
 }

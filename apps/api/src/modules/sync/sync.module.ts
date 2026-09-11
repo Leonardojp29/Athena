@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ApiFootballModule } from '../providers/api-football/api-football.module.js';
+import { CerrarPartidosUseCase } from './cerrar-partidos.usecase.js';
 import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { MatchEventWriter } from './match-event.writer.js';
+import { MatchSyncService } from './match-sync.service.js';
 import { OutboxService } from './outbox.service.js';
 import { PlayerResolverService } from './player-resolver.service.js';
 import { RecalcularColoresUseCase } from './recalcular-colores.usecase.js';
@@ -23,6 +25,8 @@ import { VenueService } from './venue.service.js';
     ExternalReferenceService,
     DomainEventPublisher,
     MatchEventWriter,
+    MatchSyncService,
+    CerrarPartidosUseCase,
     OutboxService,
     PlayerResolverService,
     RecalcularColoresUseCase,
@@ -39,6 +43,8 @@ import { VenueService } from './venue.service.js';
   ],
   exports: [
     OutboxService,
+    MatchSyncService,
+    CerrarPartidosUseCase,
     RecalcularColoresUseCase,
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
