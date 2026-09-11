@@ -12,6 +12,29 @@ const SEMANTIC_TIMEOUT_MS = 2_000;
 const NAME_HITS_ENOUGH = 3;
 const QUERY_EMBEDDING_TTL_SECONDS = 604_800;
 
+/** Debajo de tres caracteres no hay trigramas: solo el prefijo puede responder. */
+const LARGO_MINIMO_DIFUSO = 3;
+const PESO_PREFIJO = 0.6;
+const PESO_PALABRA = 0.3;
+
+/*
+ * Quien escribe "boca" quiere Boca Juniors, no Boca Unidos: sin estos pesos gana el nombre más
+ * corto, que es al que el trigram le encuentra mayor proporción de coincidencia.
+ */
+interface Fuente {
+  tipo: SearchHit['type'];
+  tabla: string;
+  imagen: string;
+  subtitulo: string;
+  peso: number;
+}
+
+const FUENTES: readonly Fuente[] = [
+  { tipo: 'competition', tabla: 'competitions', imagen: 'logo_url', subtitulo: 'country', peso: 0.15 },
+  { tipo: 'team', tabla: 'teams', imagen: 'logo_url', subtitulo: 'country', peso: 0.1 },
+  { tipo: 'player', tabla: 'players', imagen: 'photo_url', subtitulo: 'nationality', peso: 0 },
+];
+
 export interface SearchHit {
   type: 'team' | 'player' | 'competition';
   id: string;
@@ -21,6 +44,20 @@ export interface SearchHit {
   subtitle: string | null;
   score: number;
   matchedBy: 'nombre' | 'semántica';
+}
+
+/** Tres campos por fila y sin llaves repetidas: el índice viaja al navegador entero. */
+export type CompactoIndice = [nombre: string, slug: string, pais: string];
+
+export interface IndiceLocal {
+  equipos: CompactoIndice[];
+  competencias: CompactoIndice[];
+}
+
+interface FilaIndice {
+  name: string;
+  slug: string;
+  country: string | null;
 }
 
 interface NameRow {
@@ -53,14 +90,15 @@ export class SearchService {
    */
   async search(query: string, limit = 12): Promise<SearchHit[]> {
     const trimmed = query.trim();
-    if (trimmed.length < 2) return [];
+    if (trimmed.length === 0) return [];
 
     const byName = await this.searchByName(trimmed, limit);
     const hits = new Map<string, SearchHit>();
     for (const hit of byName) hits.set(`${hit.type}:${hit.id}`, hit);
 
-    // Si el nombre ya resolvió la intención, no vale gastar segundos en un embedding.
-    const needsSemantic = byName.length < NAME_HITS_ENOUGH;
+    // Si el nombre ya resolvió la intención, no vale gastar segundos en un embedding. Y una o dos
+    // letras no son una descripción: nadie busca por significado escribiendo "u".
+    const needsSemantic = byName.length < NAME_HITS_ENOUGH && trimmed.length >= LARGO_MINIMO_DIFUSO;
 
     if (needsSemantic && (await this.flags.isEnabled(FLAGS.semanticSearch))) {
       try {
@@ -74,6 +112,42 @@ export class SearchService {
     }
 
     return [...hits.values()].sort((a, b) => b.score - a.score).slice(0, limit);
+  }
+
+  /**
+   * La vía del teclado: solo nombres. Ni el flag ni el embedding entran acá porque los dos son
+   * viajes de red que el lector paga entre tecla y tecla.
+   */
+  async suggest(query: string, limit = 8): Promise<SearchHit[]> {
+    const trimmed = query.trim();
+    if (trimmed.length === 0) return [];
+
+    const hits = await this.searchByName(trimmed, limit);
+    return hits.sort((a, b) => b.score - a.score).slice(0, limit);
+  }
+
+  /**
+   * El índice que el navegador resuelve solo. Van los equipos que el producto muestra —los que
+   * aparecen en alguna tabla de posiciones— y las competencias; los jugadores son diez veces más
+   * y se quedan del lado del servidor.
+   */
+  async indice(): Promise<IndiceLocal> {
+    const [equipos, competencias] = await Promise.all([
+      this.prisma.$queryRaw<FilaIndice[]>`
+        SELECT DISTINCT t.name, t.slug, t.country
+        FROM teams t
+        WHERE t.id IN (SELECT team_id FROM standings)
+        ORDER BY t.name
+      `,
+      this.prisma.$queryRaw<FilaIndice[]>`
+        SELECT name, slug, country FROM competitions ORDER BY name
+      `,
+    ]);
+
+    const compactar = (filas: FilaIndice[]): CompactoIndice[] =>
+      filas.map((f) => [f.name, f.slug, f.country ?? '']);
+
+    return { equipos: compactar(equipos), competencias: compactar(competencias) };
   }
 
   async similarTeams(slug: string, limit = 6): Promise<SearchHit[]> {
@@ -116,69 +190,81 @@ export class SearchService {
     const cached = this.embCache.get(key);
     if (cached) return cached;
 
-    const timeout = new Promise<null>((resolve) =>
-      setTimeout(() => resolve(null), SEMANTIC_TIMEOUT_MS),
-    );
-    const vector = await Promise.race([
-      this.embedder.embed([query]).then((v) => v[0] ?? null),
-      timeout,
-    ]);
+    /*
+     * El vector que llega tarde se guarda igual: la consulta que hoy venció es la que el lector
+     * está por reintentar, y descartarla convertía cada reintento en otra llamada paga.
+     */
+    const pedido = this.embedder.embed([query]).then((v) => {
+      const vector = v[0] ?? null;
+      if (vector) this.embCache.set(key, vector, QUERY_EMBEDDING_TTL_SECONDS);
+      return vector;
+    });
+    pedido.catch(() => null);
+
+    let avisar: ReturnType<typeof setTimeout>;
+    const vencimiento = new Promise<null>((resolve) => {
+      avisar = setTimeout(() => resolve(null), SEMANTIC_TIMEOUT_MS);
+    });
+    const vector = await Promise.race([pedido, vencimiento]).finally(() => clearTimeout(avisar));
+
     if (!vector) {
       this.logger.warn(`Embedding de la consulta excedió ${SEMANTIC_TIMEOUT_MS} ms: "${query}"`);
       return null;
     }
-
-    this.embCache.set(key, vector, QUERY_EMBEDDING_TTL_SECONDS);
     return vector;
   }
 
+  /**
+   * Una consulta de una o dos letras no tiene trigramas, así que solo puede resolverse por
+   * prefijo; de tres en adelante entran el parecido difuso y el infijo. Los tres nombres se
+   * comparan sin acentos y en minúscula contra las expresiones que indexa la base.
+   */
+  private consultaDeNombre(fuente: Fuente, largo: number): string {
+    const nombre = 'immutable_unaccent(lower(f.name))';
+    const condicion =
+      largo < LARGO_MINIMO_DIFUSO
+        ? `${nombre} LIKE c.q || '%'`
+        : `${nombre} % c.q OR ${nombre} LIKE '%' || c.q || '%'`;
+
+    return `
+      WITH c AS (SELECT immutable_unaccent(lower($1::text)) AS q)
+      SELECT f.id::text, f.name, f.slug,
+             f.${fuente.imagen} AS "imageUrl", f.${fuente.subtitulo} AS subtitle,
+             similarity(${nombre}, c.q)
+               + CASE WHEN ${nombre} LIKE c.q || '%' THEN ${PESO_PREFIJO}
+                      WHEN ${nombre} LIKE '% ' || c.q || '%' THEN ${PESO_PALABRA}
+                      ELSE 0 END AS score
+      FROM ${fuente.tabla} f, c
+      WHERE ${condicion}
+      ORDER BY score DESC, f.name ASC
+      LIMIT $2`;
+  }
+
   private async searchByName(query: string, limit: number): Promise<SearchHit[]> {
-    const [teams, players, competitions] = await Promise.all([
-      this.prisma.$queryRaw<NameRow[]>`
-        SELECT id::text, name, slug, logo_url AS "imageUrl", country AS subtitle,
-               similarity(name, ${query}) AS score
-        FROM teams
-        WHERE name ILIKE ${'%' + query + '%'} OR similarity(name, ${query}) > 0.25
-        ORDER BY score DESC, name ASC
-        LIMIT ${limit}
-      `,
-      this.prisma.$queryRaw<NameRow[]>`
-        SELECT id::text, name, slug, photo_url AS "imageUrl", nationality AS subtitle,
-               similarity(name, ${query}) AS score
-        FROM players
-        WHERE name ILIKE ${'%' + query + '%'} OR similarity(name, ${query}) > 0.25
-        ORDER BY score DESC, name ASC
-        LIMIT ${limit}
-      `,
-      this.prisma.$queryRaw<NameRow[]>`
-        SELECT id::text, name, slug, logo_url AS "imageUrl", country AS subtitle,
-               similarity(name, ${query}) AS score
-        FROM competitions
-        WHERE name ILIKE ${'%' + query + '%'} OR similarity(name, ${query}) > 0.25
-        ORDER BY score DESC, name ASC
-        LIMIT ${limit}
-      `,
-    ]);
+    const porFuente = await Promise.all(
+      FUENTES.map(async (fuente) => {
+        const filas = await this.prisma.$queryRawUnsafe<NameRow[]>(
+          this.consultaDeNombre(fuente, query.length),
+          query,
+          limit,
+        );
+        return filas.map(
+          (row): SearchHit => ({
+            type: fuente.tipo,
+            id: row.id,
+            name: row.name,
+            slug: row.slug,
+            imageUrl: row.imageUrl,
+            subtitle: row.subtitle,
+            // +1 mantiene los aciertos por nombre por encima de los semánticos (score ≤ 1)
+            score: Number(row.score) + fuente.peso + 1,
+            matchedBy: 'nombre',
+          }),
+        );
+      }),
+    );
 
-    const toHit =
-      (type: SearchHit['type']) =>
-      (row: NameRow): SearchHit => ({
-        type,
-        id: row.id,
-        name: row.name,
-        slug: row.slug,
-        imageUrl: row.imageUrl,
-        subtitle: row.subtitle,
-        // +1 mantiene los aciertos por nombre por encima de los semánticos (score ≤ 1)
-        score: Number(row.score) + 1,
-        matchedBy: 'nombre',
-      });
-
-    return [
-      ...competitions.map(toHit('competition')),
-      ...teams.map(toHit('team')),
-      ...players.map(toHit('player')),
-    ];
+    return porFuente.flat();
   }
 
   private async searchSemantic(query: string, limit: number): Promise<SearchHit[]> {
