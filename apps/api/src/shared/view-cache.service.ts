@@ -17,6 +17,7 @@ import { Memoria } from './memoria.js';
 @Injectable()
 export class ViewCacheService {
   private readonly memoria = new Memoria(500);
+  private readonly enVuelo = new Map<string, Promise<unknown>>();
 
   /**
    * El TTL puede depender de lo calculado: un partido terminado ya no cambia y merece una hora,
@@ -30,9 +31,22 @@ export class ViewCacheService {
     const guardado = this.memoria.get(`view:${clave}`);
     if (guardado !== undefined) return guardado as T;
 
-    const valor = await calcular();
-    const segundos = typeof ttl === 'function' ? ttl(valor) : ttl;
-    this.memoria.set(`view:${clave}`, valor, segundos);
-    return valor;
+    /* Diez visitantes al mismo tiempo sobre una vista fría la calculaban diez veces. */
+    const pendiente = this.enVuelo.get(clave);
+    if (pendiente) return pendiente as Promise<T>;
+
+    const calculo = calcular()
+      .then((valor) => {
+        this.memoria.set(`view:${clave}`, valor, typeof ttl === 'function' ? ttl(valor) : ttl);
+        return valor;
+      })
+      .finally(() => this.enVuelo.delete(clave));
+
+    this.enVuelo.set(clave, calculo);
+    return calculo;
+  }
+
+  borrar(clave: string): void {
+    this.memoria.delete(`view:${clave}`);
   }
 }

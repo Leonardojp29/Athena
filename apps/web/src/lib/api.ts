@@ -33,6 +33,8 @@ interface Entrada {
 
 const cache = new Map<string, Entrada>();
 const TTL_POR_DEFECTO_MS = 30_000;
+/* Un API colgado no puede retener la función de la web hasta que la plataforma la degüelle. */
+const TOPE_DE_ESPERA_MS = 10_000;
 const MAX_ENTRADAS = 300;
 
 /** Lee el s-maxage que el propio API declara; si no dice nada, 30 segundos. */
@@ -63,7 +65,7 @@ export async function api<T>(path: string): Promise<T> {
 }
 
 async function pedir<T>(path: string, alResponder?: (res: Response) => void): Promise<T> {
-  const res = await fetch(`${API_URL}/v1${path}`);
+  const res = await fetch(`${API_URL}/v1${path}`, { signal: AbortSignal.timeout(TOPE_DE_ESPERA_MS) });
   alResponder?.(res);
   if (!res.ok) {
     const cuerpo = res.status === 404 ? await res.json().catch(() => null) : null;

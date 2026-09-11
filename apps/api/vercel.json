@@ -3,6 +3,7 @@
   "installCommand": "pnpm install",
   "buildCommand": "cd ../.. && pnpm turbo run build --filter=@athena/api...",
   "outputDirectory": ".",
+  "regions": ["pdx1"],
   "functions": {
     "api/index.js": {
       "maxDuration": 60,

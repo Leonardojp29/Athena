@@ -48,6 +48,18 @@ const PESO_DE_LIGA: Record<string, number> = {
 const PESO_POR_OMISION = 55;
 
 /** Cuántas temporadas atrás se mira para promediar la posición. Tres alcanza y sobra. */
+interface ClubDeLiga {
+  slug: string;
+  nombre: string;
+  corto: string | null;
+  escudo: string | null;
+  primario: string | null;
+  secundario: string | null;
+  ciudad: string | null;
+  posicionMedia: number;
+  equipos: number;
+}
+
 const TEMPORADAS = 3;
 
 export interface ClubDelMundo {
@@ -169,25 +181,28 @@ export class MundoService {
   }
 
   private async ligasJugables(): Promise<LigaDelMundo[]> {
-    const competencias = await this.prisma.competition.findMany({
-      where: { isActive: true, scope: 'clubs', format: 'league' },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        country: true,
-        countryCode: true,
-        flagUrl: true,
-        logoUrl: true,
-        continent: true,
-      },
-      orderBy: { name: 'asc' },
-    });
+    const [competencias, continentales] = await Promise.all([
+      this.prisma.competition.findMany({
+        where: { isActive: true, scope: 'clubs', format: 'league' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          country: true,
+          countryCode: true,
+          flagUrl: true,
+          logoUrl: true,
+          continent: true,
+        },
+        orderBy: { name: 'asc' },
+      }),
+      this.participacionesContinentales(),
+    ]);
 
-    const continentales = await this.participacionesContinentales();
+    const clubesPorLiga = await this.clubesDe(competencias.map((c) => c.id));
     const ligas: LigaDelMundo[] = [];
     for (const competencia of competencias) {
-      const clubes = await this.clubesDe(competencia.id);
+      const clubes = clubesPorLiga.get(competencia.id) ?? [];
       /* Una liga sin tabla reciente no es jugable: no hay de dónde sacar plantel ni fuerza. */
       if (clubes.length < 6) continue;
 
@@ -234,60 +249,75 @@ export class MundoService {
   }
 
   /**
-   * Los clubes de una liga con su posición promedio. Se resuelve en SQL porque son veinte ligas por
-   * veinte clubes por tres temporadas: en Prisma serían sesenta viajes y acá es uno por liga.
+   * Los clubes de cada liga con su posición promedio, en una sola consulta.
+   *
+   * Era una consulta por liga dentro de un bucle: veinte viajes en serie a una base que está fuera
+   * de la región, casi veinte segundos cuando la caché estaba fría.
    */
-  private async clubesDe(competitionId: string) {
-    return this.prisma.$queryRaw<
-      Array<{
-        slug: string;
-        nombre: string;
-        corto: string | null;
-        escudo: string | null;
-        primario: string | null;
-        secundario: string | null;
-        ciudad: string | null;
-        posicionMedia: number;
-        equipos: number;
-      }>
-    >`
+  private async clubesDe(competitionIds: string[]): Promise<Map<string, ClubDeLiga[]>> {
+    if (competitionIds.length === 0) return new Map();
+
+    const filas = await this.prisma.$queryRaw<Array<ClubDeLiga & { competitionId: string }>>`
       WITH temporadas AS (
-        SELECT id FROM seasons
-        WHERE competition_id = ${competitionId}::uuid
-        ORDER BY year DESC
-        LIMIT ${TEMPORADAS}
+        SELECT id, competition_id
+        FROM (
+          SELECT id, competition_id,
+                 row_number() OVER (PARTITION BY competition_id ORDER BY year DESC) AS reciente
+          FROM seasons
+          WHERE competition_id = ANY(${competitionIds}::uuid[])
+        ) s
+        WHERE reciente <= ${TEMPORADAS}
       ),
       tamano AS (
         SELECT s.season_id, count(DISTINCT s.team_id)::int AS equipos
         FROM standings s
         WHERE s.season_id IN (SELECT id FROM temporadas)
         GROUP BY s.season_id
+      ),
+      clubes AS (
+        SELECT tp.competition_id AS "competitionId",
+               t.slug,
+               t.name AS nombre,
+               t.short_name AS corto,
+               t.logo_url AS escudo,
+               t.primary_color AS primario,
+               t.secondary_color AS secundario,
+               /* La ciudad del estadio: es lo único de la base que delata un clásico de barrio. */
+               v.city AS ciudad,
+               avg(s.position)::float AS "posicionMedia",
+               max(z.equipos)::int AS equipos
+        FROM standings s
+        JOIN temporadas tp ON tp.id = s.season_id
+        JOIN teams t ON t.id = s.team_id
+        JOIN tamano z ON z.season_id = s.season_id
+        LEFT JOIN venues v ON v.id = t.venue_id
+        WHERE t.is_national_team = false
+        GROUP BY tp.competition_id, t.slug, t.name, t.short_name, t.logo_url,
+                 t.primary_color, t.secondary_color, v.city
+        /*
+         * Al menos dos de las tres temporadas. Con una sola entraban los ascendidos y descendidos —los
+         * clubes que nadie ubica— y además distorsionaban la fuerza: un equipo que apareció una vez y
+         * salió primero quedaba con la media del campeón (así aparecía "Hull City 90" en la Premier).
+         */
+        HAVING count(DISTINCT s.season_id) >= 2
       )
-      SELECT t.slug,
-             t.name AS nombre,
-             t.short_name AS corto,
-             t.logo_url AS escudo,
-             t.primary_color AS primario,
-             t.secondary_color AS secundario,
-             /* La ciudad del estadio: es lo único de la base que delata un clásico de barrio. */
-             v.city AS ciudad,
-             avg(s.position)::float AS "posicionMedia",
-             max(z.equipos)::int AS equipos
-      FROM standings s
-      JOIN teams t ON t.id = s.team_id
-      JOIN tamano z ON z.season_id = s.season_id
-      LEFT JOIN venues v ON v.id = t.venue_id
-      WHERE s.season_id IN (SELECT id FROM temporadas)
-        AND t.is_national_team = false
-      GROUP BY t.slug, t.name, t.short_name, t.logo_url, t.primary_color, t.secondary_color, v.city
-      /*
-       * Al menos dos de las tres temporadas. Con una sola entraban los ascendidos y descendidos —los
-       * clubes que nadie ubica— y además distorsionaban la fuerza: un equipo que apareció una vez y
-       * salió primero quedaba con la media del campeón (así aparecía "Hull City 90" en la Premier).
-       */
-      HAVING count(DISTINCT s.season_id) >= 2
-      ORDER BY avg(s.position) ASC
-      LIMIT 30`;
+      SELECT "competitionId", slug, nombre, corto, escudo, primario, secundario, ciudad,
+             "posicionMedia", equipos
+      FROM (
+        SELECT c.*,
+               row_number() OVER (PARTITION BY "competitionId" ORDER BY "posicionMedia", slug) AS puesto
+        FROM clubes c
+      ) ordenados
+      WHERE puesto <= 30
+      ORDER BY "competitionId", puesto`;
+
+    const porLiga = new Map<string, ClubDeLiga[]>();
+    for (const { competitionId, ...club } of filas) {
+      const lista = porLiga.get(competitionId);
+      if (lista) lista.push(club);
+      else porLiga.set(competitionId, [club]);
+    }
+    return porLiga;
   }
 
   /**
