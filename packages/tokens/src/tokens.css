@@ -206,20 +206,15 @@
 }
 
 /*
- * Las dos paletas.
+ * Los acentos de marca: el azul de Líbero en todo lo que se toca y su rojo en la marca y en el vivo.
  *
- * La azul es la de Líbero —azul #005fde en todo lo que se toca, rojo #ef2c42 en la marca y en el
- * vivo— y es la que ve quien entra sin haber elegido. La verde es el lima de marcador con el que
- * nació Athena, y se recupera con `data-paleta="verde"`.
+ * Están agrupados acá y no entre los neutros porque son lo único que define la identidad: el papel y
+ * la tinta, la pizarra, el césped y la semántica —el cian de la IA, las tarjetas, la victoria— se
+ * mantienen iguales y por razones propias.
  *
- * Solo cambian los acentos de marca. El papel y la tinta son los mismos —es el mismo diagrama
- * impreso en el mismo cuaderno, con otro marcador—, la pizarra y el césped son sustrato y no siguen
- * la paleta (la regla del tablero sale de contraste medido, no de gusto), y la victoria se queda
- * verde porque "ganó" no es una preferencia de color.
- *
- * Contraste verificado en las cuatro combinaciones: la tinta azul da 6,85:1 sobre superficie clara
- * y 8,86:1 sobre la oscura; el blanco sobre el relleno azul, 5,77:1 y 4,79:1; la tinta roja del
- * vivo, 6,68:1 y 9,04:1, y sobre su propia pastilla lavada 6,07:1 y 4,60:1.
+ * Contraste medido: la tinta azul da 6,8:1 sobre superficie clara y 8,9:1 sobre la oscura; el blanco
+ * sobre el relleno azul, 5,8:1 y 4,8:1; la tinta roja del vivo, 6,7:1 y 9,1:1, y sobre su propia
+ * pastilla lavada 6,1:1 y 4,6:1.
  */
 
 :root {
@@ -246,34 +241,6 @@
   --a-color-live-on-board: oklch(0.78 0.11 25);
   --a-color-focus: oklch(0.78 0.11 252);
   --a-color-selection: oklch(0.56 0.19 260 / 0.3);
-}
-
-:root[data-paleta='verde'] {
-  --a-color-banda: oklch(0.362 0.062 158);
-  --a-color-banda-edge: oklch(0.298 0.055 158);
-  --a-color-primary: oklch(0.906 0.191 118);
-  --a-color-primary-ink: oklch(0.462 0.128 128);
-  --a-color-primary-contrast: oklch(0.15 0.005 285);
-  --a-color-marca: oklch(0.906 0.191 118);
-  --a-color-live: oklch(0.598 0.17 150);
-  --a-color-live-ink: oklch(0.5 0.15 150);
-  --a-color-live-on-board: oklch(0.723 0.196 150);
-  --a-color-win: oklch(0.906 0.191 118);
-  --a-color-win-contrast: oklch(0.15 0.005 285);
-  --a-color-focus: oklch(0.462 0.128 128);
-  --a-color-selection: oklch(0.906 0.191 118 / 0.3);
-}
-
-:root[data-paleta='verde'][data-theme='dark'] {
-  /* En oscuro la banda verde se oscurece igual que la pizarra: con el verde claro, la tiza tenue
-     encima se queda en 4,26:1. */
-  --a-color-banda: oklch(0.238 0.018 188);
-  --a-color-banda-edge: oklch(0.332 0.02 188);
-  --a-color-primary-ink: oklch(0.906 0.191 118);
-  --a-color-live: oklch(0.723 0.196 150);
-  --a-color-live-ink: oklch(0.723 0.196 150);
-  --a-color-focus: oklch(0.906 0.191 118);
-  --a-color-selection: oklch(0.906 0.191 118 / 0.26);
 }
 
 @media (prefers-reduced-motion: reduce) {

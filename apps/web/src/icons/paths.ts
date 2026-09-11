@@ -19,10 +19,6 @@ const REGISTRO = {
     // Semicírculo relleno: reemplaza el carácter ◐
     body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor" stroke="none"/>',
   },
-  paleta: {
-    // Dos muestras superpuestas: la de adelante rellena, la de atrás al aire.
-    body: '<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6" fill="currentColor" fill-opacity="0.35" stroke="none"/><circle cx="15" cy="12" r="6"/>',
-  },
   cerrar: {
     body: '<path d="M6 6l12 12M18 6L6 18"/>',
   },

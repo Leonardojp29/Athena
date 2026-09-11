@@ -18,9 +18,7 @@ colors:
   win-contrast: "oklch(1 0 0)"
   data: "oklch(0.792 0.121 208)"
   data-ink: "oklch(0.512 0.118 232)"
-  primary-verde: "oklch(0.906 0.191 118)"
-  primary-ink-verde: "oklch(0.462 0.128 128)"
-  marca-verde: "oklch(0.906 0.191 118)"
+  banda: "oklch(0.26 0.09 262)"
   board: "oklch(0.362 0.062 158)"
   board-edge: "oklch(0.298 0.055 158)"
   chalk: "oklch(0.992 0.002 95)"
@@ -30,7 +28,6 @@ colors:
   live: "oklch(0.62 0.22 22)"
   live-ink: "oklch(0.5 0.2 22)"
   live-on-board: "oklch(0.78 0.11 25)"
-  live-verde: "oklch(0.598 0.17 150)"
   card-yellow: "oklch(0.762 0.145 78)"
   card-red: "oklch(0.582 0.202 24)"
 typography:
@@ -133,42 +130,38 @@ y no un volcado de JSON.
 
 ## Colors
 
-### Dos paletas, una sola identidad
-Athena tiene dos juegos de acento y cada uno su tema claro y su oscuro. **Azul Líbero** es el que ve
-quien entra: azul `oklch(0.52 0.21 262)` en todo lo que se toca y rojo `oklch(0.6 0.22 22)` en la
-marca y en el vivo, tomados del diario del grupo. **Verde de marcador** es el lima con el que Athena
-nació, y vuelve con el botón del header (`data-paleta="verde"`, recordado en `localStorage`).
+### El acento y lo que no es acento
+Athena es azul: `oklch(0.52 0.21 262)` en todo lo que se toca y rojo `oklch(0.6 0.22 22)` en la marca
+y en el vivo, tomados de Líbero. Hay un tema claro y uno oscuro, y nada más: el lima de marcador con
+el que nació quedó atrás.
 
-Lo que sigue a la paleta son **solo los acentos de marca**: `primary`, `primary-ink`,
-`primary-contrast`, `marca`, `live`, `live-ink`, `live-on-board`, `focus` y `selection`. No la siguen
-tres familias, y por razones distintas:
+Los **acentos de marca** son `primary`, `primary-ink`, `primary-contrast`, `marca`, `banda`, `live`,
+`live-ink`, `live-on-board`, `focus` y `selection`. El resto no lo es, y por razones distintas:
 
 - **El papel y la tinta.** Los neutros son los mismos: es el mismo diagrama impreso en el mismo
   cuaderno, con otro marcador.
 - **El sustrato.** La pizarra, el césped, la tiza y el imán salen de contraste medido, no de gusto
   (ver la regla del tablero). Una pizarra azul obligaría a rehacer toda esa medición.
-- **La semántica.** El cian de la IA sigue siendo cian, las tarjetas siguen siendo amarilla y roja, y
-  **la victoria sigue siendo verde**: `win` y `win-contrast` existen justamente porque "ganó" no es
-  una preferencia de color. Antes el lima cumplía tres papeles —marca, acción y victoria— y no se
-  podían separar sin darle un token a cada uno.
+- **La semántica.** El cian de la IA es cian, las tarjetas son amarilla y roja, y **la victoria es
+  verde**: `win` y `win-contrast` existen justamente porque "ganó" no es una preferencia de color.
+  El lima cumplía tres papeles —marca, acción y victoria— y separarlos pedía un token para cada uno.
 
 ### Primary
-En azul, `primary` `oklch(0.52 0.21 262)` es el relleno de la acción y lleva texto blanco (5,8:1);
+`primary` `oklch(0.52 0.21 262)` es el relleno de la acción y lleva texto blanco (5,8:1);
 `primary-ink` `oklch(0.48 0.2 262)` es el del texto, el enlace y el anillo de foco, y da 6,8:1 sobre
-superficie clara y 8,9:1 sobre la oscura. En verde el relleno es lima y **nunca es texto sobre
-blanco:** ahí da 1,3:1, y para eso está `primary-ink`, que da 6,4:1.
+superficie clara y 8,9:1 sobre la oscura. **La regla del relleno y la tinta sigue mandando:** si algo
+es texto, borde o anillo, usa la tinta.
 
 ### Secondary
-`data` `oklch(0.792 0.121 208)` es cian de dato: marca todo lo que dice la IA y nada más, en las dos
-paletas. Su par de texto es `data-ink`. Está a más de cincuenta grados de tono del azul de marca y
-con la mitad de su saturación, así que en azul oscuro se distinguen como turquesa contra lavanda. Si
-el cian apareciera en un botón dejaría de significar "esto lo dedujo Athena".
+`data` `oklch(0.792 0.121 208)` es cian de dato: marca todo lo que dice la IA y nada más. Su par de
+texto es `data-ink`. Está a más de cincuenta grados de tono del azul de marca y con la mitad de su
+saturación, así que en oscuro se distinguen como turquesa contra lavanda. Si el cian apareciera en un
+botón dejaría de significar "esto lo dedujo Athena".
 
 ### En vivo
-En azul el vivo es el rojo de Líbero `oklch(0.62 0.22 22)`, que es además la convención de
-transmisión; en verde es el verde de señal. **Es relleno, no texto:** para el texto existe
-`live-ink`, que pasa 4,5:1 sobre la superficie y sobre su propia pastilla lavada en las cuatro
-combinaciones. Sobre la pizarra manda `live-on-board`, que es otra cosa: ahí el rojo tiene que subir
+El vivo es el rojo de Líbero `oklch(0.62 0.22 22)`, que es además la convención de transmisión.
+**Es relleno, no texto:** para el texto existe `live-ink`, que pasa 4,5:1 sobre la superficie y sobre
+su propia pastilla lavada en los dos temas. Sobre la pizarra manda `live-on-board`, que es otra cosa: ahí el rojo tiene que subir
 a `oklch(0.78 0.11 25)` porque a `0.72` daba 3,95:1 **como texto**, y en la pizarra el vivo se
 escribe, no se rellena.
 
@@ -716,10 +709,10 @@ para las fichas del servidor y para las que reemplace la isla en vivo.
   contiene enlaces a los equipos. Anidar un `<a>` dentro de otro es HTML inválido.
 - **Do** dar a cada icono de evento un `<span class="sr-only">` con su nombre: el color no
   puede ser el único canal.
-- **Do** verificar el contraste en las **cuatro** combinaciones —azul y verde, claro y oscuro— antes
-  de fijar un color. `a11y.spec.ts` las audita; lo que no pasa ahí no entra.
+- **Do** verificar el contraste en los **dos** temas antes de fijar un color. `a11y.spec.ts` audita
+  los dos; lo que no pasa ahí no entra.
 - **Do** preguntarse, antes de tocar un token de acento, si lo que se está pintando es marca,
-  semántica o sustrato. Solo la marca sigue a la paleta.
+  semántica o sustrato. Solo la marca lleva el azul.
 
 ### Don't:
 - **Don't** usar emojis como iconos. Todo icono es un SVG en línea desde el registro de

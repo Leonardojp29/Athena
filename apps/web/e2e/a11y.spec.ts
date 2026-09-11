@@ -20,20 +20,11 @@ const GRAVES = new Set(['serious', 'critical']);
  */
 test.describe.configure({ timeout: 90_000 });
 
-interface Aspecto {
-  paleta: 'azul' | 'verde';
-  tema: 'claro' | 'oscuro';
-}
-
-/* El contraste se verifica en las cuatro combinaciones: una paleta que solo pasa en claro no pasa. */
-async function fijarAspecto(page: Page, { paleta, tema }: Aspecto) {
-  await page.addInitScript(
-    ([p, t]) => {
-      localStorage.setItem('paleta', p);
-      localStorage.setItem('theme', t === 'oscuro' ? 'dark' : 'light');
-    },
-    [paleta, tema],
-  );
+/* El contraste se verifica en los dos temas: uno que solo pasa en claro no pasa. */
+async function fijarTema(page: Page, tema: 'claro' | 'oscuro') {
+  await page.addInitScript((t) => {
+    localStorage.setItem('theme', t === 'oscuro' ? 'dark' : 'light');
+  }, tema);
 }
 
 async function auditar(page: Page, ruta: string) {
@@ -79,21 +70,12 @@ test.describe('accesibilidad', () => {
   });
 });
 
-test.describe('las cuatro combinaciones de paleta y tema', () => {
-  const ASPECTOS: Aspecto[] = [
-    { paleta: 'azul', tema: 'claro' },
-    { paleta: 'azul', tema: 'oscuro' },
-    { paleta: 'verde', tema: 'claro' },
-    { paleta: 'verde', tema: 'oscuro' },
-  ];
-
-  for (const aspecto of ASPECTOS) {
-    for (const ruta of ['/', '/competencias/primera-division']) {
-      test(`${aspecto.paleta} ${aspecto.tema} en ${ruta}`, async ({ page }) => {
-        await fijarAspecto(page, aspecto);
-        expect(await auditar(page, ruta)).toEqual([]);
-      });
-    }
+test.describe('el tema oscuro', () => {
+  for (const ruta of ['/', '/competencias/primera-division']) {
+    test(`no tiene violaciones graves en ${ruta}`, async ({ page }) => {
+      await fijarTema(page, 'oscuro');
+      expect(await auditar(page, ruta)).toEqual([]);
+    });
   }
 });
 

@@ -57,10 +57,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="twitter:description" content={description} />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <!--
-      Tema y paleta antes de pintar, para que la primera imagen ya sea la que el visitante eligió.
+      El tema antes de pintar, para que la primera imagen ya sea la que el visitante eligió.
 
-      La barra del navegador y el favicon salen de acá y no de dos metas por `prefers-color-scheme`:
-      esas contradecían al tema elegido a mano, y un SVG externo no puede leer el DOM.
+      El color de la barra del navegador sale de acá y no de dos metas por `prefers-color-scheme`:
+      esas contradecían al tema elegido a mano.
     -->
     <script is:inline>
       window.aplicarAspecto = () => {
@@ -70,16 +70,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         if (oscuro) raiz.dataset.theme = 'dark';
         else delete raiz.dataset.theme;
 
-        const verde = localStorage.getItem('paleta') === 'verde';
-        if (verde) raiz.dataset.paleta = 'verde';
-        else delete raiz.dataset.paleta;
-
-        document
-          .querySelector('link[rel="icon"]')
-          ?.setAttribute('href', verde ? '/favicon-verde.svg' : '/favicon.svg');
-
-        /* Literales y no la variable: esto corre antes de que la hoja de estilos exista, y el papel
-           es el mismo en las dos paletas porque los neutros no las siguen. */
+        /* Literales y no la variable: esto corre antes de que exista la hoja de estilos. */
         document
           .querySelector('meta[name="theme-color"]')
           ?.setAttribute('content', oscuro ? '#0B0B0D' : '#FBFAF8');
@@ -131,9 +122,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       document
         .getElementById('theme-toggle')
         ?.addEventListener('click', () => alternar('theme', ['dark', 'light']));
-      document
-        .getElementById('paleta-toggle')
-        ?.addEventListener('click', () => alternar('paleta', ['verde', 'azul']));
     </script>
   </body>
 </html>
