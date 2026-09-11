@@ -37,6 +37,13 @@ for (const cambio of cambios) {
 const notas = new Map(playerStatistics.map((s) => [s.player.id, s]));
 const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
 
+/*
+ * Las filas se reparten el alto que les deja la cancha, pero con techo: un banco de doce reparte
+ * 37px cada uno y uno de tres se estiraría a 148, que se lee como un error de maquetado. El tope
+ * por fila lo corta antes; el sobrante queda abajo, como antes.
+ */
+const ALTO_MAXIMO_DE_FILA = 4;
+
 const lados = [homeTeam, awayTeam]
   .map((team) => ({ team, lineup: lineups.find((l) => l.teamId === team.id) }))
   .filter((e): e is { team: TeamSummary; lineup: TeamLineup } => e.lineup !== undefined)
@@ -87,22 +94,25 @@ const lados = [homeTeam, awayTeam]
             </span>
           </header>
 
-          <ul class="grid flex-1 content-start gap-0 px-1.5 py-1">
+          <ul
+            class="grid flex-1 gap-0 px-1.5 py-1 [grid-auto-rows:minmax(0,1fr)]"
+            style={`max-height:${banco.length * ALTO_MAXIMO_DE_FILA}rem`}
+          >
             {banco.map(({ jugador, entrada, nota, ficha }) => (
               <li>
                 <button
                   type="button"
                   data-ficha={ficha ?? undefined}
                   disabled={ficha === null}
-                  class="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-canvas-subtle"
+                  class="flex h-full w-full items-center gap-2 rounded px-1.5 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-canvas-subtle"
                 >
                   {entrada ? (
-                    <span class="flex w-9 shrink-0 items-center gap-0.5 text-2xs font-medium tabular text-live-ink">
-                      <EventIcon kind="sub_in" size={10} detail={`minuto ${entrada.minuto}`} />
+                    <span class="flex w-10 shrink-0 items-center gap-0.5 text-xs font-medium tabular text-live-ink">
+                      <EventIcon kind="sub_in" size={12} detail={`minuto ${entrada.minuto}`} />
                       {entrada.minuto}'
                     </span>
                   ) : (
-                    <span class="w-9 shrink-0" />
+                    <span class="w-10 shrink-0" />
                   )}
 
                   <PlayerName
@@ -111,19 +121,22 @@ const lados = [homeTeam, awayTeam]
                     photoUrl={jugador.photoUrl}
                     number={jugador.number}
                     enlazar={false}
-                    class:list={['min-w-0 flex-1 text-2xs', entrada ? '' : 'text-ink-muted']}
+                    size="md"
+                    class:list={['min-w-0 flex-1 text-xs', entrada ? '' : 'text-ink-muted']}
                   />
 
                   {entrada?.porQuien && (
-                    <span class="hidden shrink-0 text-2xs text-ink-muted lg:inline">
+                    <span class="hidden shrink-0 text-xs text-ink-muted lg:inline">
                       por {apellido(entrada.porQuien)}
                     </span>
                   )}
 
-                  {nota !== null && (
+                  {/* Un suplente que no entró llega con nota 0, y pintarlo en rojo dice "jugó mal"
+                      en lugar de "no jugó". Sin chip, la fila en gris ya lo dice. */}
+                  {nota !== null && Number(nota) > 0 && (
                     <span
                       class:list={[
-                        'shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular',
+                        'shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold tabular',
                         claseDeNota(Number(nota)),
                       ]}
                     >
