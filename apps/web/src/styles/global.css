@@ -31,6 +31,8 @@
   --color-data: var(--a-color-data);
   --color-data-ink: var(--a-color-data-ink);
 
+  --color-banda: var(--a-color-banda);
+  --color-banda-edge: var(--a-color-banda-edge);
   --color-board: var(--a-color-board);
   --color-board-edge: var(--a-color-board-edge);
   --color-chalk: var(--a-color-chalk);

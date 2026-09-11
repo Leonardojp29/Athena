@@ -44,6 +44,13 @@
    * un verde de L 0.556 daba 4,43:1 y el verde de "en vivo" 1,23:1, o sea invisible. A L 0.362
    * la tiza llega a 10,3:1, el lima a 8,2:1 y el verde en vivo a 4,6:1.
    */
+  /*
+   * La banda de cabecera y la pizarra eran el mismo verde, y no son la misma cosa: una es la
+   * identidad del sitio en cada ruta y la otra es el césped donde se dibuja el fútbol. Separadas,
+   * la banda puede seguir a la paleta sin que la cancha deje de ser verde.
+   */
+  --a-color-banda: oklch(0.26 0.09 262);
+  --a-color-banda-edge: oklch(0.34 0.09 262);
   --a-color-board: oklch(0.362 0.062 158);
   --a-color-board-edge: oklch(0.298 0.055 158);
   --a-color-chalk: oklch(0.992 0.002 95);
@@ -242,6 +249,8 @@
 }
 
 :root[data-paleta='verde'] {
+  --a-color-banda: oklch(0.362 0.062 158);
+  --a-color-banda-edge: oklch(0.298 0.055 158);
   --a-color-primary: oklch(0.906 0.191 118);
   --a-color-primary-ink: oklch(0.462 0.128 128);
   --a-color-primary-contrast: oklch(0.15 0.005 285);
@@ -256,6 +265,10 @@
 }
 
 :root[data-paleta='verde'][data-theme='dark'] {
+  /* En oscuro la banda verde se oscurece igual que la pizarra: con el verde claro, la tiza tenue
+     encima se queda en 4,26:1. */
+  --a-color-banda: oklch(0.238 0.018 188);
+  --a-color-banda-edge: oklch(0.332 0.02 188);
   --a-color-primary-ink: oklch(0.906 0.191 118);
   --a-color-live: oklch(0.723 0.196 150);
   --a-color-live-ink: oklch(0.723 0.196 150);
