@@ -1,5 +1,6 @@
 ---
-import { STAT_ROWS, type TeamStatistics, type TeamSummary } from '../lib/api';
+import type { TeamStatistics, TeamSummary } from '../lib/api';
+import { filasDeEstadisticas } from '../lib/estadisticas';
 
 interface Props {
   statistics: TeamStatistics[];
@@ -14,18 +15,7 @@ interface Props {
 }
 
 const { statistics, homeTeam, awayTeam, grande = false } = Astro.props;
-const home = statistics.find((s) => s.teamId === homeTeam.id);
-const away = statistics.find((s) => s.teamId === awayTeam.id);
-
-// Solo filas donde al menos un equipo tiene dato: el proveedor deja métricas en null.
-const rows =
-  home && away
-    ? STAT_ROWS.map((row) => ({
-        ...row,
-        homeValue: home[row.key] as number | null,
-        awayValue: away[row.key] as number | null,
-      })).filter((row) => row.homeValue !== null || row.awayValue !== null)
-    : [];
+const rows = filasDeEstadisticas(statistics, homeTeam, awayTeam);
 
 /*
  * Lima para el local y pizarra para el visitante. Antes las dos barras eran lima con distinta

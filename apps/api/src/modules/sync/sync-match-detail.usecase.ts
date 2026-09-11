@@ -81,11 +81,18 @@ export class SyncMatchDetailUseCase {
     return { statistics: statsWritten, lineups: lineupsWritten };
   }
 
+  /**
+   * Devuelve cuántos equipos quedaron con estadísticas **que se pueden mostrar**.
+   *
+   * El proveedor manda a veces las dos entradas con todas las métricas en null. Contarlas como
+   * llegadas cerraba el partido y la pantalla se quedaba sin barras: un vacío con otra forma.
+   */
   async escribirEstadisticas(matchId: string, statistics: ProviderMatchStatistics[]): Promise<number> {
-    const teams = await this.equiposDe(statistics);
+    const conDatos = statistics.filter(tieneAlgunaMetrica);
+    const teams = await this.equiposDe(conDatos);
 
     let escritas = 0;
-    for (const stat of statistics) {
+    for (const stat of conDatos) {
       const teamId = teams.get(stat.teamRef);
       if (!teamId) continue;
       const { teamRef: _teamRef, ...data } = stat;
@@ -99,13 +106,14 @@ export class SyncMatchDetailUseCase {
     return escritas;
   }
 
+  /** Cuenta solo las alineaciones dibujables: once titulares y una formación que los ordene. */
   async escribirAlineaciones(matchId: string, lineups: ProviderLineup[]): Promise<number> {
     const teams = await this.equiposDe(lineups);
 
     let escritas = 0;
     for (const lineup of lineups) {
       const teamId = teams.get(lineup.teamRef);
-      if (!teamId) continue;
+      if (!teamId || lineup.startXi.length === 0) continue;
       const data = {
         formation: lineup.formation,
         coachName: lineup.coachName,
@@ -122,7 +130,7 @@ export class SyncMatchDetailUseCase {
         update: data,
         create: { matchId, teamId, ...data },
       });
-      escritas++;
+      if (lineup.formation !== null && lineup.startXi.length >= 11) escritas++;
     }
     return escritas;
   }
@@ -162,4 +170,8 @@ export class SyncMatchDetailUseCase {
       };
     });
   }
+}
+
+function tieneAlgunaMetrica({ teamRef: _teamRef, ...metricas }: ProviderMatchStatistics): boolean {
+  return Object.values(metricas).some((valor) => valor !== null);
 }

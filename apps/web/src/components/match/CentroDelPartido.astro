@@ -12,6 +12,7 @@ import MatchStatistics from '../MatchStatistics.astro';
 import PitchLineups from '../pitch/PitchLineups.astro';
 import PreviewCard from '../PreviewCard.astro';
 import type { MatchView } from '../../lib/api';
+import { filasDeEstadisticas } from '../../lib/estadisticas';
 import { etiquetaDeRonda } from '../../lib/rondas';
 
 /*
@@ -33,9 +34,11 @@ interface Props {
 const { match, vistaPedida, live, enlaceDeVista } = Astro.props;
 
 const hayAlineaciones = match.lineups.length > 0;
+const hayEstadisticas = filasDeEstadisticas(match.statistics, match.homeTeam, match.awayTeam).length > 0;
 /* Mientras el cierre sigue abierto el dato puede estar en camino, y decirlo evita el "está roto". */
 const enCamino = match.sync !== null && !match.sync.cerrado;
 const faltaPorLlegar = 'Todavía no llegó; se actualiza solo en unos minutos';
+const estadisticasEnCamino = enCamino && !hayEstadisticas;
 /* Los cambios salen de los eventos: la alineación del API trae el once y el banco, no quién entró. */
 const cambios = match.events.filter((e) => e.kind === 'substitution');
 const analisis = match.insight ?? match.preview;
@@ -93,18 +96,27 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
             eran dos pestañas —una con el minuto a minuto estirado a mil quinientos píxeles y la
             otra con las barras apretadas en veintidós rem— y las dos juntas entran en una
             pantalla.
+
+            Sin estadísticas el relato se queda con la fila entera. Antes la grilla seguía en dos
+            columnas con un solo hijo: media pantalla vacía al lado de un relato comprimido a
+            24rem con desplazamiento propio.
           */}
-          <div class="grid gap-4 2xl:grid-cols-2">
-            <MatchStatistics
-              statistics={match.statistics}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-              grande
-            />
+          <div
+            class:list={['grid gap-4', hayEstadisticas && '2xl:grid-cols-2']}
+            data-resumen={hayEstadisticas ? 'con-estadisticas' : 'solo-relato'}
+          >
+            {hayEstadisticas && (
+              <MatchStatistics
+                statistics={match.statistics}
+                homeTeam={match.homeTeam}
+                awayTeam={match.awayTeam}
+                grande
+              />
+            )}
             <!--
-              La tarjeta mide lo que mide la de estadísticas: el relato va en una caja absoluta
-              para que su largo no estire la fila, y desplaza por dentro. Es el mismo recurso de
-              los paneles de ronda de una competencia.
+              Con estadísticas la tarjeta mide lo que mide la de al lado: el relato va en una caja
+              absoluta para que su largo no estire la fila, y desplaza por dentro. Solo, fluye a su
+              altura y el eje de minutos se lee al centro.
             -->
             <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
               <!-- Los escudos a los costados son la leyenda del eje: qué lado es cuál. -->
@@ -129,8 +141,20 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
                   )}
                 </span>
               </div>
-              <div class="relative min-h-0 flex-1 2xl:min-h-[24rem]">
-                <div class="barra-fina 2xl:absolute 2xl:inset-0 2xl:overflow-y-auto 2xl:pr-1">
+              {estadisticasEnCamino && (
+                <p class="mb-3 text-xs text-ink-muted">
+                  Las estadísticas de este partido se cargan solas en unos minutos.
+                </p>
+              )}
+              <div
+                class:list={['relative min-h-0 flex-1', hayEstadisticas && '2xl:min-h-[24rem]']}
+              >
+                <div
+                  class:list={[
+                    'barra-fina',
+                    hayEstadisticas && '2xl:absolute 2xl:inset-0 2xl:overflow-y-auto 2xl:pr-1',
+                  ]}
+                >
                   {live ? (
                     <MatchCenter client:load initial={match} live part="timeline" />
                   ) : (
