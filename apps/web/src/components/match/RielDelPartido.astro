@@ -1,0 +1,122 @@
+---
+import HistorialCompacto from './HistorialCompacto.astro';
+import Icon from '../Icon.astro';
+import type { MatchView } from '../../lib/api';
+import { etiquetaDeRonda } from '../../lib/rondas';
+
+/*
+ * Lo que acompaña al partido mire uno la pestaña que mire: el análisis, el historial y la ficha.
+ *
+ * En columna vive en el riel derecho; en fila va debajo de la cancha, que es donde cabe cuando la
+ * vista de alineaciones se queda con el ancho entero.
+ */
+interface Props {
+  match: MatchView;
+  vista: string;
+  enlaceDeVista: (id: string) => string;
+  disposicion?: 'columna' | 'fila';
+}
+
+const { match, vista, enlaceDeVista, disposicion = 'columna' } = Astro.props;
+
+const analisis = match.insight ?? match.preview;
+const jornada = etiquetaDeRonda(match.round);
+---
+
+<div
+  class:list={[
+    'grid items-start gap-3',
+    disposicion === 'fila' ? 'lg:grid-cols-3' : '',
+  ]}
+>
+    {
+    analisis ? (
+      <section class="rounded-lg border border-data/25 bg-surface p-4">
+        <p class="mb-2 flex items-center gap-1.5 text-2xs font-medium tracking-label text-data-ink uppercase">
+          <Icon name="destello" size={13} />
+          Análisis IA
+        </p>
+        <p class="text-sm font-semibold leading-snug">{analisis.titular}</p>
+        <ul class="mt-3 grid gap-1.5">
+          {('claves' in analisis ? analisis.claves : analisis.aSeguir).slice(0, 3).map((item) => (
+            <li class="flex gap-2 text-2xs text-ink-muted">
+              <Icon name="vineta" size={12} class="mt-0.5 shrink-0 text-data-ink" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+        {vista !== 'analisis' && (
+          <a
+            href={enlaceDeVista('analisis')}
+            class="mt-3 flex items-center gap-1 text-2xs text-primary-ink hover:underline"
+          >
+            Leer el análisis con su evidencia
+            <Icon name="chevron-derecha" size={12} />
+          </a>
+        )}
+      </section>
+    ) : (
+      <section class="rounded-lg border border-border bg-surface p-4">
+        <p class="text-sm text-ink-muted">El análisis de este partido se genera cuando termina.</p>
+      </section>
+    )
+  }
+
+  <!--
+    En su propia pestaña la tarjeta no se repite: la balanza dos veces en la misma pantalla es
+    peor que no tenerla en el riel.
+  -->
+  {
+    vista !== 'historial' && (
+      <HistorialCompacto
+        historial={match.historial}
+        homeTeam={match.homeTeam}
+        awayTeam={match.awayTeam}
+        href={enlaceDeVista('historial')}
+      />
+    )
+  }
+
+  <section class="rounded-lg border border-border bg-surface p-4">
+    <h2 class="mb-2 text-2xs font-medium tracking-label text-ink-muted uppercase">
+      Datos del partido
+    </h2>
+    <dl class="grid gap-1.5 text-sm">
+      <div class="flex justify-between gap-3">
+        <dt class="text-ink-muted">Competencia</dt>
+        <dd class="text-right">
+          <a
+            href={`/competencias/${match.season.competition.slug}`}
+            class="hover:text-primary-ink hover:underline"
+          >
+            {match.season.competition.name}
+          </a>
+        </dd>
+      </div>
+      <div class="flex justify-between gap-3">
+        <dt class="text-ink-muted">Temporada</dt>
+        <dd class="tabular">{match.season.year}</dd>
+      </div>
+      {match.round && (
+        <div class="flex justify-between gap-3">
+          <dt class="text-ink-muted">Jornada</dt>
+          <dd class="text-right">{jornada}</dd>
+        </div>
+      )}
+      {match.venue && (
+        <>
+          <div class="flex justify-between gap-3">
+            <dt class="text-ink-muted">Estadio</dt>
+            <dd class="text-right">{match.venue.name}</dd>
+          </div>
+          {match.venue.capacity !== null && (
+            <div class="flex justify-between gap-3">
+              <dt class="text-ink-muted">Capacidad</dt>
+              <dd class="tabular">{match.venue.capacity.toLocaleString('es-PE')}</dd>
+            </div>
+          )}
+        </>
+      )}
+    </dl>
+  </section>
+</div>

@@ -13,11 +13,20 @@ interface Props {
   /** Dorsal a la izquierda, cuando el contexto lo tiene. */
   number?: number | null;
   size?: 'sm' | 'md';
+  /** Dentro de un botón el nombre no puede ser un enlace: el perfil se abre desde la ficha. */
+  enlazar?: boolean;
   class?: string;
 }
 
-const { name, slug = null, photoUrl = null, number = null, size = 'sm', class: className } =
-  Astro.props;
+const {
+  name,
+  slug = null,
+  photoUrl = null,
+  number = null,
+  size = 'sm',
+  enlazar = true,
+  class: className,
+} = Astro.props;
 
 const px = size === 'md' ? 28 : 22;
 const caja = size === 'md' ? 'size-7' : 'size-[22px]';
@@ -51,7 +60,7 @@ const caja = size === 'md' ? 'size-7' : 'size-[22px]';
   }
 
   {
-    slug ? (
+    slug && enlazar ? (
       <a href={`/jugadores/${slug}`} class="truncate hover:text-primary-ink hover:underline">
         {name}
       </a>

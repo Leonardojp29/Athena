@@ -44,11 +44,27 @@ const lados = [homeTeam, awayTeam]
     team,
     lineup,
     banco: [...lineup.substitutes]
-      .map((jugador) => ({
-        jugador,
-        entrada: jugador.playerId ? (entradas.get(jugador.playerId) ?? null) : null,
-        nota: jugador.playerId ? (notas.get(jugador.playerId)?.rating ?? null) : null,
-      }))
+      .map((jugador) => {
+        const stats = jugador.playerId ? (notas.get(jugador.playerId) ?? null) : null;
+        return {
+          jugador,
+          entrada: jugador.playerId ? (entradas.get(jugador.playerId) ?? null) : null,
+          nota: stats?.rating ?? null,
+          /* El mismo payload que el imán de la cancha: la ficha ya sabe pintarlo, y sale gratis. */
+          ficha: jugador.playerId
+            ? JSON.stringify({
+                playerId: jugador.playerId,
+                slug: jugador.slug ?? stats?.player.slug ?? null,
+                name: stats?.player.name ?? jugador.name,
+                photoUrl: jugador.photoUrl ?? stats?.player.photoUrl ?? null,
+                number: jugador.number ?? stats?.shirtNumber ?? null,
+                position: jugador.position,
+                team: { name: team.name, slug: team.slug, logoUrl: team.logoUrl },
+                stats,
+              })
+            : null,
+        };
+      })
       /* Los que jugaron primero y por minuto: el que entró a los 60 importa más que el que miró. */
       .sort((a, b) => (a.entrada?.minuto ?? 999) - (b.entrada?.minuto ?? 999)),
   }));
@@ -56,9 +72,10 @@ const lados = [homeTeam, awayTeam]
 
 {
   lados.length > 0 && (
-    <div class="grid gap-3">
+    <div class="grid items-stretch gap-3 sm:grid-cols-2">
       {lados.map(({ team, lineup, banco }) => (
-        <section class="rounded-lg border border-border bg-surface">
+        /* Anfitrión de la ficha: el popup se dibuja sobre el banco del equipo al que se le hizo clic. */
+        <section data-ficha-anfitrion class="relative flex flex-col rounded-lg border border-border bg-surface">
           <header class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2">
             {team.logoUrl && <img src={team.logoUrl} alt="" width="16" height="16" loading="lazy" />}
             <h3 class="truncate text-2xs font-semibold uppercase tracking-label">El banco</h3>
@@ -70,42 +87,50 @@ const lados = [homeTeam, awayTeam]
             </span>
           </header>
 
-          <ul class="grid gap-0 px-1.5 py-1">
-            {banco.map(({ jugador, entrada, nota }) => (
-              <li class="flex items-center gap-1.5 rounded px-1 py-1 transition-colors hover:bg-canvas-subtle">
-                {entrada ? (
-                  <span class="flex w-9 shrink-0 items-center gap-0.5 text-2xs font-medium tabular text-live-ink">
-                    <EventIcon kind="sub_in" size={10} detail={`minuto ${entrada.minuto}`} />
-                    {entrada.minuto}'
-                  </span>
-                ) : (
-                  <span class="w-9 shrink-0" />
-                )}
+          <ul class="grid flex-1 content-start gap-0 px-1.5 py-1">
+            {banco.map(({ jugador, entrada, nota, ficha }) => (
+              <li>
+                <button
+                  type="button"
+                  data-ficha={ficha ?? undefined}
+                  disabled={ficha === null}
+                  class="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-canvas-subtle"
+                >
+                  {entrada ? (
+                    <span class="flex w-9 shrink-0 items-center gap-0.5 text-2xs font-medium tabular text-live-ink">
+                      <EventIcon kind="sub_in" size={10} detail={`minuto ${entrada.minuto}`} />
+                      {entrada.minuto}'
+                    </span>
+                  ) : (
+                    <span class="w-9 shrink-0" />
+                  )}
 
-                <PlayerName
-                  name={jugador.name}
-                  slug={jugador.slug}
-                  photoUrl={jugador.photoUrl}
-                  number={jugador.number}
-                  class:list={['min-w-0 flex-1 text-2xs', entrada ? '' : 'text-ink-muted']}
-                />
+                  <PlayerName
+                    name={jugador.name}
+                    slug={jugador.slug}
+                    photoUrl={jugador.photoUrl}
+                    number={jugador.number}
+                    enlazar={false}
+                    class:list={['min-w-0 flex-1 text-2xs', entrada ? '' : 'text-ink-muted']}
+                  />
 
-                {entrada?.porQuien && (
-                  <span class="hidden shrink-0 text-2xs text-ink-muted sm:inline">
-                    por {apellido(entrada.porQuien)}
-                  </span>
-                )}
+                  {entrada?.porQuien && (
+                    <span class="hidden shrink-0 text-2xs text-ink-muted lg:inline">
+                      por {apellido(entrada.porQuien)}
+                    </span>
+                  )}
 
-                {nota !== null && (
-                  <span
-                    class:list={[
-                      'shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular',
-                      claseDeNota(Number(nota)),
-                    ]}
-                  >
-                    {Number(nota).toFixed(1)}
-                  </span>
-                )}
+                  {nota !== null && (
+                    <span
+                      class:list={[
+                        'shrink-0 rounded px-1 py-px text-[10px] font-semibold tabular',
+                        claseDeNota(Number(nota)),
+                      ]}
+                    >
+                      {Number(nota).toFixed(1)}
+                    </span>
+                  )}
+                </button>
               </li>
             ))}
           </ul>

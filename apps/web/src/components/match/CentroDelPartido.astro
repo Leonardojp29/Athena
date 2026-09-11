@@ -1,11 +1,10 @@
 ---
-import HistorialCompacto from './HistorialCompacto.astro';
 import HistorialCompleto from './HistorialCompleto.astro';
 import MatchTabs, { type Tab } from './MatchTabs.astro';
 import PlayerStatsTable from './PlayerStatsTable.astro';
 import RefrescoEnVivo from './RefrescoEnVivo.astro';
+import RielDelPartido from './RielDelPartido.astro';
 import Suplentes from './Suplentes.astro';
-import Icon from '../Icon.astro';
 import InsightCard from '../InsightCard.astro';
 import MatchCenter from '../MatchCenter';
 import MatchStatistics from '../MatchStatistics.astro';
@@ -13,7 +12,6 @@ import PitchLineups from '../pitch/PitchLineups.astro';
 import PreviewCard from '../PreviewCard.astro';
 import type { MatchView } from '../../lib/api';
 import { filasDeEstadisticas } from '../../lib/estadisticas';
-import { etiquetaDeRonda } from '../../lib/rondas';
 
 /*
  * El centro de partido: las cuatro pestañas y el riel.
@@ -42,7 +40,6 @@ const estadisticasEnCamino = enCamino && !hayEstadisticas;
 /* Los cambios salen de los eventos: la alineación del API trae el once y el banco, no quién entró. */
 const cambios = match.events.filter((e) => e.kind === 'substitution');
 const analisis = match.insight ?? match.preview;
-const jornada = etiquetaDeRonda(match.round);
 
 /*
  * El historial va al final y **nunca deshabilitado**: el cero de las alineaciones es un hueco de
@@ -75,16 +72,14 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
 </div>
 
 <!--
-  En la vista de alineaciones la cancha define su propio ancho (la altura la limita), así
-  que la columna se ajusta a ella y el par se centra. Con `1fr` quedaba un hueco muerto de
-  200px a la izquierda de la cancha.
+  Las alineaciones ocupan el ancho entero: la cancha a la izquierda con el tamaño que ella define,
+  los dos bancos a su derecha y el riel debajo. Encerrarla en una columna de 1fr con el riel al
+  costado la dejaba flotando en el medio con un hueco muerto a cada lado.
 -->
 <div
   class:list={[
     'mt-4 grid items-start gap-4',
-    vista === 'alineaciones'
-      ? 'lg:grid-cols-[auto_20rem] lg:justify-center'
-      : 'lg:grid-cols-[minmax(0,1fr)_20rem]',
+    vista === 'alineaciones' ? '' : 'lg:grid-cols-[minmax(0,1fr)_20rem]',
   ]}
 >
   <div class="grid min-w-0 gap-4">
@@ -187,13 +182,30 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
 
     {
       vista === 'alineaciones' && (
-        <PitchLineups
-          lineups={match.lineups}
-          playerStatistics={match.playerStatistics}
-          homeTeam={match.homeTeam}
-          awayTeam={match.awayTeam}
-          cambios={cambios}
-        />
+        <>
+          <div class="grid items-stretch gap-4 2xl:grid-cols-[auto_minmax(0,1fr)]">
+            <PitchLineups
+              lineups={match.lineups}
+              playerStatistics={match.playerStatistics}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+              cambios={cambios}
+            />
+            <Suplentes
+              lineups={match.lineups}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+              cambios={cambios}
+              playerStatistics={match.playerStatistics}
+            />
+          </div>
+          <RielDelPartido
+            match={match}
+            vista={vista}
+            enlaceDeVista={enlaceDeVista}
+            disposicion="fila"
+          />
+        </>
       )
     }
 
@@ -218,108 +230,9 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
   </div>
 
   <!-- El riel: el análisis es la tesis del producto, no puede vivir al final de la página. -->
+  {vista !== 'alineaciones' && (
   <aside class="grid gap-3 lg:sticky lg:top-20">
-    {
-      /* El banco vive en el riel: debajo de la cancha empujaba la vista fuera de pantalla. */
-      vista === 'alineaciones' && (
-        <Suplentes
-          lineups={match.lineups}
-          homeTeam={match.homeTeam}
-          awayTeam={match.awayTeam}
-          cambios={cambios}
-          playerStatistics={match.playerStatistics}
-        />
-      )
-    }
-    {
-      analisis ? (
-        <section class="rounded-lg border border-data/25 bg-surface p-4">
-          <p class="mb-2 flex items-center gap-1.5 text-2xs font-medium tracking-label text-data-ink uppercase">
-            <Icon name="destello" size={13} />
-            Análisis IA
-          </p>
-          <p class="text-sm font-semibold leading-snug">{analisis.titular}</p>
-          <ul class="mt-3 grid gap-1.5">
-            {('claves' in analisis ? analisis.claves : analisis.aSeguir).slice(0, 3).map((item) => (
-              <li class="flex gap-2 text-2xs text-ink-muted">
-                <Icon name="vineta" size={12} class="mt-0.5 shrink-0 text-data-ink" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          {vista !== 'analisis' && (
-            <a
-              href={enlaceDeVista('analisis')}
-              class="mt-3 flex items-center gap-1 text-2xs text-primary-ink hover:underline"
-            >
-              Leer el análisis con su evidencia
-              <Icon name="chevron-derecha" size={12} />
-            </a>
-          )}
-        </section>
-      ) : (
-        <section class="rounded-lg border border-border bg-surface p-4">
-          <p class="text-sm text-ink-muted">El análisis de este partido se genera cuando termina.</p>
-        </section>
-      )
-    }
-
-    <!--
-      En su propia pestaña la tarjeta no se repite: la balanza dos veces en la misma pantalla es
-      peor que no tenerla en el riel.
-    -->
-    {
-      vista !== 'historial' && (
-        <HistorialCompacto
-          historial={match.historial}
-          homeTeam={match.homeTeam}
-          awayTeam={match.awayTeam}
-          href={enlaceDeVista('historial')}
-        />
-      )
-    }
-
-    <section class="rounded-lg border border-border bg-surface p-4">
-      <h2 class="mb-2 text-2xs font-medium tracking-label text-ink-muted uppercase">
-        Datos del partido
-      </h2>
-      <dl class="grid gap-1.5 text-sm">
-        <div class="flex justify-between gap-3">
-          <dt class="text-ink-muted">Competencia</dt>
-          <dd class="text-right">
-            <a
-              href={`/competencias/${match.season.competition.slug}`}
-              class="hover:text-primary-ink hover:underline"
-            >
-              {match.season.competition.name}
-            </a>
-          </dd>
-        </div>
-        <div class="flex justify-between gap-3">
-          <dt class="text-ink-muted">Temporada</dt>
-          <dd class="tabular">{match.season.year}</dd>
-        </div>
-        {match.round && (
-          <div class="flex justify-between gap-3">
-            <dt class="text-ink-muted">Jornada</dt>
-            <dd class="text-right">{jornada}</dd>
-          </div>
-        )}
-        {match.venue && (
-          <>
-            <div class="flex justify-between gap-3">
-              <dt class="text-ink-muted">Estadio</dt>
-              <dd class="text-right">{match.venue.name}</dd>
-            </div>
-            {match.venue.capacity !== null && (
-              <div class="flex justify-between gap-3">
-                <dt class="text-ink-muted">Capacidad</dt>
-                <dd class="tabular">{match.venue.capacity.toLocaleString('es-PE')}</dd>
-              </div>
-            )}
-          </>
-        )}
-      </dl>
-    </section>
+    <RielDelPartido match={match} vista={vista} enlaceDeVista={enlaceDeVista} />
   </aside>
+  )}
 </div>
