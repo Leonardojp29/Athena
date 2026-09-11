@@ -88,6 +88,7 @@
   --radius-xl: var(--a-radius-xl);
 
   --shadow-magnet: var(--a-elev-magnet);
+  --shadow-card: var(--a-elev-card);
   --shadow-panel: var(--a-elev-panel);
   --shadow-modal: var(--a-elev-modal);
 

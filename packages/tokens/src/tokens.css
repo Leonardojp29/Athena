@@ -11,8 +11,8 @@
 
 :root {
   /* --- papel: el diagrama impreso --- */
-  --a-color-bg: oklch(0.985 0.003 95);
-  --a-color-bg-subtle: oklch(0.958 0.005 95);
+  --a-color-bg: oklch(0.963 0.005 95);
+  --a-color-bg-subtle: oklch(0.936 0.007 95);
   --a-color-surface: oklch(1 0 0);
   --a-color-surface-raised: oklch(1 0 0);
   --a-color-border: oklch(0.898 0.006 95);
@@ -135,6 +135,7 @@
    */
   --a-elev-magnet:
     0 1px 2px oklch(0.185 0.008 286 / 0.22), 0 4px 10px -3px oklch(0.185 0.008 286 / 0.2);
+  --a-elev-card: 0 1px 2px -1px oklch(0.185 0.008 286 / 0.1);
   --a-elev-panel: 0 6px 24px -8px oklch(0.185 0.008 286 / 0.24);
   --a-elev-modal: 0 20px 56px -12px oklch(0.185 0.008 286 / 0.34);
 
@@ -201,6 +202,7 @@
   --a-color-selection: oklch(0.906 0.191 118 / 0.26);
 
   --a-elev-magnet: 0 1px 2px oklch(0 0 0 / 0.55), 0 5px 12px -3px oklch(0 0 0 / 0.45);
+  --a-elev-card: 0 1px 2px -1px oklch(0 0 0 / 0.5);
   --a-elev-panel: 0 8px 28px -8px oklch(0 0 0 / 0.55);
   --a-elev-modal: 0 24px 64px -12px oklch(0 0 0 / 0.7);
 }

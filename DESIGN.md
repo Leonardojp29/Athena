@@ -226,14 +226,41 @@ el resto. Las dos autoalojadas y precargadas, con un fallback de métricas ajust
 ## Layout
 
 El ancho completo no puede ser literal: texto a 2560px no se lee. La regla es un contenedor de
-tres medidas — `wide` **1920px** para el chrome, los encabezados a sangre, la cancha y las grillas;
-`content` 1600px para el cuerpo; `prose` 68ch para la narrativa de la IA dentro de su tarjeta.
+tres medidas — `wide` **1920px** para el chrome, la cancha y las grillas; `content` **1600px** para
+todo lo que se lee; `prose` 68ch para la narrativa de la IA dentro de su tarjeta.
 
 1600px se quedaba corto: con el zoom al 67% —que es como se mira un 1920 de cerca— la ventana pasa a
 2865px CSS y sobraban 600px de margen a cada lado.
 
+**Dos rieles, no uno.** El chrome —header, tira de partidos, pie— ocupa `wide`; la banda de la
+entidad y el cuerpo de la página van en `content`. Cuando todo compartía `wide`, nada estaba
+"adentro" de nada: el header, la banda y la tabla de posiciones arrancaban en el mismo píxel y la
+página se leía como una sola hoja. Con los dos rieles la banda sobresale ~160px del contenido a cada
+lado, y esa diferencia **es** la jerarquía. Los dos rieles de lectura sí se alinean entre sí: el
+escudo de la banda arranca donde arranca su propia página.
+
 El fondo cruza toda la pantalla y el contenido respeta su medida: un encabezado de entidad es
 una `<section>` a sangre con un contenedor adentro, nunca un `div` con márgenes automáticos.
+
+### La escalera
+
+Cinco peldaños, y cada uno se distingue del anterior por algo distinto:
+
+| Peldaño | Qué lo separa |
+|---|---|
+| marco (chrome) | `wide`, fondo `banda`, a sangre |
+| banner de la entidad | fondo `banda` a sangre, contenido en `content`, y un **labio de 3px en `primary`** abajo |
+| cuerpo | `content`, sobre `bg`; las columnas se separan con `gap-7`, las tarjetas de adentro con `gap-4` |
+| tarjeta | `surface` + filo de `border`, sin sombra |
+| fila | `rounded-md` y `hover:bg-bg-subtle` |
+
+El labio existe porque un hairline de `banda-edge` es azul sobre azul y no rankea nada: la costura
+más importante de la página era invisible. Y el cuerpo arranca a `pt-7` de la banda, no a `pt-3`:
+un bloque de cien píxeles con el contenido pegado a doce se lee como desborde del header.
+
+El contraste entre `bg` y `surface` es **4%** de luminancia. Estuvo en 1,5% —`oklch(0.985)` contra
+`oklch(1)`— y con eso las tarjetas no se despegaban del piso: la página entera parecía un solo
+plano con rayas. Si `bg` sube, `bg-subtle` sube con él o el hover de fila desaparece.
 
 Las grillas de listado van a `lg:grid-cols-2 2xl:grid-cols-3` con `items-start`: sin eso las
 tarjetas se estiran a la altura de la más alta y una competencia con un partido queda con
@@ -251,6 +278,7 @@ objeto lleva sombra y ningún borde.**
 
 | Token | Valor | Para qué |
 |---|---|---|
+| `elev-card` | `0 1px 2px -1px …/0.1` | la tarjeta, y el chip activo de un segmentado |
 | `elev-magnet` | `0 1px 2px …/0.22, 0 4px 10px -3px …/0.2` | la ficha del jugador sobre la cancha |
 | `elev-panel` | `0 6px 24px -8px …/0.24` | el mega-menú y el cajón |
 | `elev-modal` | `0 20px 56px -12px …/0.34` | la ficha en `<dialog>` |
@@ -261,9 +289,14 @@ slate.
 ### Named Rules
 
 - **La regla del objeto.** Si algo tiene sombra, no tiene borde. Si tiene borde, no tiene
-  sombra. Un elemento con los dos parece un recorte pegado.
-- El header usa `backdrop-blur-xl` sobre `surface/72` y un hairline de `primary/30` arriba: es
-  la única capa translúcida del sistema.
+  sombra. Un elemento con los dos parece un recorte pegado. La excepción declarada son las
+  plaquitas de escudo **sobre la banda**: ahí la sombra al 10% no se ve y el anillo es lo único
+  que les da filo.
+- `shadow-card` se escribía en siete lugares sin existir como token, así que no pintaba nada: el
+  chip activo de `SelectorFase`, de `BloqueGrupos` y del riel de continentes no se levantaba de su
+  carril. Una clase de Tailwind que no tiene token detrás no falla, simplemente no hace nada.
+- El header es **opaco** (`bg-banda`, sin `backdrop-blur`): sobre un fondo sólido el desenfoque no
+  aporta nada y cuesta una capa de composición en cada scroll.
 
 ## Shapes
 
@@ -305,7 +338,8 @@ pico calados por `fill-rule="evenodd"`.
 ### Cards / Containers
 - **Corner Style:** `rounded-lg` los contenedores, `rounded-md` las filas de su interior.
 - **Background:** `surface`; el encabezado interno se separa con `border-b border-border`.
-- **Shadow Strategy:** ninguna. Son planos: filo de tiza.
+- **Shadow Strategy:** ninguna. Son planos: filo de tiza. `shadow-card` existe para lo que **sí**
+  es objeto —el chip activo de un segmentado, la plaquita del escudo—, no para la tarjeta.
 - **Internal Padding:** `p-4` la tarjeta; `p-1` cuando solo contiene filas, para que el hover
   de la fila llegue al borde.
 

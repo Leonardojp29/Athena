@@ -58,13 +58,13 @@ const jsonLd = {
   liveBar={false}
 >
   <!-- El marcador a sangre sobre la pizarra: vive fuera de las pestañas porque nunca cambia de sección. -->
-  <section class="w-full border-b border-banda-edge bg-banda">
-    <Container width="wide">
+  <section class="w-full border-b-[3px] border-b-primary bg-banda">
+    <Container width="content">
       <BandaDelPartido match={match} live={live} conCompetencia />
     </Container>
   </section>
 
-  <Container width="wide" class="pt-3">
+  <Container width="content" class="pt-7">
     <h1 class="sr-only">{title}</h1>
     <CentroDelPartido
       match={match}

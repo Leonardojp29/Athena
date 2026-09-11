@@ -67,8 +67,8 @@ const jsonLd = {
   width="bleed"
   liveBar={false}
 >
-  <section class="w-full border-b border-banda-edge bg-banda">
-    <Container width="wide">
+  <section class="w-full border-b-[3px] border-b-primary bg-banda">
+    <Container width="content">
   <div class="flex items-center gap-4 py-6">
     {player.photoUrl && <img src={player.photoUrl} alt="" width="64" height="64" class="rounded-full" />}
     <div>
@@ -111,10 +111,10 @@ const jsonLd = {
     </Container>
   </section>
 
-  <Container width="wide" class="py-6">
+  <Container width="content" class="pt-7 pb-6">
   <SeasonTable seasons={seasons} totals={totals} />
 
-  <div class="mt-4 grid gap-4 items-start lg:grid-cols-2">
+  <div class="mt-4 grid gap-7 items-start lg:grid-cols-2">
     <div class="grid gap-4">
       <RecentPerformances performances={recentPerformances} />
 

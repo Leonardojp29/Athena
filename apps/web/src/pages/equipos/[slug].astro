@@ -117,7 +117,7 @@ const jsonLd = {
     tarjeta más abajo, y había que buscar en qué puesto va el equipo que fuiste a ver.
   -->
   {tema && <span class="block h-1.5 w-full" style={`background:${tema.franja}`} aria-hidden="true" />}
-  <section class="relative w-full overflow-hidden border-b border-banda-edge bg-banda" style={varsCabecera}>
+  <section class="relative w-full overflow-hidden border-b-[3px] border-b-primary bg-banda" style={varsCabecera}>
     <!-- El escudo gigante de fondo, desvanecido hacia el texto: se sabe dónde se está sin leer nada. -->
     {
       team.logoUrl && (
@@ -132,7 +132,7 @@ const jsonLd = {
         />
       )
     }
-    <Container width="wide" class="relative">
+    <Container width="content" class="relative">
       <div class="flex flex-wrap items-end gap-x-6 gap-y-4 py-6">
         <div class="flex min-w-0 flex-1 items-center gap-4">
           {
@@ -241,8 +241,8 @@ const jsonLd = {
 
   <!-- El lavado del club baja con la página: la pertenencia no se queda en la cabecera. -->
   <div class="w-full" style={tema ? `background:linear-gradient(180deg, ${tema.lavado(0.07)}, transparent 38rem)` : undefined}>
-  <Container width="wide" class="py-5">
-    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+  <Container width="content" class="pt-7 pb-5">
+    <div class="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div class="grid gap-4">
         <!--
           Los partidos van en dos columnas angostas con los equipos apilados. A media pantalla, una
