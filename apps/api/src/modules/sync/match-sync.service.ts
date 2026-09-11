@@ -44,11 +44,11 @@ export class MatchSyncService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Los partidos terminados a los que todavía les falta algo y ya toca volver a preguntar. */
-  candidatosDeCierre(limite: number): Promise<PartidoPorCerrar[]> {
+  candidatosDeCierre(limite: number, antiguedadMs = ANTIGUEDAD_MAXIMA_MS): Promise<PartidoPorCerrar[]> {
     return this.candidatos(
       Prisma.sql`
         m.status = 'finished'
-        AND m.kickoff_utc > now() - ${intervalo(ANTIGUEDAD_MAXIMA_MS)}::interval
+        AND m.kickoff_utc > now() - ${intervalo(antiguedadMs)}::interval
       `,
       limite,
     );
@@ -163,6 +163,19 @@ export class MatchSyncService {
             ultimo_intento = EXCLUDED.ultimo_intento,
             ultimo_error = EXCLUDED.ultimo_error,
             cerrado_en = EXCLUDED.cerrado_en,
+            actualizado_en = now()`;
+  }
+
+  /** Deja constancia del fallo y espera un rato: sin esto el barrido vuelve a chocar en el tic siguiente. */
+  async anotarFallo(matchId: string, error: string): Promise<void> {
+    await this.prisma.$executeRaw`
+      INSERT INTO match_sync (match_id, intentos, proximo_intento, ultimo_intento, ultimo_error)
+      VALUES (${matchId}::uuid, 1, now() + interval '15 minutes', now(), ${error})
+      ON CONFLICT (match_id) DO UPDATE
+        SET intentos = match_sync.intentos + 1,
+            proximo_intento = now() + interval '15 minutes',
+            ultimo_intento = now(),
+            ultimo_error = EXCLUDED.ultimo_error,
             actualizado_en = now()`;
   }
 

@@ -72,10 +72,8 @@ export class SyncMatchDetailUseCase {
       this.provider.getMatchLineups(matchProviderRef),
     ]);
 
-    const [statsWritten, lineupsWritten] = await Promise.all([
-      this.escribirEstadisticas(matchId, statistics),
-      this.escribirAlineaciones(matchId, lineups),
-    ]);
+    const statsWritten = await this.escribirEstadisticas(matchId, statistics);
+    const lineupsWritten = await this.escribirAlineaciones(matchId, lineups);
 
     this.logger.log(
       `Detalle de ${matchProviderRef}: ${statsWritten} equipos con stats, ${lineupsWritten} alineaciones`,

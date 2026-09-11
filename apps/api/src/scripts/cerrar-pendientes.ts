@@ -18,6 +18,7 @@ class CerrarModule {}
  * —un latido caído, una migración recién desplegada— este script lo resuelve en minutos. Un lote de
  * veinte partidos cuesta un pedido, así que dos semanas de fútbol son unas veinte llamadas.
  *
+ *   DIAS=7           hasta qué antigüedad rellenar; 3650 barre el archivo entero
  *   LIMITE=1000      tope de partidos de esta corrida
  *   PISO_CUOTA=5000  corta si la cuota real del día baja de esto
  */
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
 
   const limite = Number(process.env.LIMITE ?? 1000);
   const pisoDeCuota = Number(process.env.PISO_CUOTA ?? 5000);
+  const ventanaMs = Number(process.env.DIAS ?? 7) * 24 * 3600_000;
 
   let revisados = 0;
   let cerrados = 0;
@@ -44,10 +46,13 @@ async function main(): Promise<void> {
       break;
     }
 
-    const partidos = await sync.candidatosDeCierre(Math.min(PARTIDOS_POR_LOTE, limite - revisados));
+    const partidos = await sync.candidatosDeCierre(
+      Math.min(PARTIDOS_POR_LOTE, limite - revisados),
+      ventanaMs,
+    );
     if (partidos.length === 0) break;
 
-    const resultado = await cerrar.cerrarLote(partidos);
+    const resultado = await cerrar.cerrarLote(partidos, ventanaMs);
     /* Un partido cerrado todavía no tiene relato: el análisis se arma con lo que acaba de llegar. */
     for (const matchId of resultado.cerrados) {
       await cola.encolar('match-insight', { matchId });

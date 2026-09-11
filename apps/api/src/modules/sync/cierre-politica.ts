@@ -101,8 +101,11 @@ export function evaluarIntento(opciones: {
   fase: Fase;
   kickoff: Date;
   ahora: Date;
+  /** Hasta qué antigüedad vale la pena insistir; el relleno del archivo la estira a propósito. */
+  antiguedadMaximaMs?: number;
 }): Veredicto {
   const { estado, llegada, fase, kickoff, ahora } = opciones;
+  const antiguedadMaximaMs = opciones.antiguedadMaximaMs ?? ANTIGUEDAD_MAXIMA_MS;
 
   if (fase !== 'cierre') {
     return {
@@ -128,7 +131,7 @@ export function evaluarIntento(opciones: {
     };
   }
 
-  if (ahora.getTime() - kickoff.getTime() > ANTIGUEDAD_MAXIMA_MS) {
+  if (ahora.getTime() - kickoff.getTime() > antiguedadMaximaMs) {
     return {
       completo,
       intentos: estado.intentos + 1,

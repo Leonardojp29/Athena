@@ -52,7 +52,10 @@ export class CerrarPartidosUseCase {
     return partido ? this.cerrarLote([partido]) : { pedidos: 0, revisados: 0, cerrados: [] };
   }
 
-  async cerrarLote(partidos: PartidoPorCerrar[]): Promise<ResultadoDelCierre> {
+  async cerrarLote(
+    partidos: PartidoPorCerrar[],
+    antiguedadMaximaMs?: number,
+  ): Promise<ResultadoDelCierre> {
     if (partidos.length === 0) return { pedidos: 0, revisados: 0, cerrados: [] };
 
     const detalles = await this.provider.getMatchDetails(partidos.map((p) => p.providerRef));
@@ -60,9 +63,18 @@ export class CerrarPartidosUseCase {
 
     const cerrados: string[] = [];
     for (const partido of partidos) {
-      const detalle = porRef.get(partido.providerRef);
-      const cerrado = await this.cerrarUno(partido, detalle);
-      if (cerrado) cerrados.push(partido.matchId);
+      /* Un partido que revienta no puede llevarse el lote entero: queda anotado y sigue el resto. */
+      try {
+        const cerrado = await this.cerrarUno(
+          partido,
+          porRef.get(partido.providerRef),
+          antiguedadMaximaMs,
+        );
+        if (cerrado) cerrados.push(partido.matchId);
+      } catch (error) {
+        this.logger.error(`Partido ${partido.providerRef}: ${String(error).slice(0, 160)}`);
+        await this.sync.anotarFallo(partido.matchId, String(error).slice(0, 200));
+      }
     }
 
     const pedidos = Math.ceil(partidos.length / 20);
@@ -77,6 +89,7 @@ export class CerrarPartidosUseCase {
   private async cerrarUno(
     partido: PartidoPorCerrar,
     detalle: ProviderMatchDetail | undefined,
+    antiguedadMaximaMs?: number,
   ): Promise<boolean> {
     const llegada = detalle
       ? await this.escribir(partido, detalle)
@@ -88,6 +101,7 @@ export class CerrarPartidosUseCase {
       fase: faseDe(partido.status),
       kickoff: partido.kickoffUtc,
       ahora: new Date(),
+      antiguedadMaximaMs,
     });
 
     await this.sync.registrarIntento(
@@ -109,20 +123,26 @@ export class CerrarPartidosUseCase {
   ): Promise<LlegadaDeFacetas> {
     const { estado, matchId } = partido;
 
-    const [eventos, alineaciones, estadisticas, jugadores] = await Promise.all([
+    /*
+     * En serie y no en paralelo: el resolutor de jugadores abre una transacción interactiva, y con
+     * las otras tres escrituras compitiendo por el pooler esa transacción caduca antes de cerrarse.
+     */
+    const eventos =
       detalle.events && !estado.eventosCompleto
-        ? this.eventos.replace(this.provider.name, matchId, detalle.events)
-        : null,
+        ? await this.eventos.replace(this.provider.name, matchId, detalle.events)
+        : null;
+    const alineaciones =
       detalle.lineups && !estado.alineacionesCompleto
-        ? this.detalle.escribirAlineaciones(matchId, detalle.lineups)
-        : null,
+        ? await this.detalle.escribirAlineaciones(matchId, detalle.lineups)
+        : null;
+    const estadisticas =
       detalle.statistics && !estado.estadisticasCompleto
-        ? this.detalle.escribirEstadisticas(matchId, detalle.statistics)
-        : null,
+        ? await this.detalle.escribirEstadisticas(matchId, detalle.statistics)
+        : null;
+    const jugadores =
       detalle.playerStatistics && !estado.jugadoresCompleto
-        ? this.jugadores.escribir(matchId, detalle.playerStatistics)
-        : null,
-    ]);
+        ? await this.jugadores.escribir(matchId, detalle.playerStatistics)
+        : null;
 
     return { eventos, alineaciones, estadisticas, jugadores };
   }

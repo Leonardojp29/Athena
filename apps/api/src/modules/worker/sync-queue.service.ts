@@ -243,11 +243,11 @@ export class SyncQueueService {
         ],
       },
     });
+    /* Va antes del corte: su propia consulta decide, y con la ventana más ancha que el feed en vivo. */
+    await this.seguirLosEnCurso();
     if (candidates === 0) return 0;
 
-    const escritos = await this.syncFixtures.syncLive();
-    await this.seguirLosEnCurso();
-    return escritos;
+    return this.syncFixtures.syncLive();
   }
 
   /**
