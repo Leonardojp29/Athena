@@ -47,7 +47,7 @@ export default function Confirmar({
       aria-labelledby="confirmar-titulo"
       onClick={onCancelar}
       className="fixed inset-0 z-50 grid place-items-center px-6 backdrop-blur-sm duration-200 animate-in fade-in"
-      style={{ background: 'oklch(0.13 0.012 285 / 0.86)' }}
+      style={{ background: 'var(--a-color-overlay)' }}
     >
       <div
         onClick={(evento) => evento.stopPropagation()}

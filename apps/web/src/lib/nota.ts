@@ -14,8 +14,8 @@
 export function claseDeNota(nota: number): string {
   if (nota >= 10) return 'bg-card-yellow text-board ring-2 ring-inset ring-chalk/80';
   if (nota >= 9) return 'bg-data text-board';
-  if (nota >= 8) return 'bg-primary text-primary-contrast';
-  if (nota >= 7) return 'bg-nota-buena text-primary-contrast';
+  if (nota >= 8) return 'bg-win text-win-contrast';
+  if (nota >= 7) return 'bg-nota-buena text-nota-buena-contrast';
   if (nota >= 6) return 'bg-board text-chalk';
   return 'bg-card-red/85 text-chalk';
 }

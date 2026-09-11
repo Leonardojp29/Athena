@@ -93,6 +93,15 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         </a>
 
         <button
+          id="paleta-toggle"
+          type="button"
+          class="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+          aria-label="Cambiar paleta"
+        >
+          <Icon name="paleta" size={18} />
+        </button>
+
+        <button
           id="theme-toggle"
           type="button"
           class="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"

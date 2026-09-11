@@ -39,8 +39,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#0A0A0C" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#FFFFFF" />
     <link rel="preload" href="/fonts/oswald-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <title>{title}</title>
@@ -57,10 +56,35 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <!--
+      Tema y paleta antes de pintar, para que la primera imagen ya sea la que el visitante eligió.
+
+      La barra del navegador y el favicon salen de acá y no de dos metas por `prefers-color-scheme`:
+      esas contradecían al tema elegido a mano, y un SVG externo no puede leer el DOM.
+    -->
     <script is:inline>
-      const stored = localStorage.getItem('theme');
-      const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-      if (dark) document.documentElement.dataset.theme = 'dark';
+      window.aplicarAspecto = () => {
+        const raiz = document.documentElement;
+        const tema = localStorage.getItem('theme');
+        const oscuro = tema ? tema === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+        if (oscuro) raiz.dataset.theme = 'dark';
+        else delete raiz.dataset.theme;
+
+        const verde = localStorage.getItem('paleta') === 'verde';
+        if (verde) raiz.dataset.paleta = 'verde';
+        else delete raiz.dataset.paleta;
+
+        document
+          .querySelector('link[rel="icon"]')
+          ?.setAttribute('href', verde ? '/favicon-verde.svg' : '/favicon.svg');
+
+        /* Literales y no la variable: esto corre antes de que la hoja de estilos exista, y el papel
+           es el mismo en las dos paletas porque los neutros no las siguen. */
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', oscuro ? '#0B0B0D' : '#FBFAF8');
+      };
+      window.aplicarAspecto();
     </script>
   </head>
   <body class="flex min-h-screen flex-col">
@@ -98,13 +122,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     {chrome === 'full' && <SiteFooter />}
 
     <script is:inline>
-      document.getElementById('theme-toggle')?.addEventListener('click', () => {
-        const root = document.documentElement;
-        const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-        if (next === 'dark') root.dataset.theme = 'dark';
-        else delete root.dataset.theme;
-        localStorage.setItem('theme', next);
-      });
+      const alternar = (clave, valores) => {
+        const actual = localStorage.getItem(clave);
+        localStorage.setItem(clave, actual === valores[0] ? valores[1] : valores[0]);
+        window.aplicarAspecto();
+      };
+
+      document
+        .getElementById('theme-toggle')
+        ?.addEventListener('click', () => alternar('theme', ['dark', 'light']));
+      document
+        .getElementById('paleta-toggle')
+        ?.addEventListener('click', () => alternar('paleta', ['verde', 'azul']));
     </script>
   </body>
 </html>

@@ -22,7 +22,7 @@ interface Props {
 const { cruces, homeTeam, awayTeam, limite = 8, class: className } = Astro.props;
 
 const CHIP: Record<Resultado, { letra: string; clase: string; titulo: (a: string, b: string) => string }> = {
-  local: { letra: 'V', clase: 'bg-primary text-primary-contrast', titulo: (a) => `Ganó ${a}` },
+  local: { letra: 'V', clase: 'bg-win text-win-contrast', titulo: (a) => `Ganó ${a}` },
   empate: { letra: 'E', clase: 'bg-border-strong text-ink', titulo: () => 'Empataron' },
   visita: { letra: 'D', clase: 'bg-ink-muted text-surface', titulo: (_a, b) => `Ganó ${b}` },
 };

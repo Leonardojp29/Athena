@@ -20,6 +20,22 @@ const GRAVES = new Set(['serious', 'critical']);
  */
 test.describe.configure({ timeout: 90_000 });
 
+interface Aspecto {
+  paleta: 'azul' | 'verde';
+  tema: 'claro' | 'oscuro';
+}
+
+/* El contraste se verifica en las cuatro combinaciones: una paleta que solo pasa en claro no pasa. */
+async function fijarAspecto(page: Page, { paleta, tema }: Aspecto) {
+  await page.addInitScript(
+    ([p, t]) => {
+      localStorage.setItem('paleta', p);
+      localStorage.setItem('theme', t === 'oscuro' ? 'dark' : 'light');
+    },
+    [paleta, tema],
+  );
+}
+
 async function auditar(page: Page, ruta: string) {
   await page.goto(ruta, { waitUntil: 'networkidle' });
   const { violations } = await new AxeBuilder({ page })
@@ -63,6 +79,24 @@ test.describe('accesibilidad', () => {
   });
 });
 
+test.describe('las cuatro combinaciones de paleta y tema', () => {
+  const ASPECTOS: Aspecto[] = [
+    { paleta: 'azul', tema: 'claro' },
+    { paleta: 'azul', tema: 'oscuro' },
+    { paleta: 'verde', tema: 'claro' },
+    { paleta: 'verde', tema: 'oscuro' },
+  ];
+
+  for (const aspecto of ASPECTOS) {
+    for (const ruta of ['/', '/competencias/primera-division']) {
+      test(`${aspecto.paleta} ${aspecto.tema} en ${ruta}`, async ({ page }) => {
+        await fijarAspecto(page, aspecto);
+        expect(await auditar(page, ruta)).toEqual([]);
+      });
+    }
+  }
+});
+
 /*
  * El peso de cada vista, separado en dos: lo que escribimos nosotros y lo que manda el proveedor.
  *
@@ -90,8 +124,13 @@ test.describe('peso de las páginas', () => {
    * motor y sus eventos viven en el tablero, que se carga cuando hace falta, y la pantalla de
    * creación —que no usa una sola línea del catálogo— dejó de arrastrar doscientos kilobytes de
    * texto. Esa es la regla, y esta es la prueba de que funciona: el código que crezca se divide.
+   *
+   * El techo subió a 800 KB cuando el tablero pasó a precargarse junto con React en lugar de
+   * esperar a que el jugador pulse "Empezar". No es código nuevo: son los mismos bytes que antes
+   * llegaban un segundo más tarde, y esa espera se veía en pantalla. Lo que este número vigila
+   * sigue siendo lo mismo: que el juego no crezca sin que nadie se entere.
    */
-  const TECHO_DEL_JUEGO_KB = 450;
+  const TECHO_DEL_JUEGO_KB = 800;
   const techoDe = (ruta: string) => (ruta.startsWith('/juegos') ? TECHO_DEL_JUEGO_KB : TECHO_PROPIO_KB);
 
   for (const [nombre, ruta] of VISTAS) {

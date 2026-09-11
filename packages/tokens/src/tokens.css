@@ -25,6 +25,16 @@
   --a-color-primary: oklch(0.906 0.191 118);
   --a-color-primary-ink: oklch(0.462 0.128 128);
   --a-color-primary-contrast: oklch(0.15 0.005 285);
+  /*
+   * La marca y la victoria dejan de ser el mismo color que el acento.
+   *
+   * El lima cumplía tres papeles a la vez —la ceja del búho, el botón, y el chip de victoria— y no
+   * se podían separar sin tres tokens. Con paleta verde valen lo mismo que antes; con otra paleta
+   * la marca sigue a la paleta y la victoria se queda verde, porque "ganó" no es una preferencia.
+   */
+  --a-color-marca: oklch(0.906 0.191 118);
+  --a-color-win: oklch(0.906 0.191 118);
+  --a-color-win-contrast: oklch(0.15 0.005 285);
   --a-color-data: oklch(0.792 0.121 208);
   --a-color-data-ink: oklch(0.512 0.118 232);
 
@@ -55,6 +65,9 @@
    * más claro que el césped. Con dos escalones y medio, un 6,6 y un 7,4 se veían igual.
    */
   --a-color-rating-good: oklch(0.72 0.16 122);
+  /* Su tinta es fija en las dos paletas: el mapa de calor de la cancha no es marca. La pizarra
+     sobre este verde daba 4,37:1, dos centésimas por debajo del mínimo. */
+  --a-color-rating-good-contrast: oklch(0.15 0.005 285);
   --a-color-card-red: oklch(0.582 0.202 24);
   /* 0.532 daba 4.49 sobre su propia pastilla lavada: dos centésimas por debajo del mínimo. */
   --a-color-card-red-ink: oklch(0.515 0.198 24);
@@ -145,12 +158,9 @@
 /*
  * Slate: la pizarra del vestuario.
  *
- * Vale para el documento entero cuando el tema es oscuro, y también para cualquier subárbol marcado
- * con `data-tema-oscuro`. Eso último lo pide el juego: una carrera se vive mejor a oscuras aunque el
- * resto del sitio esté en claro, y así no hay que duplicar un solo valor para conseguirlo.
+ * Vale para el documento entero cuando el tema es oscuro.
  */
-:root[data-theme='dark'],
-[data-tema-oscuro] {
+:root[data-theme='dark'] {
   --a-color-bg: oklch(0.15 0.005 285);
   --a-color-bg-subtle: oklch(0.181 0.006 286);
   --a-color-surface: oklch(0.212 0.008 286);
@@ -166,7 +176,8 @@
   --a-color-board: oklch(0.238 0.018 188);
   --a-color-board-edge: oklch(0.332 0.02 188);
   --a-color-chalk: oklch(0.938 0.008 95);
-  --a-color-chalk-dim: oklch(0.938 0.008 95 / 0.34);
+  /* 0.34 daba 2,78:1 sobre la pizarra oscura: es texto, no un adorno. */
+  --a-color-chalk-dim: oklch(0.938 0.008 95 / 0.6);
   --a-color-pitch: oklch(0.435 0.096 156);
   --a-color-pitch-dark: oklch(0.396 0.09 156);
   --a-color-magnet: oklch(0.268 0.01 286);
@@ -185,6 +196,71 @@
   --a-elev-magnet: 0 1px 2px oklch(0 0 0 / 0.55), 0 5px 12px -3px oklch(0 0 0 / 0.45);
   --a-elev-panel: 0 8px 28px -8px oklch(0 0 0 / 0.55);
   --a-elev-modal: 0 24px 64px -12px oklch(0 0 0 / 0.7);
+}
+
+/*
+ * Las dos paletas.
+ *
+ * La azul es la de Líbero —azul #005fde en todo lo que se toca, rojo #ef2c42 en la marca y en el
+ * vivo— y es la que ve quien entra sin haber elegido. La verde es el lima de marcador con el que
+ * nació Athena, y se recupera con `data-paleta="verde"`.
+ *
+ * Solo cambian los acentos de marca. El papel y la tinta son los mismos —es el mismo diagrama
+ * impreso en el mismo cuaderno, con otro marcador—, la pizarra y el césped son sustrato y no siguen
+ * la paleta (la regla del tablero sale de contraste medido, no de gusto), y la victoria se queda
+ * verde porque "ganó" no es una preferencia de color.
+ *
+ * Contraste verificado en las cuatro combinaciones: la tinta azul da 6,85:1 sobre superficie clara
+ * y 8,86:1 sobre la oscura; el blanco sobre el relleno azul, 5,77:1 y 4,79:1; la tinta roja del
+ * vivo, 6,68:1 y 9,04:1, y sobre su propia pastilla lavada 6,07:1 y 4,60:1.
+ */
+
+:root {
+  --a-color-primary: oklch(0.52 0.21 262);
+  --a-color-primary-ink: oklch(0.48 0.2 262);
+  --a-color-primary-contrast: oklch(1 0 0);
+  --a-color-marca: oklch(0.6 0.22 22);
+  --a-color-live: oklch(0.62 0.22 22);
+  --a-color-live-ink: oklch(0.5 0.2 22);
+  --a-color-live-on-board: oklch(0.78 0.11 25);
+  --a-color-win: oklch(0.52 0.13 152);
+  --a-color-win-contrast: oklch(1 0 0);
+  --a-color-focus: oklch(0.48 0.2 262);
+  --a-color-selection: oklch(0.52 0.21 262 / 0.25);
+}
+
+:root[data-theme='dark'] {
+  --a-color-primary: oklch(0.56 0.19 260);
+  --a-color-primary-ink: oklch(0.78 0.11 252);
+  --a-color-primary-contrast: oklch(1 0 0);
+  --a-color-marca: oklch(0.68 0.2 22);
+  --a-color-live: oklch(0.66 0.2 22);
+  --a-color-live-ink: oklch(0.8 0.11 20);
+  --a-color-live-on-board: oklch(0.78 0.11 25);
+  --a-color-focus: oklch(0.78 0.11 252);
+  --a-color-selection: oklch(0.56 0.19 260 / 0.3);
+}
+
+:root[data-paleta='verde'] {
+  --a-color-primary: oklch(0.906 0.191 118);
+  --a-color-primary-ink: oklch(0.462 0.128 128);
+  --a-color-primary-contrast: oklch(0.15 0.005 285);
+  --a-color-marca: oklch(0.906 0.191 118);
+  --a-color-live: oklch(0.598 0.17 150);
+  --a-color-live-ink: oklch(0.5 0.15 150);
+  --a-color-live-on-board: oklch(0.723 0.196 150);
+  --a-color-win: oklch(0.906 0.191 118);
+  --a-color-win-contrast: oklch(0.15 0.005 285);
+  --a-color-focus: oklch(0.462 0.128 128);
+  --a-color-selection: oklch(0.906 0.191 118 / 0.3);
+}
+
+:root[data-paleta='verde'][data-theme='dark'] {
+  --a-color-primary-ink: oklch(0.906 0.191 118);
+  --a-color-live: oklch(0.723 0.196 150);
+  --a-color-live-ink: oklch(0.723 0.196 150);
+  --a-color-focus: oklch(0.906 0.191 118);
+  --a-color-selection: oklch(0.906 0.191 118 / 0.26);
 }
 
 @media (prefers-reduced-motion: reduce) {

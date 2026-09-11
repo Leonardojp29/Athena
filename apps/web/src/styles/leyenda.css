@@ -109,7 +109,7 @@
     linear-gradient(168deg, oklch(0.36 0.04 168) 0%, oklch(0.25 0.03 175) 100%);
   --carta-tinta: var(--a-color-chalk);
   --carta-tenue: var(--a-color-chalk-dim);
-  --carta-filo: oklch(0.906 0.191 118 / 0.5);
+  --carta-filo: color-mix(in oklch, var(--a-color-primary) 50%, transparent);
   --carta-silueta: oklch(0.15 0.03 175);
 }
 
@@ -154,7 +154,7 @@
     linear-gradient(158deg, oklch(0.96 0.008 95) 0%, oklch(0.86 0.012 95) 38%, oklch(0.99 0.004 95) 62%, oklch(0.82 0.016 100) 100%);
   --carta-tinta: oklch(0.16 0.01 285);
   --carta-tenue: oklch(0.3 0.012 285);
-  --carta-filo: oklch(0.906 0.191 118 / 0.7);
+  --carta-filo: color-mix(in oklch, var(--a-color-primary) 70%, transparent);
   --carta-silueta: oklch(0.4 0.012 285);
 }
 
@@ -216,7 +216,7 @@
   position: absolute;
   inset: -30%;
   pointer-events: none;
-  background: radial-gradient(closest-side, oklch(0.906 0.191 118 / 0.16), transparent 72%);
+  background: radial-gradient(closest-side, color-mix(in oklch, var(--a-color-primary) 16%, transparent), transparent 72%);
   animation: carta-respira 4.5s var(--a-ease-athena, ease-in-out) infinite;
 }
 
@@ -330,8 +330,8 @@
   border-radius: 50%;
   background: radial-gradient(
     closest-side,
-    oklch(0.906 0.191 118 / 0.22),
-    oklch(0.906 0.191 118 / 0.06) 45%,
+    color-mix(in oklch, var(--a-color-primary) 22%, transparent),
+    color-mix(in oklch, var(--a-color-primary) 6%, transparent) 45%,
     transparent 72%
   );
   animation: luz-se-abre var(--a-motion-cine) var(--a-ease-out-expo) both;
@@ -642,4 +642,9 @@ li:nth-child(4) > [data-oferta] {
   [data-potencia-barra] {
     transform: scaleY(0.55);
   }
+}
+
+/* El trofeo brilla con el acento de la paleta, no con un lima escrito a mano. */
+.resplandor-de-trofeo {
+  filter: drop-shadow(0 0 28px color-mix(in oklch, var(--a-color-primary) 45%, transparent));
 }

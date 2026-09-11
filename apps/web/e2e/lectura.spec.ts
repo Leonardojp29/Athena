@@ -273,6 +273,19 @@ test.describe('SEO y accesibilidad', () => {
     expect((await root.getAttribute('data-theme')) ?? '').not.toBe(before);
   });
 
+  test('la paleta se alterna y persiste entre recargas', async ({ page }) => {
+    await page.goto('/');
+    const root = page.locator('html');
+    await expect(root).not.toHaveAttribute('data-paleta', 'verde');
+
+    await page.getByLabel('Cambiar paleta').click();
+    await page.reload();
+
+    await expect(root).toHaveAttribute('data-paleta', 'verde');
+    /* El icono del navegador tiene que seguir a la paleta: un SVG externo no puede leer el DOM. */
+    await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon-verde.svg');
+  });
+
   test('ninguna imagen queda sin alt', async ({ page }) => {
     await page.goto('/competencias/primera-division');
     expect(await page.locator('img:not([alt])').count()).toBe(0);

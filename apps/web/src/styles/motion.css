@@ -9,10 +9,10 @@
     box-shadow: 0 0 0 0 var(--a-color-live);
   }
   70% {
-    box-shadow: 0 0 0 7px oklch(0.723 0.196 150 / 0);
+    box-shadow: 0 0 0 7px transparent;
   }
   100% {
-    box-shadow: 0 0 0 0 oklch(0.723 0.196 150 / 0);
+    box-shadow: 0 0 0 0 transparent;
   }
 }
 
@@ -96,7 +96,7 @@
   /* El punto de en vivo conserva su anillo, estático: el color no es el único canal. */
   [data-live-dot] {
     animation: none !important;
-    box-shadow: 0 0 0 4px oklch(0.723 0.196 150 / 0.28);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--a-color-live-on-board) 28%, transparent);
   }
 
   ::view-transition-group(*) {

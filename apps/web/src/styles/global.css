@@ -25,6 +25,9 @@
   --color-primary: var(--a-color-primary);
   --color-primary-ink: var(--a-color-primary-ink);
   --color-primary-contrast: var(--a-color-primary-contrast);
+  --color-marca: var(--a-color-marca);
+  --color-win: var(--a-color-win);
+  --color-win-contrast: var(--a-color-win-contrast);
   --color-data: var(--a-color-data);
   --color-data-ink: var(--a-color-data-ink);
 
@@ -41,6 +44,7 @@
   --color-live-board: var(--a-color-live-on-board);
   --color-card-yellow: var(--a-color-card-yellow);
   --color-nota-buena: var(--a-color-rating-good);
+  --color-nota-buena-contrast: var(--a-color-rating-good-contrast);
   --color-card-red: var(--a-color-card-red);
   --color-card-red-ink: var(--a-color-card-red-ink);
 

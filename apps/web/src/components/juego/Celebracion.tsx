@@ -126,7 +126,7 @@ export default function Celebracion({ capitulo, onCerrar }: Props) {
       aria-label="Lo que ganaste"
       onClick={siguiente}
       className="fixed inset-0 z-50 grid cursor-pointer place-items-center px-6 backdrop-blur-sm"
-      style={{ background: 'oklch(0.13 0.012 285 / 0.94)' }}
+      style={{ background: 'var(--a-color-overlay)' }}
     >
       <div key={i} data-celebracion-escena className="relative flex flex-col items-center text-center">
         {/* La luz de atrás: es lo que hace que un escudo parezca un trofeo y no un icono. */}
@@ -253,7 +253,7 @@ function EscenaDeTrofeo({ trofeo }: { trofeo: Trofeo }) {
           <img
             src={trofeo.escudo}
             alt=""
-            className="size-full object-contain drop-shadow-[0_0_28px_oklch(0.906_0.191_118/0.45)]"
+            className="resplandor-de-trofeo size-full object-contain"
           />
         ) : (
           <TrofeoDibujado dorado={!individual} />

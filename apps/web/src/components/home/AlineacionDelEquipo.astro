@@ -84,7 +84,7 @@ const paneles = enOrden.map((alineacion) => {
     golesPropios === null || golesRival === null
       ? null
       : golesPropios > golesRival
-        ? { letra: 'V', clase: 'bg-primary text-primary-contrast', titulo: 'Victoria' }
+        ? { letra: 'V', clase: 'bg-win text-win-contrast', titulo: 'Victoria' }
         : golesPropios === golesRival
           ? { letra: 'E', clase: 'bg-border-strong text-ink', titulo: 'Empate' }
           : { letra: 'D', clase: 'bg-card-red/85 text-chalk', titulo: 'Derrota' };

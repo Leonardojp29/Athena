@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <!--
-    Favicon de Athena. A 16px los trazos de 1,6px caen por debajo de un píxel y
+    Favicon de Athena con la paleta verde. A 16px los trazos de 1,6px caen por debajo de un píxel y
     desaparecen, así que esta versión es una silueta sólida con los ojos y el pico
     calados con fill-rule evenodd. Sin un solo stroke.
   -->
   <style>
-    :root { --fondo: #0A0A0C; --marca: #FB575D; }
-    @media (prefers-color-scheme: light) { :root { --fondo: #FFFFFF; --marca: #E6293F; } }
+    :root { --fondo: #0A0A0C; --marca: #C6F24E; }
+    @media (prefers-color-scheme: light) { :root { --fondo: #FFFFFF; --marca: #3B5F0F; } }
   </style>
   <rect width="32" height="32" rx="7" fill="var(--fondo)" />
   <path
