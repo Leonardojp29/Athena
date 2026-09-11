@@ -2,10 +2,15 @@
 import Icon from '../Icon.astro';
 import Logo from '../brand/Logo.astro';
 import Container from './Container.astro';
-import { getHomeView } from '../../lib/live';
+import { getEnVivo } from '../../lib/live';
 
-const home = await getHomeView();
-const liveCount = home?.live ?? 0;
+interface Props {
+  /* El juego se abre sin el contador: es la única pantalla donde el header no debe costar una consulta. */
+  contador?: boolean;
+}
+
+const { contador = true } = Astro.props;
+const liveCount = contador ? await getEnVivo() : 0;
 ---
 
 <header class="sticky top-0 z-30 w-full border-b border-border bg-surface/72 backdrop-blur-xl">

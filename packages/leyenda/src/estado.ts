@@ -166,6 +166,16 @@ export interface Mundo {
   generadoEn: string;
 }
 
+export type LigaLiviana = Omit<Liga, 'clubes'>;
+
+/**
+ * El mundo sin planteles: es lo que la creación necesita para elegir país y liga.
+ *
+ * Los 371 clubes pesan diez veces más que todo lo demás junto y no se usan hasta que abre el
+ * mercado, así que viajan aparte y no en el HTML de la página.
+ */
+export type MundoLiviano = Omit<Mundo, 'ligas'> & { ligas: LigaLiviana[] };
+
 export type TipoRecuerdo =
   | 'debut'
   | 'decision'

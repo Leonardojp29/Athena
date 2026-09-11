@@ -6,8 +6,8 @@ import {
   siglaDePuesto,
   type Costado,
   type DatosDeCreacion,
-  type Liga,
-  type Mundo,
+  type LigaLiviana,
+  type MundoLiviano,
   type Puesto,
 } from '@athena/leyenda';
 
@@ -27,7 +27,7 @@ import {
  */
 
 interface Props {
-  mundo: Mundo;
+  mundo: MundoLiviano;
   anio: number;
   onEmpezar: (datos: DatosDeCreacion) => void;
 }
@@ -307,7 +307,7 @@ function Botin({ lado }: { lado: Costado }) {
   );
 }
 
-function FichaDeLiga({ liga, elegida, onElegir }: { liga: Liga; elegida: boolean; onElegir: () => void }) {
+function FichaDeLiga({ liga, elegida, onElegir }: { liga: LigaLiviana; elegida: boolean; onElegir: () => void }) {
   return (
     <button
       type="button"

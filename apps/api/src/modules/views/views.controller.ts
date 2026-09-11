@@ -10,6 +10,7 @@ import { ViewsService } from './views.service.js';
  */
 const TTL = {
   home: 60,
+  enVivo: 30,
   matches: 60,
   competitions: 3600,
   competition: 300,
@@ -39,6 +40,13 @@ export class ViewsController {
   @Header('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120')
   home() {
     return this.cache.wrap('home', TTL.home, () => this.views.home());
+  }
+
+  /* Lo único que el encabezado del sitio necesita: la home entera costaba cien kilobytes por página. */
+  @Get('en-vivo')
+  @Header('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')
+  enVivo() {
+    return this.cache.wrap('en-vivo', TTL.enVivo, () => this.views.enVivo());
   }
 
   @Get('competitions')

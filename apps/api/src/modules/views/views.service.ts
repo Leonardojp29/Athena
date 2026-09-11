@@ -236,6 +236,11 @@ export class ViewsService {
       });
   }
 
+  async enVivo(): Promise<{ live: number }> {
+    const live = await this.prisma.match.count({ where: { status: { in: ['in_play', 'paused'] } } });
+    return { live };
+  }
+
   async home() {
     const now = new Date();
     const dayStart = new Date(now.getTime() - 6 * 3600_000);

@@ -80,7 +80,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     -->
     <ProgresoNavegacion />
     <SkipLink />
-    <SiteHeader />
+    <SiteHeader contador={chrome === 'full'} />
     {chrome === 'full' && liveBar && <LiveBar />}
 
     <main id="contenido" class="flex-1 pb-5">
