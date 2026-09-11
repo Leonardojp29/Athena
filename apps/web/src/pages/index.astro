@@ -38,18 +38,26 @@ const REGIONES = new Set(['sudamerica', 'europa', 'norteamerica', 'asia', 'afric
 const regionPedida = Astro.url.searchParams.get('region');
 const region = regionPedida && REGIONES.has(regionPedida) ? regionPedida : 'sudamerica';
 
-const [homeView, catalogo, mejores] = await Promise.all([
+/*
+ * Las tres regiones del riel viajan juntas para que cambiar de continente no recargue la página.
+ * Son tres pedidos en vez de uno, pero el API los sirve cacheados y salen en la misma tanda.
+ */
+const REGIONES_DEL_RIEL = ['sudamerica', 'europa', 'norteamerica'] as const;
+const vacia = (continente: string): TopPerformers => ({
+  continent: continente,
+  scorers: [],
+  date: '',
+  esDeHoy: true,
+  players: [],
+});
+
+const [homeView, catalogo, ...mejores] = await Promise.all([
   getHomeView(),
   getNavTree(),
-  api<TopPerformers>(`/views/top-performers?continente=${region}`).catch(
-    () =>
-      ({
-        continent: region,
-        scorers: [],
-        date: '',
-        esDeHoy: true,
-        players: [],
-      }) satisfies TopPerformers,
+  ...REGIONES_DEL_RIEL.map((continente) =>
+    api<TopPerformers>(`/views/top-performers?continente=${continente}`).catch(() =>
+      vacia(continente),
+    ),
   ),
 ]);
 
@@ -195,6 +203,23 @@ cachear(Astro.response, 'home');
                     ver todos
                   </a>
                 )}
+
+                <!--
+                  El filtro de en vivo no pide nada: las filas ya saben si están en juego, así que
+                  alcanza con esconder las demás. Aparece solo cuando hay algo que filtrar, y se
+                  apaga solo cuando el último partido termina.
+                -->
+                <button
+                  type="button"
+                  id="solo-vivo"
+                  hidden
+                  aria-pressed="false"
+                  class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-2xs font-medium text-ink-muted transition-colors hover:border-border-strong hover:text-ink aria-pressed:border-live aria-pressed:bg-live/12 aria-pressed:text-live-ink"
+                >
+                  <span class="size-1.5 rounded-full bg-live" />
+                  Solo en vivo
+                </button>
+
                 <span class="h-px flex-1 bg-border" />
                 <a
                   href="/partidos"
@@ -266,7 +291,8 @@ cachear(Astro.response, 'home');
         {
           !vistaLiga && !vistaEquipo && (
             <LideresDelMundo
-              top={mejores}
+              tops={mejores}
+              activa={region}
               href={(continente: string) => `/?region=${continente}`}
               hrefJugador={(slug: string) => `/?jugador=${slug}`}
             />
@@ -282,3 +308,50 @@ cachear(Astro.response, 'home');
   <!-- Y el reloj de los marcadores, solo si hay algo en juego. -->
   {hayEnVivo && <RefrescoDeMarcadores dia={hoyEnLima} />}
 </Base>
+<script>
+  /*
+   * Mostrar solo lo que está en juego.
+   *
+   * No cuesta un pedido: cada fila ya viene marcada con `data-en-vivo` y el refresco de marcadores
+   * la mantiene al día, así que el filtro solo esconde. Los grupos que se quedan sin partido visible
+   * se esconden también, porque un país vacío con su bandera es peor que ningún país.
+   */
+  const boton = document.getElementById('solo-vivo');
+  const geografia = document.querySelector<HTMLElement>('[data-geografia]');
+
+  if (boton && geografia) {
+    const vivos = () => geografia.querySelectorAll('[data-partido][data-en-vivo]').length;
+
+    const aplicar = (soloVivo: boolean) => {
+      for (const fila of geografia.querySelectorAll<HTMLElement>('[data-partido]')) {
+        fila.hidden = soloVivo && !fila.hasAttribute('data-en-vivo');
+      }
+      for (const nivel of ['[data-competencia]', '[data-pais]', 'details']) {
+        for (const grupo of geografia.querySelectorAll<HTMLElement>(nivel)) {
+          const quedan = grupo.querySelectorAll('[data-partido]:not([hidden])').length;
+          grupo.hidden = soloVivo && quedan === 0;
+          if (soloVivo && quedan > 0 && grupo instanceof HTMLDetailsElement) grupo.open = true;
+        }
+      }
+      boton.setAttribute('aria-pressed', String(soloVivo));
+    };
+
+    const revisar = () => {
+      boton.hidden = vivos() === 0;
+      if (boton.hidden && boton.getAttribute('aria-pressed') === 'true') aplicar(false);
+    };
+
+    boton.addEventListener('click', () =>
+      aplicar(boton.getAttribute('aria-pressed') !== 'true'),
+    );
+
+    revisar();
+    /* El refresco de marcadores reescribe el estado de cada fila; el filtro lo sigue. */
+    new MutationObserver(revisar).observe(geografia, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-en-vivo'],
+    });
+  }
+</script>
+

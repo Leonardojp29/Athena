@@ -12,17 +12,20 @@ import type { Goleador, TopPerformer, TopPerformers } from '../../lib/api';
  * mira un hincha después de las posiciones, y que no caduca a media mañana— con un selector de
  * continente que arranca en el suyo. Lo mejor del último día jugado queda abajo, como complemento.
  *
- * El selector son enlaces: la región queda en la URL, el enlace es compartible y la página sigue
- * costando 0 KB.
+ * Las tres regiones vienen en el HTML y el clic solo cambia cuál se ve: cambiar de continente
+ * recargaba la página entera para mover una tarjeta del riel, y se sentía como una espera. Sin
+ * JavaScript el enlace navega como siempre, y la región sigue viajando en la URL.
  */
 interface Props {
-  top: TopPerformers;
+  /** Las tres regiones, en el orden del selector. La primera activa es la que pidió la URL. */
+  tops: TopPerformers[];
+  activa: string;
   /** Construye el enlace de cada región. */
   href: (continente: string) => string;
   hrefJugador?: (slug: string) => string;
 }
 
-const { top, href, hrefJugador = (slug: string) => `/jugadores/${slug}` } = Astro.props;
+const { tops, activa, href, hrefJugador = (slug: string) => `/jugadores/${slug}` } = Astro.props;
 
 const REGIONES = [
   { clave: 'sudamerica', label: 'Sudamérica' },
@@ -41,19 +44,27 @@ const hazana = (p: TopPerformer): string => {
   return partes.join(' · ');
 };
 
-const cuando = top.esDeHoy
-  ? 'Hoy'
-  : new Intl.DateTimeFormat('es-PE', {
-      timeZone: 'America/Lima',
-      weekday: 'long',
-      day: 'numeric',
-    }).format(new Date(`${top.date}T12:00:00-05:00`));
+const fecha = (iso: string, esDeHoy: boolean) =>
+  esDeHoy
+    ? 'Hoy'
+    : new Intl.DateTimeFormat('es-PE', {
+        timeZone: 'America/Lima',
+        weekday: 'long',
+        day: 'numeric',
+      }).format(new Date(`${iso}T12:00:00-05:00`));
 
-const lider: Goleador | null = top.scorers[0] ?? null;
-const resto: Goleador[] = top.scorers.slice(1, 8);
+const paneles = REGIONES.map((region) => {
+  const top = tops.find((t: TopPerformers) => t.continent === region.clave) ?? tops[0];
+  return {
+    region,
+    top,
+    lider: top?.scorers[0] ?? null,
+    resto: top?.scorers.slice(1, 8) ?? [],
+  };
+});
 ---
 
-<section class="overflow-hidden rounded-xl border border-border bg-surface">
+<section class="overflow-hidden rounded-xl border border-border bg-surface" data-lideres>
   <header class="border-b border-border p-3">
     <div class="flex items-center gap-2">
       <Icon name="destello" size={14} class="shrink-0 text-primary-ink" />
@@ -61,16 +72,22 @@ const resto: Goleador[] = top.scorers.slice(1, 8);
       <span class="ml-auto text-2xs text-ink-muted">temporada</span>
     </div>
 
+    <!--
+      El estilo cuelga de `aria-current` y no de un ternario del servidor: cuando el clic cambia de
+      panel sin navegar, el atributo es lo único que se mueve.
+    -->
     <div
       class="mt-2 flex flex-wrap items-center gap-1 rounded-lg bg-canvas-subtle p-1"
       role="group"
       aria-label="Región"
+      data-selector-region
     >
       {
         REGIONES.map((region) => (
           <a
             href={href(region.clave)}
-            aria-current={region.clave === top.continent ? 'true' : undefined}
+            data-region={region.clave}
+            aria-current={region.clave === activa ? 'true' : undefined}
             class="rounded-md px-2 py-1 text-2xs font-medium text-ink-muted transition-colors hover:bg-surface/60 hover:text-ink aria-[current]:bg-surface aria-[current]:text-ink aria-[current]:shadow-card"
           >
             {region.label}
@@ -81,142 +98,185 @@ const resto: Goleador[] = top.scorers.slice(1, 8);
   </header>
 
   {
-    lider ? (
-      <>
-        <!-- El primero grande: una lista de ocho iguales no tiene puntero. -->
-        <a
-          href={hrefJugador(lider.player_slug)}
-          class="group flex items-start gap-3 border-b border-border p-3 transition-colors hover:bg-canvas-subtle"
-        >
-          <span class="relative shrink-0">
-            {lider.photo_url ? (
-              <img
-                src={lider.photo_url}
-                alt=""
-                width="56"
-                height="56"
-                loading="lazy"
-                class="size-14 rounded-full bg-canvas-subtle object-cover"
-              />
-            ) : (
-              <span class="grid size-14 place-items-center rounded-full bg-canvas-subtle">
-                <Icon name="usuario" size={22} class="text-ink-muted" />
-              </span>
-            )}
-            <span class="absolute -bottom-1 -right-1 rounded bg-primary px-1.5 py-0.5 font-display text-sm font-bold tabular text-primary-contrast">
-              {lider.goals}
-            </span>
-          </span>
-
-          <span class="min-w-0 flex-1">
-            <span class="block truncate font-display text-lg font-semibold uppercase leading-tight group-hover:text-primary-ink">
-              {lider.player_name}
-            </span>
-            <span class="flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
-              {lider.team_logo && (
-                <img src={lider.team_logo} alt="" width="13" height="13" loading="lazy" />
+    paneles.map(({ region, top, lider, resto }) => (
+      <div data-region-panel={region.clave} hidden={region.clave !== activa}>
+    {
+      lider ? (
+        <>
+          <!-- El primero grande: una lista de ocho iguales no tiene puntero. -->
+          <a
+            href={hrefJugador(lider!.player_slug)}
+            class="group flex items-start gap-3 border-b border-border p-3 transition-colors hover:bg-canvas-subtle"
+          >
+            <span class="relative shrink-0">
+              {lider!.photo_url ? (
+                <img
+                  src={lider!.photo_url}
+                  alt=""
+                  width="56"
+                  height="56"
+                  loading="lazy"
+                  class="size-14 rounded-full bg-canvas-subtle object-cover"
+                />
+              ) : (
+                <span class="grid size-14 place-items-center rounded-full bg-canvas-subtle">
+                  <Icon name="usuario" size={22} class="text-ink-muted" />
+                </span>
               )}
-              <span class="truncate">{lider.team_short ?? lider.team_name}</span>
-            </span>
-            <span class="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs">
-              <span class="rounded bg-primary px-1.5 py-0.5 font-semibold tabular text-primary-contrast">
-                {lider.goals} {lider.goals === 1 ? 'gol' : 'goles'}
+              <span class="absolute -bottom-1 -right-1 rounded bg-primary px-1.5 py-0.5 font-display text-sm font-bold tabular text-primary-contrast">
+                {lider!.goals}
               </span>
-              {lider.assists > 0 && (
+            </span>
+
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-display text-lg font-semibold uppercase leading-tight group-hover:text-primary-ink">
+                {lider!.player_name}
+              </span>
+              <span class="flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
+                {lider!.team_logo && (
+                  <img src={lider!.team_logo} alt="" width="13" height="13" loading="lazy" />
+                )}
+                <span class="truncate">{lider!.team_short ?? lider!.team_name}</span>
+              </span>
+              <span class="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs">
+                <span class="rounded bg-primary px-1.5 py-0.5 font-semibold tabular text-primary-contrast">
+                  {lider!.goals} {lider!.goals === 1 ? 'gol' : 'goles'}
+                </span>
+                {lider!.assists > 0 && (
+                  <span class="rounded bg-canvas-subtle px-1.5 py-0.5 tabular">
+                    {lider!.assists} {lider!.assists === 1 ? 'asistencia' : 'asistencias'}
+                  </span>
+                )}
                 <span class="rounded bg-canvas-subtle px-1.5 py-0.5 tabular">
-                  {lider.assists} {lider.assists === 1 ? 'asistencia' : 'asistencias'}
+                  {lider!.appearances} PJ
                 </span>
-              )}
-              <span class="rounded bg-canvas-subtle px-1.5 py-0.5 tabular">
-                {lider.appearances} PJ
               </span>
             </span>
-          </span>
-        </a>
+          </a>
 
-        <ul class="grid">
-          {resto.map((goleador: Goleador, i: number) => (
-            <li class="border-b border-border/50 last:border-0">
-              <a
-                href={hrefJugador(goleador.player_slug)}
-                class="flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-canvas-subtle"
-              >
-                <span class="w-3 shrink-0 tabular text-2xs text-ink-muted">{i + 2}</span>
-                {goleador.photo_url ? (
-                  <img
-                    src={goleador.photo_url}
-                    alt=""
-                    width="26"
-                    height="26"
-                    loading="lazy"
-                    class="size-[26px] shrink-0 rounded-full bg-canvas-subtle object-cover"
-                  />
-                ) : (
-                  <span class="grid size-[26px] shrink-0 place-items-center rounded-full bg-canvas-subtle">
-                    <Icon name="usuario" size={12} class="text-ink-muted" />
+          <ul class="grid">
+            {resto.map((goleador: Goleador, i: number) => (
+              <li class="border-b border-border/50 last:border-0">
+                <a
+                  href={hrefJugador(goleador.player_slug)}
+                  class="flex items-center gap-2.5 px-3 py-1.5 transition-colors hover:bg-canvas-subtle"
+                >
+                  <span class="w-3 shrink-0 tabular text-2xs text-ink-muted">{i + 2}</span>
+                  {goleador.photo_url ? (
+                    <img
+                      src={goleador.photo_url}
+                      alt=""
+                      width="26"
+                      height="26"
+                      loading="lazy"
+                      class="size-[26px] shrink-0 rounded-full bg-canvas-subtle object-cover"
+                    />
+                  ) : (
+                    <span class="grid size-[26px] shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                      <Icon name="usuario" size={12} class="text-ink-muted" />
+                    </span>
+                  )}
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm">{goleador.player_name}</span>
+                    <span class="flex min-w-0 items-center gap-1 text-2xs text-ink-muted">
+                      <EscudoTorneo url={goleador.competition_logo} size={10} />
+                      <span class="truncate">{goleador.team_short ?? goleador.team_name}</span>
+                    </span>
                   </span>
-                )}
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-sm">{goleador.player_name}</span>
-                  <span class="flex min-w-0 items-center gap-1 text-2xs text-ink-muted">
-                    <EscudoTorneo url={goleador.competition_logo} size={10} />
-                    <span class="truncate">{goleador.team_short ?? goleador.team_name}</span>
+                  <span class="shrink-0 text-right">
+                    <span class="font-display text-base font-semibold leading-none tabular">
+                      {goleador.goals}
+                    </span>
+                    <span class="ml-0.5 text-2xs text-ink-muted">G</span>
                   </span>
-                </span>
-                <span class="shrink-0 text-right">
-                  <span class="font-display text-base font-semibold leading-none tabular">
-                    {goleador.goals}
-                  </span>
-                  <span class="ml-0.5 text-2xs text-ink-muted">G</span>
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </>
-    ) : (
-      <p class="p-3 text-sm text-ink-muted">
-        Todavía no hay goles cargados en esta región esta temporada.
-      </p>
-    )
-  }
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <p class="p-3 text-sm text-ink-muted">
+          Todavía no hay goles cargados en esta región esta temporada.
+        </p>
+      )
+    }
 
-  {
-    top.players.length > 0 && (
-      <div class="border-t border-border p-3">
-        <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
-          <Icon name="reloj" size={12} />
-          Lo mejor de {cuando}
-        </h3>
-        <ul class="grid gap-0.5">
-          {top.players.slice(0, 3).map((p: TopPerformer) => (
-            <li>
-              <a
-                href={hrefJugador(p.player.slug)}
-                class="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
-              >
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-sm">{p.player.name}</span>
-                  <span class="block truncate text-2xs text-ink-muted">
-                    {hazana(p) || (p.team.shortName ?? p.team.name)}
-                    <span class="text-ink-muted"> · {p.match.season.competition.name}</span>
+    {
+      top!.players.length > 0 && (
+        <div class="border-t border-border p-3">
+          <h3 class="mb-1 flex items-center gap-1.5 text-2xs font-semibold tracking-label text-ink-muted uppercase">
+            <Icon name="reloj" size={12} />
+            Lo mejor de {fecha(top!.date, top!.esDeHoy)}
+          </h3>
+          <ul class="grid gap-0.5">
+            {top!.players.slice(0, 3).map((p: TopPerformer) => (
+              <li>
+                <a
+                  href={hrefJugador(p.player.slug)}
+                  class="flex items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-canvas-subtle"
+                >
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate text-sm">{p.player.name}</span>
+                    <span class="block truncate text-2xs text-ink-muted">
+                      {hazana(p) || (p.team.shortName ?? p.team.name)}
+                      <span class="text-ink-muted"> · {p.match.season.competition.name}</span>
+                    </span>
                   </span>
-                </span>
-                {p.rating !== null && (
-                  <span class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
-                    {Number(p.rating).toFixed(1)}
-                  </span>
-                )}
-              </a>
-            </li>
-          ))}
-        </ul>
+                  {p.rating !== null && (
+                    <span class="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 font-display text-2xs font-semibold tabular text-primary-ink">
+                      {Number(p.rating).toFixed(1)}
+                    </span>
+                  )}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
+
+    <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
+      Goles de todas las competencias de la región en la temporada en curso.
+      {top!.players.length > 0 && ' Las notas son del proveedor de datos.'}
+    </p>
       </div>
-    )
+    ))
   }
-
-  <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
-    Goles de todas las competencias de la región en la temporada en curso.
-    {top.players.length > 0 && ' Las notas son del proveedor de datos.'}
-  </p>
 </section>
+
+<script>
+  /*
+   * Cambiar de región sin navegar: los tres paneles ya están en la página, así que mostrar el que
+   * toca no cuesta ni un pedido. Es el mismo gesto del selector de fases.
+   */
+  const tarjeta = document.querySelector<HTMLElement>('[data-lideres]');
+  if (tarjeta) {
+    const paneles = [...tarjeta.querySelectorAll<HTMLElement>('[data-region-panel]')];
+
+    const mostrar = (region: string) => {
+      const destino = paneles.find((p) => p.dataset.regionPanel === region);
+      if (!destino) return false;
+      for (const panel of paneles) panel.hidden = panel !== destino;
+      for (const boton of tarjeta.querySelectorAll<HTMLElement>('[data-region]')) {
+        if (boton.dataset.region === region) boton.setAttribute('aria-current', 'true');
+        else boton.removeAttribute('aria-current');
+      }
+      return true;
+    };
+
+    for (const boton of tarjeta.querySelectorAll<HTMLAnchorElement>('[data-region]')) {
+      boton.addEventListener('click', (evento) => {
+        const region = boton.dataset.region;
+        if (!region || evento.metaKey || evento.ctrlKey || evento.shiftKey) return;
+        if (!mostrar(region)) return;
+        evento.preventDefault();
+        history.pushState({ region }, '', boton.href);
+      });
+    }
+
+    addEventListener('popstate', () => {
+      const region = new URL(location.href).searchParams.get('region');
+      mostrar(region ?? paneles[0]?.dataset.regionPanel ?? '');
+    });
+  }
+</script>
