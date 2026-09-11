@@ -17,7 +17,6 @@ import VistaJugador from '../components/home/VistaJugador.astro';
 import VistaLiga from '../components/home/VistaLiga.astro';
 import {
   api,
-  ApiError,
   type CompetitionView,
   type HomeView,
   type PlayerView,
@@ -92,26 +91,11 @@ let vistaLiga: CompetitionView | null = null;
 let vistaEquipo: TeamView | null = null;
 let vistaJugador: PlayerView | null = null;
 if (liga) {
-  try {
-    vistaLiga = await api<CompetitionView>(`/views/competition/${liga}`);
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
-    vistaLiga = null;
-  }
+  vistaLiga = await api<CompetitionView>(`/views/competition/${liga}`).catch(() => null);
 } else if (equipo) {
-  try {
-    vistaEquipo = await api<TeamView>(`/views/team/${equipo}`);
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
-    vistaEquipo = null;
-  }
+  vistaEquipo = await api<TeamView>(`/views/team/${equipo}`).catch(() => null);
 } else if (jugador) {
-  try {
-    vistaJugador = await api<PlayerView>(`/views/player/${jugador}`);
-  } catch (error) {
-    if (!(error instanceof ApiError)) throw error;
-    vistaJugador = null;
-  }
+  vistaJugador = await api<PlayerView>(`/views/player/${jugador}`).catch(() => null);
 }
 
 /* La fase de la tabla viaja en la URL para que el enlace sea compartible. */

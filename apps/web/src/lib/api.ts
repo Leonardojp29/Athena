@@ -33,8 +33,12 @@ interface Entrada {
 
 const cache = new Map<string, Entrada>();
 const TTL_POR_DEFECTO_MS = 30_000;
-/* Un API colgado no puede retener la función de la web hasta que la plataforma la degüelle. */
-const TOPE_DE_ESPERA_MS = 10_000;
+/*
+ * Un API colgado no puede retener la función de la web hasta que la plataforma la degüelle. En
+ * región son milisegundos; desde fuera, con la base ocupada, una vista fría pasa de diez segundos,
+ * y ahí el corte convertía una espera en un error.
+ */
+const TOPE_DE_ESPERA_MS = Number(import.meta.env.PUBLIC_API_TIMEOUT_MS ?? 20_000);
 const MAX_ENTRADAS = 300;
 
 /** Lee el s-maxage que el propio API declara; si no dice nada, 30 segundos. */

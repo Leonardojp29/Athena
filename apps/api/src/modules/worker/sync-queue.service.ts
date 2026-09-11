@@ -434,6 +434,18 @@ export class SyncQueueService {
       await this.enqueue('match-preview', { matchId: match.id });
     }
 
+    /*
+     * Las vistas de las competencias en curso, calculadas antes de que nadie las pida: componerlas
+     * cuesta once consultas y el primer visitante del día las pagaba enteras.
+     */
+    const enCurso = await this.prisma.competition.findMany({
+      where: { isActive: true, seasons: { some: { isCurrent: true } } },
+      select: { slug: true },
+    });
+    for (const { slug } of enCurso) {
+      await this.enqueue('calentar-vistas', { vistas: [{ tipo: 'competition', slug }] });
+    }
+
     /* Los colores y los vectores recorren ochocientos equipos y no cambian de un día para otro. */
     if (new Date().getUTCDay() === 1) {
       await this.enqueue('colores', {});
