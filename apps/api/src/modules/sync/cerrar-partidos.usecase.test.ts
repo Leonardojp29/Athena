@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FootballDataProvider, ProviderMatchDetail } from '@athena/domain';
+import type { PrismaService } from '../../shared/prisma.service.js';
 import { ViewCacheService } from '../../shared/view-cache.service.js';
 import { CerrarPartidosUseCase } from './cerrar-partidos.usecase.js';
 import type { Veredicto } from './cierre-politica.js';
@@ -69,7 +70,11 @@ function armar(detalles: ProviderMatchDetail[]) {
     },
   } as unknown as MatchEventWriter;
 
-  const cache = new ViewCacheService();
+  const prisma = {
+    $queryRaw: () => Promise.resolve([]),
+    $executeRaw: () => Promise.resolve(1),
+  } as unknown as PrismaService;
+  const cache = new ViewCacheService(prisma);
   const borrar = cache.borrar.bind(cache);
   cache.borrar = (clave: string) => {
     borradas.push(clave);

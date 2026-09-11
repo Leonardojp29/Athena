@@ -220,6 +220,7 @@ model MatchPlayerStatistics {
   @@unique([matchId, playerId])
   @@index([playerId, matchId])
   @@index([matchId, teamId])
+  @@index([teamId, matchId])
   @@index([rating(sort: Desc), minutesPlayed(sort: Desc)], map: "match_player_statistics_rating_idx")
   @@map("match_player_statistics")
 }
@@ -305,6 +306,8 @@ model Match {
 
   @@index([seasonId, kickoffUtc])
   @@index([status, kickoffUtc])
+  @@index([homeTeamId, kickoffUtc(sort: Desc)])
+  @@index([awayTeamId, kickoffUtc(sort: Desc)])
   @@map("matches")
 }
 
@@ -396,6 +399,7 @@ model MatchEvent {
   detail          Json?
 
   @@index([matchId, minute])
+  @@index([playerId])
   @@map("match_events")
 }
 
@@ -531,6 +535,18 @@ model Tarea {
 
   @@index([prioridad, correDespues, id])
   @@map("tareas")
+}
+
+/// Vistas ya calculadas, para que una instancia fría no vuelva a componerlas desde cero.
+model VistaCache {
+  clave       String   @id
+  cuerpo      Json
+  frescaHasta DateTime @map("fresca_hasta")
+  venceEn     DateTime @map("vence_en")
+  calculadaEn DateTime @default(now()) @map("calculada_en")
+
+  @@index([venceEn])
+  @@map("vistas_cache")
 }
 
 /// Estado compartido chico entre procesos: cuotas y marcas de espera. Antes vivía en Redis.

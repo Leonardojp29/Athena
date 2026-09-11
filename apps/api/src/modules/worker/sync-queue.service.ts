@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ApiBudgetExhaustedError } from '../../shared/api-budget.service.js';
 import { KvService } from '../../shared/kv.service.js';
+import { ViewCacheService } from '../../shared/view-cache.service.js';
+import {
+  CalentarVistasUseCase,
+  type VistaCalentable,
+} from '../views/calentar-vistas.usecase.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { logJson, reportError } from '../../shared/observability.js';
 import { GenerateMatchInsightUseCase } from '../insights/generate-match-insight.usecase.js';
@@ -44,6 +49,7 @@ type SyncJob =
   | { name: 'match-insight'; data: { matchId: string } }
   | { name: 'match-preview'; data: { matchId: string } }
   | { name: 'embeddings'; data: { entityType: 'team' | 'player' } }
+  | { name: 'calentar-vistas'; data: { vistas: VistaCalentable[] } }
   | { name: 'colores'; data: Record<string, never> };
 
 @Injectable()
@@ -53,6 +59,8 @@ export class SyncQueueService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly kv: KvService,
+    private readonly cache: ViewCacheService,
+    private readonly calentarVistas: CalentarVistasUseCase,
     private readonly cola: ColaDeTareas,
     private readonly outbox: OutboxService,
     private readonly syncCompetition: SyncCompetitionUseCase,
@@ -204,6 +212,8 @@ export class SyncQueueService {
         return this.syncMatchPlayers.execute(job.data.matchRef);
       case 'squad':
         return this.syncSquad.execute(job.data.teamRef);
+      case 'calentar-vistas':
+        return this.calentarVistas.ejecutar(job.data.vistas);
       case 'colores':
         return this.colores.execute();
       case 'match-insight':
@@ -297,7 +307,16 @@ export class SyncQueueService {
       where: { id: matchId },
       select: {
         kickoffUtc: true,
-        season: { select: { year: true, competitionId: true, isCurrent: true } },
+        homeTeam: { select: { slug: true } },
+        awayTeam: { select: { slug: true } },
+        season: {
+          select: {
+            year: true,
+            competitionId: true,
+            isCurrent: true,
+            competition: { select: { slug: true } },
+          },
+        },
       },
     });
     if (!match) return;
@@ -306,6 +325,31 @@ export class SyncQueueService {
       await this.matchSync.agendarCierre(matchId);
     }
     await this.refrescarTabla(match.season);
+    await this.calentarLoQueCambio(matchId, match);
+  }
+
+  /**
+   * Las páginas que este partido acaba de dejar viejas.
+   *
+   * Se recalculan en el worker para que el primer visitante encuentre el trabajo hecho: es la única
+   * forma de que una instancia recién arrancada nunca componga una vista desde cero.
+   */
+  private async calentarLoQueCambio(
+    matchId: string,
+    match: {
+      homeTeam: { slug: string };
+      awayTeam: { slug: string };
+      season: { competition: { slug: string } };
+    },
+  ): Promise<void> {
+    await this.enqueue('calentar-vistas', {
+      vistas: [
+        { tipo: 'match', id: matchId },
+        { tipo: 'team', slug: match.homeTeam.slug },
+        { tipo: 'team', slug: match.awayTeam.slug },
+        { tipo: 'competition', slug: match.season.competition.slug },
+      ],
+    });
   }
 
   /**
@@ -342,6 +386,7 @@ export class SyncQueueService {
     await this.syncFixtures.reconcileStale();
     /* Del detalle de los terminados se ocupa el barrido de cada tic: acá solo se limpia lo viejo. */
     await this.matchSync.podar();
+    await this.cache.podar();
 
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
       await this.enqueue('competition', { competitionRef: providerRef });
