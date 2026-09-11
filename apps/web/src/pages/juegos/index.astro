@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
 import TuCarrera from '../../components/juego/TuCarrera';
@@ -16,6 +17,8 @@ import '../../styles/leyenda.css';
  * Va por el servidor como el resto del sitio: el header cuenta los partidos en vivo y el middleware
  * comprime leyendo la cabecera del pedido, y ninguna de las dos cosas existe en una página prerendida.
  */
+
+cachear(Astro.response, 'dia');
 
 interface Juego {
   nombre: string;

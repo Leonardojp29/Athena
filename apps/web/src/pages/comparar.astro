@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { cachear } from '../lib/cache';
 import Container from '../components/layout/Container.astro';
 import Icon from '../components/Icon.astro';
 import TarjetaComparacion from '../components/comparar/TarjetaComparacion.astro';
@@ -57,6 +58,8 @@ const [uno, dos, candidatos] = await Promise.all([
         .catch(() => [] as SearchHit[])
     : Promise.resolve([] as SearchHit[]),
 ]);
+
+cachear(Astro.response, tipo === 'equipo' ? 'equipo' : 'jugador');
 
 const nombreDe = (vista: PlayerView | TeamView | null): string | null =>
   vista === null ? null : 'player' in vista ? vista.player.name : vista.team.name;

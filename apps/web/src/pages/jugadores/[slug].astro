@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import Card from '../../components/Card.astro';
 import Icon from '../../components/Icon.astro';
 import Container from '../../components/layout/Container.astro';
@@ -26,6 +27,8 @@ try {
   }
   throw error;
 }
+
+cachear(Astro.response, 'jugador');
 
 const { player, teams, events, seasons, totals, recentPerformances, shirtNumber } = view;
 const position = player.position ? POSITION_LABEL[player.position] : null;

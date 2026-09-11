@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import BandaDelPartido from '../../components/match/BandaDelPartido.astro';
 import CentroDelPartido from '../../components/match/CentroDelPartido.astro';
 import Container from '../../components/layout/Container.astro';
@@ -26,6 +27,11 @@ const startsSoon =
   new Date(match.kickoffUtc).getTime() - Date.now() < 3 * 3600_000 &&
   new Date(match.kickoffUtc).getTime() - Date.now() > -4 * 3600_000;
 const live = isLive(match.status) || startsSoon;
+
+cachear(
+  Astro.response,
+  live ? 'partidoEnJuego' : match.status === 'scheduled' ? 'partidoProgramado' : 'partidoTerminado',
+);
 
 const vistaPedida = Astro.url.searchParams.get('vista') ?? 'resumen';
 const baseUrl = `/partidos/${match.id}`;

@@ -1,0 +1,19 @@
+name: Latido
+
+# El sync lo dispara pg_cron desde Supabase cada minuto. Esto es la red debajo: si ese cron queda
+# apuntando a una URL vieja o el proyecto se pausa, acá se nota en media hora y no en una semana.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  tic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Disparar el tic del sync
+        run: |
+          curl -fsS -X POST \
+            -H "x-cron-secreto: ${{ secrets.CRON_SECRET }}" \
+            "${{ vars.API_URL }}/v1/internal/tick"

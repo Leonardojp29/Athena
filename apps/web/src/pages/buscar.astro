@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { cachear } from '../lib/cache';
 import Icon from '../components/Icon.astro';
 import { paisEnEspanol } from '../lib/paises';
 import Card from '../components/Card.astro';
@@ -17,6 +18,8 @@ if (query.length >= 2) {
     failed = true;
   }
 }
+
+if (!failed) cachear(Astro.response, 'busqueda');
 
 const TYPE_LABEL: Record<SearchHit['type'], string> = {
   team: 'Equipo',

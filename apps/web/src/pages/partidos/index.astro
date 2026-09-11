@@ -2,6 +2,7 @@
 import Icon from '../../components/Icon.astro';
 import MatchGeography from '../../components/home/MatchGeography.astro';
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import { api, type MatchDayView } from '../../lib/api';
 import { formatDateLong } from '../../lib/format';
 
@@ -20,6 +21,8 @@ try {
 } catch {
   dia = null;
 }
+
+if (dia) cachear(Astro.response, 'dia');
 
 /* La tira de días se ancla al mediodía para que el desplazamiento no cruce un cambio de día. */
 const ancla = new Date(`${fecha}T12:00:00-05:00`);

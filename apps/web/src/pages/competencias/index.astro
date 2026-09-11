@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import ContinentIcon from '../../components/ContinentIcon.astro';
 import Icon from '../../components/Icon.astro';
 import TarjetaDeCompetencias from '../../components/competencia/TarjetaDeCompetencias.astro';
@@ -7,6 +8,8 @@ import { getNavTree, todasLasCompetencias } from '../../lib/nav';
 import { paisEnEspanol } from '../../lib/paises';
 
 const arbol = await getNavTree();
+
+cachear(Astro.response, 'catalogo');
 const total = todasLasCompetencias(arbol).length;
 const paises = arbol.clubes.reduce(
   (n, c) => n + c.countries.filter((p) => p.code !== null).length,

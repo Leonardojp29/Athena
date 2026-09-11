@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { cachear } from '../lib/cache';
 import BarraLateral from '../components/home/BarraLateral.astro';
 import Container from '../components/layout/Container.astro';
 import Hero from '../components/home/Hero.astro';
@@ -153,6 +154,8 @@ const todos = home.sections.flatMap((s) => s.matches);
  */
 const hayEnVivo = todos.some((m) => isLive(m.status));
 const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+
+cachear(Astro.response, 'home');
 ---
 
 <Base

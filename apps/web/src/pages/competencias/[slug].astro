@@ -1,6 +1,7 @@
 ---
 import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
@@ -100,6 +101,7 @@ const esCopa = competition.format !== 'league';
 
 /* Con algo en juego, los marcadores de esta página se mantienen solos. Sin eso, 0 KB. */
 const hayEnVivo = porRonda.some((r) => r.partidos.some((m) => isLive(m.status)));
+cachear(Astro.response, hayEnVivo ? 'partidoEnJuego' : 'competencia');
 const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 
 /*

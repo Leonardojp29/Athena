@@ -3,6 +3,7 @@ import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import RefrescoDeMarcadores from '../../components/RefrescoDeMarcadores.astro';
 import { isLive } from '../../lib/format';
 import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
 import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
@@ -45,6 +46,7 @@ const { team, standings, recent, upcoming, squad, scorers } = view;
 
 /* Con un partido suyo en juego, el marcador de esta página se mantiene solo. Sin eso, 0 KB. */
 const hayEnVivo = [...recent, ...upcoming].some((m) => isLive(m.status));
+cachear(Astro.response, hayEnVivo ? 'partidoEnJuego' : 'equipo');
 const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 const similar = await pedidoSimilar;
 

@@ -90,7 +90,7 @@ const { dia, segundos = 30 } = Astro.props;
 
     const pedir = async (): Promise<void> => {
       try {
-        const res = await fetch(`${API}/v1/views/matches?dia=${dia}`);
+        const res = await fetch(`${API}/v1/views/matches?fecha=${dia}`);
         if (res.ok) {
           const datos = (await res.json()) as DiaDePartidos;
           aplicar(datos.sections.flatMap((s) => s.matches));

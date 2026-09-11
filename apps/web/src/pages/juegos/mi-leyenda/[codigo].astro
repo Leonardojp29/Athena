@@ -1,5 +1,6 @@
 ---
 import Base from '../../../layouts/Base.astro';
+import { cachear, sinCache } from '../../../lib/cache';
 import Container from '../../../components/layout/Container.astro';
 import CartaCompartida from '../../../components/juego/CartaCompartida';
 import { decodificarLegado, fraseDelLegado } from '../../../lib/leyenda';
@@ -14,8 +15,11 @@ const { codigo } = Astro.params;
 const legado = codigo ? decodificarLegado(codigo) : null;
 const frase = legado ? fraseDelLegado(legado) : '';
 
-if (!legado) {
+if (legado) {
+  cachear(Astro.response, 'juego');
+} else {
   Astro.response.status = 404;
+  sinCache(Astro.response);
 }
 ---
 

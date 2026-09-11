@@ -31,6 +31,6 @@ ${urls.map((u) => `  <url><loc>${u.loc}</loc><priority>${u.priority}</priority><
 </urlset>`;
 
   return new Response(xml, {
-    headers: { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=3600' },
+    headers: { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=7200' },
   });
 };
