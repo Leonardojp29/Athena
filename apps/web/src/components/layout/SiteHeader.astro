@@ -12,16 +12,22 @@ const { contador = true } = Astro.props;
 const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
 ---
 
-<header class="sticky top-0 z-30 w-full border-b border-border bg-surface/72 backdrop-blur-xl">
-  <!-- Hairline de marcador: el detalle que separa un header propio de uno genérico. -->
-  <div class="h-px w-full bg-primary/30"></div>
+<!--
+  El header vive sobre la banda y no encima de ella.
+
+  Eran dos barras apiladas —una blanca y una marina— y se leían como dos cosas pegadas. Compartiendo
+  el fondo, el logo, el buscador y la tira de partidos forman una sola cabecera, como la de un
+  diario. Sin `backdrop-blur`: sobre un fondo sólido no aporta nada y cuesta una capa de composición
+  en cada scroll.
+-->
+<header class="sticky top-0 z-30 w-full border-b border-banda-edge bg-banda">
 
   <Container width="wide">
     <div class="flex h-16 items-center gap-3 sm:gap-6">
       <a
         href="/"
         aria-label="Athena — inicio"
-        class="shrink-0 text-ink transition-colors hover:text-primary-ink"
+        class="shrink-0 text-chalk transition-colors hover:text-primary"
       >
         <Logo size={28} />
       </a>
@@ -35,34 +41,34 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         como recortado —y "Buscar…" parecía un texto cortado, no una invitación—. La tecla `/` es
         el atajo que espera cualquiera que use esto todos los días.
       -->
-      <form method="get" action="/buscar" class="hidden items-center sm:flex">
-        <label class="relative flex items-center">
-          <Icon name="buscar" size={15} class="absolute left-2.5 text-ink-muted" />
+      <form method="get" action="/buscar" class="hidden min-w-0 flex-1 items-center sm:flex">
+        <label class="relative flex w-full max-w-md items-center">
+          <Icon name="buscar" size={15} class="absolute left-3 text-chalk-dim" />
           <input
             type="search"
             name="q"
             data-buscador
             placeholder="Buscar equipos o jugadores"
             aria-label="Buscar equipos, jugadores o competencias"
-            class="w-72 rounded-md border border-border bg-canvas-subtle py-1.5 pl-8 pr-9 text-sm outline-none transition-colors focus:border-primary-ink"
+            class="w-full rounded-lg border border-chalk/15 bg-chalk/8 py-2 pl-9 pr-10 text-sm text-chalk outline-none transition-colors placeholder:text-chalk-dim hover:border-chalk/25 focus:border-primary focus:bg-chalk/12"
           />
           <kbd
             aria-hidden="true"
-            class="pointer-events-none absolute right-2 rounded border border-border bg-surface px-1.5 py-0.5 font-sans text-[10px] text-ink-muted"
+            class="pointer-events-none absolute right-2.5 rounded border border-chalk/20 px-1.5 py-0.5 font-sans text-[10px] text-chalk-dim"
           >
             /
           </kbd>
         </label>
       </form>
 
-      <div class="ml-auto flex items-center gap-2 sm:gap-3">
+      <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
         {
           contador && (
             <a
               href="/"
               data-contador-vivo
               hidden
-              class="items-center gap-1.5 rounded-full bg-live/12 px-2.5 py-1 text-2xs font-medium text-live-ink transition-colors hover:bg-live/20 sm:flex"
+              class="items-center gap-1.5 rounded-full bg-live-board/15 px-2.5 py-1 text-2xs font-medium text-live-board transition-colors hover:bg-live-board/25 sm:flex"
             >
               <span data-live-dot class="size-1.5 rounded-full bg-live animate-live-pulse" />
               <span data-contador-vivo-texto />
@@ -73,7 +79,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         <a
           href="/buscar"
           aria-label="Buscar"
-          class="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink sm:hidden"
+          class="rounded-md p-1.5 text-chalk-dim transition-colors hover:bg-chalk/10 hover:text-chalk sm:hidden"
         >
           <Icon name="buscar" size={18} />
         </a>
@@ -86,7 +92,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
           href="/juegos"
           aria-label="Juegos"
           aria-current={Astro.url.pathname.startsWith('/juegos') ? 'page' : undefined}
-          class="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink aria-[current]:bg-primary/12 aria-[current]:text-primary-ink sm:px-2.5"
+          class="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-2 py-1.5 font-medium text-primary-contrast transition-colors hover:brightness-110 aria-[current]:ring-2 aria-[current]:ring-chalk/40 sm:px-3"
         >
           <Icon name="juego" size={18} />
           <span class="hidden text-sm font-medium sm:inline">Juegos</span>
@@ -95,7 +101,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         <button
           id="theme-toggle"
           type="button"
-          class="cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+          class="cursor-pointer rounded-md p-1.5 text-chalk-dim transition-colors hover:bg-chalk/10 hover:text-chalk"
           aria-label="Cambiar tema"
         >
           <Icon name="tema" size={18} />

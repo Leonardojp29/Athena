@@ -19,14 +19,22 @@ export async function crearApp(): Promise<INestApplication> {
   app.setGlobalPrefix('v1');
   /*
    * Los orígenes permitidos, en lista. Era un string único y en desarrollo eso alcanza para romper
-   * todo: quien entra por `127.0.0.1:4321` no es el mismo origen que `localhost:4321`, y el minuto a
-   * minuto —el único fetch que el navegador le hace al API— quedaba bloqueado. En producción se
-   * define `WEB_ORIGIN` y manda esa lista.
+   * todo: quien entra por `127.0.0.1:4321` no es el mismo origen que `localhost:4321`, y los fetch
+   * que el navegador le hace al API quedaban bloqueados.
+   *
+   * Los de local van siempre, además de lo que diga `WEB_ORIGIN`: apuntarlo a un despliegue viejo
+   * dejaba el desarrollo sin CORS y el síntoma —una pastilla que no aparece— no señalaba la causa.
    */
-  const origenes = (process.env.WEB_ORIGIN ?? 'http://localhost:4321,http://127.0.0.1:4321')
-    .split(',')
-    .map((o) => o.trim())
-    .filter(Boolean);
+  const LOCALES = ['http://localhost:4321', 'http://127.0.0.1:4321'];
+  const origenes = [
+    ...new Set([
+      ...LOCALES,
+      ...(process.env.WEB_ORIGIN ?? '')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+    ]),
+  ];
   app.enableCors({ origin: origenes });
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new DuracionInterceptor());
