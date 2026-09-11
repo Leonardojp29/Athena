@@ -51,6 +51,7 @@ const VISTAS: Array<[string, string]> = [
   ['una competencia', '/competencias/primera-division'],
   ['el catálogo', '/competencias'],
   ['un equipo', '/equipos/alianza-lima'],
+  ['los resultados de una búsqueda', '/buscar?q=alianza'],
   ['el catálogo de juegos', '/juegos'],
   ['la creación de Mi Leyenda', '/juegos/mi-leyenda'],
 ];

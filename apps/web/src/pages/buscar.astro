@@ -1,18 +1,29 @@
 ---
-import Base from '../layouts/Base.astro';
-import { cachear } from '../lib/cache';
 import Icon from '../components/Icon.astro';
-import { paisEnEspanol } from '../lib/paises';
-import Card from '../components/Card.astro';
+import Base from '../layouts/Base.astro';
 import { api, PATH_BY_TYPE, type SearchHit } from '../lib/api';
+import { cachear } from '../lib/cache';
+import { paisEnEspanol } from '../lib/paises';
 
+/*
+ * La vista de resultados, que es la hermana lenta del diálogo del header.
+ *
+ * El diálogo resuelve el caso común —sé a quién busco, quiero llegar— sin salir de la página. Acá
+ * llega quien no lo resolvió: por eso pide treinta en vez de ocho, deja correr la búsqueda por
+ * significado, que cuesta segundos, y agrupa para que la lista se pueda recorrer con la vista.
+ *
+ * Sigue siendo `noindex`: una página de resultados internos no aporta nada a un buscador externo.
+ * Compartirla por enlace funciona igual.
+ */
 const query = (Astro.url.searchParams.get('q') ?? '').trim();
 let results: SearchHit[] = [];
 let failed = false;
 
-if (query.length >= 2) {
+if (query.length > 0) {
   try {
-    const response = await api<{ results: SearchHit[] }>(`/search?q=${encodeURIComponent(query)}`);
+    const response = await api<{ results: SearchHit[] }>(
+      `/search?q=${encodeURIComponent(query)}&limit=30`,
+    );
     results = response.results;
   } catch {
     failed = true;
@@ -21,78 +32,140 @@ if (query.length >= 2) {
 
 if (!failed) cachear(Astro.response, 'busqueda');
 
-const TYPE_LABEL: Record<SearchHit['type'], string> = {
-  team: 'Equipo',
-  player: 'Jugador',
-  competition: 'Competencia',
+const GRUPOS = [
+  { tipo: 'competition' as const, titulo: 'Competencias', singular: 'Competencia' },
+  { tipo: 'team' as const, titulo: 'Equipos', singular: 'Equipo' },
+  { tipo: 'player' as const, titulo: 'Jugadores', singular: 'Jugador' },
+];
+
+const conResultados = GRUPOS.map((grupo) => ({
+  ...grupo,
+  hits: results.filter((hit) => hit.type === grupo.tipo),
+})).filter((grupo) => grupo.hits.length > 0);
+
+/* Las columnas siguen a los grupos que hay: dos grupos en tres columnas dejan un hueco muerto. */
+const COLUMNAS: Record<number, string> = {
+  1: 'lg:grid-cols-1',
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
 };
+const columnas = COLUMNAS[conResultados.length] ?? 'lg:grid-cols-3';
 ---
 
 <Base
   title={query ? `Búsqueda: ${query} | Athena` : 'Buscar | Athena'}
   description="Busca equipos, jugadores y competencias en Athena."
   noindex
-  width="prose"
+  width="wide"
 >
-  <h1 class="mb-1 font-display text-3xl font-semibold uppercase">Buscar</h1>
-  <p class="mb-4 text-sm text-ink-muted">
-    Equipos, jugadores y competencias. Tolera errores de tipeo y entiende descripciones.
-  </p>
+  <div class="mx-auto max-w-3xl">
+    <h1 class="mb-1 font-display text-3xl font-semibold uppercase">Buscar</h1>
+    <p class="mb-4 text-sm text-ink-muted">
+      Equipos, jugadores y competencias. Tolera errores de tipeo y entiende descripciones.
+    </p>
 
-  <form method="get" action="/buscar" class="mb-6">
-    <label class="relative flex items-center">
-      <Icon name="buscar" size={16} class="absolute left-3 text-ink-muted" />
-      <span class="sr-only">Buscar equipos, jugadores o competencias</span>
-      <input
-        type="search"
-        name="q"
-        value={query}
-        placeholder="Equipo, jugador o competencia"
-        autofocus
-        class="w-full rounded-md border border-border bg-surface py-2.5 pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary-ink"
-      />
-    </label>
-  </form>
+    <!-- Un formulario de verdad: sin JavaScript esta página sigue buscando. -->
+    <form method="get" action="/buscar">
+      <label class="relative flex items-center">
+        <Icon name="buscar" size={18} class="absolute left-4 text-ink-muted" />
+        <span class="sr-only">Buscar equipos, jugadores o competencias</span>
+        <input
+          type="search"
+          name="q"
+          value={query}
+          placeholder="Equipo, jugador o competencia"
+          autofocus
+          class="h-14 w-full rounded-xl border border-border bg-surface pl-12 pr-4 text-base outline-none transition-colors focus:border-primary-ink"
+        />
+      </label>
+    </form>
+  </div>
 
-  {query.length < 2 ? (
-    <Card><p class="text-sm text-ink-muted">Escribe al menos dos letras para buscar.</p></Card>
-  ) : failed ? (
-    <Card><p class="text-sm text-card-red-ink">La búsqueda no está disponible en este momento.</p></Card>
-  ) : results.length === 0 ? (
-    <Card><p class="text-sm text-ink-muted">Sin resultados para «{query}».</p></Card>
-  ) : (
-    <Card>
-      <ul class="divide-y divide-border/40">
-        {results.map((hit) => (
-          <li>
-            <a
-              href={`${PATH_BY_TYPE[hit.type]}/${hit.slug}`}
-              class="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-md hover:bg-canvas-subtle transition-colors"
-            >
-              {hit.imageUrl ? (
-                <img src={hit.imageUrl} alt="" width="28" height="28" loading="lazy" class="shrink-0" />
-              ) : (
-                <span class="w-7 h-7 rounded-full bg-canvas-subtle shrink-0"></span>
-              )}
-              <span class="min-w-0">
-                <span class="block text-sm font-medium truncate">{hit.name}</span>
-                <span class="block text-xs text-ink-muted">
-                  {TYPE_LABEL[hit.type]}
-                  {hit.subtitle ? ` · ${paisEnEspanol(hit.subtitle) ?? hit.subtitle}` : ''}
-                </span>
-              </span>
-              {hit.matchedBy === 'semántica' && (
-                <span
-                  class="ml-auto shrink-0 rounded-full bg-data/12 px-2 py-0.5 text-2xs text-data-ink"
-                  title="Encontrado por parecido de significado, no por el nombre"
-                >
-                  similar
-                </span>
-              )}
-            </a>
-          </li>
+  {
+    query.length === 0 && (
+      <p class="mx-auto mt-10 max-w-3xl text-center text-sm text-ink-muted">
+        Escribe para buscar. También se abre desde cualquier página con la tecla
+        <kbd class="mx-1 rounded border border-border px-1.5 py-0.5 font-sans text-2xs">/</kbd>
+      </p>
+    )
+  }
+
+  {
+    failed && (
+      <p class="mx-auto mt-10 max-w-3xl rounded-lg border border-border bg-surface p-4 text-sm text-card-red-ink">
+        La búsqueda no está disponible en este momento.
+      </p>
+    )
+  }
+
+  {
+    query.length > 0 && !failed && conResultados.length === 0 && (
+      <div class="mx-auto mt-10 max-w-3xl text-center">
+        <p class="text-sm text-ink">
+          Sin resultados para <span class="font-medium">«{query}»</span>
+        </p>
+        <p class="mt-1 text-sm text-ink-muted">
+          Probá con menos letras, o con el nombre del club en vez del apodo.
+        </p>
+      </div>
+    )
+  }
+
+  {
+    conResultados.length > 0 && (
+      <div class:list={['mt-8 grid items-start gap-4 sm:grid-cols-2', columnas]}>
+        {conResultados.map((grupo) => (
+          <section class="rounded-xl border border-border bg-surface p-1.5">
+            <h2 class="px-2 pb-1 pt-2 font-display text-sm font-semibold uppercase tracking-wide text-ink-muted">
+              {grupo.titulo}
+            </h2>
+            <ul>
+              {grupo.hits.map((hit) => (
+                <li>
+                  <a
+                    href={`${PATH_BY_TYPE[hit.type]}/${hit.slug}`}
+                    class="flex items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle"
+                  >
+                    {hit.imageUrl ? (
+                      <img
+                        src={hit.imageUrl}
+                        alt=""
+                        width="28"
+                        height="28"
+                        loading="lazy"
+                        class="size-7 shrink-0 rounded-full object-contain"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        class="flex size-7 shrink-0 items-center justify-center rounded-full bg-canvas-subtle text-2xs font-semibold text-ink-muted"
+                      >
+                        {hit.name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <span class="min-w-0 flex-1">
+                      <span class="block truncate text-sm">{hit.name}</span>
+                      <span class="block truncate text-2xs text-ink-muted">
+                        {[grupo.singular, paisEnEspanol(hit.subtitle) ?? hit.subtitle]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </span>
+                    {hit.matchedBy === 'semántica' && (
+                      <span
+                        class="ml-auto shrink-0 rounded-full bg-data/12 px-2 py-0.5 text-2xs text-data-ink"
+                        title="Encontrado por parecido de significado, no por el nombre"
+                      >
+                        similar
+                      </span>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
-    </Card>
-  )}
+      </div>
+    )
+  }
 </Base>
