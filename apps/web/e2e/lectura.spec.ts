@@ -204,8 +204,9 @@ test.describe('comparar', () => {
     test.skip(jugadores.length < 1, 'no hay jugadores para comparar');
 
     await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}`);
-    /* Con un solo lado, la página es el buscador del segundo. */
-    await expect(page.getByRole('button', { name: /buscar/i })).toBeVisible();
+    /* Con un solo lado, la página es el buscador del segundo. Acotado a `main`: el del header abre
+       el diálogo y también se llama "buscar". */
+    await expect(page.locator('main').getByRole('button', { name: /buscar/i })).toBeVisible();
 
     /* El segundo también sale del buscador: un slug escrito a mano se rompe cuando el jugador
        pasa a llamarse con su nombre completo, que es justo lo que hace el renombrado. */

@@ -1,7 +1,8 @@
 ---
+import Buscador from './Buscador.astro';
+import Container from './Container.astro';
 import Icon from '../Icon.astro';
 import Logo from '../brand/Logo.astro';
-import Container from './Container.astro';
 
 interface Props {
   /* El juego se abre sin contador: ahí el header no compite con la carrera. */
@@ -35,31 +36,26 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       <!--
         El buscador va con el logo y no en el grupo de acciones: sin la navegación en el header,
         la mitad izquierda quedaba vacía y eso se lee como inacabado, no como limpio.
+
+        No es un campo sino la puerta al diálogo. Parece un campo porque eso es lo que la gente
+        busca con la vista, pero escribir acá y escribir en el overlay serían dos cajas con el
+        mismo texto; una sola evita el salto al enfocar y el estado duplicado.
       -->
-      <!--
-        Ancho fijo y sin puntos suspensivos. Con `w-44` que crecía al enfocar, el campo se leía
-        como recortado —y "Buscar…" parecía un texto cortado, no una invitación—. La tecla `/` es
-        el atajo que espera cualquiera que use esto todos los días.
-      -->
-      <form method="get" action="/buscar" class="hidden min-w-0 flex-1 items-center sm:flex">
-        <label class="relative flex w-full max-w-md items-center">
-          <Icon name="buscar" size={15} class="absolute left-3 text-chalk-dim" />
-          <input
-            type="search"
-            name="q"
-            data-buscador
-            placeholder="Buscar equipos o jugadores"
-            aria-label="Buscar equipos, jugadores o competencias"
-            class="w-full rounded-lg border border-chalk/15 bg-chalk/8 py-2 pl-9 pr-10 text-sm text-chalk outline-none transition-colors placeholder:text-chalk-dim hover:border-chalk/25 focus:border-primary focus:bg-chalk/12"
-          />
-          <kbd
-            aria-hidden="true"
-            class="pointer-events-none absolute right-2.5 rounded border border-chalk/20 px-1.5 py-0.5 font-sans text-[10px] text-chalk-dim"
-          >
-            /
-          </kbd>
-        </label>
-      </form>
+      <button
+        type="button"
+        data-abrir-buscador
+        aria-label="Buscar equipos, jugadores o competencias"
+        class="hidden min-w-0 max-w-md flex-1 cursor-pointer items-center gap-2.5 rounded-lg border border-chalk/15 bg-chalk/8 py-2 pl-3 pr-2.5 text-left text-sm text-chalk-dim transition-colors hover:border-chalk/25 hover:bg-chalk/12 sm:flex"
+      >
+        <Icon name="buscar" size={15} class="shrink-0" />
+        <span class="min-w-0 flex-1 truncate">Buscar equipos o jugadores</span>
+        <kbd
+          aria-hidden="true"
+          class="shrink-0 rounded border border-chalk/20 px-1.5 py-0.5 font-sans text-[10px]"
+        >
+          /
+        </kbd>
+      </button>
 
       <div class="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
         {
@@ -76,13 +72,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
           )
         }
 
-        <a
-          href="/buscar"
+        <button
+          type="button"
+          data-abrir-buscador
           aria-label="Buscar"
-          class="rounded-md p-1.5 text-chalk-dim transition-colors hover:bg-chalk/10 hover:text-chalk sm:hidden"
+          class="cursor-pointer rounded-md p-1.5 text-chalk-dim transition-colors hover:bg-chalk/10 hover:text-chalk sm:hidden"
         >
           <Icon name="buscar" size={18} />
-        </a>
+        </button>
 
         <!--
           La entrada a los juegos. Va con el grupo de acciones porque es una sección propia y no un
@@ -112,19 +109,6 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
   </Container>
 </header>
 
-<script>
-  /* `/` enfoca el buscador, salvo cuando ya se está escribiendo en otro campo. */
-  document.addEventListener('keydown', (evento) => {
-    if (evento.key !== '/' || evento.metaKey || evento.ctrlKey) return;
-    const activo = document.activeElement;
-    if (activo instanceof HTMLInputElement || activo instanceof HTMLTextAreaElement) return;
-    const buscador = document.querySelector<HTMLInputElement>('header [data-buscador]');
-    if (!buscador) return;
-    evento.preventDefault();
-    buscador.focus();
-  });
-</script>
-
 <!--
   El contador se llena desde el navegador y no en el servidor.
 
@@ -145,3 +129,5 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       .catch(() => undefined);
   }
 </script>
+
+<Buscador />

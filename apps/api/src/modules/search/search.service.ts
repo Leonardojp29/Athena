@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { EmbeddingGenerator } from '@athena/domain';
+import { paisEnEspanol, type EmbeddingGenerator } from '@athena/domain';
 import { Memoria } from '../../shared/memoria.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FeatureFlagService, FLAGS } from '../feature-flags/feature-flag.service.js';
@@ -18,6 +18,14 @@ const PESO_PREFIJO = 0.6;
 const PESO_PALABRA = 0.3;
 
 /*
+ * Cuántos partidos suyos seguimos, recortado y llevado a 0–0.8. El techo importa: sin él, Real
+ * Madrid con 468 partidos ganaría cualquier búsqueda, y lo que se quiere es desempatar nombres
+ * parecidos, no imponer al club más grande.
+ */
+const RELEVANCIA_TECHO = 300;
+const PESO_RELEVANCIA = 0.8;
+
+/*
  * Quien escribe "boca" quiere Boca Juniors, no Boca Unidos: sin estos pesos gana el nombre más
  * corto, que es al que el trigram le encuentra mayor proporción de coincidencia.
  */
@@ -27,12 +35,35 @@ interface Fuente {
   imagen: string;
   subtitulo: string;
   peso: number;
+  /** Solo los equipos llevan la columna: son los únicos que se confunden entre sí por el nombre. */
+  relevancia: boolean;
 }
 
 const FUENTES: readonly Fuente[] = [
-  { tipo: 'competition', tabla: 'competitions', imagen: 'logo_url', subtitulo: 'country', peso: 0.15 },
-  { tipo: 'team', tabla: 'teams', imagen: 'logo_url', subtitulo: 'country', peso: 0.1 },
-  { tipo: 'player', tabla: 'players', imagen: 'photo_url', subtitulo: 'nationality', peso: 0 },
+  {
+    tipo: 'competition',
+    tabla: 'competitions',
+    imagen: 'logo_url',
+    subtitulo: 'country',
+    peso: 0.15,
+    relevancia: false,
+  },
+  {
+    tipo: 'team',
+    tabla: 'teams',
+    imagen: 'logo_url',
+    subtitulo: 'country',
+    peso: 0.1,
+    relevancia: true,
+  },
+  {
+    tipo: 'player',
+    tabla: 'players',
+    imagen: 'photo_url',
+    subtitulo: 'nationality',
+    peso: 0,
+    relevancia: false,
+  },
 ];
 
 export interface SearchHit {
@@ -47,7 +78,7 @@ export interface SearchHit {
 }
 
 /** Tres campos por fila y sin llaves repetidas: el índice viaja al navegador entero. */
-export type CompactoIndice = [nombre: string, slug: string, pais: string];
+export type CompactoIndice = [nombre: string, slug: string, pais: string, relevancia: number];
 
 export interface IndiceLocal {
   equipos: CompactoIndice[];
@@ -58,6 +89,7 @@ interface FilaIndice {
   name: string;
   slug: string;
   country: string | null;
+  relevancia: number;
 }
 
 interface NameRow {
@@ -134,18 +166,18 @@ export class SearchService {
   async indice(): Promise<IndiceLocal> {
     const [equipos, competencias] = await Promise.all([
       this.prisma.$queryRaw<FilaIndice[]>`
-        SELECT DISTINCT t.name, t.slug, t.country
+        SELECT DISTINCT t.name, t.slug, t.country, t.relevancia
         FROM teams t
         WHERE t.id IN (SELECT team_id FROM standings)
         ORDER BY t.name
       `,
       this.prisma.$queryRaw<FilaIndice[]>`
-        SELECT name, slug, country FROM competitions ORDER BY name
+        SELECT name, slug, country, 0 AS relevancia FROM competitions ORDER BY name
       `,
     ]);
 
     const compactar = (filas: FilaIndice[]): CompactoIndice[] =>
-      filas.map((f) => [f.name, f.slug, f.country ?? '']);
+      filas.map((f) => [f.name, f.slug, paisEnEspanol(f.country) ?? f.country ?? '', f.relevancia]);
 
     return { equipos: compactar(equipos), competencias: compactar(competencias) };
   }
@@ -226,6 +258,10 @@ export class SearchService {
         ? `${nombre} LIKE c.q || '%'`
         : `${nombre} % c.q OR ${nombre} LIKE '%' || c.q || '%'`;
 
+    const relevancia = fuente.relevancia
+      ? `+ ${PESO_RELEVANCIA} * least(f.relevancia, ${RELEVANCIA_TECHO})::float / ${RELEVANCIA_TECHO}`
+      : '';
+
     return `
       WITH c AS (SELECT immutable_unaccent(lower($1::text)) AS q)
       SELECT f.id::text, f.name, f.slug,
@@ -233,7 +269,8 @@ export class SearchService {
              similarity(${nombre}, c.q)
                + CASE WHEN ${nombre} LIKE c.q || '%' THEN ${PESO_PREFIJO}
                       WHEN ${nombre} LIKE '% ' || c.q || '%' THEN ${PESO_PALABRA}
-                      ELSE 0 END AS score
+                      ELSE 0 END
+               ${relevancia} AS score
       FROM ${fuente.tabla} f, c
       WHERE ${condicion}
       ORDER BY score DESC, f.name ASC
@@ -255,7 +292,7 @@ export class SearchService {
             name: row.name,
             slug: row.slug,
             imageUrl: row.imageUrl,
-            subtitle: row.subtitle,
+            subtitle: paisEnEspanol(row.subtitle) ?? row.subtitle,
             // +1 mantiene los aciertos por nombre por encima de los semánticos (score ≤ 1)
             score: Number(row.score) + fuente.peso + 1,
             matchedBy: 'nombre',

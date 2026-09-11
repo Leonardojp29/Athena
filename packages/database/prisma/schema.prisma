@@ -134,6 +134,8 @@ model Team {
   secondaryColor String? @map("secondary_color")
   venue          Venue?  @relation(fields: [venueId], references: [id])
   venueId        String? @map("venue_id") @db.Uuid
+  /// Partidos suyos que seguimos. Ordena la búsqueda: el texto solo no distingue Boca Juniors de Boca Unidos.
+  relevancia     Int     @default(0)
 
   homeMatches Match[]           @relation("home_team")
   awayMatches Match[]           @relation("away_team")
@@ -149,6 +151,7 @@ model Team {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@index([relevancia(sort: Desc)])
   @@map("teams")
 }
 

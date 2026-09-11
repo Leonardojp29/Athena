@@ -381,12 +381,35 @@ export class SyncQueueService {
     await this.enqueue('standings', tabla, { priority: 1, delay: TABLA_REINTENTO_MS });
   }
 
+  /*
+   * Lo que ordena la búsqueda cuando el nombre no alcanza. Se recalcula entero porque son dos
+   * barridos sobre `matches` y una escritura por equipo: segundos, una vez al día.
+   */
+  private async refrescarRelevancia(): Promise<void> {
+    await this.prisma.$executeRaw`
+      WITH conteo AS (
+        SELECT equipo_id, count(*)::int AS partidos
+        FROM (
+          SELECT home_team_id AS equipo_id FROM matches
+          UNION ALL
+          SELECT away_team_id FROM matches
+        ) jugados
+        GROUP BY equipo_id
+      )
+      UPDATE teams t
+      SET relevancia = conteo.partidos
+      FROM conteo
+      WHERE t.id = conteo.equipo_id AND t.relevancia IS DISTINCT FROM conteo.partidos
+    `;
+  }
+
   private async dailyRefresh(): Promise<void> {
     /* Red de seguridad: si el worker estuvo caído, acá se cierran los que quedaron colgados. */
     await this.syncFixtures.reconcileStale();
     /* Del detalle de los terminados se ocupa el barrido de cada tic: acá solo se limpia lo viejo. */
     await this.matchSync.podar();
     await this.cache.podar();
+    await this.refrescarRelevancia();
 
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
       await this.enqueue('competition', { competitionRef: providerRef });

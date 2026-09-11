@@ -1,0 +1,414 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * El buscador como diálogo y no como página.
+ *
+ * Escribir para encontrar y navegar para ver son dos gestos distintos, y meterlos en la misma ruta
+ * obligaba a recargar el documento entero por cada intento. Acá el diálogo se abre encima de lo que
+ * ya estaba, responde mientras se escribe y solo navega cuando hay algo elegido; `/buscar` queda
+ * para el resultado que se explora, se comparte y se indexa.
+ *
+ * Es un `<dialog>` nativo con `showModal()`: la trampa de foco, Escape y el fondo inerte los pone el
+ * navegador. Vanilla y sin isla —las páginas de entidad se quedan en 0 KB de JavaScript—, que es la
+ * misma decisión que ya tomó la ficha del jugador.
+ */
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+---
+
+<dialog
+  data-buscador-dialogo
+  aria-label="Buscar en Athena"
+  class="m-0 mx-auto mt-[max(3rem,8vh)] w-[min(40rem,calc(100vw-1.5rem))] rounded-xl border border-border bg-surface-raised p-0 text-ink shadow-modal backdrop:bg-canvas/70 backdrop:backdrop-blur-sm"
+>
+  <div class="flex items-center gap-3 border-b border-border px-4">
+    <Icon name="buscar" size={18} class="shrink-0 text-ink-muted" />
+    <input
+      type="text"
+      data-buscador-campo
+      role="combobox"
+      aria-expanded="false"
+      aria-controls="buscador-resultados"
+      aria-autocomplete="list"
+      aria-label="Escribe tu búsqueda"
+      autocomplete="off"
+      spellcheck="false"
+      placeholder="Buscar equipos, jugadores o competencias"
+      class="h-14 min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-muted"
+    />
+    <button
+      type="button"
+      data-buscador-cerrar
+      aria-label="Cerrar"
+      class="shrink-0 cursor-pointer rounded-md p-1.5 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+    >
+      <Icon name="cerrar" size={16} />
+    </button>
+  </div>
+
+  <!--
+    `aria-live` no: el lector ya sigue la lista por `aria-activedescendant`, y anunciar cada
+    resultado mientras se teclea convierte la búsqueda en un parloteo.
+  -->
+  <div
+    id="buscador-resultados"
+    data-buscador-resultados
+    role="listbox"
+    aria-label="Resultados"
+    class="max-h-[min(28rem,60vh)] overflow-y-auto overscroll-contain p-1.5"
+  >
+  </div>
+
+  <p class="flex items-center gap-3 border-t border-border px-4 py-2 text-2xs text-ink-muted">
+    <span><kbd class="font-sans">↑↓</kbd> moverse</span>
+    <span><kbd class="font-sans">Enter</kbd> abrir</span>
+    <span><kbd class="font-sans">Esc</kbd> cerrar</span>
+  </p>
+</dialog>
+
+<script is:inline define:vars={{ apiUrl }}>
+  (() => {
+    const dialogo = document.querySelector('[data-buscador-dialogo]');
+    if (!dialogo) return;
+
+    const campo = dialogo.querySelector('[data-buscador-campo]');
+    const panel = dialogo.querySelector('[data-buscador-resultados]');
+
+    const ESPERA_MS = 120;
+    const RECIENTES_MAX = 6;
+    const CLAVE_RECIENTES = 'athena:busquedas';
+    const RUTA = { team: '/equipos', player: '/jugadores', competition: '/competencias' };
+    const GRUPO = { team: 'Equipos', player: 'Jugadores', competition: 'Competencias' };
+    const TIPO = { team: 'Equipo', player: 'Jugador', competition: 'Competencia' };
+    const ORDEN = ['competition', 'team', 'player'];
+
+    /* Lo que ya se resolvió no se vuelve a preguntar: borrar una letra tiene que ser gratis. */
+    const cache = new Map();
+    let indice = null;
+    let pidiendoIndice = null;
+    let enVuelo = null;
+    let temporizador = 0;
+    let opciones = [];
+    let elegida = -1;
+    let ultimaConsulta = '';
+
+    const normalizar = (texto) =>
+      texto
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+    const recientes = () => {
+      try {
+        const crudo = JSON.parse(localStorage.getItem(CLAVE_RECIENTES) ?? '[]');
+        return Array.isArray(crudo) ? crudo.slice(0, RECIENTES_MAX) : [];
+      } catch {
+        return [];
+      }
+    };
+
+    const recordar = (hit) => {
+      try {
+        const previas = recientes().filter((r) => !(r.type === hit.type && r.slug === hit.slug));
+        const guardado = {
+          type: hit.type,
+          name: hit.name,
+          slug: hit.slug,
+          imageUrl: hit.imageUrl ?? null,
+          subtitle: hit.subtitle ?? null,
+        };
+        localStorage.setItem(
+          CLAVE_RECIENTES,
+          JSON.stringify([guardado, ...previas].slice(0, RECIENTES_MAX)),
+        );
+      } catch {
+        /* Sin almacenamiento el buscador funciona igual, solo no recuerda. */
+      }
+    };
+
+    /*
+     * El índice llega en el primer tecleo y no al cargar la página: quien nunca busca no paga nada,
+     * y desde ese momento equipos y competencias se resuelven sin volver a la red.
+     */
+    const traerIndice = () => {
+      if (indice || pidiendoIndice) return pidiendoIndice;
+      pidiendoIndice = fetch(`${apiUrl}/v1/search/indice`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((datos) => {
+          if (!datos) return null;
+          const aplanar = (filas, type) =>
+            filas.map(([name, slug, country, relevancia]) => ({
+              type,
+              name,
+              slug,
+              subtitle: country || null,
+              imageUrl: null,
+              relevancia: relevancia ?? 0,
+              normal: normalizar(name),
+            }));
+          indice = [
+            ...aplanar(datos.competencias ?? [], 'competition'),
+            ...aplanar(datos.equipos ?? [], 'team'),
+          ];
+          return indice;
+        })
+        .catch(() => null);
+      return pidiendoIndice;
+    };
+
+    /*
+     * Mismo criterio que el del servidor, y por la misma razón: sin la relevancia gana el nombre
+     * más corto, así que "alianza" traía al Alianza de El Salvador antes que a Alianza Lima.
+     */
+    const RELEVANCIA_TECHO = 300;
+    const PESO_RELEVANCIA = 0.8;
+
+    const buscarLocal = (consulta) => {
+      if (!indice) return [];
+      const q = normalizar(consulta);
+      const puntuar = (entrada) => {
+        const i = entrada.normal.indexOf(q);
+        const ubicacion = i === 0 ? 1.6 : i > 0 && entrada.normal[i - 1] === ' ' ? 1.3 : i > 0 ? 1 : 0;
+        if (ubicacion === 0) return 0;
+        const parecido = q.length / entrada.normal.length;
+        const peso = Math.min(entrada.relevancia, RELEVANCIA_TECHO) / RELEVANCIA_TECHO;
+        return ubicacion + parecido + PESO_RELEVANCIA * peso;
+      };
+      return indice
+        .map((entrada) => ({ entrada, peso: puntuar(entrada) }))
+        .filter(({ peso }) => peso > 0)
+        .sort((a, b) => b.peso - a.peso || a.entrada.name.localeCompare(b.entrada.name))
+        .slice(0, 8)
+        .map(({ entrada }) => entrada);
+    };
+
+    /*
+     * El índice local no trae escudos: pesarían más que todo lo demás junto. Cuando el servidor
+     * confirma una fila que ya estaba, se queda el orden de la local —que es el que el lector ya
+     * vio— y se le adopta la imagen, así el escudo aparece sin que la lista salte.
+     */
+    const fusionar = (locales, remotos) => {
+      const porClave = new Map();
+      const clave = (hit) => `${hit.type}:${hit.slug}`;
+      for (const hit of locales) porClave.set(clave(hit), hit);
+      for (const hit of remotos) {
+        const previa = porClave.get(clave(hit));
+        if (previa) previa.imageUrl = previa.imageUrl ?? hit.imageUrl;
+        else porClave.set(clave(hit), hit);
+      }
+      return [...porClave.values()];
+    };
+
+    const escapar = (texto) =>
+      String(texto).replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+      );
+
+    /* El trozo que coincide va en negrita: dice por qué esa fila está ahí. */
+    const resaltar = (nombre, consulta) => {
+      const i = normalizar(nombre).indexOf(normalizar(consulta));
+      if (!consulta || i < 0) return escapar(nombre);
+      const fin = i + consulta.length;
+      return `${escapar(nombre.slice(0, i))}<mark class="bg-transparent font-semibold text-ink">${escapar(nombre.slice(i, fin))}</mark>${escapar(nombre.slice(fin))}`;
+    };
+
+    const filaHtml = (hit, indiceOpcion, consulta) => {
+      const inicial = escapar(hit.name.slice(0, 1).toUpperCase());
+      const medallon = hit.imageUrl
+        ? `<img src="${escapar(hit.imageUrl)}" alt="" width="28" height="28" loading="lazy" class="size-7 shrink-0 rounded-full object-contain" />`
+        : `<span aria-hidden="true" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-canvas-subtle text-2xs font-semibold text-ink-muted">${inicial}</span>`;
+      const pie = [TIPO[hit.type], hit.subtitle].filter(Boolean).join(' · ');
+      const similar =
+        hit.matchedBy === 'semántica'
+          ? '<span class="ml-auto shrink-0 rounded-full bg-canvas-subtle px-2 py-0.5 text-2xs text-ink-muted">similar</span>'
+          : '';
+      return `<a id="buscador-op-${indiceOpcion}" role="option" aria-selected="false"
+        href="${RUTA[hit.type]}/${escapar(hit.slug)}" data-opcion="${indiceOpcion}"
+        class="flex items-center gap-3 rounded-md px-2 py-2 aria-selected:bg-primary/12">
+        ${medallon}
+        <span class="min-w-0 flex-1">
+          <span class="block truncate text-sm">${resaltar(hit.name, consulta)}</span>
+          <span class="block truncate text-2xs text-ink-muted">${escapar(pie)}</span>
+        </span>${similar}
+      </a>`;
+    };
+
+    const mensaje = (texto) =>
+      `<p class="px-2 py-6 text-center text-sm text-ink-muted">${escapar(texto)}</p>`;
+
+    const pintar = (hits, consulta, vacio) => {
+      opciones = hits;
+      elegida = hits.length > 0 ? 0 : -1;
+
+      if (hits.length === 0) {
+        panel.innerHTML = mensaje(vacio);
+        campo.setAttribute('aria-expanded', 'false');
+        campo.removeAttribute('aria-activedescendant');
+        return;
+      }
+
+      let html = '';
+      let n = 0;
+      for (const tipo of ORDEN) {
+        const delTipo = hits.filter((h) => h.type === tipo);
+        if (delTipo.length === 0) continue;
+        html += `<p class="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-wide text-ink-muted">${GRUPO[tipo]}</p>`;
+        for (const hit of delTipo) html += filaHtml(hit, n++, consulta);
+      }
+      /* Reordenado por grupo: la lista de teclado tiene que seguir el orden que se ve. */
+      opciones = ORDEN.flatMap((tipo) => hits.filter((h) => h.type === tipo));
+      panel.innerHTML = html;
+      campo.setAttribute('aria-expanded', 'true');
+      marcar(0);
+    };
+
+    const pintarRecientes = () => {
+      const previas = recientes();
+      opciones = previas;
+      elegida = previas.length > 0 ? 0 : -1;
+      if (previas.length === 0) {
+        panel.innerHTML = mensaje('Escribe para buscar equipos, jugadores o competencias.');
+        campo.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      panel.innerHTML =
+        '<p class="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-wide text-ink-muted">Recientes</p>' +
+        previas.map((hit, i) => filaHtml(hit, i, '')).join('');
+      campo.setAttribute('aria-expanded', 'true');
+      marcar(0);
+    };
+
+    const marcar = (indiceOpcion) => {
+      const filas = panel.querySelectorAll('[data-opcion]');
+      filas.forEach((fila, i) => fila.setAttribute('aria-selected', String(i === indiceOpcion)));
+      elegida = indiceOpcion;
+      const activa = filas[indiceOpcion];
+      if (!activa) return;
+      campo.setAttribute('aria-activedescendant', activa.id);
+      activa.scrollIntoView({ block: 'nearest' });
+    };
+
+    const consultar = async (consulta) => {
+      const guardado = cache.get(consulta);
+      const locales = buscarLocal(consulta);
+      if (guardado) {
+        pintar(fusionar(locales, guardado), consulta, `Sin resultados para «${consulta}»`);
+        return;
+      }
+
+      /* Lo local se pinta ya; lo remoto lo completa cuando llega. */
+      if (locales.length > 0) pintar(locales, consulta, '');
+
+      enVuelo?.abort();
+      const corte = new AbortController();
+      enVuelo = corte;
+      try {
+        const r = await fetch(
+          `${apiUrl}/v1/search/sugerencias?q=${encodeURIComponent(consulta)}`,
+          { signal: corte.signal },
+        );
+        if (!r.ok) throw new Error(String(r.status));
+        const datos = await r.json();
+        const remotos = datos.results ?? [];
+        cache.set(consulta, remotos);
+        if (consulta !== ultimaConsulta) return;
+        pintar(fusionar(locales, remotos), consulta, `Sin resultados para «${consulta}»`);
+      } catch (error) {
+        if (corte.signal.aborted) return;
+        if (locales.length === 0) {
+          pintar([], consulta, 'La búsqueda no está disponible en este momento.');
+        }
+      }
+    };
+
+    const alEscribir = () => {
+      const consulta = campo.value.trim();
+      ultimaConsulta = consulta;
+      window.clearTimeout(temporizador);
+      if (consulta.length === 0) {
+        enVuelo?.abort();
+        pintarRecientes();
+        return;
+      }
+      void traerIndice();
+      temporizador = window.setTimeout(() => consultar(consulta), ESPERA_MS);
+    };
+
+    const abrir = (inicial = '') => {
+      if (dialogo.open) return;
+      campo.value = inicial;
+      dialogo.showModal();
+      void traerIndice();
+      if (inicial) alEscribir();
+      else pintarRecientes();
+      campo.focus();
+    };
+
+    campo.addEventListener('input', alEscribir);
+
+    campo.addEventListener('keydown', (evento) => {
+      if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+        if (opciones.length === 0) return;
+        evento.preventDefault();
+        const paso = evento.key === 'ArrowDown' ? 1 : -1;
+        marcar((elegida + paso + opciones.length) % opciones.length);
+        return;
+      }
+      if (evento.key !== 'Enter') return;
+      evento.preventDefault();
+      const hit = opciones[elegida];
+      if (hit) {
+        recordar(hit);
+        location.href = `${RUTA[hit.type]}/${hit.slug}`;
+        return;
+      }
+      const consulta = campo.value.trim();
+      if (consulta) location.href = `/buscar?q=${encodeURIComponent(consulta)}`;
+    });
+
+    panel.addEventListener('click', (evento) => {
+      const fila = evento.target.closest('[data-opcion]');
+      if (!fila) return;
+      const hit = opciones[Number(fila.dataset.opcion)];
+      if (hit) recordar(hit);
+    });
+
+    panel.addEventListener('mousemove', (evento) => {
+      const fila = evento.target.closest('[data-opcion]');
+      if (fila) marcar(Number(fila.dataset.opcion));
+    });
+
+    dialogo
+      .querySelector('[data-buscador-cerrar]')
+      .addEventListener('click', () => dialogo.close());
+
+    /* El backdrop del modal: el diálogo es el objetivo solo cuando se toca afuera. */
+    dialogo.addEventListener('click', (evento) => {
+      if (evento.target === dialogo) dialogo.close();
+    });
+
+    dialogo.addEventListener('close', () => {
+      enVuelo?.abort();
+      window.clearTimeout(temporizador);
+    });
+
+    for (const disparador of document.querySelectorAll('[data-abrir-buscador]')) {
+      disparador.addEventListener('click', (evento) => {
+        evento.preventDefault();
+        abrir();
+      });
+    }
+
+    document.addEventListener('keydown', (evento) => {
+      const atajo =
+        evento.key === '/' || (evento.key.toLowerCase() === 'k' && (evento.metaKey || evento.ctrlKey));
+      if (!atajo || dialogo.open) return;
+      const activo = document.activeElement;
+      if (activo instanceof HTMLInputElement || activo instanceof HTMLTextAreaElement) return;
+      if (evento.key === '/' && (evento.metaKey || evento.ctrlKey)) return;
+      evento.preventDefault();
+      abrir();
+    });
+  })();
+</script>

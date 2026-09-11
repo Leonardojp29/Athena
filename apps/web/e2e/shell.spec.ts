@@ -23,6 +23,55 @@ test.describe('shell del sitio', () => {
   });
 
   /*
+   * El buscador es un diálogo y no una ruta: escribir y ver son dos gestos, y el primero no debería
+   * costar una recarga. Si alguien lo vuelve a convertir en un formulario que navega, esto lo dice.
+   */
+  test('el buscador se abre encima de la página y responde mientras se escribe', async ({
+    page,
+    isMobile,
+  }) => {
+    await page.goto('/');
+    const dialogo = page.locator('[data-buscador-dialogo]');
+    await expect(dialogo).toBeHidden();
+
+    if (isMobile) await page.getByLabel('Buscar', { exact: true }).click();
+    else await page.keyboard.press('/');
+
+    await expect(dialogo).toBeVisible();
+    await expect(page.getByLabel('Escribe tu búsqueda')).toBeFocused();
+
+    const url = page.url();
+    await page.getByLabel('Escribe tu búsqueda').fill('alianza');
+    const opciones = dialogo.getByRole('option');
+    await expect(opciones.first()).toBeVisible({ timeout: 15_000 });
+    expect(page.url()).toBe(url);
+
+    /*
+     * Quien escribe "alianza" quiere Alianza Lima, no al Alianza de El Salvador. Lo decide cuántos
+     * partidos suyos seguimos: el parecido de texto solo premia al nombre más corto.
+     */
+    await expect(opciones.first()).toContainText(/Alianza Lima/i);
+
+    await page.keyboard.press('ArrowDown');
+    await expect(opciones.nth(1)).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('Escape');
+    await expect(dialogo).toBeHidden();
+  });
+
+  test('sin nada elegido, Enter lleva a la vista de resultados', async ({ page, isMobile }) => {
+    await page.goto('/');
+    if (isMobile) await page.getByLabel('Buscar', { exact: true }).click();
+    else await page.keyboard.press('/');
+
+    const campo = page.getByLabel('Escribe tu búsqueda');
+    /* Sin esperar a las sugerencias: así no hay opción marcada y Enter cae en `/buscar`. */
+    await campo.fill('zzz sin resultados');
+    await campo.press('Enter');
+    await expect(page).toHaveURL(/\/buscar\?q=/, { timeout: 15_000 });
+  });
+
+  /*
    * El orden es la mitad del pedido: continente, después país, después torneo. Si alguna vez
    * alguien vuelve a agrupar por liga a secas, esto lo dice antes que una captura.
    */
