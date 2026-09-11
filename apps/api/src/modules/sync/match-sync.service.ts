@@ -88,8 +88,11 @@ export class MatchSyncService {
     const filas = await this.prisma.$queryRaw<FilaDeCandidato[]>`
       SELECT m.id AS match_id, r.provider_ref, m.kickoff_utc, m.status,
              s.eventos_completo, s.alineaciones_completo, s.estadisticas_completo,
-             s.jugadores_completo, s.intentos, s.cobertura
+             s.jugadores_completo, s.intentos,
+             /* La de la temporada manda: la foto de la fila puede ser de antes de que existiera. */
+             COALESCE(s.cobertura, se.cobertura) AS cobertura
       FROM matches m
+      JOIN seasons se ON se.id = m.season_id
       JOIN external_references r
         ON r.provider = 'api-football' AND r.entity_type = 'match' AND r.entity_id = m.id
       LEFT JOIN match_sync s ON s.match_id = m.id
