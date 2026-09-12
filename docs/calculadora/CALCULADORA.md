@@ -29,7 +29,14 @@ Clausura —Uruguay, Colombia— es otro objeto `ReglasLiga` y no otro motor.
   2. Los dos ganadores son los dos primeros de la acumulada → final directa.
   3. Un ganador está entre los dos primeros → espera en la final; el otro ganador juega la
      semifinal contra el mejor de la acumulada que no ganó ningún torneo.
-  4. Ninguno → semifinales cruzadas y final.
+  4. Ninguno → semifinales cruzadas y final. Las bases no publican los cruces de este caso: se
+     siembran por la acumulada y la tarjeta lo declara.
+
+Un lado de un cruce puede ser un equipo **o el ganador de una semifinal que todavía no se jugó**
+(`Participante`), y la tarjeta escribe "el ganador de la semifinal" en vez de un nombre. La primera
+versión ponía ahí a uno de los dos semifinalistas: la simulación acertaba de casualidad —el mismo
+equipo estaba de los dos lados de la búsqueda— pero la pantalla contaba un resultado que no había
+pasado.
 
 Cada rama viaja con la frase del reglamento que la manda, y la pantalla la muestra debajo del
 cruce: un número siempre viene con lo que lo sostiene.

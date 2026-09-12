@@ -298,7 +298,9 @@ describe('el camino al título', () => {
       tabla(ANUAL, ['ali', 'uni', 'cri', 'mel']),
     );
     expect(camino?.tipo).toBe('final');
-    expect(camino?.cruces).toEqual([{ ronda: 'final', local: 'ali', visita: 'uni' }]);
+    expect(camino?.cruces).toEqual([
+      { ronda: 'final', local: { tipo: 'equipo', id: 'ali' }, visita: { tipo: 'equipo', id: 'uni' } },
+    ]);
   });
 
   it('un ganador está entre los dos primeros: espera en la final', () => {
@@ -308,10 +310,22 @@ describe('el camino al título', () => {
       tabla(ANUAL, ['ali', 'uni', 'cri', 'mel']),
     );
     expect(camino?.tipo).toBe('semifinal-y-final');
-    /* Alianza ganó el Apertura y es primera: espera. Melgar juega con el mejor de la anual que no ganó nada. */
+    /*
+     * Alianza ganó el Apertura y es primera: espera en la final. Melgar juega la semifinal con el
+     * mejor de la anual que no ganó nada, y a la final entra **el que gane esa semifinal**, no
+     * Melgar: decir su nombre ahí sería contar un resultado que no pasó.
+     */
     expect(camino?.cruces).toEqual([
-      { ronda: 'semifinal', local: 'mel', visita: 'uni' },
-      { ronda: 'final', local: 'ali', visita: 'mel' },
+      {
+        ronda: 'semifinal',
+        local: { tipo: 'equipo', id: 'mel' },
+        visita: { tipo: 'equipo', id: 'uni' },
+      },
+      {
+        ronda: 'final',
+        local: { tipo: 'equipo', id: 'ali' },
+        visita: { tipo: 'ganadorDe', semifinal: 0 },
+      },
     ]);
   });
 
@@ -323,5 +337,29 @@ describe('el camino al título', () => {
     );
     expect(camino?.tipo).toBe('semifinal-y-final');
     expect(camino?.cruces).toHaveLength(3);
+    /* La final la juegan los dos ganadores de semifinal, no dos equipos elegidos de antemano. */
+    expect(camino?.cruces.at(-1)).toEqual({
+      ronda: 'final',
+      local: { tipo: 'ganadorDe', semifinal: 0 },
+      visita: { tipo: 'ganadorDe', semifinal: 1 },
+    });
+  });
+
+  it('ningún semifinalista aparece puesto en la final antes de jugarla', () => {
+    const camino = caminoAlTitulo(
+      tabla(APERTURA, ['ali', 'uni', 'cri', 'mel']),
+      tabla(CLAUSURA, ['mel', 'ali', 'uni', 'cri']),
+      tabla(ANUAL, ['ali', 'uni', 'cri', 'mel']),
+    );
+    const semifinalistas = new Set(
+      camino?.cruces
+        .filter((c) => c.ronda === 'semifinal')
+        .flatMap((c) => [c.local, c.visita])
+        .flatMap((p) => (p.tipo === 'equipo' ? [p.id] : [])),
+    );
+    const final = camino?.cruces.find((c) => c.ronda === 'final');
+    for (const lado of [final?.local, final?.visita]) {
+      if (lado?.tipo === 'equipo') expect(semifinalistas.has(lado.id)).toBe(false);
+    }
   });
 });

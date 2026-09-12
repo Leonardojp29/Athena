@@ -1,4 +1,4 @@
-import type { CaminoAlTitulo as Camino, Equipo } from '@athena/calculadora';
+import type { CaminoAlTitulo as Camino, Equipo, Participante } from '@athena/calculadora';
 
 /*
  * Quién juega qué para definir el título, según el escenario cargado.
@@ -17,6 +17,7 @@ interface Props {
 export default function CaminoAlTitulo({ camino, equipos }: Props) {
   if (!camino) return null;
   const buscar = (id: string) => equipos.find((e) => e.id === id) ?? null;
+  const soloUna = camino.cruces.filter((c) => c.ronda === 'semifinal').length === 1;
 
   return (
     <section className="rounded-xl border border-border bg-surface p-4">
@@ -39,9 +40,19 @@ export default function CaminoAlTitulo({ camino, equipos }: Props) {
               <span className="w-16 shrink-0 text-2xs uppercase tracking-label text-ink-muted">
                 {cruce.ronda === 'final' ? 'Final' : 'Semifinal'}
               </span>
-              <Club equipo={buscar(cruce.local)} destacado={cruce.ronda === 'final'} />
+              <Lado
+                quien={cruce.local}
+                buscar={buscar}
+                destacado={cruce.ronda === 'final'}
+                soloUna={soloUna}
+              />
               <span className="text-2xs text-ink-muted">vs</span>
-              <Club equipo={buscar(cruce.visita)} destacado={cruce.ronda === 'final'} />
+              <Lado
+                quien={cruce.visita}
+                buscar={buscar}
+                destacado={cruce.ronda === 'final'}
+                soloUna={soloUna}
+              />
             </li>
           ))}
         </ul>
@@ -51,6 +62,29 @@ export default function CaminoAlTitulo({ camino, equipos }: Props) {
         {camino.fundamento}
       </p>
     </section>
+  );
+}
+
+/*
+ * Un lado de un cruce puede ser un equipo o "el ganador de la semifinal": poner ahí un nombre
+ * sería contar un resultado que todavía no pasó.
+ */
+function Lado({
+  quien,
+  buscar,
+  destacado,
+  soloUna,
+}: {
+  quien: Participante;
+  buscar: (id: string) => Equipo | null;
+  destacado: boolean;
+  soloUna: boolean;
+}) {
+  if (quien.tipo === 'equipo') return <Club equipo={buscar(quien.id)} destacado={destacado} />;
+  return (
+    <span className="text-sm italic text-ink-muted">
+      {soloUna ? 'el ganador de la semifinal' : `el ganador de la semifinal ${quien.semifinal + 1}`}
+    </span>
   );
 }
 

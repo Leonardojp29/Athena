@@ -1,4 +1,10 @@
-import { caminoAlTitulo, ANUAL, APERTURA, CLAUSURA } from './reglamento-liga1.js';
+import {
+  caminoAlTitulo,
+  ANUAL,
+  APERTURA,
+  CLAUSURA,
+  type Participante,
+} from './reglamento-liga1.js';
 import { calcularTabla } from './tabla.js';
 import type { DatosDeLaCalculadora, Pronosticos, ReglasLiga, Tabla } from './tipos.js';
 
@@ -266,6 +272,11 @@ function anotarCupos(
   }
 }
 
+/*
+ * Los cruces se juegan en orden y cada uno guarda su ganador: la final se arma contra el que salga
+ * de la semifinal, que es lo que dicen las bases. La versión anterior ponía un semifinalista fijo
+ * en la final y acertaba de casualidad, porque el mismo equipo estaba de los dos lados.
+ */
 function resolverCampeon(
   camino: ReturnType<typeof caminoAlTitulo> & object,
   modelo: Modelo,
@@ -273,17 +284,18 @@ function resolverCampeon(
 ): string | null {
   if (camino.campeon) return camino.campeon;
 
-  const ganadores = new Map<string, string>();
+  const ganadores: string[] = [];
+  const quien = (participante: Participante): string | null =>
+    participante.tipo === 'equipo' ? participante.id : (ganadores[participante.semifinal] ?? null);
+
+  let campeon: string | null = null;
   for (const cruce of camino.cruces) {
-    if (cruce.ronda !== 'semifinal') continue;
-    ganadores.set(cruce.local, ganadorDelCruce(modelo, cruce.local, cruce.visita, azar));
+    const local = quien(cruce.local);
+    const visita = quien(cruce.visita);
+    if (!local || !visita) return null;
+    const ganador = ganadorDelCruce(modelo, local, visita, azar);
+    if (cruce.ronda === 'semifinal') ganadores.push(ganador);
+    else campeon = ganador;
   }
-
-  const final = camino.cruces.find((c) => c.ronda === 'final');
-  if (!final) return null;
-
-  /* En el árbol con una sola semifinal, el rival de la final es su ganador. */
-  const local = ganadores.get(final.local) ?? final.local;
-  const visita = ganadores.get(final.visita) ?? final.visita;
-  return ganadorDelCruce(modelo, local, visita, azar);
+  return campeon;
 }

@@ -42,11 +42,23 @@ export const LIGA1: ReglasLiga = {
   ],
 };
 
+/**
+ * Quién juega un cruce. Puede ser un equipo, o el que salga de una semifinal que todavía no se
+ * jugó: la final se arma contra "el ganador de la semifinal" y decir un nombre ahí sería inventar
+ * un resultado.
+ */
+export type Participante =
+  | { tipo: 'equipo'; id: string }
+  | { tipo: 'ganadorDe'; semifinal: number };
+
 export interface Cruce {
   ronda: 'semifinal' | 'final';
-  local: string;
-  visita: string;
+  local: Participante;
+  visita: Participante;
 }
+
+const equipo = (id: string): Participante => ({ tipo: 'equipo', id });
+const ganadorDe = (semifinal: number): Participante => ({ tipo: 'ganadorDe', semifinal });
 
 export interface CaminoAlTitulo {
   tipo: 'campeon-directo' | 'final' | 'semifinal-y-final';
@@ -64,6 +76,8 @@ const FINAL_CON_SEMI =
   'Si un equipo hubiese ganado Apertura o Clausura, y estuviese entre los dos primeros del acumulado, clasifica directamente a la Final. Su rival sería el ganador de la semifinal entre el otro ganador de uno de los torneos y el otro equipo de mayor puntaje en el acumulado.';
 const SEMIS =
   'Si los campeones del Apertura y del Clausura y los 2 primeros del acumulado fuesen distintos equipos, se disputarán Semifinales y Final.';
+/* Las bases no publican los cruces de este caso: se siembran por la acumulada, y así se declara. */
+const SEMIS_SEMBRADAS = `${SEMIS} Los cruces se siembran por la tabla acumulada.`;
 
 /**
  * Quién juega qué para definir el título, según quiénes ganaron los torneos y cómo quedó la
@@ -99,7 +113,9 @@ export function caminoAlTitulo(
     return {
       tipo: 'final',
       campeon: null,
-      cruces: [{ ronda: 'final', local: ganadorApertura, visita: ganadorClausura }],
+      cruces: [
+        { ronda: 'final', local: equipo(ganadorApertura), visita: equipo(ganadorClausura) },
+      ],
       fundamento: FINAL_DIRECTA,
     };
   }
@@ -116,8 +132,8 @@ export function caminoAlTitulo(
       tipo: 'semifinal-y-final',
       campeon: null,
       cruces: [
-        { ronda: 'semifinal', local: otroGanador, visita: rival },
-        { ronda: 'final', local: finalista, visita: otroGanador },
+        { ronda: 'semifinal', local: equipo(otroGanador), visita: equipo(rival) },
+        { ronda: 'final', local: equipo(finalista), visita: ganadorDe(0) },
       ],
       fundamento: FINAL_CON_SEMI,
     };
@@ -128,11 +144,11 @@ export function caminoAlTitulo(
     tipo: 'semifinal-y-final',
     campeon: null,
     cruces: [
-      { ronda: 'semifinal', local: primero, visita: ganadorClausura },
-      { ronda: 'semifinal', local: segundo, visita: ganadorApertura },
-      { ronda: 'final', local: primero, visita: segundo },
+      { ronda: 'semifinal', local: equipo(primero), visita: equipo(ganadorClausura) },
+      { ronda: 'semifinal', local: equipo(segundo), visita: equipo(ganadorApertura) },
+      { ronda: 'final', local: ganadorDe(0), visita: ganadorDe(1) },
     ],
-    fundamento: SEMIS,
+    fundamento: SEMIS_SEMBRADAS,
   };
 }
 

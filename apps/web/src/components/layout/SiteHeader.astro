@@ -82,18 +82,33 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         </button>
 
         <!--
-          La calculadora va antes de Juegos y en variante fantasma: dos pastillas `bg-primary`
-          pegadas se pelean, y de las dos la que manda es Juegos, que es una sección entera.
+          La calculadora va antes de Juegos. No lleva relleno de marca —dos pastillas `bg-primary`
+          pegadas se pelean y la que manda es Juegos, que es una sección entera— pero tampoco un
+          contorno: sobre la banda un borde se lee como un botón a medio terminar. Va con un relleno
+          de tiza al ocho por ciento, y cuando es la página actual pasa a tiza sólida con tinta
+          marina, que dice "estás acá" sin competir con el azul de al lado.
+
+          El escudo va en su propio disco claro: el de la Liga 1 es granate sobre transparente y
+          sobre azul marino se veía como una mancha.
         -->
         <a
           href="/calculadora"
           aria-label="Calculadora Liga 1"
           aria-current={Astro.url.pathname.startsWith('/calculadora') ? 'page' : undefined}
-          class="flex shrink-0 items-center gap-2 rounded-lg border border-chalk/25 py-1 pl-1.5 pr-2 font-medium text-chalk transition-colors hover:bg-chalk/10 aria-[current]:bg-chalk/15 sm:pr-3"
+          class="group flex shrink-0 items-center gap-2 rounded-full bg-chalk/8 py-1 pl-1 pr-1 text-chalk transition-colors hover:bg-chalk/16 aria-[current]:bg-chalk aria-[current]:text-banda sm:pr-3.5"
         >
-          <img src="/competencias/liga1.png" alt="" width="22" height="22" class="size-[22px] shrink-0 object-contain" />
-          <span class="hidden text-sm font-medium leading-tight sm:inline">
-            Calculadora <span class="text-chalk-dim">Liga 1</span>
+          <span class="grid size-7 shrink-0 place-items-center rounded-full bg-chalk">
+            <img
+              src="/competencias/liga1.png"
+              alt=""
+              width="18"
+              height="18"
+              class="size-[18px] object-contain"
+            />
+          </span>
+          <span class="hidden text-sm font-medium leading-none sm:inline">
+            Calculadora
+            <span class="text-chalk-dim group-aria-[current]:text-banda/75">Liga 1</span>
           </span>
         </a>
 
