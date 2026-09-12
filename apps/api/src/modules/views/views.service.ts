@@ -7,6 +7,7 @@ import {
   type Etapa,
   type Ronda,
 } from '@athena/domain';
+import type { Prisma } from '@athena/database';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
   CONFEDERATION_LABEL,
@@ -489,23 +490,7 @@ export class ViewsService {
        * Todos los partidos de la temporada: con 142 en una copa es una sola consulta, y de ella salen
        * el cuadro, los partidos ronda por ronda y el estado del torneo.
        */
-      this.prisma.match.findMany({
-        relationLoadStrategy: JOIN,
-        where: { season: temporadaVigente },
-        orderBy: { kickoffUtc: 'asc' },
-        select: {
-          id: true,
-          kickoffUtc: true,
-          status: true,
-          statusDetail: true,
-          elapsedMinutes: true,
-          homeScore: true,
-          awayScore: true,
-          round: true,
-          homeTeam: teamSummary,
-          awayTeam: teamSummary,
-        },
-      }),
+      this.partidosDeTemporada(temporadaVigente),
       this.onceDelTorneo(slug, year),
       /* Las temporadas con datos: ofrecer una vacía es prometer de más. */
       this.temporadasCon(slug),
@@ -674,6 +659,120 @@ export class ViewsService {
       roundLabel: rondas.find((r) => r.round === jornada)?.label ?? null,
       onceDelTorneo,
       seasons,
+    };
+  }
+
+  /**
+   * Todos los partidos de una temporada con sus dos equipos. Lo comparten la vista de competencia
+   * —que arma el cuadro y las rondas— y la calculadora, que los necesita enteros.
+   */
+  private partidosDeTemporada(temporada: Prisma.SeasonWhereInput) {
+    return this.prisma.match.findMany({
+      relationLoadStrategy: JOIN,
+      where: { season: temporada },
+      orderBy: { kickoffUtc: 'asc' },
+      select: {
+        id: true,
+        kickoffUtc: true,
+        status: true,
+        statusDetail: true,
+        elapsedMinutes: true,
+        homeScore: true,
+        awayScore: true,
+        round: true,
+        homeTeam: teamSummary,
+        awayTeam: teamSummary,
+      },
+    });
+  }
+
+  /**
+   * Lo que necesita la calculadora y nada más.
+   *
+   * La vista de competencia ya carga estos mismos partidos, pero solo publica una ventana de siete
+   * fechas porque una copa tiene doscientos y pesan un mega. Acá hacen falta los trescientos seis
+   * —sin ellos no hay tabla anual— así que viajan como tuplas: los mismos datos ocupan ochenta KB
+   * en vez de un mega, y doce al comprimirse.
+   */
+  async calculadora(slug: string) {
+    const temporadaVigente = { competition: { slug }, isCurrent: true };
+
+    const [competencia, partidos, tablas] = await Promise.all([
+      this.prisma.competition.findUnique({
+        where: { slug },
+        select: { name: true, slug: true, logoUrl: true },
+      }),
+      this.partidosDeTemporada(temporadaVigente),
+      this.prisma.standing.findMany({
+        where: { season: temporadaVigente },
+        orderBy: [{ groupLabel: 'asc' }, { position: 'asc' }],
+        select: { groupLabel: true, teamId: true },
+      }),
+    ]);
+    if (!competencia) return null;
+
+    const temporada = await this.prisma.season.findFirst({
+      where: temporadaVigente,
+      select: { year: true },
+    });
+
+    /* Un programado que quedó dos semanas atrás es basura del proveedor, no un partido por jugar. */
+    const limiteRancio = Date.now() - RANCIO_MS;
+    const vivos = partidos.filter(
+      (m) =>
+        !PENDIENTE.has(m.status) ||
+        m.status === 'in_play' ||
+        m.status === 'paused' ||
+        m.kickoffUtc.getTime() > limiteRancio,
+    );
+
+    const equipos = new Map<string, [string, string, string, string | null]>();
+    for (const partido of vivos) {
+      for (const equipo of [partido.homeTeam, partido.awayTeam]) {
+        if (!equipos.has(equipo.id)) {
+          equipos.set(equipo.id, [equipo.id, equipo.name, equipo.slug, equipo.logoUrl]);
+        }
+      }
+    }
+
+    const indices = new Map([...equipos.keys()].map((id, indice) => [id, indice]));
+    const enJuego = vivos.find((m) => m.status === 'in_play' || m.status === 'paused');
+    const enCurso = vivos.find((m) => PENDIENTE.has(m.status));
+
+    const porTabla = new Map<string, string[]>();
+    for (const fila of tablas) {
+      const lista = porTabla.get(fila.groupLabel) ?? [];
+      lista.push(fila.teamId);
+      porTabla.set(fila.groupLabel, lista);
+    }
+
+    return {
+      competencia: {
+        nombre: competencia.name,
+        slug: competencia.slug,
+        logo: competencia.logoUrl,
+      },
+      temporada: temporada?.year ?? null,
+      ronda: (enJuego ?? enCurso)?.round ?? null,
+      hayEnVivo: enJuego !== undefined,
+      equipos: [...equipos.values()],
+      partidos: vivos.map((m) => [
+        m.id,
+        m.round ?? '',
+        indices.get(m.homeTeam.id) ?? 0,
+        indices.get(m.awayTeam.id) ?? 0,
+        m.status,
+        m.homeScore,
+        m.awayScore,
+        m.kickoffUtc.toISOString(),
+      ]),
+      ordenOficial: [...porTabla.entries()].map(([etiqueta, ids]) => ({
+        etiqueta,
+        equipos: ids.flatMap((id) => {
+          const indice = indices.get(id);
+          return indice === undefined ? [] : [indice];
+        }),
+      })),
     };
   }
 

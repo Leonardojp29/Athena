@@ -22,6 +22,8 @@ const TTL = {
   /* Un partido terminado al que le falta el detalle se repara en minutos: la caché no puede taparlo. */
   matchIncompleto: 120,
   topPerformers: 300,
+  /* La calculadora es una tabla, no un marcador: un minuto le sobra mientras se juega la fecha. */
+  calculadoraEnJuego: 60,
   sitemap: 3600,
   /* El mundo del juego cambia cuando cambian las tablas: una vez al día alcanza. */
   mundo: 86400,
@@ -91,6 +93,27 @@ export class ViewsController {
     );
   }
 
+  /*
+   * La calculadora necesita la temporada entera, no la ventana de siete fechas que publica la
+   * vista de competencia: sin el Apertura completo no hay tabla anual. Su caducidad la decide el
+   * estado, igual que la del partido: mientras se juega algo, un minuto.
+   */
+  @Get('calculadora/:slug')
+  async calculadora(
+    @Param('slug') slug: string,
+    @Res({ passthrough: true }) res: RespuestaConCabeceras,
+  ) {
+    const vista = await this.cache.wrap(`calculadora:${slug}`, ttlDeCalculadora, () =>
+      this.views.calculadora(slug),
+    );
+    const ttl = ttlDeCalculadora(vista);
+    res.setHeader(
+      'Cache-Control',
+      `public, s-maxage=${ttl}, stale-while-revalidate=${ttl * 2}`,
+    );
+    return vista;
+  }
+
   @Get('team/:slug')
   @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
   team(@Param('slug') slug: string) {
@@ -136,6 +159,11 @@ function ttlDePartido(vista: { status: string; sync?: { cerrado: boolean } | nul
   if (vista.status === 'in_play' || vista.status === 'paused') return TTL.matchEnJuego;
   if (vista.status === 'scheduled') return TTL.matchProgramado;
   return vista.sync?.cerrado === false ? TTL.matchIncompleto : TTL.matchTerminado;
+}
+
+/** Mientras haya un partido en curso la tabla se mueve; si no, la próxima fecha está a días. */
+function ttlDeCalculadora(vista: { hayEnVivo: boolean } | null): number {
+  return vista?.hayEnVivo ? TTL.calculadoraEnJuego : TTL.competition;
 }
 
 function limaToday(): string {
