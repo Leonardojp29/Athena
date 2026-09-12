@@ -34,7 +34,7 @@ interface Crudo {
   temporada: number | null;
   ronda: string | null;
   hayEnVivo: boolean;
-  equipos: Array<[string, string, string, string | null]>;
+  equipos: Array<[string, string, string, string | null, string | null]>;
   partidos: Array<[string, string, number, number, string, number | null, number | null, string]>;
   ordenOficial: Array<{ etiqueta: string; equipos: number[] }>;
 }
@@ -50,11 +50,12 @@ const claveDe = (etiqueta: string) =>
 
 /* La misma expansión que hace la isla: acá solo para decodificar el `?p=` del lado del servidor. */
 function armar(datosCrudos: Crudo): DatosDeLaCalculadora {
-  const equipos = datosCrudos.equipos.map(([id, nombre, slug, logo]) => ({
+  const equipos = datosCrudos.equipos.map(([id, nombre, slug, logo, color]) => ({
     id,
     nombre,
     slug,
     logo,
+    color,
     codigo: '',
   }));
   return {
@@ -143,6 +144,16 @@ const resumen =
     : null;
 
 const predicho = frase(resumen);
+/*
+ * La imagen es el `og:image`: pegado en un chat, el enlace muestra la tarjeta y no un bloque de
+ * texto. Lleva el mismo `?p=` que la página, así que la tarjeta y la tabla cuentan lo mismo.
+ */
+const tarjeta = predicho
+  ? new URL(
+      `/calculadora/tarjeta.png?p=${encodeURIComponent(Astro.url.searchParams.get('p') ?? '')}`,
+      Astro.site ?? Astro.url,
+    ).toString()
+  : null;
 const titulo = predicho
   ? `${predicho} — Calculadora Liga 1`
   : datos
@@ -157,6 +168,7 @@ const descripcion =
 <Base
   title={titulo}
   description={descripcion}
+  ogImage={tarjeta}
   chrome="minimal"
   width="bleed"
   liveBar={false}

@@ -147,9 +147,9 @@ describe('la tabla calculada', () => {
 
 describe('el desempate', () => {
   const equipos: Equipo[] = [
-    { id: 'a', nombre: 'Ayacucho', slug: 'a', logo: null, codigo: 'aaa' },
-    { id: 'b', nombre: 'Bolognesi', slug: 'b', logo: null, codigo: 'bbb' },
-    { id: 'c', nombre: 'Carlos Mannucci', slug: 'c', logo: null, codigo: 'ccc' },
+    { id: 'a', nombre: 'Ayacucho', slug: 'a', logo: null, color: null, codigo: 'aaa' },
+    { id: 'b', nombre: 'Bolognesi', slug: 'b', logo: null, color: null, codigo: 'bbb' },
+    { id: 'c', nombre: 'Carlos Mannucci', slug: 'c', logo: null, color: null, codigo: 'ccc' },
   ];
   const definicion = { clave: 'x', titulo: 'X', fases: [], zonas: [] };
   const partido = (id: string, local: string, visita: string, gl: number, gv: number): Partido => ({
@@ -267,7 +267,7 @@ describe('el camino al título', () => {
     clave,
     titulo: clave,
     filas: orden.map((id, i) => ({
-      equipo: { id, nombre: id, slug: id, logo: null, codigo: id },
+      equipo: { id, nombre: id, slug: id, logo: null, color: null, codigo: id },
       posicion: i + 1,
       puntos: 0,
       jugados: 0,

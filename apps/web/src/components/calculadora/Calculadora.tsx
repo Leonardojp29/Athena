@@ -7,7 +7,6 @@ import {
   caminoAlTitulo,
   codificar,
   conFase,
-  resumir,
   semillaDe,
   type DatosDeLaCalculadora,
   type Probabilidad,
@@ -17,7 +16,6 @@ import CaminoAlTitulo from './CaminoAlTitulo';
 import Controles from './Controles';
 import Reiniciar from './Reiniciar';
 import Partidos from './Partidos';
-import Prediccion from './Prediccion';
 import Tablas from './Tablas';
 
 /*
@@ -33,7 +31,7 @@ export interface Crudo {
   temporada: number | null;
   ronda: string | null;
   hayEnVivo: boolean;
-  equipos: Array<[string, string, string, string | null]>;
+  equipos: Array<[string, string, string, string | null, string | null]>;
   partidos: Array<[string, string, number, number, string, number | null, number | null, string]>;
   ordenOficial: Array<{ etiqueta: string; equipos: number[] }>;
 }
@@ -56,11 +54,12 @@ const CLAVES: Array<[RegExp, string]> = [
  * allá y el que se hidrata acá salen de la misma cuenta.
  */
 function armar(crudo: Crudo): DatosDeLaCalculadora {
-  const equipos = crudo.equipos.map(([id, nombre, slug, logo]) => ({
+  const equipos = crudo.equipos.map(([id, nombre, slug, logo, color]) => ({
     id,
     nombre,
     slug,
     logo,
+    color,
     codigo: '',
   }));
   return {
@@ -223,12 +222,6 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
 
   const reiniciar = useCallback(() => setPronosticos(new Map()), []);
 
-  const resumen = useMemo(
-    () =>
-      resumir(tablas, reglas, faseEnJuego, conPronosticos.partidos, aplicados),
-    [tablas, reglas, faseEnJuego, conPronosticos.partidos, aplicados],
-  );
-
   const tabla = tablas.find((t) => t.clave === fase) ?? tablas[0];
   const definicion = reglas.tablas.find((t) => t.clave === fase);
   /* La acumulada no tiene calendario propio: se sigue jugando el torneo en curso. */
@@ -268,7 +261,6 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
               reiniciar={<Reiniciar cuantos={pronosticos.size} onReiniciar={reiniciar} />}
             />
             <CaminoAlTitulo camino={camino} equipos={conPronosticos.equipos} />
-            <Prediccion resumen={resumen} />
           </div>
         )}
 

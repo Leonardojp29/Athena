@@ -726,11 +726,27 @@ export class ViewsService {
         m.kickoffUtc.getTime() > limiteRancio,
     );
 
-    const equipos = new Map<string, [string, string, string, string | null]>();
+    /* El color del club: la tarjeta que se comparte se pinta con él y deja de ser genérica. */
+    const colores = new Map(
+      (
+        await this.prisma.team.findMany({
+          where: { id: { in: [...new Set(vivos.flatMap((m) => [m.homeTeam.id, m.awayTeam.id]))] } },
+          select: { id: true, primaryColor: true },
+        })
+      ).map((t) => [t.id, t.primaryColor]),
+    );
+
+    const equipos = new Map<string, [string, string, string, string | null, string | null]>();
     for (const partido of vivos) {
       for (const equipo of [partido.homeTeam, partido.awayTeam]) {
         if (!equipos.has(equipo.id)) {
-          equipos.set(equipo.id, [equipo.id, equipo.name, equipo.slug, equipo.logoUrl]);
+          equipos.set(equipo.id, [
+            equipo.id,
+            equipo.name,
+            equipo.slug,
+            equipo.logoUrl,
+            colores.get(equipo.id) ?? null,
+          ]);
         }
       }
     }

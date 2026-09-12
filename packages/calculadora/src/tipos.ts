@@ -15,6 +15,8 @@ export interface Equipo {
   nombre: string;
   slug: string;
   logo: string | null;
+  /** Hex sin almohadilla, como lo publica el proveedor. Pinta la tarjeta compartible. */
+  color: string | null;
   /** Tres letras para la URL. Los `short_name` del proveedor no sirven: hay tres "SPO". */
   codigo: string;
 }

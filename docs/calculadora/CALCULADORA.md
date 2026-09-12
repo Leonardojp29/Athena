@@ -108,94 +108,41 @@ enlace, que además se puede mandar.
 
 ## La predicción compartible
 
-`resumen.ts` arma una sola frase que usan dos cosas distintas: la tarjeta que se mira antes de
-compartir y el `og:title` del enlace. Dos textos para el mismo escenario serían dos verdades.
+Una imagen de 1200×630, el tamaño que esperan las vistas previas de los chats. `GET
+/calculadora/tarjeta.png?p=…` la arma desde el mismo escenario que la página, y sirve para dos
+cosas: es el `og:image` del enlace —pegado en WhatsApp muestra la tarjeta y no un bloque de texto—
+y es lo que sale del botón **Mi predicción**, junto a Modo streamer.
 
 > Mi predicción: Universitario, campeón del Clausura con 78 puntos
 
 La frase cambia sola según cuánto se pronosticó: con la fase entera cargada dice **campeón**; si
-faltan partidos dice **puntero** y cuántos quedan. Adornar un dato incompleto para que suene mejor
-es justo lo que Athena no hace.
+faltan partidos dice **puntero** y cuántos quedan. Sin ningún pronóstico el endpoint responde 404:
+dibujar la tabla de hoy y llamarla "mi predicción" sería mentir.
 
-La tarjeta va sobre la banda —donde Athena pone lo que quiere que se lea de lejos— con el escudo
-del líder, los cupos de Libertadores y los que se van, pensada para la captura que alguien manda al
-grupo. El botón usa `navigator.share` donde existe y cae al portapapeles donde no, copiando la
-frase, el detalle y el enlace.
+En el teléfono el botón manda la imagen como **archivo** al selector del sistema —de ahí a WhatsApp
+en un toque— y en el escritorio, donde `navigator.canShare` con archivos casi nunca existe, la abre
+en una pestaña para guardarla.
 
-Y como el `og:title` se arma en el servidor desde el `?p=`, pegar el enlace en un chat ya cuenta el
-escenario antes de que nadie toque nada.
+### Cómo se dibuja
 
-## La pantalla
+`src/tarjeta/dibujar.ts` escribe el SVG **a mano** y `@resvg/resvg-wasm` lo rasteriza. Se probó
+primero `satori`, que compone el SVG desde un árbol como el de React, y no pudo leer ninguna de las
+dos fuentes variables del sitio (`Cannot read properties of undefined`); resvg las lee sin quejarse.
+El cambio salió bien: en una imagen que circula por WhatsApp, una caja mal centrada no se arregla
+con un despliegue, así que conviene que el diseño esté escrito y no compuesto.
 
-Dos columnas de ancho parejo, como la referencia que pidió Leonardo: el calendario a la izquierda
-—una fecha por vez, con flechas— y la tabla completa a la derecha. Las pestañas de fase van arriba
-y a todo el ancho, y **gobiernan las dos columnas**: elegir Apertura cambia el calendario y la
-tabla. La acumulada no tiene calendario propio, así que muestra el del torneo en curso, que es lo
-único que se puede pronosticar.
-
-El camino al título va **debajo del calendario** y no al lado de la tabla: la tabla siempre es más
-alta que la columna de partidos, y ese hueco es donde la tarjeta cae natural.
-
-### Los colores de la tabla
-
-A nueve números iguales en gris no se les encuentra el orden. Cada columna lleva el suyo:
-
-| Qué | Token |
-|---|---|
-| Campeón (zona) | `card-yellow` |
-| Libertadores | `win` |
-| Sudamericana | `data` |
-| Descenso | `card-red` |
-| Ganados | `win-ink` |
-| Empatados | `card-yellow-ink` |
-| Perdidos | `card-red-ink` |
-| Diferencia | `win-ink` o `card-red-ink` según el signo |
-| Puntos | `primary-ink` |
-
-`win-ink` y `card-yellow-ink` son tokens nuevos: los originales son rellenos —el amarillo de
-tarjeta sobre blanco no llega a 3:1— y como texto necesitaban su propia tinta por tema. El audit
-de axe corre sobre las dos y es lo que los valida.
-
-El porcentaje va sobre una pastilla de su propio color con el alfa siguiendo al valor: la fila que
-importa se ve de lejos y la que no, casi no se ve. Es la misma información dos veces —color y
-número—, que es lo que permite leerla rápido y citarla exacta. La nota sobre los supuestos de la
-simulación ya no ocupa una línea bajo la tabla: vive en el `title` de la cabecera de esa columna y
-en este documento.
-
-### El movimiento es el dato
-
-Cuando cambia un marcador, las filas **viajan** a su nueva posición en vez de aparecer ahí: es FLIP
-—se mide dónde estaba cada una, se la deja saltar y se la anima desde la diferencia hasta cero—, así
-que el navegador solo compone `transform` y dieciocho filas moviéndose a la vez no cuestan un
-recálculo de layout. La tabla reacciona en **27 ms** medidos; lo único con espera son las
-probabilidades, que van en el Worker.
-
-El rastro de color —verde si subió, rojo si bajó— se dispara por **cambio de puesto** y no por
-desplazamiento de píxeles: cuando alguien sube, los de abajo se corren sin haber cambiado nada, y
-encenderlos a todos convertía el dato en ruido. Los puntos dan un salto corto cuando cambian.
-Todo se apaga con `prefers-reduced-motion`.
-
-### Los tres controles
-
-- **Modo streamer** tapa la tabla con un velo y deja un botón para revelarla; el calendario se
-  queda, porque en una transmisión se sigue cargando el escenario en vivo y el resultado se cuenta
-  al final.
-- **Con predicciones** apaga el escenario sin borrarlo, para comparar contra la tabla de hoy y
-  volver.
-- **Reiniciar** está en los dos contenedores —el calendario y la tabla—, que son los dos lugares
-  donde a alguien se le ocurre empezar de nuevo, y pregunta con el número adelante: "¿borrar siete
-  pronósticos?" dice más que "¿estás seguro?".
-
-### El escudo
-
-`apps/web/public/competencias/liga1.png`, servido desde nuestro propio origen. El header lo usa en
-el botón —"Calculadora **Liga 1**"— y la cabecera de la página al lado del título, sin plaquita
-blanca: el escudo ya dice "Liga 1", así que el título no lo repite.
-
-### Los marcadores
-
-`− 0 +` a cada lado. El campo sigue aceptando que se escriba un dígito —es lo más rápido con
-teclado— y los botones resuelven el teléfono sin abrir el teclado numérico encima de la tabla.
+- **Las fuentes y el escudo de la liga se incrustan** con `?inline` de Vite. La primera versión los
+  leía del disco con una ruta relativa y el bundle queda en otra carpeta que el fuente: el escudo
+  desaparecía de la tarjeta sin que nada fallara, que es la peor manera de romperse.
+- **Los escudos de club se bajan y se embeben** como `data:`: resvg no sale a la red. Se guardan en
+  memoria del proceso, y la imagen entera se guarda un día en el borde —el escenario está en la
+  URL, así que dos pedidos iguales dan la misma imagen para siempre—.
+- **El aura toma el color del club** (`teams.primary_color`, que viaja en el payload): la tarjeta de
+  cada uno se ve suya y no de una plantilla.
+- El nombre del club **encoge hasta entrar** en vez de cortarse, y los cuatro cupos de Libertadores
+  van enteros: un "+1" obliga a preguntar quién falta, que es lo contrario de lo que hace una
+  tarjeta.
+- El dominio del pie sale del anfitrión de la petición. Inventar uno es peor que no poner ninguno.
 
 ## Decisiones de la pantalla
 

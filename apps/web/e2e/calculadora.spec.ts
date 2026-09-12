@@ -186,24 +186,39 @@ test.describe('calculadora', () => {
   });
 
   /*
-   * La tarjeta y la vista previa del enlace salen de la misma frase: dos textos distintos para el
-   * mismo escenario serían dos verdades.
+   * La imagen y la vista previa del enlace salen del mismo `?p=`: lo que se abre desde el botón es
+   * exactamente lo que verá quien reciba el enlace en un chat.
    */
-  test('la predicción se resume en una tarjeta y en la vista previa del enlace', async ({ page }) => {
+  test('la predicción se vuelve una imagen y la vista previa del enlace la lleva', async ({
+    page,
+  }) => {
     await page.goto('/calculadora');
     await expect(page.locator('[data-partido-calculadora][data-editable]').first()).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.locator('[data-prediccion]')).toHaveCount(0);
+
+    const boton = page.getByRole('button', { name: 'Mi predicción' });
+    await expect(boton).toBeDisabled();
 
     await page.locator('[data-partido-calculadora][data-editable] input').first().fill('3');
-    await expect(page.locator('[data-prediccion]')).toBeVisible({ timeout: 10_000 });
-    /* Sin la fase completa, el líder es puntero y no campeón: no se adorna un dato incompleto. */
-    await expect(page.locator('[data-prediccion]')).toContainText(/puntero del/i);
-    await expect(page.locator('[data-prediccion]')).toContainText(/Copa Libertadores/i);
+    await expect(page).toHaveURL(/\?p=/, { timeout: 10_000 });
+    await expect(boton).toBeEnabled();
+
+    const codigo = new URL(page.url()).searchParams.get('p');
+    const imagen = await page.request.get(`/calculadora/tarjeta.png?p=${codigo}`);
+    expect(imagen.status()).toBe(200);
+    expect(imagen.headers()['content-type']).toBe('image/png');
+    /* Una tarjeta de 1200×630 pesa decenas de KB: si viniera vacía, esto lo diría. */
+    expect((await imagen.body()).length).toBeGreaterThan(20_000);
 
     const html = await (await page.request.get(page.url())).text();
     expect(html).toContain('og:title" content="Mi predicción:');
+    expect(html).toMatch(/og:image" content="[^"]*\/calculadora\/tarjeta\.png\?p=/);
+  });
+
+  test('sin escenario no hay tarjeta que inventar', async ({ request }) => {
+    const sinNada = await request.get('/calculadora/tarjeta.png');
+    expect(sinNada.status()).toBe(404);
   });
 
   test('un resultado ya jugado no se puede editar', async ({ page }) => {

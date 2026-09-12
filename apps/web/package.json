@@ -22,6 +22,7 @@
     "@athena/leyenda": "workspace:*",
     "@athena/tokens": "workspace:*",
     "@athena/ui": "workspace:*",
+    "@resvg/resvg-wasm": "^2.6.2",
     "@tanstack/react-query": "^5.66.0",
     "astro": "^5.2.0",
     "react": "^19.0.0",
