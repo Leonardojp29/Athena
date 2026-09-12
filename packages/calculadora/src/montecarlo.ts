@@ -20,10 +20,13 @@ import type { DatosDeLaCalculadora, Pronosticos, ReglasLiga, Tabla } from './tip
 
 export interface Probabilidad {
   equipoId: string;
+  /** Campeón nacional: el que sale del camino al título, no el primero de una tabla. */
   titulo: number;
   libertadores: number;
   sudamericana: number;
   descenso: number;
+  /** Terminar primero en cada tabla. En el Apertura, ya jugado, es cero o uno. */
+  ganaTorneo: Record<string, number>;
 }
 
 const CUPOS_LIBERTADORES = 4;
@@ -167,7 +170,13 @@ export function simular(
   const cuenta = new Map(
     datos.equipos.map((e) => [
       e.id,
-      { titulo: 0, libertadores: 0, sudamericana: 0, descenso: 0 },
+      {
+        titulo: 0,
+        libertadores: 0,
+        sudamericana: 0,
+        descenso: 0,
+        ganaTorneo: Object.fromEntries(reglas.tablas.map((t) => [t.clave, 0])),
+      },
     ]),
   );
 
@@ -214,6 +223,12 @@ export function simular(
     );
 
     anotarCupos(anual, cuenta);
+    for (const tabla of [apertura, clausura, anual]) {
+      const primero = tabla.filas[0];
+      if (!primero) continue;
+      const c = cuenta.get(primero.equipo.id);
+      if (c) c.ganaTorneo[tabla.clave] = (c.ganaTorneo[tabla.clave] ?? 0) + 1;
+    }
 
     const camino = caminoAlTitulo(apertura, clausura, anual);
     const campeon = camino === null ? null : resolverCampeon(camino, modelo, azar);
@@ -224,18 +239,16 @@ export function simular(
   }
 
   return datos.equipos.map((equipo) => {
-    const c = cuenta.get(equipo.id) ?? {
-      titulo: 0,
-      libertadores: 0,
-      sudamericana: 0,
-      descenso: 0,
-    };
+    const c = cuenta.get(equipo.id);
     return {
       equipoId: equipo.id,
-      titulo: c.titulo / total,
-      libertadores: c.libertadores / total,
-      sudamericana: c.sudamericana / total,
-      descenso: c.descenso / total,
+      titulo: (c?.titulo ?? 0) / total,
+      libertadores: (c?.libertadores ?? 0) / total,
+      sudamericana: (c?.sudamericana ?? 0) / total,
+      descenso: (c?.descenso ?? 0) / total,
+      ganaTorneo: Object.fromEntries(
+        reglas.tablas.map((t) => [t.clave, (c?.ganaTorneo[t.clave] ?? 0) / total]),
+      ),
     };
   });
 }

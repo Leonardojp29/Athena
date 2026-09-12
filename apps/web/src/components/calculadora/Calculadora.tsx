@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ANUAL,
+  APERTURA,
+  CLAUSURA,
   calcularTablas,
   caminoAlTitulo,
-  CLAUSURA,
   codificar,
   conFase,
   decodificar,
@@ -13,7 +14,7 @@ import {
   type ReglasLiga,
 } from '@athena/calculadora';
 import CaminoAlTitulo from './CaminoAlTitulo';
-import Compartir from './Compartir';
+import Controles from './Controles';
 import Partidos from './Partidos';
 import Tablas from './Tablas';
 
@@ -42,9 +43,9 @@ interface Props {
 }
 
 const CLAVES: Array<[RegExp, string]> = [
-  [/anual/i, 'anual'],
-  [/clausura/i, 'clausura'],
-  [/apertura/i, 'apertura'],
+  [/anual/i, ANUAL],
+  [/clausura/i, CLAUSURA],
+  [/apertura/i, APERTURA],
 ];
 
 /*
@@ -87,6 +88,8 @@ function armar(crudo: Crudo): DatosDeLaCalculadora {
 
 type Marcador = readonly [number, number];
 
+const SIN_NADA: ReadonlyMap<string, Marcador> = new Map();
+
 const clave = (datos: DatosDeLaCalculadora) =>
   `athena:calculadora:${datos.competencia.slug}:${datos.temporada}`;
 
@@ -95,21 +98,26 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
   const [pronosticos, setPronosticos] = useState<Map<string, Marcador>>(
     () => new Map(inicial.map(([id, m]) => [id, m as Marcador])),
   );
-  /*
-   * En el teléfono se ve una a la vez, y arranca en las tablas. No es lo que uno esperaría —se
-   * entra a poner marcadores— pero el enlace compartido se abre casi siempre desde WhatsApp y en
-   * un teléfono: si arranca en los partidos, quien recibe el escenario no ve el resultado, que es
-   * justamente lo que le mandaron. Poner marcadores está a un toque.
-   */
-  const [vista, setVista] = useState<'partidos' | 'tablas'>('tablas');
   const [probabilidades, setProbabilidades] = useState<Probabilidad[] | null>(null);
   const [frescos, setFrescos] = useState<DatosDeLaCalculadora['partidos'] | null>(null);
   const enVivo = frescos ?? datos.partidos;
 
-  const conPronosticos = useMemo(
-    () => ({ ...datos, partidos: enVivo }),
-    [datos, enVivo],
-  );
+  /* La fase manda en las dos columnas: el calendario de la izquierda y la tabla de la derecha. */
+  const faseEnJuego = useMemo(() => {
+    const pendiente = enVivo.find((p) => p.estado === 'scheduled');
+    return (
+      reglas.tablas.find((t) => t.fases.includes(pendiente?.fase ?? ''))?.clave ??
+      reglas.claveAcumulada
+    );
+  }, [enVivo, reglas]);
+  const [fase, setFase] = useState(faseEnJuego);
+
+  /* Con predicciones apagado, la tabla vuelve a la de hoy sin perder el escenario cargado. */
+  const [conPredicciones, setConPredicciones] = useState(true);
+  const [streamer, setStreamer] = useState(false);
+
+  const conPronosticos = useMemo(() => ({ ...datos, partidos: enVivo }), [datos, enVivo]);
+  const aplicados = conPredicciones ? pronosticos : SIN_NADA;
 
   const codigo = useMemo(
     () => codificar(pronosticos, conPronosticos.equipos, conPronosticos.partidos),
@@ -122,15 +130,15 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
         reglas.tablas,
         conPronosticos.equipos,
         conPronosticos.partidos,
-        pronosticos,
+        aplicados,
         conPronosticos.ordenOficial,
       ),
-    [reglas, conPronosticos, pronosticos],
+    [reglas, conPronosticos, aplicados],
   );
 
   const camino = useMemo(() => {
     const de = (c: string) => tablas.find((t) => t.clave === c);
-    const apertura = de('apertura');
+    const apertura = de(APERTURA);
     const clausura = de(CLAUSURA);
     const anual = de(ANUAL);
     return apertura && clausura && anual ? caminoAlTitulo(apertura, clausura, anual) : null;
@@ -206,18 +214,16 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
         id,
         datos: conPronosticos,
         reglas,
-        pronosticos: [...pronosticos],
-        semilla: semillaDe(codigo),
+        pronosticos: [...aplicados],
+        semilla: semillaDe(conPredicciones ? codigo : ''),
       });
     }, 150);
     return () => window.clearTimeout(espera);
-  }, [conPronosticos, reglas, pronosticos, codigo]);
+  }, [conPronosticos, reglas, aplicados, codigo, conPredicciones]);
 
   /* Mientras se juega la fecha, un resultado real pisa el pronóstico de ese partido. */
   useEffect(() => {
-    const hayEnCurso = datos.partidos.some(
-      (p) => p.estado === 'in_play' || p.estado === 'paused',
-    );
+    const hayEnCurso = datos.partidos.some((p) => p.estado === 'in_play' || p.estado === 'paused');
     if (!hayEnCurso) return;
     const tic = window.setInterval(() => {
       void fetch('/calculadora/datos.json')
@@ -241,46 +247,72 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
 
   const reiniciar = useCallback(() => setPronosticos(new Map()), []);
 
-  return (
-    <div className="grid gap-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div
-          className="flex items-center gap-1 rounded-lg bg-canvas-subtle p-1 lg:hidden"
-          role="group"
-          aria-label="Vista"
-        >
-          {(['partidos', 'tablas'] as const).map((cual) => (
-            <button
-              key={cual}
-              type="button"
-              onClick={() => setVista(cual)}
-              aria-current={vista === cual ? 'true' : undefined}
-              className="cursor-pointer rounded-md px-3 py-1 text-xs font-medium capitalize text-ink-muted transition-colors aria-[current]:bg-surface aria-[current]:text-ink aria-[current]:shadow-card"
-            >
-              {cual}
-            </button>
-          ))}
-        </div>
-        <Compartir codigo={codigo} cuantos={pronosticos.size} onReiniciar={reiniciar} />
-      </div>
+  const tabla = tablas.find((t) => t.clave === fase) ?? tablas[0];
+  const definicion = reglas.tablas.find((t) => t.clave === fase);
+  /* La acumulada no tiene calendario propio: se sigue jugando el torneo en curso. */
+  const enCurso = reglas.tablas.find((t) => t.clave === faseEnJuego);
+  const calendario = definicion && definicion.fases.length > 0 ? definicion : enCurso;
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        <div className={vista === 'partidos' ? '' : 'hidden lg:block'}>
-          <Partidos
-            datos={conPronosticos}
-            pronosticos={pronosticos}
-            onPronosticar={pronosticar}
-          />
-        </div>
-        <div className={`grid gap-4 ${vista === 'tablas' ? '' : 'hidden lg:grid'}`}>
-          <CaminoAlTitulo camino={camino} equipos={conPronosticos.equipos} />
+  return (
+    <div className="grid gap-4">
+      <nav
+        className="grid grid-cols-3 overflow-hidden rounded-xl border border-border bg-surface"
+        aria-label="Fase del torneo"
+      >
+        {reglas.tablas.map((cual) => (
+          <button
+            key={cual.clave}
+            type="button"
+            onClick={() => setFase(cual.clave)}
+            aria-current={cual.clave === fase ? 'true' : undefined}
+            className="cursor-pointer border-b-[3px] border-transparent px-3 py-3 font-display text-sm font-semibold uppercase tracking-label text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink aria-[current]:border-b-primary aria-[current]:bg-primary/8 aria-[current]:text-ink sm:text-base"
+          >
+            {cual.titulo}
+          </button>
+        ))}
+      </nav>
+
+      <div
+        className={
+          streamer
+            ? 'grid gap-4'
+            : 'grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)]'
+        }
+      >
+        {!streamer && calendario && (
+          <div className="grid gap-4">
+            <Partidos
+              datos={conPronosticos}
+              fases={calendario.fases}
+              titulo={calendario.titulo}
+              pronosticos={pronosticos}
+              onPronosticar={pronosticar}
+            />
+            <CaminoAlTitulo camino={camino} equipos={conPronosticos.equipos} />
+          </div>
+        )}
+
+        {tabla && (
           <Tablas
-            tablas={tablas}
+            tabla={tabla}
             reglas={reglas}
             probabilidades={probabilidades}
+            conPredicciones={conPredicciones}
             hayPronosticos={pronosticos.size > 0}
+            streamer={streamer}
+            controles={
+              <Controles
+                codigo={codigo}
+                cuantos={pronosticos.size}
+                conPredicciones={conPredicciones}
+                streamer={streamer}
+                onConPredicciones={() => setConPredicciones((v) => !v)}
+                onStreamer={() => setStreamer((v) => !v)}
+                onReiniciar={reiniciar}
+              />
+            }
           />
-        </div>
+        )}
       </div>
     </div>
   );

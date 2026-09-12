@@ -96,14 +96,58 @@ enlace se manda por WhatsApp y ahí alguien lo lee y lo cuenta.
 
 Nada se guarda en el servidor. El enlace vale para siempre y no cuesta una fila en la base.
 
+## La pantalla
+
+Dos columnas de ancho parejo, como la referencia que pidió Leonardo: el calendario a la izquierda
+—una fecha por vez, con flechas— y la tabla completa a la derecha. Las pestañas de fase van arriba
+y a todo el ancho, y **gobiernan las dos columnas**: elegir Apertura cambia el calendario y la
+tabla. La acumulada no tiene calendario propio, así que muestra el del torneo en curso, que es lo
+único que se puede pronosticar.
+
+El camino al título va **debajo del calendario** y no al lado de la tabla: la tabla siempre es más
+alta que la columna de partidos, y ese hueco es donde la tarjeta cae natural.
+
+### Los colores de la tabla
+
+A nueve números iguales en gris no se les encuentra el orden. Cada columna lleva el suyo:
+
+| Qué | Token |
+|---|---|
+| Campeón (zona) | `card-yellow` |
+| Libertadores | `win` |
+| Sudamericana | `data` |
+| Descenso | `card-red` |
+| Ganados | `win-ink` |
+| Empatados | `card-yellow-ink` |
+| Perdidos | `card-red-ink` |
+| Diferencia | `win-ink` o `card-red-ink` según el signo |
+| Puntos | `primary-ink` |
+
+`win-ink` y `card-yellow-ink` son tokens nuevos: los originales son rellenos —el amarillo de
+tarjeta sobre blanco no llega a 3:1— y como texto necesitaban su propia tinta por tema. El audit
+de axe corre sobre las dos y es lo que los valida.
+
+### Los tres controles
+
+- **Streamer** deja la tabla sola, sin controles ni probabilidades: es lo que se comparte en una
+  transmisión o en una captura.
+- **Con predicciones** apaga el escenario sin borrarlo, para comparar contra la tabla de hoy y
+  volver.
+- **Reiniciar** pide confirmación porque borra trabajo.
+
+### Los marcadores
+
+`− 0 +` a cada lado. El campo sigue aceptando que se escriba un dígito —es lo más rápido con
+teclado— y los botones resuelven el teléfono sin abrir el teclado numérico encima de la tabla.
+
 ## Decisiones de la pantalla
 
 - **El `?p=` se decodifica en el servidor** y la isla se renderiza con las tablas hechas. Un enlace
   que solo dice algo después de hidratar no es un enlace compartible: es una promesa. Hay un test
   con JavaScript apagado que lo sostiene.
-- **En el teléfono abre en las tablas**, aunque quien entra a pronosticar tenga que dar un toque
-  más: el enlace compartido se abre casi siempre desde un chat y en un teléfono, y quien lo recibe
-  tiene que ver el resultado, que es lo que le mandaron.
+- **En el teléfono las dos columnas se apilan**, y dentro de cada partido cada equipo se lleva su
+  línea con su propio control: en una sola fila los dos steppers dejaban los nombres en "Clu…" y
+  "Co…", y saber quién juega es lo mínimo.
 - **Lo jugado va bloqueado** con su marcador y un candado. Un resultado no se discute.
 - **La zona va en un riel de color y en una leyenda con su nombre**: el color nunca es el único
   canal.

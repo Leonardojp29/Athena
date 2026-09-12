@@ -121,20 +121,32 @@ const titulo = datos
       <>
         <section class="w-full border-b-[3px] border-b-primary bg-banda">
           <Container width="content">
-            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-5">
-              <h1 class="font-display text-2xl font-semibold uppercase leading-none text-chalk sm:text-3xl">
-                Calculadora
-              </h1>
-              <p class="text-2xs uppercase tracking-label text-chalk-dim">
-                {datos.competencia.nombre} · {datos.temporada}
-                {datos.fase ? ` · ${datos.fase.replace(' - ', ', fecha ')}` : ''}
-                {porJugar > 0 ? ` · ${porJugar} partidos por jugar` : ''}
-              </p>
+            <div class="flex items-center gap-3 py-4">
+              {datos.competencia.logo && (
+                <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-chalk p-1.5 shadow-card sm:size-14">
+                  <img
+                    src={datos.competencia.logo}
+                    alt=""
+                    width="48"
+                    height="48"
+                    class="size-full object-contain"
+                  />
+                </span>
+              )}
+              <div class="min-w-0">
+                <h1 class="font-display text-2xl font-semibold uppercase leading-none text-chalk sm:text-3xl">
+                  Calculadora
+                </h1>
+                <p class="mt-1 truncate text-xs text-chalk-dim sm:text-sm">
+                  {datos.competencia.nombre} · Temporada {datos.temporada}
+                  {porJugar > 0 ? ` · ${porJugar} partidos por jugar` : ''}
+                </p>
+              </div>
             </div>
           </Container>
         </section>
 
-        <Container width="content" class="pt-7 pb-6">
+        <Container width="content" class="pb-8">
           <Calculadora client:load crudo={crudo} reglas={LIGA1} inicial={pronosticos} />
         </Container>
       </>

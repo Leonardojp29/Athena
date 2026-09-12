@@ -16,20 +16,20 @@ export default function CaminoAlTitulo({ camino, equipos }: Props) {
   const nombre = (id: string) => equipos.find((e) => e.id === id)?.nombre ?? id;
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-3">
-      <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-ink-muted">
+    <section className="rounded-xl border border-border bg-surface p-4">
+      <h2 className="font-display text-sm font-semibold uppercase tracking-label text-ink-muted">
         Camino al título
       </h2>
 
       {camino.campeon ? (
-        <p className="mt-1.5 text-sm">
+        <p className="mt-2 text-base">
           <span className="font-semibold">{nombre(camino.campeon)}</span> se consagra campeón sin jugar
           la definición.
         </p>
       ) : (
-        <ul className="mt-1.5 grid gap-1">
+        <ul className="mt-2 grid gap-1.5">
           {camino.cruces.map((cruce, indice) => (
-            <li key={`${cruce.ronda}-${indice}`} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+            <li key={`${cruce.ronda}-${indice}`} className="flex flex-wrap items-baseline gap-x-2 text-base">
               <span className="text-2xs uppercase tracking-label text-ink-muted">
                 {cruce.ronda === 'final' ? 'Final' : 'Semifinal'}
               </span>
@@ -43,7 +43,7 @@ export default function CaminoAlTitulo({ camino, equipos }: Props) {
         </ul>
       )}
 
-      <p className="mt-2 border-t border-border pt-2 text-2xs text-ink-muted">{camino.fundamento}</p>
+      <p className="mt-3 border-t border-border pt-2.5 text-2xs leading-relaxed text-ink-muted">{camino.fundamento}</p>
     </section>
   );
 }

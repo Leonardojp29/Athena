@@ -34,6 +34,7 @@
    */
   --a-color-marca: oklch(0.906 0.191 118);
   --a-color-win: oklch(0.906 0.191 118);
+  --a-color-win-ink: oklch(0.462 0.128 128);
   --a-color-win-contrast: oklch(0.15 0.005 285);
   --a-color-data: oklch(0.792 0.121 208);
   --a-color-data-ink: oklch(0.512 0.118 232);
@@ -67,6 +68,8 @@
   /* Sobre la pizarra el verde tiene que ser el claro: el de superficie ahí no se ve. */
   --a-color-live-on-board: oklch(0.723 0.196 150);
   --a-color-card-yellow: oklch(0.762 0.145 78);
+  /* El amarillo de tarjeta es un relleno: como texto no llega a 3:1 y necesita su propia tinta. */
+  --a-color-card-yellow-ink: oklch(0.54 0.115 74);
   /*
    * El escalón intermedio de las notas: un verde lima macizo, más oscuro que el lima de acción y
    * más claro que el césped. Con dos escalones y medio, un 6,6 y un 7,4 se veían igual.
@@ -195,6 +198,7 @@
   --a-color-live-ink: oklch(0.723 0.196 150);
   --a-color-live-on-board: oklch(0.723 0.196 150);
   --a-color-card-yellow: oklch(0.845 0.148 82);
+  --a-color-card-yellow-ink: oklch(0.845 0.148 82);
   --a-color-card-red: oklch(0.63 0.2 22);
   --a-color-card-red-ink: oklch(0.7 0.185 22);
   --a-color-focus: oklch(0.906 0.191 118);
@@ -228,6 +232,7 @@
   --a-color-live-ink: oklch(0.5 0.2 22);
   --a-color-live-on-board: oklch(0.78 0.11 25);
   --a-color-win: oklch(0.52 0.13 152);
+  --a-color-win-ink: oklch(0.46 0.13 152);
   --a-color-win-contrast: oklch(1 0 0);
   --a-color-focus: oklch(0.48 0.2 262);
   --a-color-selection: oklch(0.52 0.21 262 / 0.25);
@@ -241,6 +246,8 @@
   --a-color-live: oklch(0.66 0.2 22);
   --a-color-live-ink: oklch(0.8 0.11 20);
   --a-color-live-on-board: oklch(0.78 0.11 25);
+  /* Sobre la superficie oscura el verde de victoria tiene que subir para leerse como texto. */
+  --a-color-win-ink: oklch(0.78 0.15 152);
   --a-color-focus: oklch(0.78 0.11 252);
   --a-color-selection: oklch(0.56 0.19 260 / 0.3);
 }

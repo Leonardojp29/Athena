@@ -6,28 +6,22 @@ import { expect, test } from '@playwright/test';
  * el enlace diga lo mismo aunque el JavaScript no llegue nunca.
  */
 test.describe('calculadora', () => {
-  test('escribir un marcador mueve la tabla y el escenario queda en la URL', async ({
-    page,
-    isMobile,
-  }) => {
+  test('escribir un marcador mueve la tabla y el escenario queda en la URL', async ({ page }) => {
     await page.goto('/calculadora');
-    if (isMobile) await page.getByRole('button', { name: 'partidos' }).click();
 
     const celda = page.locator('[data-partido-calculadora] input').first();
     await expect(celda).toBeVisible({ timeout: 15_000 });
 
     await celda.fill('3');
     await expect(page).toHaveURL(/\?p=/, { timeout: 10_000 });
-    if (isMobile) await page.getByRole('button', { name: 'tablas' }).click();
     /* El ▲▼ solo aparece cuando el pronóstico movió a alguien: sin él, la tabla es la de hoy. */
     await expect(page.locator('[title*="con tu escenario"]').first()).toBeVisible({
       timeout: 10_000,
     });
   });
 
-  test('el escenario sobrevive a una recarga y Reiniciar lo borra', async ({ page, isMobile }) => {
+  test('el escenario sobrevive a una recarga y Reiniciar lo borra', async ({ page }) => {
     await page.goto('/calculadora');
-    if (isMobile) await page.getByRole('button', { name: 'partidos' }).click();
     const celda = page.locator('[data-partido-calculadora] input').first();
     await expect(celda).toBeVisible({ timeout: 15_000 });
     await celda.fill('4');
@@ -39,10 +33,9 @@ test.describe('calculadora', () => {
      */
     await page.goto('/calculadora');
     await expect(page).toHaveURL(/\?p=/, { timeout: 30_000 });
-    if (isMobile) await page.getByRole('button', { name: 'partidos' }).click();
     await expect(page.locator('[data-partido-calculadora] input').first()).toHaveValue('4');
 
-    await page.getByRole('button', { name: 'Reiniciar' }).click();
+    await page.getByRole('button', { name: 'Reiniciar los pronósticos' }).click();
     await page.getByRole('button', { name: 'Borrar todo' }).click();
     await expect(page).not.toHaveURL(/\?p=/, { timeout: 10_000 });
   });
@@ -76,24 +69,61 @@ test.describe('calculadora', () => {
     await contexto.close();
   });
 
-  test('las probabilidades aparecen y reparten los cupos que hay', async ({ page }) => {
+  test('el selector reparte exactamente los cupos que hay', async ({ page }) => {
     await page.goto('/calculadora');
     await page.getByRole('button', { name: 'Tabla anual' }).click();
 
+    const columna = page.locator('table tbody tr td:nth-last-child(2)');
     /* Cinco mil temporadas en un Worker: con la suite entera en paralelo puede tardar. */
-    const celdas = page.locator('table tbody tr td:nth-last-child(2)');
-    await expect(celdas.first()).not.toHaveText('—', { timeout: 40_000 });
+    await expect(columna.first()).not.toHaveText('—', { timeout: 40_000 });
 
-    const textos = await celdas.allTextContents();
-    const total = textos.reduce((suma, texto) => suma + Number(texto.replace(/[^\d]/g, '')), 0);
-    /* Cuatro cupos de Libertadores repartidos entre dieciocho: la suma ronda el 400 %. */
-    expect(total).toBeGreaterThan(360);
-    expect(total).toBeLessThan(440);
+    const suma = async () => {
+      const textos = await columna.allTextContents();
+      return textos.reduce((total, texto) => total + Number(texto.replace(/[^\d]/g, '')), 0);
+    };
+
+    /* Un campeón, cuatro cupos de Libertadores, cuatro de Sudamericana y dos que se van. */
+    expect(await suma()).toBeGreaterThan(85);
+    expect(await suma()).toBeLessThan(115);
+
+    await page.getByRole('button', { name: 'Libertadores' }).click();
+    expect(await suma()).toBeGreaterThan(370);
+    expect(await suma()).toBeLessThan(430);
+
+    await page.getByRole('button', { name: 'Descenso' }).click();
+    expect(await suma()).toBeGreaterThan(180);
+    expect(await suma()).toBeLessThan(220);
   });
 
-  test('un resultado ya jugado no se puede editar', async ({ page, isMobile }) => {
+  test('los botones de más y menos mueven el marcador', async ({ page }) => {
     await page.goto('/calculadora');
-    if (isMobile) await page.getByRole('button', { name: 'partidos' }).click();
+    const fila = page.locator('[data-partido-calculadora][data-editable]').first();
+    await expect(fila).toBeVisible({ timeout: 15_000 });
+    const celda = fila.locator('input').first();
+    const mas = fila.getByRole('button', { name: /Un gol más/ }).first();
+    const menos = fila.getByRole('button', { name: /Un gol menos/ }).first();
+
+    await expect(menos).toBeDisabled();
+    await mas.click();
+    await mas.click();
+    await expect(celda).toHaveValue('2');
+    await menos.click();
+    await expect(celda).toHaveValue('1');
+  });
+
+  test('la fase elegida manda en el calendario y en la tabla', async ({ page }) => {
+    await page.goto('/calculadora');
+    await expect(page.getByText(/Calendario · Clausura/i)).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('button', { name: 'Apertura', exact: true }).click();
+    await expect(page.getByText(/Tabla · Apertura/i)).toBeVisible();
+    await expect(page.getByText(/Calendario · Apertura/i)).toBeVisible();
+    /* El Apertura está jugado: no queda nada por pronosticar en su calendario. */
+    expect(await page.locator('[data-partido-calculadora][data-editable]').count()).toBe(0);
+  });
+
+  test('un resultado ya jugado no se puede editar', async ({ page }) => {
+    await page.goto('/calculadora');
     await expect(page.locator('[data-partido-calculadora]').first()).toBeVisible({
       timeout: 15_000,
     });

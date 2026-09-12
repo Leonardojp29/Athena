@@ -95,3 +95,20 @@ describe('el modelo', () => {
     expect(semillaDe('aliuni21')).not.toBe(semillaDe('aliuni22'));
   });
 });
+
+describe('ganar cada torneo', () => {
+  it('el Apertura ya está jugado, así que su ganador lo gana siempre', () => {
+    const probabilidades = simular(datos, SIN_PRONOSTICOS, LIGA1, RAPIDO);
+    const apertura = probabilidades.filter((p) => (p.ganaTorneo.apertura ?? 0) > 0);
+    expect(apertura).toHaveLength(1);
+    expect(apertura[0]?.ganaTorneo.apertura).toBe(1);
+  });
+
+  it('cada torneo reparte exactamente un campeón', () => {
+    const probabilidades = simular(datos, SIN_PRONOSTICOS, LIGA1, RAPIDO);
+    for (const clave of ['apertura', 'clausura', 'anual']) {
+      const total = probabilidades.reduce((t, p) => t + (p.ganaTorneo[clave] ?? 0), 0);
+      expect(total).toBeCloseTo(1, 5);
+    }
+  });
+});
