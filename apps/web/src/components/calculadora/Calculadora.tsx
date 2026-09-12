@@ -7,7 +7,7 @@ import {
   caminoAlTitulo,
   codificar,
   conFase,
-  decodificar,
+  resumir,
   semillaDe,
   type DatosDeLaCalculadora,
   type Probabilidad,
@@ -17,6 +17,7 @@ import CaminoAlTitulo from './CaminoAlTitulo';
 import Controles from './Controles';
 import Reiniciar from './Reiniciar';
 import Partidos from './Partidos';
+import Prediccion from './Prediccion';
 import Tablas from './Tablas';
 
 /*
@@ -91,9 +92,6 @@ type Marcador = readonly [number, number];
 
 const SIN_NADA: ReadonlyMap<string, Marcador> = new Map();
 
-const clave = (datos: DatosDeLaCalculadora) =>
-  `athena:calculadora:${datos.competencia.slug}:${datos.temporada}`;
-
 export default function Calculadora({ crudo, reglas, inicial }: Props) {
   const datos = useMemo(() => armar(crudo), [crudo]);
   const [pronosticos, setPronosticos] = useState<Map<string, Marcador>>(
@@ -146,43 +144,20 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
   }, [tablas]);
 
   /*
-   * El escenario guardado se lee después de montar y solo cuando la URL no trae uno: si vino un
-   * enlace, manda el enlace. Leerlo en el primer render desajustaría lo que ya dibujó el servidor.
-   */
-  const [restaurado, setRestaurado] = useState(inicial.length > 0);
-  useEffect(() => {
-    if (restaurado) return;
-    try {
-      const guardado = window.localStorage.getItem(clave(datos));
-      const recuperado = guardado ? decodificar(guardado, datos.equipos, datos.partidos) : null;
-      if (recuperado && recuperado.size > 0) setPronosticos(new Map(recuperado));
-    } catch {
-      /* Sin almacenamiento la calculadora funciona igual, solo no recuerda. */
-    }
-    setRestaurado(true);
-  }, [datos, restaurado]);
-
-  /*
-   * El escenario vive en la URL desde el primer marcador: así el botón de compartir no tiene nada
-   * que construir y recargar la página no pierde nada. `replaceState` y no `pushState` porque el
-   * lector no espera que "atrás" deshaga un marcador tecla por tecla.
+   * El escenario vive en la URL y **solo** en la URL. No se guarda en el navegador a propósito:
+   * volver a la calculadora al día siguiente y encontrarse con los pronósticos de la semana pasada
+   * —sobre partidos que ya se jugaron— es peor que empezar limpio. Quien quiera conservarlo tiene
+   * el enlace, que además se puede mandar.
    *
-   * Espera a que el escenario guardado se haya leído: sin esa guarda, la primera pasada escribía
-   * un código vacío y borraba justo lo que estaba por recuperar.
+   * `replaceState` y no `pushState` porque nadie espera que "atrás" deshaga un marcador tecla por
+   * tecla.
    */
   useEffect(() => {
-    if (!restaurado) return;
     const url = new URL(window.location.href);
     if (codigo) url.searchParams.set('p', codigo);
     else url.searchParams.delete('p');
     window.history.replaceState(null, '', url);
-    try {
-      if (codigo) window.localStorage.setItem(clave(datos), codigo);
-      else window.localStorage.removeItem(clave(datos));
-    } catch {
-      /* idem */
-    }
-  }, [codigo, datos, restaurado]);
+  }, [codigo]);
 
   /*
    * Las probabilidades salen en un Worker: cinco mil temporadas son casi trescientos milisegundos
@@ -248,6 +223,12 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
 
   const reiniciar = useCallback(() => setPronosticos(new Map()), []);
 
+  const resumen = useMemo(
+    () =>
+      resumir(tablas, reglas, faseEnJuego, conPronosticos.partidos, aplicados),
+    [tablas, reglas, faseEnJuego, conPronosticos.partidos, aplicados],
+  );
+
   const tabla = tablas.find((t) => t.clave === fase) ?? tablas[0];
   const definicion = reglas.tablas.find((t) => t.clave === fase);
   /* La acumulada no tiene calendario propio: se sigue jugando el torneo en curso. */
@@ -287,6 +268,7 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
               reiniciar={<Reiniciar cuantos={pronosticos.size} onReiniciar={reiniciar} />}
             />
             <CaminoAlTitulo camino={camino} equipos={conPronosticos.equipos} />
+            <Prediccion resumen={resumen} />
           </div>
         )}
 

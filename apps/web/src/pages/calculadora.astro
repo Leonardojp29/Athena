@@ -4,7 +4,16 @@ import Container from '../components/layout/Container.astro';
 import Base from '../layouts/Base.astro';
 import { api } from '../lib/api';
 import { cachear, sinCache } from '../lib/cache';
-import { conFase, decodificar, LIGA1, type DatosDeLaCalculadora } from '@athena/calculadora';
+import {
+  calcularTablas,
+  conFase,
+  decodificar,
+  detalle,
+  frase,
+  LIGA1,
+  resumir,
+  type DatosDeLaCalculadora,
+} from '@athena/calculadora';
 import '../styles/calculadora.css';
 
 /*
@@ -104,14 +113,50 @@ if (crudo && hayDatos) {
 }
 
 const porJugar = datos?.partidos.filter((p) => p.estado === 'scheduled').length ?? 0;
-const titulo = datos
-  ? `Calculadora ${datos.competencia.nombre} ${datos.temporada} — Athena`
-  : 'Calculadora — Athena';
+
+/*
+ * El enlace se pega en un chat, y lo primero que se ve ahí es la vista previa. Si dice "Calculadora
+ * Liga 1" no dice nada; si dice "Universitario, campeón del Clausura con 78 puntos", ya contó el
+ * escenario antes de que nadie toque nada.
+ *
+ * La frase sale de la misma función que la tarjeta de la página: dos textos distintos para el
+ * mismo escenario serían dos verdades.
+ */
+const escenario = new Map(pronosticos.map(([id, m]) => [id, m as readonly [number, number]]));
+const enJuego = datos
+  ? (LIGA1.tablas.find((t) =>
+      t.fases.includes(
+        datos.partidos.find((p) => p.estado === 'scheduled')?.fase ?? '',
+      ),
+    )?.clave ?? LIGA1.claveAcumulada)
+  : LIGA1.claveAcumulada;
+
+const resumen =
+  datos && escenario.size > 0
+    ? resumir(
+        calcularTablas(LIGA1.tablas, datos.equipos, datos.partidos, escenario, datos.ordenOficial),
+        LIGA1,
+        enJuego,
+        datos.partidos,
+        escenario,
+      )
+    : null;
+
+const predicho = frase(resumen);
+const titulo = predicho
+  ? `${predicho} — Calculadora Liga 1`
+  : datos
+    ? `Calculadora ${datos.competencia.nombre} ${datos.temporada} — Athena`
+    : 'Calculadora — Athena';
+const descripcion =
+  predicho && detalle(resumen)
+    ? `${detalle(resumen)}. Abrí el enlace para ver la tabla completa y cambiar los marcadores.`
+    : 'Poné los marcadores que faltan y mirá cómo quedan el Apertura, el Clausura y la tabla anual: campeón, Libertadores, Sudamericana y descenso.';
 ---
 
 <Base
   title={titulo}
-  description="Poné los marcadores que faltan y mirá cómo quedan el Apertura, el Clausura y la tabla anual: campeón, Libertadores, Sudamericana y descenso."
+  description={descripcion}
   chrome="minimal"
   width="bleed"
   liveBar={false}

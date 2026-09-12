@@ -101,7 +101,29 @@ enlace se manda por WhatsApp y ahí alguien lo lee y lo cuenta.
 - El diccionario está en `codigo.ts`; un slug desconocido cae en un respaldo determinista, y dos
   slugs nunca comparten código.
 
-Nada se guarda en el servidor. El enlace vale para siempre y no cuesta una fila en la base.
+Nada se guarda en el servidor **ni en el navegador**: el escenario vive en la URL y solo ahí.
+Volver a la calculadora al día siguiente y encontrarse los pronósticos de la semana pasada —sobre
+partidos que ya se jugaron— es peor que empezar limpio. Quien quiera conservar el suyo tiene el
+enlace, que además se puede mandar.
+
+## La predicción compartible
+
+`resumen.ts` arma una sola frase que usan dos cosas distintas: la tarjeta que se mira antes de
+compartir y el `og:title` del enlace. Dos textos para el mismo escenario serían dos verdades.
+
+> Mi predicción: Universitario, campeón del Clausura con 78 puntos
+
+La frase cambia sola según cuánto se pronosticó: con la fase entera cargada dice **campeón**; si
+faltan partidos dice **puntero** y cuántos quedan. Adornar un dato incompleto para que suene mejor
+es justo lo que Athena no hace.
+
+La tarjeta va sobre la banda —donde Athena pone lo que quiere que se lea de lejos— con el escudo
+del líder, los cupos de Libertadores y los que se van, pensada para la captura que alguien manda al
+grupo. El botón usa `navigator.share` donde existe y cae al portapapeles donde no, copiando la
+frase, el detalle y el enlace.
+
+Y como el `og:title` se arma en el servidor desde el `?p=`, pegar el enlace en un chat ya cuenta el
+escenario antes de que nadie toque nada.
 
 ## La pantalla
 

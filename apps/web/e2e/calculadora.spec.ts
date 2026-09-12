@@ -22,18 +22,17 @@ test.describe('calculadora', () => {
 
   test('el escenario sobrevive a una recarga y Reiniciar lo borra', async ({ page }) => {
     await page.goto('/calculadora');
-    const celda = page.locator('[data-partido-calculadora] input').first();
+    const celda = page.locator('[data-partido-calculadora][data-editable] input').first();
     await expect(celda).toBeVisible({ timeout: 15_000 });
     await celda.fill('4');
     await expect(page).toHaveURL(/\?p=/, { timeout: 10_000 });
 
-    /*
-     * La URL vuelve a llenarse sola cuando el escenario guardado se recupera: esperar eso y no la
-     * celda evita medir la hidratación con un cronómetro.
-     */
-    await page.goto('/calculadora');
-    await expect(page).toHaveURL(/\?p=/, { timeout: 30_000 });
-    await expect(page.locator('[data-partido-calculadora] input').first()).toHaveValue('4');
+    /* Recargar conserva el escenario porque está en la URL, que es donde vive. */
+    await page.reload();
+    await expect(page.locator('[data-partido-calculadora][data-editable] input').first()).toHaveValue(
+      '4',
+      { timeout: 15_000 },
+    );
 
     /* Hay uno en el calendario y otro junto a la tabla: los dos lugares donde uno empieza de nuevo. */
     const reinicios = page.getByRole('button', { name: 'Reiniciar los pronósticos' });
@@ -164,6 +163,47 @@ test.describe('calculadora', () => {
 
     await page.getByRole('button', { name: 'Revelar la tabla' }).click();
     await expect(page.getByText('Resultados ocultos')).toBeHidden();
+  });
+
+  /*
+   * El escenario vive en la URL y solo ahí. Volver al día siguiente y encontrarse los pronósticos
+   * de la semana pasada —sobre partidos ya jugados— es peor que empezar limpio.
+   */
+  test('irse de la calculadora deja el escenario atrás', async ({ page }) => {
+    await page.goto('/calculadora');
+    const celda = page.locator('[data-partido-calculadora][data-editable] input').first();
+    await expect(celda).toBeVisible({ timeout: 15_000 });
+    await celda.fill('3');
+    await expect(page).toHaveURL(/\?p=/, { timeout: 10_000 });
+
+    await page.goto('/');
+    await page.goto('/calculadora');
+    await expect(page.locator('[data-partido-calculadora][data-editable] input').first()).toBeVisible(
+      { timeout: 15_000 },
+    );
+    expect(page.url()).not.toContain('?p=');
+    expect(await page.evaluate(() => Object.keys(window.localStorage).filter((k) => k.includes('calculadora')))).toEqual([]);
+  });
+
+  /*
+   * La tarjeta y la vista previa del enlace salen de la misma frase: dos textos distintos para el
+   * mismo escenario serían dos verdades.
+   */
+  test('la predicción se resume en una tarjeta y en la vista previa del enlace', async ({ page }) => {
+    await page.goto('/calculadora');
+    await expect(page.locator('[data-partido-calculadora][data-editable]').first()).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.locator('[data-prediccion]')).toHaveCount(0);
+
+    await page.locator('[data-partido-calculadora][data-editable] input').first().fill('3');
+    await expect(page.locator('[data-prediccion]')).toBeVisible({ timeout: 10_000 });
+    /* Sin la fase completa, el líder es puntero y no campeón: no se adorna un dato incompleto. */
+    await expect(page.locator('[data-prediccion]')).toContainText(/puntero del/i);
+    await expect(page.locator('[data-prediccion]')).toContainText(/Copa Libertadores/i);
+
+    const html = await (await page.request.get(page.url())).text();
+    expect(html).toContain('og:title" content="Mi predicción:');
   });
 
   test('un resultado ya jugado no se puede editar', async ({ page }) => {

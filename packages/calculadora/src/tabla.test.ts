@@ -3,6 +3,7 @@ import crudo from './__fixtures__/liga1-2026.json' with { type: 'json' };
 import { codificar, decodificar } from './codigo.js';
 import { conFase } from './fases.js';
 import { ANUAL, APERTURA, CLAUSURA, LIGA1, caminoAlTitulo } from './reglamento-liga1.js';
+import { detalle, frase, resumir } from './resumen.js';
 import { calcularTabla, calcularTablas } from './tabla.js';
 import type { DatosDeLaCalculadora, Equipo, Partido, Tabla } from './tipos.js';
 
@@ -361,5 +362,43 @@ describe('el camino al título', () => {
     for (const lado of [final?.local, final?.visita]) {
       if (lado?.tipo === 'equipo') expect(semifinalistas.has(lado.id)).toBe(false);
     }
+  });
+});
+
+describe('el resumen que se comparte', () => {
+  const tablasDe = (pronosticos: Map<string, readonly [number, number]>) =>
+    calcularTablas(LIGA1.tablas, datos.equipos, datos.partidos, pronosticos, datos.ordenOficial);
+
+  it('sin la fase completa dice "puntero", no "campeón"', () => {
+    const uno = datos.partidos.find((p) => p.estado === 'scheduled');
+    const pronosticos = new Map([[uno?.id ?? '', [1, 0] as const]]);
+    const resumen = resumir(tablasDe(pronosticos), LIGA1, CLAUSURA, datos.partidos, pronosticos);
+    expect(resumen?.cerrado).toBe(false);
+    expect(resumen?.faltan).toBeGreaterThan(0);
+    expect(frase(resumen)).toContain('puntero del Clausura');
+  });
+
+  it('con todo pronosticado, el líder sí es campeón', () => {
+    const todos = new Map(
+      datos.partidos
+        .filter((p) => p.estado === 'scheduled' && p.fase === 'Clausura')
+        .map((p) => [p.id, [1, 0] as const]),
+    );
+    const resumen = resumir(tablasDe(todos), LIGA1, CLAUSURA, datos.partidos, todos);
+    expect(resumen?.cerrado).toBe(true);
+    expect(frase(resumen)).toContain('campeón del Clausura');
+    expect(frase(resumen)).toMatch(/\d+ puntos/);
+  });
+
+  it('el detalle reparte los cupos que hay', () => {
+    const resumen = resumir(tablasDe(new Map()), LIGA1, CLAUSURA, datos.partidos, new Map());
+    expect(resumen?.libertadores).toHaveLength(4);
+    expect(resumen?.descenso).toHaveLength(2);
+    expect(detalle(resumen)).toContain('Libertadores:');
+    expect(detalle(resumen)).toContain('Descienden:');
+  });
+
+  it('sin campeón no hay frase que inventar', () => {
+    expect(frase(null)).toBeNull();
   });
 });
