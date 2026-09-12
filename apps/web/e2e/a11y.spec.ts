@@ -121,18 +121,28 @@ test.describe('peso de las páginas', () => {
     CON_ISLA.some((prefijo) => ruta.startsWith(prefijo)) ? TECHO_DEL_JUEGO_KB : TECHO_PROPIO_KB;
 
   for (const [nombre, ruta] of VISTAS) {
-    test(`${nombre} no engorda lo que escribimos nosotros`, async ({ page }) => {
+    test(`${nombre} no engorda lo que escribimos nosotros`, async ({ page, baseURL }) => {
+      const nuestro = new URL(baseURL ?? 'http://localhost:4321').origin;
       let propio = 0;
       let imagenes = 0;
+      let ajeno = 0;
       page.on('response', (res) => {
         const largo = Number(res.headers()['content-length'] ?? 0);
         if (!Number.isFinite(largo)) return;
-        if (res.request().resourceType() === 'image') imagenes += largo;
+        /*
+         * Solo cuenta lo que sale de nuestro origen. Lo de terceros —los escudos del proveedor y,
+         * cuando se conecte, la red de anuncios— se declara aparte: el presupuesto existe para
+         * vigilar el código que escribimos, y mezclarlo con bytes que no controlamos convierte el
+         * número en ruido.
+         */
+        const deCasa = res.url().startsWith(nuestro);
+        if (!deCasa) ajeno += largo;
+        else if (res.request().resourceType() === 'image') imagenes += largo;
         else propio += largo;
       });
       await page.goto(ruta, { waitUntil: 'networkidle' });
       console.log(
-        `${ruta}: ${Math.round(propio / 1024)} KB nuestros · ${Math.round(imagenes / 1024)} KB de imágenes del proveedor`,
+        `${ruta}: ${Math.round(propio / 1024)} KB nuestros · ${Math.round(imagenes / 1024)} KB de imágenes propias · ${Math.round(ajeno / 1024)} KB de terceros`,
       );
       expect(Math.round(propio / 1024)).toBeLessThan(techoDe(ruta));
     });

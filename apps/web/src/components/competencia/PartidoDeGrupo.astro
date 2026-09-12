@@ -3,6 +3,7 @@ import EventIcon from '../EventIcon.astro';
 import type { PartidoDeCuadro } from '../../lib/api';
 import { formatDateLong, formatKickoff, isLive, minutoEnVivo, statusLabel } from '../../lib/format';
 import { goleadoresDelPartido } from '../../lib/relato';
+import { enlaceDePartido } from '../../lib/partido';
 
 /*
  * Un partido de la fase de grupos, con quién hizo los goles.
@@ -22,10 +23,11 @@ interface Props {
 
 const {
   partido,
-  hrefPartido = (id: string) => `/partidos/${id}`,
+  hrefPartido,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
 } = Astro.props;
 
+const enlace = hrefPartido ? hrefPartido(partido.id) : enlaceDePartido(partido);
 const vivo = isLive(partido.status);
 const hayMarcador = partido.homeScore !== null && partido.awayScore !== null;
 const goles = goleadoresDelPartido({ homeTeam: partido.homeTeam, events: partido.eventos ?? [] });
@@ -46,7 +48,7 @@ const lados = [
   data-partido={partido.id}
   class="group relative flex flex-col gap-3 rounded-xl border border-border bg-canvas-subtle/40 p-4 transition-colors hover:border-border-strong hover:bg-canvas-subtle/70"
 >
-  <a href={hrefPartido(partido.id)} class="absolute inset-0 rounded-lg" aria-label="Ver el partido"
+  <a href={enlace} class="absolute inset-0 rounded-lg" aria-label="Ver el partido"
   ></a>
 
   <p class="flex items-center justify-between gap-2 text-xs text-ink-muted">

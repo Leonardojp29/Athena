@@ -6,6 +6,7 @@ import TiraCruces from './TiraCruces.astro';
 import type { CruceHistorial, Historial, TeamSummary } from '../../lib/api';
 import { formatDate } from '../../lib/format';
 import { etiquetaDeRonda } from '../../lib/rondas';
+import { enlaceDeCruce } from '../../lib/partido';
 import {
   golesPorCruce,
   MINIMO_PARA_ANALIZAR,
@@ -91,7 +92,7 @@ const comparar = `/comparar?tipo=equipo&a=${homeTeam.slug}&b=${awayTeam.slug}`;
         {[homeTeam, awayTeam].map((equipo, i) => (
           <>
             {i === 1 && <span class="font-display text-3xl text-ink-muted">—</span>}
-            {equipo.logoUrl && <img src={equipo.logoUrl} alt="" width="44" height="44" class="size-11 object-contain" />}
+            {equipo.logoUrl && <img loading="lazy" src={equipo.logoUrl} alt="" width="44" height="44" class="size-11 object-contain" />}
           </>
         ))}
       </div>
@@ -149,7 +150,7 @@ const comparar = `/comparar?tipo=equipo&a=${homeTeam.slug}&b=${awayTeam.slug}`;
                 >
                   <p class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
                     {equipo.logoUrl && (
-                      <img src={equipo.logoUrl} alt="" width="18" height="18" class="size-[18px] object-contain" />
+                      <img loading="lazy" src={equipo.logoUrl} alt="" width="18" height="18" class="size-[18px] object-contain" />
                     )}
                     <span class="truncate">De local, {nombre(equipo)}</span>
                     {esHoy && (
@@ -210,7 +211,7 @@ const comparar = `/comparar?tipo=equipo&a=${homeTeam.slug}&b=${awayTeam.slug}`;
                   return (
                     <li class="group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-md px-2 py-2 transition-colors hover:bg-canvas-subtle sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_minmax(0,1fr)_14rem]">
                       <a
-                        href={`/partidos/${cruce.id}`}
+                        href={enlaceDeCruce(cruce)}
                         class="absolute inset-0 rounded-md"
                         aria-label={`${cruce.home_name} contra ${cruce.away_name}`}
                       />

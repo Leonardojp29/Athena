@@ -1,0 +1,44 @@
+---
+/*
+ * El espacio de un anuncio, reservado y en silencio.
+ *
+ * Va siempre a un costado y nunca partiendo el contenido: una tarjeta de anuncio metida entre dos
+ * secciones interrumpe lo que la persona vino a leer, y eso no se compensa con impresiones.
+ *
+ * No dibuja nada. Sin red publicitaria conectada —PRODUCT.md dice que todavía no hay acuerdos
+ * comerciales— lo único que hace falta es que la caja exista con su medida: así, el día que llegue
+ * el anuncio, aparece donde ya había sitio en vez de empujar la página hacia abajo mientras alguien
+ * lee. Ese salto es a la vez una molestia y una señal que el buscador mide y castiga.
+ *
+ * Cuando haya red, cambia el interior de este archivo y nada más. Si ese interior termina siendo un
+ * `<iframe>`, va con `title` obligatorio: sin él es una falla de accesibilidad seria.
+ */
+
+type Medida = 'riel' | 'bloque';
+
+interface Props {
+  medida: Medida;
+  /** De dónde sale este hueco, para saber después cuál rinde. */
+  ubicacion: string;
+  class?: string;
+}
+
+const { medida, ubicacion, class: className } = Astro.props;
+
+/* Las dos medidas estándar. El alto es fijo a propósito: es lo que reserva el espacio. */
+const MEDIDAS: Record<Medida, { ancho: number; alto: number }> = {
+  riel: { ancho: 300, alto: 600 },
+  bloque: { ancho: 300, alto: 250 },
+};
+
+const { ancho, alto } = MEDIDAS[medida];
+---
+
+<div
+  data-anuncio={ubicacion}
+  data-medida={medida}
+  aria-hidden="true"
+  class:list={['mx-auto w-full', className]}
+  style={`max-width:${ancho}px;height:${alto}px`}
+>
+</div>

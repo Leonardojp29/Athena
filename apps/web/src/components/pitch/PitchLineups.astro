@@ -72,14 +72,14 @@ const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' 
     <div class="grid gap-3">
       <div class="flex items-center justify-between gap-3 text-2xs">
         <span class="flex min-w-0 items-center gap-1.5">
-          {homeTeam.logoUrl && <img src={homeTeam.logoUrl} alt="" width="16" height="16" />}
+          {homeTeam.logoUrl && <img loading="lazy" src={homeTeam.logoUrl} alt="" width="16" height="16" />}
           <span class="truncate font-medium">{homeTeam.shortName ?? homeTeam.name}</span>
           {local?.formation && <span class="tabular text-ink-muted">{local.formation}</span>}
         </span>
         <span class="flex min-w-0 items-center gap-1.5">
           {visita?.formation && <span class="tabular text-ink-muted">{visita.formation}</span>}
           <span class="truncate font-medium">{awayTeam.shortName ?? awayTeam.name}</span>
-          {awayTeam.logoUrl && <img src={awayTeam.logoUrl} alt="" width="16" height="16" />}
+          {awayTeam.logoUrl && <img loading="lazy" src={awayTeam.logoUrl} alt="" width="16" height="16" />}
         </span>
       </div>
 

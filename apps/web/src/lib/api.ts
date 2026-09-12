@@ -761,8 +761,8 @@ export interface PlayerView {
       kickoffUtc: string;
       homeScore: number | null;
       awayScore: number | null;
-      homeTeam: { name: string };
-      awayTeam: { name: string };
+      homeTeam: { name: string; slug: string };
+      awayTeam: { name: string; slug: string };
       season: { competition: { name: string } };
     };
   }>;

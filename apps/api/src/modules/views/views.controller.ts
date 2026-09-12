@@ -21,6 +21,7 @@ const TTL = {
   matchTerminado: 3600,
   /* Un partido terminado al que le falta el detalle se repara en minutos: la caché no puede taparlo. */
   matchIncompleto: 120,
+  matchPorRuta: 3600,
   topPerformers: 300,
   /* La calculadora es una tabla, no un marcador: un minuto le sobra mientras se juega la fecha. */
   calculadoraEnJuego: 60,
@@ -131,6 +132,22 @@ export class ViewsController {
    * decide el estado: un partido terminado no vuelve a cambiar nunca y guardarlo treinta segundos
    * era pagar el viaje a Supabase una y otra vez por una respuesta idéntica.
    */
+  /*
+   * El partido por su dirección legible. Va antes que `match/:id` porque Nest resuelve por orden y
+   * `match-por-ruta` encajaría en el comodín del id.
+   */
+  @Get('match-por-ruta')
+  @Header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+  matchPorRuta(
+    @Query('local') local: string,
+    @Query('visita') visita: string,
+    @Query('fecha') fecha: string,
+  ) {
+    return this.cache.wrap(`match-ruta:${local}:${visita}:${fecha}`, TTL.matchPorRuta, () =>
+      this.views.matchPorRuta(local, visita, fecha),
+    );
+  }
+
   @Get('match/:id')
   async match(@Param('id', ParseUUIDPipe) id: string, @Res({ passthrough: true }) res: RespuestaConCabeceras) {
     const vista = await this.cache.wrap(`match:${id}`, ttlDePartido, () => this.views.match(id));
@@ -142,10 +159,13 @@ export class ViewsController {
     return vista;
   }
 
-  @Get('sitemap')
+  @Get('sitemap/:tipo')
   @Header('Cache-Control', 'public, s-maxage=3600')
-  sitemap() {
-    return this.cache.wrap('sitemap', TTL.sitemap, () => this.views.sitemapEntries());
+  sitemap(@Param('tipo') tipo: string, @Query('pagina') pagina?: string) {
+    const numero = Math.max(0, Number(pagina ?? 0) || 0);
+    return this.cache.wrap(`sitemap:${tipo}:${numero}`, TTL.sitemap, () =>
+      this.views.sitemapEntries(tipo, numero),
+    );
   }
 }
 

@@ -12,6 +12,7 @@ import {
   type TeamView,
 } from '../lib/api';
 import { paisEnEspanol } from '../lib/paises';
+import RielDeAnuncios from '../components/anuncios/RielDeAnuncios.astro';
 
 /*
  * Comparar dos jugadores o dos equipos.
@@ -70,12 +71,17 @@ const titulo =
     : tipo === 'equipo'
       ? 'Comparar equipos'
       : 'Comparar jugadores';
+
+/*
+ * Nunca al índice: cada par de entidades es una URL y con miles de jugadores el espacio es N².
+ * Ninguna de esas páginas dice algo que las dos fichas no digan mejor. Se rastrea, no se guarda.
+ */
 ---
 
 <Base
   title={`${titulo} | Athena`}
   description="Compará dos jugadores o dos equipos con sus números de la temporada."
-  noindex={!uno || !dos}
+  noindex
   width="bleed"
   liveBar={false}
 >
@@ -106,6 +112,8 @@ const titulo =
   </section>
 
   <Container width="content" class="pt-7 pb-5">
+    <div class="grid items-start gap-7 3xl:grid-cols-[minmax(0,1fr)_19rem]">
+    <div class="min-w-0">
     {
       uno && dos ? (
         <TarjetaComparacion tipo={tipo} uno={uno} dos={dos} slugA={a as string} slugB={b as string} />
@@ -207,5 +215,9 @@ const titulo =
         </div>
       )
     }
+    </div>
+
+    <RielDeAnuncios ubicacion="comparar-riel" />
+    </div>
   </Container>
 </Base>

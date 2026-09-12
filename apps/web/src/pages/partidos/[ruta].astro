@@ -1,0 +1,66 @@
+---
+import Base from '../../layouts/Base.astro';
+import NoEncontrado from '../../components/NoEncontrado.astro';
+import PaginaDePartido from '../../components/match/PaginaDePartido.astro';
+import { api, type MatchView } from '../../lib/api';
+import { enlaceDePartido, esUuid, leerRutaDePartido } from '../../lib/partido';
+
+/*
+ * La dirección del partido dice quién juega y cuándo. Antes era el UUID de la base: la única página
+ * del sitio sin una palabra en su URL, y justo la que tiene que salir cuando alguien busca
+ * «alianza lima vs universitario».
+ *
+ * Tres caminos entran acá y los tres terminan bien:
+ *   · el UUID viejo, que sigue circulando por chats y enlaces → 301 a la dirección nueva;
+ *   · el cruce con la fecha corrida porque el partido se aplazó → 301 a la fecha buena;
+ *   · cualquier otra cosa → 404 de verdad, y no un desvío a una página que responde 200.
+ */
+const { ruta = '' } = Astro.params;
+
+let match: MatchView | null = null;
+
+if (esUuid(ruta)) {
+  const porId = await api<MatchView>(`/views/match/${ruta}`).catch(() => null);
+  if (porId) return Astro.redirect(enlaceDePartido(porId) + Astro.url.search, 301);
+} else {
+  const pedido = leerRutaDePartido(ruta);
+  if (pedido) {
+    const parametros = new URLSearchParams({
+      local: pedido.local,
+      visita: pedido.visita,
+      fecha: pedido.fecha,
+    });
+    const encontrado = await api<{ id: string; exacta: boolean }>(
+      `/views/match-por-ruta?${parametros}`,
+    ).catch(() => null);
+    if (encontrado) {
+      match = await api<MatchView>(`/views/match/${encontrado.id}`).catch(() => null);
+      if (match && !encontrado.exacta)
+        return Astro.redirect(enlaceDePartido(match) + Astro.url.search, 301);
+    }
+  }
+}
+
+if (!match) {
+  Astro.response.status = 404;
+  Astro.response.headers.set('cache-control', 'public, s-maxage=300');
+}
+---
+
+{
+  match ? (
+    <PaginaDePartido match={match} />
+  ) : (
+    <Base
+      title="Partido no encontrado | Athena"
+      description="Este partido no existe o ya no está disponible."
+      noindex
+      liveBar={false}
+    >
+      <NoEncontrado
+        titulo="Este partido no existe"
+        detalle="La dirección está incompleta o el partido ya no está disponible."
+      />
+    </Base>
+  )
+}

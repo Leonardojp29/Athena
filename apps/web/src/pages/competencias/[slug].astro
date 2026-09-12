@@ -26,6 +26,9 @@ import { isLive } from '../../lib/format';
 import { paletaCompetencia } from '../../lib/coloresCompetencia';
 import { nombreFase, paisEnEspanol } from '../../lib/paises';
 import { etiquetaDeRonda } from '../../lib/rondas';
+import { rutaDePartido } from '../../lib/partido';
+import { absoluta, canonicaCon, migas, nodoCompetencia, nodoEquipo } from '../../lib/seo';
+import Hueco from '../../components/anuncios/Hueco.astro';
 
 const { slug } = Astro.params;
 
@@ -63,7 +66,7 @@ let view: CompetitionView;
 try {
   view = await pedidoVista;
 } catch (error) {
-  if (error instanceof ApiError && error.status === 404) return Astro.redirect('/404');
+  if (error instanceof ApiError && error.status === 404) return Astro.rewrite('/404');
   throw error;
 }
 const partido = await pedidoPartido;
@@ -235,18 +238,63 @@ const gruposJuntos = esCopa && standingGroups.length > 2;
 const tablaUnica = esCopa && standingGroups.length === 1;
 const onceDeLaFechaVisible = onceDelTorneoVisible ? null : once;
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'SportsOrganization',
-  name: competition.name,
-  sport: 'Soccer',
-  ...(competition.logoUrl ? { logo: competition.logoUrl } : {}),
-};
+/*
+ * La temporada sí cambia la página: `?temporada=2019` es otro torneo, con otra tabla y otro campeón.
+ * Sin conservarla en el canónico, todo el archivo apunta al año corriente y queda inindexable.
+ *
+ * Con un partido abierto manda el partido: esa vista es la de su propia página.
+ */
+const canonical = partido
+  ? new URL(`/partidos/${rutaDePartido(partido)}`, Astro.site).toString()
+  : canonicaCon(Astro.url, Astro.site, ['temporada']);
+
+const rutaCompetencia = `/competencias/${competition.slug}`;
+const urlCompetencia = absoluta(rutaCompetencia, Astro.site);
+
+/*
+ * La tabla como lista ordenada. Es lo que la página es: el buscador puede leer quién va primero sin
+ * interpretar un `<table>`, y cada club apunta a su ficha por el mismo `@id` que usa su página.
+ */
+const tablaPrincipal = standingGroups.find((g) => g.current) ?? standingGroups[0];
+const posiciones =
+  tablaPrincipal && tablaPrincipal.rows.length > 0
+    ? [
+        {
+          '@type': 'ItemList',
+          '@id': `${urlCompetencia}#posiciones`,
+          name: `Tabla de posiciones de ${competition.name} ${seasonLabel}`,
+          numberOfItems: tablaPrincipal.rows.length,
+          itemListOrder: 'https://schema.org/ItemListOrderAscending',
+          itemListElement: tablaPrincipal.rows.map((fila) => ({
+            '@type': 'ListItem',
+            position: fila.position,
+            item: nodoEquipo(fila.team, Astro.site),
+          })),
+        },
+      ]
+    : [];
+
+const jsonLd = [
+  {
+    ...nodoCompetencia(competition, Astro.site),
+    ...(competition.country ? { areaServed: paisEnEspanol(competition.country) } : {}),
+  },
+  ...posiciones,
+  migas(
+    [
+      { nombre: 'Competencias', ruta: '/competencias' },
+      { nombre: competition.name, ruta: rutaCompetencia },
+    ],
+    Astro.site,
+    canonical,
+  ),
+];
 ---
 
 <Base
   title={`${competition.name} ${seasonLabel} — Tabla de posiciones y partidos | Athena`}
   description={`Tabla de posiciones, resultados y próximos partidos de ${competition.name} temporada ${seasonLabel}.`}
+  canonical={canonical}
   ogImage={competition.logoUrl}
   jsonLd={jsonLd}
   width="bleed"
@@ -259,7 +307,7 @@ const jsonLd = {
     <!-- El trofeo gigante de fondo: se sabe en qué copa se está sin leer el título. -->
     {
       paleta && competition.logoUrl && (
-        <img
+        <img loading="lazy"
           src={competition.logoUrl}
           alt=""
           width="280"
@@ -453,6 +501,8 @@ const jsonLd = {
                   )
                 )}
                 <AvisoFavoritos />
+
+                <Hueco medida="bloque" ubicacion="competencia-riel" />
               </div>
             </div>
 

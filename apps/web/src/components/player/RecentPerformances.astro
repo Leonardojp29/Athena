@@ -1,6 +1,7 @@
 ---
 import type { PlayerView } from '../../lib/api';
 import { formatDate } from '../../lib/format';
+import { enlaceDePartido } from '../../lib/partido';
 
 /* Los últimos partidos con su rendimiento: el enlace lleva al partido, no a una lista muerta. */
 interface Props {
@@ -22,7 +23,7 @@ const { performances } = Astro.props;
           return (
             <li class="border-b border-border/50 last:border-0">
               <a
-                href={`/partidos/${p.match.id}`}
+                href={enlaceDePartido(p.match)}
                 class="flex items-center gap-3 py-2 transition-colors hover:bg-canvas-subtle"
               >
                 <span class="min-w-0 flex-1">

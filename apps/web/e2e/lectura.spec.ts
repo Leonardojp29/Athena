@@ -280,9 +280,26 @@ test.describe('SEO y accesibilidad', () => {
   });
 
   test('robots y sitemap responden', async ({ request }) => {
-    expect((await request.get('/robots.txt')).status()).toBe(200);
-    const sitemap = await request.get('/sitemap.xml');
-    expect(sitemap.status()).toBe(200);
-    expect(await sitemap.text()).toContain('<urlset');
+    const robots = await request.get('/robots.txt');
+    expect(robots.status()).toBe(200);
+    expect(await robots.text()).toContain('Sitemap:');
+
+    /* `/sitemap.xml` es un índice: con más de cien mil direcciones, un solo archivo no entra. */
+    const indice = await request.get('/sitemap.xml');
+    expect(indice.status()).toBe(200);
+    const xml = await indice.text();
+    expect(xml).toContain('<sitemapindex');
+
+    const hijos = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname);
+    expect(hijos).toContain('/sitemap-partidos.xml');
+
+    for (const ruta of ['/sitemap-paginas.xml', '/sitemap-equipos.xml', '/sitemap-partidos.xml']) {
+      const hijo = await request.get(ruta);
+      expect(hijo.status(), ruta).toBe(200);
+      const cuerpo = await hijo.text();
+      expect(cuerpo, ruta).toContain('<urlset');
+      /* El tope del formato son cincuenta mil por archivo. */
+      expect((cuerpo.match(/<url>/g) ?? []).length, ruta).toBeLessThan(50_000);
+    }
   });
 });

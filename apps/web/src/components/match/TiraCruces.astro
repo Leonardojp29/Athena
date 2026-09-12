@@ -1,6 +1,7 @@
 ---
 import type { CruceHistorial, TeamSummary } from '../../lib/api';
 import { resultadoDeCruce, type Resultado } from '../../lib/historial';
+import { enlaceDeCruce } from '../../lib/partido';
 
 /*
  * Los últimos cruces como una tira de V/E/D, del más viejo al más nuevo.
@@ -40,7 +41,7 @@ const tira = [...cruces]
   {
     tira.map(({ cruce, chip }) => (
       <a
-        href={`/partidos/${cruce.id}`}
+        href={enlaceDeCruce(cruce)}
         title={`${chip.titulo(nombre(homeTeam), nombre(awayTeam))} · ${cruce.home_score}–${cruce.away_score}`}
         class:list={[
           'grid size-5 place-items-center rounded-[3px] text-[10px] font-bold transition-transform hover:scale-110',

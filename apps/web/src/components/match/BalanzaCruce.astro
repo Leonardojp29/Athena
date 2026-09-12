@@ -45,7 +45,7 @@ const leyenda = `${nombre(homeTeam)} ganó ${resumen.gano_local}, ${nombre(awayT
          que la barra de abajo, que era lo que no coincidía. -->
     <div class:list={['flex min-w-0 items-center', grande ? 'gap-3' : 'gap-2']}>
       {homeTeam.logoUrl && (
-        <img
+        <img loading="lazy"
           src={homeTeam.logoUrl}
           alt=""
           width={escudo}
@@ -81,7 +81,7 @@ const leyenda = `${nombre(homeTeam)} ganó ${resumen.gano_local}, ${nombre(awayT
 
     <div class:list={['flex min-w-0 flex-row-reverse items-center text-right', grande ? 'gap-3' : 'gap-2']}>
       {awayTeam.logoUrl && (
-        <img
+        <img loading="lazy"
           src={awayTeam.logoUrl}
           alt=""
           width={escudo}

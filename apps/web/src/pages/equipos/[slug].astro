@@ -8,6 +8,7 @@ import AvisoFavoritos from '../../components/AvisoFavoritos.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import Card from '../../components/Card.astro';
 import Container from '../../components/layout/Container.astro';
+import Hueco from '../../components/anuncios/Hueco.astro';
 import FichaEstadio from '../../components/team/FichaEstadio.astro';
 import Icon from '../../components/Icon.astro';
 import CountryFlag from '../../components/CountryFlag.astro';
@@ -17,6 +18,7 @@ import TablaPlantel from '../../components/team/TablaPlantel.astro';
 import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { coloresDeClub, temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import { absoluta, identidad, migas, nodoCompetencia, nodoEquipo } from '../../lib/seo';
 
 const { slug } = Astro.params;
 
@@ -37,7 +39,7 @@ try {
   if (error instanceof ApiError && error.status === 404) {
     /* El slug cambió: se redirige al nuevo en lugar de decir que no existe. */
     const mudado = error.body?.movedTo;
-    return Astro.redirect(mudado ? `/equipos/${mudado}` : '/404', mudado ? 301 : 302);
+    return mudado ? Astro.redirect(`/equipos/${mudado}`, 301) : Astro.rewrite('/404');
   }
   throw error;
 }
@@ -75,38 +77,81 @@ const FORMA: Record<string, { letra: string; clase: string; titulo: string }> = 
 const ultimos = (form: string | null) =>
   form === null ? [] : [...form.slice(0, 5)].reverse().flatMap((c) => FORMA[c] ?? []);
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'SportsTeam',
-  name: team.name,
-  sport: 'Soccer',
-  ...(team.logoUrl ? { logo: team.logoUrl } : {}),
-  ...(team.founded ? { foundingDate: String(team.founded) } : {}),
-  /* La dirección del estadio no se muestra —es postal y viene a medias—, pero acá sí sirve. */
-  ...(team.venue
-    ? {
-        location: {
-          '@type': 'StadiumOrArena',
-          name: team.venue.name,
-          ...(team.venue.capacity ? { maximumAttendeeCapacity: team.venue.capacity } : {}),
-          ...(team.venue.address || team.venue.city
-            ? {
-                address: {
-                  '@type': 'PostalAddress',
-                  ...(team.venue.address ? { streetAddress: team.venue.address } : {}),
-                  ...(team.venue.city ? { addressLocality: team.venue.city } : {}),
-                },
-              }
-            : {}),
-        },
-      }
-    : {}),
-};
+const rutaEquipo = `/equipos/${team.slug}`;
+const urlEquipo = absoluta(rutaEquipo, Astro.site);
+const paisDelClub = team.country ? paisEnEspanol(team.country) : null;
+
+/* El torneo en curso: el que la tabla de la derecha muestra primero. */
+const torneoActual = standings[0]?.season.competition ?? null;
+const posicionActual = standings[0]?.position ?? null;
+
+/*
+ * Dos clubes "Nacional" de países distintos tenían título y descripción idénticos byte a byte. El
+ * país desempata, y la posición dice algo que la plantilla sola no decía.
+ */
+const tituloEquipo = `${team.name}${paisDelClub ? ` (${paisDelClub})` : ''} — Partidos, resultados y posición | Athena`;
+const descripcionEquipo = [
+  `Resultados recientes, próximos partidos y plantel de ${team.name}`,
+  paisDelClub ? ` de ${paisDelClub}` : '',
+  torneoActual && posicionActual
+    ? `. Va ${posicionActual}.º en ${nombreTorneo(torneoActual.name)}.`
+    : '.',
+].join('');
+
+const plantel = squad.lines
+  .flatMap((linea) => linea.players)
+  .flatMap(({ player }) => {
+    if (!player.slug) return [];
+    const url = absoluta(`/jugadores/${player.slug}`, Astro.site);
+    return [{ '@type': 'Person', '@id': identidad(url, 'jugador'), url, name: player.name }];
+  })
+  .slice(0, 40);
+
+const jsonLd = [
+  {
+    ...nodoEquipo(team, Astro.site),
+    ...(team.founded ? { foundingDate: String(team.founded) } : {}),
+    ...(paisDelClub ? { areaServed: paisDelClub } : {}),
+    ...(torneoActual ? { memberOf: nodoCompetencia(torneoActual, Astro.site) } : {}),
+    /* El plantel ya viajó para dibujarse: declararlo no cuesta una consulta más. */
+    ...(plantel.length > 0 ? { athlete: plantel } : {}),
+    /* La dirección del estadio no se muestra —es postal y viene a medias—, pero acá sí sirve. */
+    ...(team.venue
+      ? {
+          location: {
+            '@type': 'StadiumOrArena',
+            name: team.venue.name,
+            ...(team.venue.capacity ? { maximumAttendeeCapacity: team.venue.capacity } : {}),
+            ...(team.venue.address || team.venue.city
+              ? {
+                  address: {
+                    '@type': 'PostalAddress',
+                    ...(team.venue.address ? { streetAddress: team.venue.address } : {}),
+                    ...(team.venue.city ? { addressLocality: team.venue.city } : {}),
+                  },
+                }
+              : {}),
+          },
+        }
+      : {}),
+  },
+  migas(
+    torneoActual
+      ? [
+          { nombre: 'Competencias', ruta: '/competencias' },
+          { nombre: torneoActual.name, ruta: `/competencias/${torneoActual.slug}` },
+          { nombre: team.name, ruta: rutaEquipo },
+        ]
+      : [{ nombre: team.name, ruta: rutaEquipo }],
+    Astro.site,
+    urlEquipo,
+  ),
+];
 ---
 
 <Base
-  title={`${team.name} — Partidos, resultados y posición | Athena`}
-  description={`Resultados recientes, próximos partidos y posición en la tabla de ${team.name}.`}
+  title={tituloEquipo}
+  description={descripcionEquipo}
   ogImage={team.logoUrl}
   jsonLd={jsonLd}
   width="bleed"
@@ -127,6 +172,7 @@ const jsonLd = {
           width="260"
           height="260"
           aria-hidden="true"
+          fetchpriority="high"
           class="pointer-events-none absolute -top-16 right-6 hidden size-80 opacity-[0.18] md:block lg:size-96"
           style="mask-image:linear-gradient(115deg, transparent 20%, black 80%)"
         />
@@ -140,7 +186,14 @@ const jsonLd = {
               <!-- El escudo casi llena la plaquita: con más aire adentro se veía un cuadrado blanco
                    con un escudo perdido en el medio. -->
               <span class="grid size-[4.5rem] shrink-0 place-items-center rounded-2xl bg-chalk p-1.5 shadow-card ring-1 ring-(--linea) sm:size-24 sm:p-2">
-                <img src={team.logoUrl} alt="" width="80" height="80" class="size-full object-contain" />
+                <img
+                  src={team.logoUrl}
+                  alt={`Escudo de ${team.name}`}
+                  width="80"
+                  height="80"
+                  fetchpriority="high"
+                  class="size-full object-contain"
+                />
               </span>
             )
           }
@@ -349,6 +402,8 @@ const jsonLd = {
         )}
 
         <AvisoFavoritos />
+
+        <Hueco medida="bloque" ubicacion="equipo-riel" class="mt-1" />
       </div>
     </div>
   </Container>

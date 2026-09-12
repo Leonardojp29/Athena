@@ -5,6 +5,8 @@ import Base from '../../layouts/Base.astro';
 import { cachear } from '../../lib/cache';
 import { api, type MatchDayView } from '../../lib/api';
 import { formatDateLong } from '../../lib/format';
+import { canonicaCon, migas } from '../../lib/seo';
+import RielDeAnuncios from '../../components/anuncios/RielDeAnuncios.astro';
 
 const TZ = 'America/Lima';
 const DAY_MS = 86_400_000;
@@ -41,11 +43,20 @@ const dias = [-3, -2, -1, 0, 1, 2, 3].map((offset) => {
 const anterior = isoDay(new Date(ancla.getTime() - DAY_MS));
 const siguiente = isoDay(new Date(ancla.getTime() + DAY_MS));
 const titulo = formatDateLong(`${fecha}T12:00:00-05:00`);
+
+/*
+ * El día sí cambia la página: cada `?fecha=` es otra jornada con otros partidos. Sin conservarlo,
+ * los siete días que la cabecera ofrece colapsan en una sola dirección y seis quedan sin indexar.
+ */
+const canonical = canonicaCon(Astro.url, Astro.site, ['fecha']);
+const jsonLd = migas([{ nombre: 'Partidos', ruta: '/partidos' }], Astro.site, canonical);
 ---
 
 <Base
   title={`Partidos del ${titulo} | Athena`}
   description={`Todos los partidos del ${titulo} en las competencias que sigue Athena.`}
+  canonical={canonical}
+  jsonLd={jsonLd}
   width="wide"
   liveBar={false}
 >
@@ -55,7 +66,11 @@ const titulo = formatDateLong(`${fecha}T12:00:00-05:00`);
       <p class="mt-1 text-sm text-ink-muted first-letter:uppercase">{titulo}</p>
     </div>
 
-    <div class="flex items-center gap-1">
+    <!--
+      En un teléfono los siete días más las dos flechas miden 436 px y la página se iba de lado.
+      La tira desplaza sola y el resto de la fila se queda quieto.
+    -->
+    <div class="-mx-4 flex max-w-full items-center gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <a
         href={`/partidos?fecha=${anterior}`}
         aria-label="Día anterior"
@@ -96,25 +111,31 @@ const titulo = formatDateLong(`${fecha}T12:00:00-05:00`);
     </div>
   </header>
 
-  {
-    dia === null ? (
-      <p class="rounded-lg border border-border bg-surface p-6 text-sm text-ink-muted">
-        No pudimos cargar el calendario. Intenta de nuevo en un momento.
-      </p>
-    ) : dia.sections.length === 0 ? (
-      <div class="rounded-lg border border-border bg-surface p-8 text-center">
-        <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
-        <p class="mt-3 text-sm text-ink-muted">
-          Sin partidos este día en las competencias que seguimos.
-        </p>
-        {fecha !== hoy && (
-          <a href="/partidos" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
-            Ver los de hoy
-          </a>
-        )}
-      </div>
-    ) : (
-      <MatchGeography geography={dia.geography} />
-    )
-  }
+  <div class="grid items-start gap-7 3xl:grid-cols-[minmax(0,1fr)_19rem]">
+    <div class="min-w-0">
+      {
+        dia === null ? (
+          <p class="rounded-lg border border-border bg-surface p-6 text-sm text-ink-muted">
+            No pudimos cargar el calendario. Intenta de nuevo en un momento.
+          </p>
+        ) : dia.sections.length === 0 ? (
+          <div class="rounded-lg border border-border bg-surface p-8 text-center">
+            <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
+            <p class="mt-3 text-sm text-ink-muted">
+              Sin partidos este día en las competencias que seguimos.
+            </p>
+            {fecha !== hoy && (
+              <a href="/partidos" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
+                Ver los de hoy
+              </a>
+            )}
+          </div>
+        ) : (
+          <MatchGeography geography={dia.geography} />
+        )
+      }
+    </div>
+
+    <RielDeAnuncios ubicacion="partidos-riel" />
+  </div>
 </Base>

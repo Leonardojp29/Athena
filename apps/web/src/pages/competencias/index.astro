@@ -6,6 +6,8 @@ import Icon from '../../components/Icon.astro';
 import TarjetaDeCompetencias from '../../components/competencia/TarjetaDeCompetencias.astro';
 import { getNavTree, todasLasCompetencias } from '../../lib/nav';
 import { paisEnEspanol } from '../../lib/paises';
+import { migas } from '../../lib/seo';
+import RielDeAnuncios from '../../components/anuncios/RielDeAnuncios.astro';
 
 const arbol = await getNavTree();
 
@@ -21,6 +23,7 @@ const torneosDeSelecciones = arbol.selecciones.reduce((n, c) => n + c.competitio
 <Base
   title="Competencias | Athena"
   description="Todas las competencias que Athena sigue, por continente y país: tablas, calendario y análisis."
+  jsonLd={migas([{ nombre: 'Competencias', ruta: '/competencias' }], Astro.site, new URL('/competencias', Astro.site).toString())}
   width="wide"
   liveBar={false}
 >
@@ -32,7 +35,8 @@ const torneosDeSelecciones = arbol.selecciones.reduce((n, c) => n + c.competitio
     </p>
   </header>
 
-  <div class="grid gap-10">
+  <div class="grid items-start gap-7 3xl:grid-cols-[minmax(0,1fr)_19rem]">
+  <div class="grid min-w-0 gap-10">
     {
       arbol.clubes.map((continente) => (
         <section>
@@ -94,5 +98,8 @@ const torneosDeSelecciones = arbol.selecciones.reduce((n, c) => n + c.competitio
         </section>
       )
     }
+  </div>
+
+    <RielDeAnuncios ubicacion="competencias-riel" />
   </div>
 </Base>

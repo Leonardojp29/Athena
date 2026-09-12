@@ -15,6 +15,7 @@ import {
   type DatosDeLaCalculadora,
 } from '@athena/calculadora';
 import '../styles/calculadora.css';
+import { canonicaCon } from '../lib/seo';
 
 /*
  * La calculadora de la Liga 1.
@@ -163,12 +164,20 @@ const descripcion =
   predicho && detalle(resumen)
     ? `${detalle(resumen)}. Abrí el enlace para ver la tabla completa y cambiar los marcadores.`
     : 'Poné los marcadores que faltan y mirá cómo quedan el Apertura, el Clausura y la tabla anual: campeón, Libertadores, Sudamericana y descenso.';
+
+/*
+ * El escenario va en `?p=`: cambia el título, la descripción y la imagen que se comparte. Sin
+ * conservarlo, cada predicción que alguien manda por WhatsApp apunta a la calculadora en blanco.
+ */
+const canonical = canonicaCon(Astro.url, Astro.site, ['p']);
 ---
 
 <Base
   title={titulo}
   description={descripcion}
+  canonical={canonical}
   ogImage={tarjeta}
+  ogImageAncha
   chrome="minimal"
   width="bleed"
   liveBar={false}
@@ -189,7 +198,7 @@ const descripcion =
                 </p>
               </div>
               <!-- El escudo ya dice "Liga 1": no hace falta repetirlo, ni encerrarlo en una plaquita. -->
-              <img
+              <img loading="lazy"
                 src="/competencias/liga1.png"
                 alt={datos.competencia.nombre}
                 width="44"

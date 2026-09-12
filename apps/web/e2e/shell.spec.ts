@@ -741,7 +741,10 @@ test.describe('shell del sitio', () => {
     // clic en el centro geométrico: justo donde vive el marcador
     await page.mouse.click(caja!.x + caja!.width / 2, caja!.y + caja!.height / 2);
     // timeout amplio: la vista de partido arma la cancha y viaja a Supabase
-    await expect(page).toHaveURL(/\/partidos\/[0-9a-f-]{36}/, { timeout: 20_000 });
+    /* La dirección del partido es el cruce y la fecha, no el UUID de la base. */
+    await expect(page).toHaveURL(/\/partidos\/[a-z0-9-]+-vs-[a-z0-9-]+-\d{4}-\d{2}-\d{2}/, {
+      timeout: 20_000,
+    });
   });
 
   /*

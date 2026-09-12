@@ -1,4 +1,18 @@
 import type { Equipo, Resumen } from '@athena/calculadora';
+import {
+  ACENTO,
+  ALTO,
+  ANCHO,
+  FONDO,
+  FONDO_HONDO,
+  LINEA,
+  MARGEN,
+  TIZA,
+  TIZA_TENUE,
+  escapar,
+  marcaDeAthena,
+  palabraAthena,
+} from './marca';
 
 /*
  * La tarjeta que se comparte, dibujada a mano en SVG.
@@ -8,20 +22,9 @@ import type { Equipo, Resumen } from '@athena/calculadora';
  * calculadora, y una caja mal centrada en una imagen que circula por WhatsApp no se arregla con un
  * despliegue.
  *
- * Mide 1200×630, que es lo que esperan las vistas previas de los chats y las redes.
+ * Mide 1200×630, que es lo que esperan las vistas previas de los chats y las redes. El fondo, la
+ * marca y la paleta salen de `marca.ts`, que es lo que comparte con la portada del sitio.
  */
-
-const ANCHO = 1200;
-const ALTO = 630;
-const MARGEN = 64;
-
-/* Los mismos valores que la banda del sitio, en sRGB porque el SVG no entiende oklch. */
-const FONDO = '#12234f';
-const FONDO_HONDO = '#0d1a3c';
-const TIZA = '#fdfcfb';
-const TIZA_TENUE = '#9bacc9';
-const LINEA = '#2b3f70';
-const ACENTO = '#1a5cdf';
 
 export interface Insumos {
   resumen: Resumen;
@@ -33,9 +36,6 @@ export interface Insumos {
   /** El dominio real de quien sirve la imagen: inventar uno es peor que no poner ninguno. */
   sitio: string;
 }
-
-const escapar = (texto: string) =>
-  texto.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /*
  * El ancho de una cadena en Oswald, estimado por clase de carácter. Es una aproximación —la buena
@@ -77,33 +77,6 @@ function acortar(nombre: string): string {
   const podado = nombre.replace(sobra, '');
   const palabras = podado.split(' ');
   return palabras.length > 2 ? palabras.slice(0, 2).join(' ') : podado;
-}
-
-/** El búho de Athena, del mismo trazado que `LogoMark.astro`, escalado desde su caja de 32. */
-function marcaDeAthena(x: number, y: number, tamano: number): string {
-  const k = tamano / 32;
-  return `<g transform="translate(${x} ${y}) scale(${k})" fill="none" stroke="${TIZA}" stroke-width="1.6" stroke-linejoin="round">
-    <path d="M4 9 A5 5 0 0 1 9 4 H13.6 L16 7.2 L18.4 4 H23 A5 5 0 0 1 28 9 V15.4 C28 22 22.6 26.6 16 29 C9.4 26.6 4 22 4 15.4 Z" />
-    <rect x="8" y="8.6" width="16" height="2" rx="1" fill="#e6293f" stroke="none" />
-    <circle cx="11.2" cy="14" r="4.2" stroke-width="2.2" />
-    <circle cx="20.8" cy="14" r="4.2" stroke-width="2.2" />
-    <circle cx="11.2" cy="14" r="1.7" fill="${TIZA}" stroke="none" />
-    <circle cx="20.8" cy="14" r="1.7" fill="${TIZA}" stroke="none" />
-    <path d="M14.3 13 L17.7 13 L16 18.6 Z" fill="${TIZA}" stroke="none" />
-  </g>`;
-}
-
-/** El logotipo "ATHENA" en trazados, como en el header: no depende de que la fuente cargue. */
-function palabraAthena(x: number, y: number, alto: number): string {
-  const k = alto / 18;
-  return `<g transform="translate(${x} ${y}) scale(${k})" fill="${TIZA}">
-    <path d="M0 18 L7.4 0 H11.6 L19 18 H14.7 L13.2 14.1 H5.8 L4.3 18 Z M7.1 10.7 H11.9 L9.5 4.4 Z" />
-    <path d="M22 18 V3.6 H17.2 V0 H31.2 V3.6 H26.4 V18 Z" />
-    <path d="M34 18 V0 H38.4 V7.1 H45.4 V0 H49.8 V18 H45.4 V10.7 H38.4 V18 Z" />
-    <path d="M53.6 18 V0 H66.8 V3.6 H58 V7.1 H65.6 V10.6 H58 V14.4 H67 V18 Z" />
-    <path d="M70.6 18 V0 H75.1 L82.4 11.4 V0 H86.6 V18 H82.2 L74.8 6.5 V18 Z" />
-    <path d="M89.6 18 L97 0 H101.2 L108.6 18 H104.3 L102.8 14.1 H95.4 L93.9 18 Z M96.7 10.7 H101.5 L99.1 4.4 Z" />
-  </g>`;
 }
 
 function cupo(

@@ -155,7 +155,7 @@ const parte = (f: Fila, lado: 'a' | 'b') => {
           class="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface p-3 text-center transition-colors hover:border-primary-ink"
         >
           {lado.foto ? (
-            <img
+            <img loading="lazy"
               src={lado.foto}
               alt=""
               width="64"

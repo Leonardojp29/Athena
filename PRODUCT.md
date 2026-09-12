@@ -71,8 +71,10 @@ Athena sigue sin pronosticar resultados. Documentada en `docs/calculadora/CALCUL
 - La cuenta del proveedor de datos es **compartida con otros sistemas**, así que el presupuesto de
   peticiones se calcula con la cuota real que devuelven las cabeceras, nunca con el límite del plan.
 - El gasto de IA tiene tope propio diario; al alcanzarlo los trabajos fallan a propósito.
-- Las páginas de entidad envían **0 KB de JavaScript** hoy y eso es un logro a preservar: React solo
-  se hidrata en partidos en vivo.
+- **El código de Athena no envía JavaScript en las páginas de entidad** y eso es un logro a
+  preservar: React solo se hidrata en partidos en vivo, en el juego y en la calculadora. Las vistas
+  reservan espacio para anuncios, todavía sin red conectada; cuando la haya, sus bytes son de un
+  tercero y se miden aparte de este presupuesto, que existe para vigilar lo que escribimos nosotros.
 - Catorce comportamientos están protegidos por tests end-to-end que deben seguir en verde.
 - En desarrollo, cada consulta a la base viaja ~800 ms porque está en otra región; esa latencia es
   geográfica y no debe confundirse con lentitud del código.

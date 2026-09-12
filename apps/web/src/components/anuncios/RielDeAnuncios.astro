@@ -1,0 +1,21 @@
+---
+import Hueco from './Hueco.astro';
+
+/*
+ * El riel de la derecha, solo desde 1800 px.
+ *
+ * La compuerta es `3xl` y no `xl` ni `2xl` porque esos dos disparan por debajo de los 1600 px con
+ * los que topa el contenido: el riel aparecería robándole ancho al texto en vez de ocupando el
+ * margen que sobra. El breakpoint estaba declarado en `global.css` y sin usar; este es su uso.
+ */
+
+interface Props {
+  ubicacion: string;
+}
+
+const { ubicacion } = Astro.props;
+---
+
+<div class="hidden 3xl:block 3xl:sticky 3xl:top-20 3xl:self-start">
+  <Hueco medida="riel" ubicacion={ubicacion} />
+</div>

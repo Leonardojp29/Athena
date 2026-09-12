@@ -6,12 +6,21 @@ import SiteFooter from '../components/layout/SiteFooter.astro';
 import SiteHeader from '../components/layout/SiteHeader.astro';
 import ProgresoNavegacion from '../components/layout/ProgresoNavegacion.astro';
 import SkipLink from '../components/layout/SkipLink.astro';
+import type { Nodo } from '../lib/seo';
 
 interface Props {
   title: string;
   description: string;
   ogImage?: string | null;
-  jsonLd?: Record<string, unknown> | null;
+  /* La imagen es un rectángulo 1200×630 y no un escudo cuadrado: manda tarjeta grande. */
+  ogImageAncha?: boolean;
+  ogType?: 'website' | 'article' | 'profile';
+  jsonLd?: Nodo | Nodo[] | null;
+  /**
+   * El canónico, cuando los parámetros de la URL sí cambian el contenido. Por omisión es la ruta
+   * sola: la mayoría de los parámetros del sitio eligen una pestaña o un orden y no otra página.
+   */
+  canonical?: string | null;
   noindex?: boolean;
   chrome?: 'full' | 'minimal';
   liveBar?: boolean;
@@ -23,14 +32,44 @@ const {
   title,
   description,
   ogImage = null,
+  ogImageAncha = false,
+  ogType = 'website',
   jsonLd = null,
+  canonical: canonicaPedida = null,
   noindex = false,
   chrome = 'full',
   liveBar = true,
   width = 'content',
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname, Astro.site);
+const canonical = canonicaPedida ?? new URL(Astro.url.pathname, Astro.site).toString();
+
+/*
+ * Toda página comparte algo: sin imagen propia va la portada de la marca. Un enlace sin vista
+ * previa en WhatsApp parece roto, y la mitad de las rutas no tenía ninguna.
+ */
+const PORTADA = new URL('/og.png', Astro.site).toString();
+const imagen = ogImage ?? PORTADA;
+const tarjetaAncha = ogImage ? ogImageAncha : true;
+
+/*
+ * `noindex, follow`: que no la guarde, pero que sí siga los enlaces. Sin `follow` una página de
+ * resultados internos se vuelve un callejón sin salida para el rastreo.
+ */
+const robots = noindex ? 'noindex, follow' : 'max-image-preview:large';
+
+const grafo = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+/*
+ * `</script` dentro del nombre de un club cerraría la etiqueta y el resto del JSON se pintaría como
+ * texto. No ha pasado; que no pueda pasar cuesta una línea.
+ */
+const datosEstructurados =
+  grafo.length > 0
+    ? JSON.stringify({ '@context': 'https://schema.org', '@graph': grafo }).replace(
+        /<\//g,
+        '<\\/',
+      )
+    : null;
 ---
 
 <!doctype html>
@@ -42,20 +81,33 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="theme-color" content="#FFFFFF" />
     <link rel="preload" href="/fonts/oswald-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- De acá sale el escudo o la foto más grande de casi toda página: el saludo va adelantado. -->
+    <link rel="preconnect" href="https://media.api-sports.io" crossorigin />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    {noindex && <meta name="robots" content="noindex" />}
-    <meta property="og:type" content="website" />
+    <meta name="robots" content={robots} />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content="Athena" />
+    <meta property="og:locale" content="es_PE" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    {ogImage && <meta property="og:image" content={ogImage} />}
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={imagen} />
+    <meta property="og:image:alt" content={title} />
+    {
+      imagen === PORTADA && (
+        <>
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+        </>
+      )
+    }
+    <meta name="twitter:card" content={tarjetaAncha ? 'summary_large_image' : 'summary'} />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <meta name="twitter:image" content={imagen} />
+    {datosEstructurados && <script type="application/ld+json" set:html={datosEstructurados} />}
     <!--
       El tema antes de pintar, para que la primera imagen ya sea la que el visitante eligió.
 

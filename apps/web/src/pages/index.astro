@@ -27,7 +27,9 @@ import { isLive } from '../lib/format';
 import { getHomeView } from '../lib/live';
 import RefrescoDeMarcadores from '../components/RefrescoDeMarcadores.astro';
 import { getNavTree, todasLasCompetencias } from '../lib/nav';
+import { sitioYOrganizacion } from '../lib/seo';
 import { paisEnEspanol } from '../lib/paises';
+import Hueco from '../components/anuncios/Hueco.astro';
 
 /*
  * Todo en paralelo. En serie, cada vista sumaba su viaje a Supabase y la home tardaba siete
@@ -106,6 +108,19 @@ if (liga) {
   vistaJugador = await api<PlayerView>(`/views/player/${jugador}`).catch(() => null);
 }
 
+/*
+ * Con una entidad abierta, la home muestra exactamente lo que muestra la página de esa entidad. El
+ * canónico se lo cede: dos direcciones con el mismo contenido compiten entre sí, y la que tiene el
+ * título, la descripción y los datos estructurados propios es la otra.
+ */
+const canonical = vistaLiga
+  ? new URL(`/competencias/${liga}`, Astro.site).toString()
+  : vistaEquipo
+    ? new URL(`/equipos/${equipo}`, Astro.site).toString()
+    : vistaJugador
+      ? new URL(`/jugadores/${jugador}`, Astro.site).toString()
+      : null;
+
 /* La fase de la tabla viaja en la URL para que el enlace sea compartible. */
 const fase = Astro.url.searchParams.get('tabla');
 
@@ -153,6 +168,8 @@ cachear(Astro.response, 'home');
 <Base
   title="Athena — Partidos de hoy y marcadores en vivo"
   description="Sigue los partidos de hoy en las principales ligas del mundo: marcadores en vivo, alineaciones sobre la cancha, tablas y análisis con evidencia."
+  canonical={canonical}
+  jsonLd={sitioYOrganizacion(Astro.site)}
   width="bleed"
   liveBar={false}
 >
@@ -298,6 +315,8 @@ cachear(Astro.response, 'home');
             />
           )
         }
+
+        <Hueco medida="bloque" ubicacion="home-riel" class="xl:mt-1" />
       </aside>
     </div>
   </Container>

@@ -1,0 +1,119 @@
+---
+import Base from '../../layouts/Base.astro';
+import { cachear } from '../../lib/cache';
+import BandaDelPartido from './BandaDelPartido.astro';
+import CentroDelPartido from './CentroDelPartido.astro';
+import Container from '../layout/Container.astro';
+import PlayerSheet from '../pitch/PlayerSheet.astro';
+import type { MatchView } from '../../lib/api';
+import { isLive } from '../../lib/format';
+import { enlaceDePartido } from '../../lib/partido';
+import { absoluta, estadoDelEvento, migas, nodoCompetencia, nodoEquipo } from '../../lib/seo';
+
+interface Props {
+  match: MatchView;
+}
+
+const { match } = Astro.props;
+
+const hasScore = match.homeScore !== null && match.awayScore !== null;
+const title = `${match.homeTeam.name} vs ${match.awayTeam.name}${hasScore ? ` (${match.homeScore}-${match.awayScore})` : ''}`;
+
+// isla viva solo si el partido está en juego o arranca dentro de 3 horas
+const startsSoon =
+  match.status === 'scheduled' &&
+  new Date(match.kickoffUtc).getTime() - Date.now() < 3 * 3600_000 &&
+  new Date(match.kickoffUtc).getTime() - Date.now() > -4 * 3600_000;
+const live = isLive(match.status) || startsSoon;
+
+cachear(
+  Astro.response,
+  live ? 'partidoEnJuego' : match.status === 'scheduled' ? 'partidoProgramado' : 'partidoTerminado',
+);
+
+const vistaPedida = Astro.url.searchParams.get('vista') ?? 'resumen';
+const baseUrl = enlaceDePartido(match);
+const enlaceDeVista = (vista: string) =>
+  vista === 'resumen' ? baseUrl : `${baseUrl}?vista=${vista}`;
+
+/* La pestaña no es otra página: las cuatro muestran el mismo partido y comparten el canónico. */
+const canonical = absoluta(baseUrl, Astro.site);
+const competencia = match.season.competition;
+
+const jsonLd = [
+  {
+    '@type': 'SportsEvent',
+    '@id': `${canonical}#partido`,
+    url: canonical,
+    name: title,
+    sport: 'Soccer',
+    startDate: match.kickoffUtc,
+    eventStatus: estadoDelEvento(match.status),
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    homeTeam: nodoEquipo(match.homeTeam, Astro.site),
+    awayTeam: nodoEquipo(match.awayTeam, Astro.site),
+    superEvent: nodoCompetencia(competencia, Astro.site),
+    /*
+     * El marcador, que es el dato por el que la gente llega. Estaba a mano y no se declaraba: un
+     * resultado en el HTML que el buscador tiene que adivinar del texto.
+     */
+    ...(hasScore
+      ? {
+          homeTeamScore: match.homeScore,
+          awayTeamScore: match.awayScore,
+          description: `${match.homeTeam.name} ${match.homeScore} - ${match.awayScore} ${match.awayTeam.name}`,
+        }
+      : {}),
+    ...(match.venue
+      ? {
+          location: {
+            '@type': 'Place',
+            name: match.venue.name,
+            ...(match.venue.city
+              ? { address: { '@type': 'PostalAddress', addressLocality: match.venue.city } }
+              : {}),
+          },
+        }
+      : {}),
+  },
+  migas(
+    [
+      { nombre: 'Competencias', ruta: '/competencias' },
+      { nombre: competencia.name, ruta: `/competencias/${competencia.slug}` },
+      { nombre: title, ruta: baseUrl },
+    ],
+    Astro.site,
+    canonical,
+  ),
+];
+---
+
+<Base
+  title={`${title} — ${competencia.name} | Athena`}
+  description={`${title}: marcador${live ? ' en vivo' : ''}, alineaciones, rendimiento por jugador y análisis del partido de ${competencia.name}.`}
+  canonical={canonical}
+  ogType="article"
+  ogImage={competencia.logoUrl}
+  jsonLd={jsonLd}
+  width="bleed"
+  liveBar={false}
+>
+  <!-- El marcador a sangre sobre la pizarra: vive fuera de las pestañas porque nunca cambia de sección. -->
+  <section class="w-full border-b-[3px] border-b-primary bg-banda">
+    <Container width="content">
+      <BandaDelPartido match={match} live={live} conCompetencia />
+    </Container>
+  </section>
+
+  <Container width="content" class="pt-7">
+    <h1 class="sr-only">{title}</h1>
+    <CentroDelPartido
+      match={match}
+      vistaPedida={vistaPedida}
+      live={live}
+      enlaceDeVista={enlaceDeVista}
+    />
+  </Container>
+
+  <PlayerSheet />
+</Base>

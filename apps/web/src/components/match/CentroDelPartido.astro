@@ -12,6 +12,7 @@ import PitchLineups from '../pitch/PitchLineups.astro';
 import PreviewCard from '../PreviewCard.astro';
 import type { MatchView } from '../../lib/api';
 import { filasDeEstadisticas } from '../../lib/estadisticas';
+import Hueco from '../anuncios/Hueco.astro';
 
 /*
  * El centro de partido: las cuatro pestañas y el riel.
@@ -118,7 +119,7 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
               <div class="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
                 <span class="flex min-w-0 items-center gap-2">
                   {match.homeTeam.logoUrl && (
-                    <img src={match.homeTeam.logoUrl} alt="" width="18" height="18" />
+                    <img loading="lazy" src={match.homeTeam.logoUrl} alt="" width="18" height="18" />
                   )}
                   <span class="truncate text-sm font-medium">
                     {match.homeTeam.shortName ?? match.homeTeam.name}
@@ -132,7 +133,7 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
                     {match.awayTeam.shortName ?? match.awayTeam.name}
                   </span>
                   {match.awayTeam.logoUrl && (
-                    <img src={match.awayTeam.logoUrl} alt="" width="18" height="18" />
+                    <img loading="lazy" src={match.awayTeam.logoUrl} alt="" width="18" height="18" />
                   )}
                 </span>
               </div>
@@ -233,6 +234,7 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
   {vista !== 'alineaciones' && (
   <aside class="grid gap-3 lg:sticky lg:top-20">
     <RielDelPartido match={match} vista={vista} enlaceDeVista={enlaceDeVista} />
+    <Hueco medida="bloque" ubicacion="partido-riel" />
   </aside>
   )}
 </div>

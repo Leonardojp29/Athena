@@ -6,6 +6,7 @@ import type { MatchPlayerStats, TeamSummary, UltimaAlineacion } from '../../lib/
 import { fichaJson, type FichaOnce } from '../../lib/once';
 import { formatDate } from '../../lib/format';
 import { nombreTorneo } from '../../lib/paises';
+import { enlaceDePartido } from '../../lib/partido';
 
 /*
  * Con qué salió el equipo, sobre la cancha, con flechas para moverse entre fechas.
@@ -102,7 +103,7 @@ const paneles = enOrden.map((alineacion) => {
     return {
       puesto: nota?.position ?? PUESTO_POR_ROTULO[titular.position ?? ''] ?? 'M',
       nombre: nota?.player.name ?? titular.name,
-      href: titular.slug ? `/?jugador=${titular.slug}` : `/partidos/${match.id}`,
+      href: titular.slug ? `/?jugador=${titular.slug}` : enlaceDePartido(match),
       fotoUrl: titular.photoUrl ?? nota?.player.photoUrl ?? null,
       /* Sin equipo en la ficha: son todos del mismo y la cancha ya lo dice. */
       equipo: '',
@@ -182,7 +183,7 @@ const paneles = enOrden.map((alineacion) => {
       <div data-panel={panel.match.id} data-cancha-ambito hidden={i !== indiceInicial}>
         <!-- El partido es el contexto: sin rival ni resultado, la cancha no dice de cuándo habla. -->
         <a
-          href={`/partidos/${panel.match.id}`}
+          href={enlaceDePartido(panel.match)}
           class="flex items-center gap-2 border-b border-border px-3 py-2 transition-colors hover:bg-canvas-subtle"
         >
           {panel.resultado && (

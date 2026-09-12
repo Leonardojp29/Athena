@@ -6,6 +6,7 @@ import type { PlayerView } from '../../lib/api';
 import { POSITION_LABEL } from '../../lib/api';
 import { formatDate } from '../../lib/format';
 import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import { enlaceDePartido } from '../../lib/partido';
 
 /*
  * El jugador abierto dentro de la home, como la liga y el equipo. Se llega desde los goleadores,
@@ -45,7 +46,7 @@ const nota = (valor: string | null) => (valor === null ? null : Number(valor).to
   <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-banda-edge bg-banda p-3">
     {
       player.photoUrl ? (
-        <img
+        <img loading="lazy"
           src={player.photoUrl}
           alt=""
           width="44"
@@ -148,7 +149,7 @@ const nota = (valor: string | null) => (valor === null ? null : Number(valor).to
           {recentPerformances.slice(0, 5).map((actuacion) => (
             <li class="min-w-0">
               <a
-                href={`/partidos/${actuacion.match.id}`}
+                href={enlaceDePartido(actuacion.match)}
                 class="grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
               >
                 <span class="text-2xs text-ink-muted tabular">

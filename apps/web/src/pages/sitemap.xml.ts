@@ -1,36 +1,37 @@
 import type { APIRoute } from 'astro';
-import { api } from '../lib/api';
 
-interface SitemapEntries {
-  competitions: Array<{ slug: string }>;
-  teams: Array<{ slug: string; updatedAt: string }>;
-  players: Array<{ slug: string }>;
-}
+/*
+ * El índice de sitemaps.
+ *
+ * Un solo archivo no alcanza: entre competencias, equipos, jugadores y partidos hay más de cien mil
+ * direcciones y el formato tope en cincuenta mil por archivo. Acá van los hijos, uno por tipo, y
+ * cada uno se pagina solo.
+ */
 
-export const GET: APIRoute = async ({ site }) => {
-  const { competitions, teams, players } = await api<SitemapEntries>('/views/sitemap');
+const HIJOS = ['competencias', 'equipos', 'jugadores', 'partidos'] as const;
+/* Con qué generosidad se ofrecen páginas de más: una vacía es barata, una faltante es invisible. */
+const PAGINAS = { competencias: 1, equipos: 1, jugadores: 2, partidos: 2 } as const;
 
-  const urls = [
-    { loc: new URL('/', site).toString(), priority: '1.0' },
-    { loc: new URL('/juegos', site).toString(), priority: '0.8' },
-    { loc: new URL('/juegos/mi-leyenda', site).toString(), priority: '0.8' },
-    ...competitions.map((c) => ({
-      loc: new URL(`/competencias/${c.slug}`, site).toString(),
-      priority: '0.9',
-    })),
-    ...teams.map((t) => ({ loc: new URL(`/equipos/${t.slug}`, site).toString(), priority: '0.7' })),
-    ...players.map((p) => ({
-      loc: new URL(`/jugadores/${p.slug}`, site).toString(),
-      priority: '0.6',
-    })),
-  ];
+export const GET: APIRoute = ({ site }) => {
+  const hoy = new Date().toISOString();
+  const mapas = HIJOS.flatMap((tipo) =>
+    Array.from({ length: PAGINAS[tipo] }, (_, pagina) =>
+      new URL(`/sitemap-${tipo}${pagina > 0 ? `-${pagina}` : ''}.xml`, site).toString(),
+    ),
+  );
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((u) => `  <url><loc>${u.loc}</loc><priority>${u.priority}</priority></url>`).join('\n')}
-</urlset>`;
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${['/sitemap-paginas.xml', ...mapas]
+  .map((loc) => new URL(loc, site).toString())
+  .map((loc) => `  <sitemap><loc>${loc}</loc><lastmod>${hoy}</lastmod></sitemap>`)
+  .join('\n')}
+</sitemapindex>`;
 
   return new Response(xml, {
-    headers: { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=7200' },
+    headers: {
+      'Content-Type': 'application/xml',
+      'Cache-Control': 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=7200',
+    },
   });
 };

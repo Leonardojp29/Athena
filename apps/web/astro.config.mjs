@@ -12,6 +12,15 @@ const ENV_DIR = '../..';
 const rootEnv = new URL('../../.env', import.meta.url);
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
+/*
+ * Sin PUBLIC_SITE_URL el sitio se compila igual y sale a producción con los canónicos, el sitemap y
+ * las imágenes de compartir apuntando a localhost. Eso no falla en ningún lado y desindexa el sitio
+ * entero, así que acá se rompe a propósito.
+ */
+if (process.env.NODE_ENV === 'production' && !process.env.PUBLIC_SITE_URL) {
+  throw new Error('Falta PUBLIC_SITE_URL: los canónicos y el sitemap saldrían apuntando a localhost.');
+}
+
 const siteUrl = new URL(process.env.PUBLIC_SITE_URL ?? 'http://localhost:4321');
 
 export default defineConfig({

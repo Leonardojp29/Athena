@@ -1656,6 +1656,59 @@ export class ViewsService {
    * costaba un viaje entero a Supabase —cerca de un segundo desde fuera de su región— para
    * enterarse de algo que las otras cuatro toleran: un id que no existe devuelve listas vacías.
    */
+  /**
+   * El partido que vive en `/partidos/{local}-vs-{visita}-{fecha}`.
+   *
+   * Con la fecha exacta hay un solo candidato. Si no lo hay, se busca el mismo cruce a diez días
+   * para cada lado: los partidos se aplazan, y un enlace compartido antes del cambio no debería
+   * morir por eso —contesta el partido bueno y la web redirige a su dirección nueva—.
+   */
+  async matchPorRuta(local: string, visita: string, fecha: string) {
+    const [equipoLocal, equipoVisita] = await Promise.all([
+      this.prisma.team.findUnique({ where: { slug: local }, select: { id: true } }),
+      this.prisma.team.findUnique({ where: { slug: visita }, select: { id: true } }),
+    ]);
+    if (!equipoLocal || !equipoVisita) throw new NotFoundException('Partido no encontrado');
+
+    /* Lima es UTC-5 todo el año: el día local va de las 05:00 UTC a las 05:00 del siguiente. */
+    const inicioDelDia = new Date(`${fecha}T05:00:00.000Z`);
+    if (Number.isNaN(inicioDelDia.getTime())) throw new NotFoundException('Partido no encontrado');
+    const DIA = 86_400_000;
+    const MARGEN = 10 * DIA;
+
+    const candidatos = await this.prisma.match.findMany({
+      where: {
+        homeTeamId: equipoLocal.id,
+        awayTeamId: equipoVisita.id,
+        kickoffUtc: {
+          gte: new Date(inicioDelDia.getTime() - MARGEN),
+          lt: new Date(inicioDelDia.getTime() + DIA + MARGEN),
+        },
+      },
+      select: { id: true, kickoffUtc: true },
+      orderBy: { kickoffUtc: 'asc' },
+    });
+    if (candidatos.length === 0) throw new NotFoundException('Partido no encontrado');
+
+    const finDelDia = inicioDelDia.getTime() + DIA;
+    const exacto = candidatos.find(
+      (c) => c.kickoffUtc.getTime() >= inicioDelDia.getTime() && c.kickoffUtc.getTime() < finDelDia,
+    );
+    if (exacto) return { id: exacto.id, exacta: true, fecha };
+
+    const cercano = candidatos.reduce((mejor, c) =>
+      Math.abs(c.kickoffUtc.getTime() - inicioDelDia.getTime()) <
+      Math.abs(mejor.kickoffUtc.getTime() - inicioDelDia.getTime())
+        ? c
+        : mejor,
+    );
+    return {
+      id: cercano.id,
+      exacta: false,
+      fecha: new Date(cercano.kickoffUtc.getTime() - 5 * 3_600_000).toISOString().slice(0, 10),
+    };
+  }
+
   async match(id: string) {
     const [match, insights, statistics, lineups, playerStatistics, historial, sync] =
       await Promise.all([
@@ -1818,8 +1871,9 @@ export class ViewsService {
               kickoffUtc: true,
               homeScore: true,
               awayScore: true,
-              homeTeam: { select: { name: true } },
-              awayTeam: { select: { name: true } },
+              /* El slug viaja porque la dirección del partido se arma con él, no con el id. */
+              homeTeam: { select: { name: true, slug: true } },
+              awayTeam: { select: { name: true, slug: true } },
               season: { select: { competition: { select: { name: true } } } },
             },
           },
@@ -1910,15 +1964,78 @@ export class ViewsService {
     };
   }
 
-  async sitemapEntries() {
-    const [competitions, teams, players] = await Promise.all([
-      this.prisma.competition.findMany({ where: { isActive: true }, select: { slug: true } }),
-      this.prisma.team.findMany({ select: { slug: true, updatedAt: true } }),
-      this.prisma.player.findMany({ select: { slug: true }, take: 5_000 }),
-    ]);
-    return { competitions, teams, players };
+  /**
+   * Lo que va al sitemap, por tipo y paginado.
+   *
+   * Criterio, no catálogo: de 4.732 equipos solo 1.023 tienen tabla de posiciones y de 46.350
+   * jugadores solo 27.908 tienen una estadística. Listar los otros es pedirle al buscador que juzgue
+   * dieciocho mil páginas sin un dato, y lo que hace con eso es bajarle el promedio al resto.
+   */
+  async sitemapEntries(tipo: string, pagina: number) {
+    const TAMANO = 20_000;
+    const saltar = pagina * TAMANO;
+
+    if (tipo === 'competencias') {
+      const filas = await this.prisma.competition.findMany({
+        where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+        orderBy: { slug: 'asc' },
+        skip: saltar,
+        take: TAMANO,
+      });
+      return filas.map((f) => ({ ruta: `/competencias/${f.slug}`, lastmod: f.updatedAt }));
+    }
+
+    if (tipo === 'equipos') {
+      const filas = await this.prisma.team.findMany({
+        where: { standings: { some: {} } },
+        select: { slug: true, updatedAt: true },
+        orderBy: { slug: 'asc' },
+        skip: saltar,
+        take: TAMANO,
+      });
+      return filas.map((f) => ({ ruta: `/equipos/${f.slug}`, lastmod: f.updatedAt }));
+    }
+
+    if (tipo === 'jugadores') {
+      const filas = await this.prisma.player.findMany({
+        where: { seasonStatistics: { some: {} } },
+        select: { slug: true, updatedAt: true },
+        orderBy: { slug: 'asc' },
+        skip: saltar,
+        take: TAMANO,
+      });
+      return filas.map((f) => ({ ruta: `/jugadores/${f.slug}`, lastmod: f.updatedAt }));
+    }
+
+    if (tipo === 'partidos') {
+      /* El año pasado y lo que viene: un partido de 2019 ya no le interesa a nadie que busque hoy. */
+      const desde = new Date(Date.now() - 365 * 86_400_000);
+      const filas = await this.prisma.match.findMany({
+        where: { kickoffUtc: { gte: desde } },
+        select: {
+          kickoffUtc: true,
+          updatedAt: true,
+          homeTeam: { select: { slug: true } },
+          awayTeam: { select: { slug: true } },
+        },
+        orderBy: { kickoffUtc: 'desc' },
+        skip: saltar,
+        take: TAMANO,
+      });
+      return filas.map((f) => ({
+        ruta: `/partidos/${f.homeTeam.slug}-vs-${f.awayTeam.slug}-${enLima(f.kickoffUtc)}`,
+        lastmod: f.updatedAt,
+      }));
+    }
+
+    return [];
   }
 }
+
+/* Lima es UTC-5 todo el año: la fecha local de un instante es la del instante menos cinco horas. */
+const enLima = (fecha: Date) =>
+  new Date(fecha.getTime() - 5 * 3_600_000).toISOString().slice(0, 10);
 
 /** Goles x2 + asistencias + la nota como desempate: la fórmula está a la vista a propósito. */
 function puntaje(fila: {

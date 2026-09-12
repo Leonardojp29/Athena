@@ -3,6 +3,7 @@ import type { MatchCard } from '../../lib/api';
 import { formatKickoff, isLive, minutoEnVivo } from '../../lib/format';
 import Icon from '../Icon.astro';
 import Container from '../layout/Container.astro';
+import { enlaceDePartido } from '../../lib/partido';
 
 /*
  * Una tira, no un hero.
@@ -80,14 +81,14 @@ const fecha = new Intl.DateTimeFormat('es-PE', {
             >
               {[...cartelera, ...cartelera].map((match) => (
                 <a
-                  href={`/partidos/${match.id}`}
+                  href={enlaceDePartido(match)}
                   class="flex shrink-0 items-center gap-1.5 text-2xs text-chalk-dim transition-colors hover:text-chalk"
                 >
                   {isLive(match.status) && (
                     <span class="size-1.5 shrink-0 rounded-full bg-live-board animate-live-pulse" />
                   )}
                   {match.homeTeam.logoUrl && (
-                    <img src={match.homeTeam.logoUrl} alt="" width="14" height="14" />
+                    <img loading="lazy" src={match.homeTeam.logoUrl} alt="" width="14" height="14" />
                   )}
                   <span class="text-chalk">{match.homeTeam.shortName ?? match.homeTeam.name}</span>
                   <span
@@ -102,7 +103,7 @@ const fecha = new Intl.DateTimeFormat('es-PE', {
                   </span>
                   <span class="text-chalk">{match.awayTeam.shortName ?? match.awayTeam.name}</span>
                   {match.awayTeam.logoUrl && (
-                    <img src={match.awayTeam.logoUrl} alt="" width="14" height="14" />
+                    <img loading="lazy" src={match.awayTeam.logoUrl} alt="" width="14" height="14" />
                   )}
                   {isLive(match.status) && (
                     <span class="tabular text-live-board">

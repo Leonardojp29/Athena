@@ -3,6 +3,7 @@ import type { MatchCard } from '../../lib/api';
 import { formatKickoff, isLive, minutoEnVivo } from '../../lib/format';
 import { getHomeView } from '../../lib/live';
 import Container from './Container.astro';
+import { enlaceDePartido } from '../../lib/partido';
 
 /*
  * La tira de partidos del día. Es lo que hace que la web se sienta viva antes de que el
@@ -34,7 +35,7 @@ const matches: MatchCard[] = [
               <a
                 role="listitem"
                 data-partido={match.id}
-                href={`/partidos/${match.id}`}
+                href={enlaceDePartido(match)}
                 class:list={[
                   'group flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-2xs transition-colors',
                   vivo ? 'bg-live/10 hover:bg-live/16' : 'hover:bg-surface',

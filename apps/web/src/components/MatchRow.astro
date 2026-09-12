@@ -2,6 +2,7 @@
 import type { MatchCard } from '../lib/api';
 import { formatDate, formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
 import { etiquetaDeRonda } from '../lib/rondas';
+import { enlaceDePartido } from '../lib/partido';
 
 /*
  * Una fila de partido. El enlace estirado cubre toda la fila y los escudos van encima: anidar
@@ -44,10 +45,12 @@ const {
   showDate = false,
   hrefEquipo = (slug: string) => `/equipos/${slug}`,
   destacado = null,
-  hrefPartido = (id: string) => `/partidos/${id}`,
+  hrefPartido,
   mostrarRonda = false,
   anclado = false,
 } = Astro.props;
+/* Sin override, la dirección la arma el partido: los clubes y la fecha, no el UUID. */
+const enlace = hrefPartido ? hrefPartido(match.id) : enlaceDePartido(match);
 const live = isLive(match.status);
 const finished = match.status === 'finished';
 const hasScore = match.homeScore !== null && match.awayScore !== null;
@@ -74,7 +77,7 @@ const estado = live
   ]}
 >
   <a
-    href={hrefPartido(match.id)}
+    href={enlace}
     class="absolute inset-0 rounded-md"
     aria-label={`${match.homeTeam.name} contra ${match.awayTeam.name}`}
   ></a>

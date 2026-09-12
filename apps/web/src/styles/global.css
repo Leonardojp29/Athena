@@ -100,7 +100,13 @@
   --default-transition-duration: var(--a-motion-fast);
   --default-transition-timing-function: var(--a-ease);
 
-  --breakpoint-3xl: 1800px;
+  /*
+   * En rem y no en 1800px: Tailwind ordena los breakpoints por su valor, y no puede comparar
+   * píxeles con los rem de los suyos. En píxeles este bloque salía ANTES que el de `lg`, así que
+   * a 1920 los dos coincidían y ganaba `lg`: `3xl:grid-cols-...` no hacía nada sobre una grilla
+   * que ya declaraba `lg:grid-cols-2`.
+   */
+  --breakpoint-3xl: 112.5rem;
 
   --animate-live-pulse: live-pulse 2s var(--a-ease) infinite;
   --animate-magnet-place: magnet-place var(--a-motion-place) var(--a-ease-magnet) both;

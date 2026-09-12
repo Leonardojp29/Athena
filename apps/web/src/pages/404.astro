@@ -1,7 +1,15 @@
 ---
 import Base from '../layouts/Base.astro';
-import Icon from '../components/Icon.astro';
-import LogoMark from '../components/brand/LogoMark.astro';
+import NoEncontrado from '../components/NoEncontrado.astro';
+
+/*
+ * Esta página es el 404, así que responde 404 siempre —también cuando otra ruta la dibuja acá
+ * mismo con `Astro.rewrite`—. Antes esas rutas desviaban con un 302 a una página que contestaba
+ * 200: para un buscador eso no es "no existe", es "existe y está vacía", y la URL muerta se queda
+ * en el índice gastando rastreo.
+ */
+Astro.response.status = 404;
+Astro.response.headers.set('cache-control', 'public, s-maxage=300');
 ---
 
 <Base
@@ -10,34 +18,5 @@ import LogoMark from '../components/brand/LogoMark.astro';
   noindex
   liveBar={false}
 >
-  <div class="mx-auto max-w-md py-16 text-center sm:py-24">
-    <LogoMark size={44} class="mx-auto text-ink-muted" detail="compact" />
-    <p class="mt-6 font-display text-score font-semibold leading-none tabular text-border-strong">
-      404
-    </p>
-    <h1 class="mt-2 font-display text-2xl font-semibold uppercase">Esto no está en la cancha</h1>
-    <p class="mt-2 text-sm text-ink-muted">
-      La página no existe o el contenido ya no está disponible.
-    </p>
-
-    <div class="mt-6 grid gap-2 sm:grid-cols-2">
-      <a
-        href="/"
-        class="flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90"
-      >
-        Partidos de hoy
-      </a>
-      <a
-        href="/competencias"
-        class="flex items-center justify-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm transition-colors hover:border-border-strong"
-      >
-        Competencias
-        <Icon name="chevron-derecha" size={14} />
-      </a>
-    </div>
-
-    <p class="mt-6 text-2xs text-ink-muted">
-      Si llegaste desde un enlace de Athena, algo está mal de nuestro lado.
-    </p>
-  </div>
+  <NoEncontrado />
 </Base>

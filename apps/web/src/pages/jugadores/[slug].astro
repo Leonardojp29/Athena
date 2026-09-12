@@ -10,6 +10,9 @@ import SeasonTable from '../../components/player/SeasonTable.astro';
 import { api, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
 import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
+import { enlaceDePartido } from '../../lib/partido';
+import { absoluta, identidad, migas, nodoEquipo } from '../../lib/seo';
+import RielDeAnuncios from '../../components/anuncios/RielDeAnuncios.astro';
 
 const { slug } = Astro.params;
 
@@ -23,7 +26,7 @@ try {
   if (error instanceof ApiError && error.status === 404) {
     /* El slug cambió: se redirige al nuevo en lugar de decir que no existe. */
     const mudado = error.body?.movedTo;
-    return Astro.redirect(mudado ? `/jugadores/${mudado}` : '/404', mudado ? 301 : 302);
+    return mudado ? Astro.redirect(`/jugadores/${mudado}`, 301) : Astro.rewrite('/404');
   }
   throw error;
 }
@@ -48,20 +51,55 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 
-const jsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'Person',
-  name: player.name,
-  ...(player.nationality ? { nationality: player.nationality } : {}),
-  ...(player.birthDate ? { birthDate: player.birthDate.slice(0, 10) } : {}),
-  ...(player.photoUrl ? { image: player.photoUrl } : {}),
-  ...(teams[0] ? { memberOf: { '@type': 'SportsTeam', name: teams[0].name } } : {}),
-};
+const rutaJugador = `/jugadores/${player.slug}`;
+const urlJugador = absoluta(rutaJugador, Astro.site);
+const nacionalidad = player.nationality ? paisEnEspanol(player.nationality) : null;
+const clubActual = teams[0] ?? null;
+
+/*
+ * Con miles de fichas, la descripción tiene que decir algo de este jugador y no de la plantilla:
+ * el club y el país lo distinguen de los otros seis "Luis Ramírez" del catálogo.
+ */
+const descripcionJugador = [
+  `${player.name}`,
+  position ? `, ${position.toLowerCase()}` : '',
+  nacionalidad ? ` de ${nacionalidad}` : '',
+  clubActual ? `, juega en ${clubActual.name}` : '',
+  '. Goles, tarjetas, minutos y sus últimos partidos.',
+].join('');
+
+const jsonLd = [
+  {
+    /* Las dos cosas a la vez: es una persona y compite. `Athlete` solo pierde los campos de Person. */
+    '@type': ['Person', 'Athlete'],
+    '@id': identidad(urlJugador, 'jugador'),
+    url: urlJugador,
+    name: player.name,
+    ...(position ? { jobTitle: position } : {}),
+    ...(nacionalidad ? { nationality: { '@type': 'Country', name: nacionalidad } } : {}),
+    ...(player.birthDate ? { birthDate: player.birthDate.slice(0, 10) } : {}),
+    ...(player.heightCm ? { height: { '@type': 'QuantitativeValue', value: player.heightCm, unitCode: 'CMT' } } : {}),
+    ...(player.photoUrl ? { image: player.photoUrl } : {}),
+    ...(clubActual ? { memberOf: nodoEquipo(clubActual, Astro.site) } : {}),
+  },
+  migas(
+    clubActual
+      ? [
+          { nombre: clubActual.name, ruta: `/equipos/${clubActual.slug}` },
+          { nombre: player.name, ruta: rutaJugador },
+        ]
+      : [{ nombre: player.name, ruta: rutaJugador }],
+    Astro.site,
+    urlJugador,
+  ),
+];
 ---
 
 <Base
-  title={`${player.name} — Perfil, equipos y estadísticas | Athena`}
-  description={`Perfil de ${player.name}${position ? `, ${position.toLowerCase()}` : ''}${player.nationality ? ` de ${player.nationality}` : ''}: equipos, goles y participaciones recientes.`}
+  title={`${player.name}${clubActual ? ` — ${clubActual.name}` : ''} — Perfil y estadísticas | Athena`}
+  description={descripcionJugador}
+  canonical={urlJugador}
+  ogType="profile"
   ogImage={player.photoUrl}
   jsonLd={jsonLd}
   width="bleed"
@@ -70,7 +108,18 @@ const jsonLd = {
   <section class="w-full border-b-[3px] border-b-primary bg-banda">
     <Container width="content">
   <div class="flex items-center gap-4 py-6">
-    {player.photoUrl && <img src={player.photoUrl} alt="" width="64" height="64" class="rounded-full" />}
+    {
+      player.photoUrl && (
+        <img
+          src={player.photoUrl}
+          alt={`Foto de ${player.name}`}
+          width="64"
+          height="64"
+          fetchpriority="high"
+          class="rounded-full"
+        />
+      )
+    }
     <div>
       <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
         {shirtNumber !== null && <span class="tabular text-chalk-dim">{shirtNumber} </span>}
@@ -114,7 +163,7 @@ const jsonLd = {
   <Container width="content" class="pt-7 pb-6">
   <SeasonTable seasons={seasons} totals={totals} />
 
-  <div class="mt-4 grid gap-7 items-start lg:grid-cols-2">
+  <div class="mt-4 grid gap-7 items-start lg:grid-cols-2 3xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_19rem]">
     <div class="grid gap-4">
       <RecentPerformances performances={recentPerformances} />
 
@@ -134,7 +183,6 @@ const jsonLd = {
           <p class="text-sm text-ink-muted">Sin equipos registrados todavía.</p>
         )}
       </Card>
-
     </div>
 
     <Card title="Goles y tarjetas">
@@ -142,7 +190,7 @@ const jsonLd = {
         <ul class="divide-y divide-border/40">
           {destacados.map((event) => (
             <li class="py-2">
-              <a href={`/partidos/${event.match.id}`} class="block hover:text-primary-ink transition-colors">
+              <a href={enlaceDePartido(event.match)} class="block hover:text-primary-ink transition-colors">
                 <span class="text-sm">
                   {EVENT_LABEL[event.kind] ?? event.kind} · <span class="tabular">{event.minute}'</span>
                 </span>
@@ -160,6 +208,8 @@ const jsonLd = {
         </p>
       )}
     </Card>
+
+    <RielDeAnuncios ubicacion="jugador-riel" />
   </div>
   </Container>
 </Base>
