@@ -288,6 +288,10 @@ slate.
 
 ### Named Rules
 
+- **Dos primarios pegados se pelean.** En el grupo de acciones del header, «Juegos» es la pastilla
+  `bg-primary` y «Calculadora» va en variante fantasma —`border-chalk/25`, tinta `chalk`— sobre la
+  banda. Las dos tienen la misma forma y las dos colapsan a icono en móvil; la que manda es la que
+  lleva relleno.
 - **La regla del objeto.** Si algo tiene sombra, no tiene borde. Si tiene borde, no tiene
   sombra. Un elemento con los dos parece un recorte pegado. La excepción declarada son las
   plaquitas de escudo **sobre la banda**: ahí la sombra al 10% no se ve y el anillo es lo único
@@ -334,6 +338,13 @@ pico calados por `fill-rule="evenodd"`.
   `border-strong` para empate, `card-red/85` para derrota.
 - **Nota de rendimiento:** ≥7,5 en `primary`; 6,5–7,4 en `canvas-subtle`; menos en
   `card-red/15` con `card-red-ink`.
+
+### Zonas de una tabla
+
+Libertadores en `primary`, Sudamericana en `data`, descenso en `card-red`, cada una en un riel de
+3px pegado al número de posición. **El riel nunca va solo:** la cabecera de la tabla lleva la
+leyenda con el nombre de cada zona y el riel repite ese nombre en su `title` y su `aria-label`. El
+color no es el único canal que cuenta algo, y en una tabla de descenso eso no es un detalle.
 
 ### Cards / Containers
 - **Corner Style:** `rounded-lg` los contenedores, `rounded-md` las filas de su interior.

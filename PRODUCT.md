@@ -57,7 +57,13 @@ de relleno. En una prueba real, de diez partidos próximos se omitieron siete.
 
 **Funciona hoy:** competencias con tabla y calendario, perfiles de equipo y jugador, centro de
 partido con marcador, eventos, estadísticas y alineaciones, análisis post-partido y previas con IA,
-búsqueda híbrida por nombre y semántica, sesión con favoritos y un inicio personalizado.
+búsqueda híbrida por nombre y semántica, sesión con favoritos y un inicio personalizado, y la
+calculadora de la Liga 1.
+
+**La calculadora no contradice el no-objetivo de las predicciones propias.** El lector pone los
+marcadores que faltan y Athena resuelve las tablas, los cupos y el camino al título que ese
+escenario implica; las probabilidades cuentan finales sobre ese escenario y la pantalla lo dice.
+Athena sigue sin pronosticar resultados. Documentada en `docs/calculadora/CALCULADORA.md`.
 
 **Restricciones técnicas confirmadas:**
 - Monorepo Astro 5 SSR + NestJS + PostgreSQL (Supabase) + Redis. El dominio es de Athena; los
