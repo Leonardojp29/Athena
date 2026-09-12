@@ -1,0 +1,108 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * La semana, con el peso de cada día.
+ *
+ * Eran siete cajitas idénticas: elegir el sábado o el martes costaba lo mismo aunque uno tenga
+ * cuarenta partidos y el otro tres. Ahora cada día lleva su cuenta y una barra proporcional, así
+ * que la semana se lee de un golpe y el día grande salta a la vista antes de tocarlo.
+ */
+export interface Dia {
+  iso: string;
+  diaCorto: string;
+  numero: string;
+  mes: string;
+  total: number;
+  vivos: number;
+  esHoy: boolean;
+  activo: boolean;
+}
+
+interface Props {
+  dias: Dia[];
+  anterior: string;
+  siguiente: string;
+  /** Qué eje está abierto, para no perderlo al cambiar de día. */
+  ver: string;
+}
+
+const { dias, anterior, siguiente, ver } = Astro.props;
+const cola = ver === 'lugar' ? '&ver=lugar' : '';
+const pico = Math.max(...dias.map((d) => d.total), 1);
+const salto = (iso: string) => `/partidos?fecha=${iso}${cola}`;
+---
+
+<!-- `min-w-0` para que el riel no empuje su celda de grilla: sin eso la página se va tres píxeles. -->
+<nav
+  class="-mx-4 flex min-w-0 max-w-full items-stretch gap-1 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+  aria-label="Elegir el día"
+>
+  <a
+    href={salto(anterior)}
+    aria-label="Día anterior"
+    class="flex shrink-0 items-center rounded-md border border-border px-1.5 text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+  >
+    <Icon name="flecha-izquierda" size={16} />
+  </a>
+
+  {
+    dias.map((d) => (
+      <a
+        href={salto(d.iso)}
+        aria-current={d.activo ? 'page' : undefined}
+        aria-label={`${d.diaCorto} ${d.numero} de ${d.mes}, ${d.total} ${d.total === 1 ? 'partido' : 'partidos'}`}
+        class:list={[
+          'group relative flex w-[3.75rem] shrink-0 flex-col items-center gap-0.5 rounded-md border px-1 pt-1.5 pb-1 transition-colors',
+          d.activo
+            ? 'border-primary-ink bg-primary/10 text-ink'
+            : 'border-border text-ink-muted hover:border-border-strong hover:bg-canvas-subtle hover:text-ink',
+        ]}
+      >
+        <span class="text-2xs uppercase tracking-label">{d.diaCorto}</span>
+        <span
+          class:list={[
+            'font-display text-lg font-semibold leading-none tabular',
+            d.activo ? 'text-ink' : d.esHoy ? 'text-primary-ink' : 'text-ink',
+          ]}
+        >
+          {d.numero}
+        </span>
+
+        {/* El número dice cuántos; la barra deja compararlos sin leer siete cifras. */}
+        {/* El número dice cuántos; la barra deja comparar los siete días sin leer siete cifras. */}
+        <span class="mt-1 flex h-4 w-full items-end justify-center rounded-[1px] bg-canvas-subtle">
+          <span
+            aria-hidden="true"
+            class:list={[
+              'w-full rounded-[1px]',
+              d.total === 0
+                ? 'bg-border'
+                : d.activo
+                  ? 'bg-primary'
+                  : 'bg-border-strong group-hover:bg-primary/70',
+            ]}
+            style={`height:${d.total === 0 ? 2 : Math.max(4, Math.round((d.total / pico) * 16))}px`}
+          />
+        </span>
+
+        <span class="flex items-center gap-1 text-2xs tabular leading-none">
+          {d.vivos > 0 && <span class="size-1.5 rounded-full bg-live animate-live-pulse" />}
+          <span class={d.total === 0 ? 'text-ink-muted/60' : undefined}>{d.total}</span>
+        </span>
+
+        {d.esHoy && !d.activo && (
+          <span class="absolute inset-x-2 -top-px h-0.5 rounded-full bg-primary-ink" aria-hidden="true" />
+        )}
+      </a>
+    ))
+  }
+
+  <a
+    href={salto(siguiente)}
+    aria-label="Día siguiente"
+    class="flex shrink-0 items-center rounded-md border border-border px-1.5 text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
+  >
+    <Icon name="chevron-derecha" size={16} />
+  </a>
+</nav>

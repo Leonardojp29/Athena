@@ -1,0 +1,142 @@
+---
+import type { MatchCard } from '../../lib/api';
+import { isLive, minutoEnVivo, statusLabel } from '../../lib/format';
+import { relojDe, type Realce } from '../../lib/calendario';
+import { enlaceDePartido } from '../../lib/partido';
+
+/*
+ * Un partido dentro de la parrilla.
+ *
+ * Distinta de `MatchRow` a propósito: acá la hora ya la dice el riel de la izquierda, así que la
+ * fila no la repite y usa ese espacio para lo que sí aporta —quién llega mejor, por qué este
+ * partido importa—. Conserva el contrato `data-partido` / `data-marcador` / `data-estado`, que es
+ * lo que el refresco de marcadores parchea cada treinta segundos sin recargar.
+ *
+ * Los dos equipos van apilados y no enfrentados: en una columna de parrilla, "Sporting Cristal"
+ * contra "Sport Huancayo" a los costados de un marcador deja dos nombres cortados.
+ */
+interface Props {
+  match: MatchCard;
+  realce?: Realce | null;
+}
+
+const { match, realce = null } = Astro.props;
+
+const vivo = isLive(match.status);
+const terminado = match.status === 'finished';
+const hayMarcador = match.homeScore !== null && match.awayScore !== null;
+
+/*
+ * Qué dice la esquina de la fila.
+ *
+ * Un partido por jugar decía "Programado" siete veces seguidas dentro del mismo bloque, que es la
+ * definición de ruido: si está bajo las 18:00 y todavía no empezó, claro que está programado. En
+ * ese lugar va el minuto exacto, y solo cuando no es la hora en punto —el riel ya la dijo—. Así la
+ * esquina informa siempre o calla, pero nunca repite.
+ */
+const reloj = relojDe(match.kickoffUtc);
+const enPunto = reloj.endsWith(':00');
+const estado = vivo
+  ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)
+  : terminado
+    ? 'Final'
+    : match.status === 'scheduled'
+      ? (enPunto ? '' : reloj)
+      : statusLabel(match.status);
+
+/* Quién va ganando se marca en negrita: en una lista de ochenta, leer dos cifras es más lento. */
+const gana = (lado: 'local' | 'visita') =>
+  hayMarcador &&
+  (lado === 'local'
+    ? (match.homeScore ?? 0) > (match.awayScore ?? 0)
+    : (match.awayScore ?? 0) > (match.homeScore ?? 0));
+
+const lados = [
+  { equipo: match.homeTeam, goles: match.homeScore, gana: gana('local') },
+  { equipo: match.awayTeam, goles: match.awayScore, gana: gana('visita') },
+];
+
+const TINTA: Record<Realce['motivo'], string> = {
+  clasico: 'border-marca/35 bg-marca/10 text-marca',
+  definicion: 'border-primary-ink/30 bg-primary/10 text-primary-ink',
+  punta: 'border-border-strong bg-canvas-subtle text-ink-muted',
+};
+---
+
+<div
+  data-partido={match.id}
+  data-en-vivo={vivo ? '' : undefined}
+  class:list={[
+    'group relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 rounded-md px-2.5 py-2 transition-colors hover:bg-canvas-subtle',
+    vivo && 'bg-live/[0.04]',
+  ]}
+>
+  <a
+    href={enlaceDePartido(match)}
+    class="absolute inset-0 rounded-md"
+    aria-label={`${match.homeTeam.name} contra ${match.awayTeam.name}`}></a>
+
+  <span class="grid min-w-0 gap-1">
+    {
+      lados.map(({ equipo, goles, gana: gano }) => (
+        <span class="flex min-w-0 items-center gap-2">
+          {equipo.logoUrl ? (
+            <img src={equipo.logoUrl} alt="" width="20" height="20" loading="lazy" class="shrink-0" />
+          ) : (
+            <span class="size-5 shrink-0 rounded-full bg-canvas-subtle" />
+          )}
+          <a
+            href={`/equipos/${equipo.slug}`}
+            class:list={[
+              'relative min-w-0 flex-1 truncate text-sm transition-colors hover:text-primary-ink hover:underline',
+              gano ? 'font-semibold text-ink' : terminado ? 'text-ink-muted' : 'text-ink',
+            ]}
+          >
+            {equipo.name}
+          </a>
+          {hayMarcador && (
+            <span
+              class:list={[
+                'shrink-0 font-display tabular text-base leading-none',
+                gano ? 'font-semibold text-ink' : 'text-ink-muted',
+                vivo && 'text-live-ink',
+              ]}
+            >
+              {goles}
+            </span>
+          )}
+        </span>
+      ))
+    }
+  </span>
+
+  <span class="flex shrink-0 flex-col items-end gap-1 self-start pt-0.5 text-right empty:hidden">
+    <span
+      data-estado
+      class:list={[
+        'tabular text-2xs leading-none empty:hidden',
+        vivo ? 'font-semibold text-live-ink' : 'text-ink-muted',
+      ]}
+    >
+      {estado}
+    </span>
+    <!-- El marcador vive acá para el refresco, que escribe "1–0" de una pieza; se ve en los lados. -->
+    <span data-marcador hidden>{hayMarcador ? `${match.homeScore}–${match.awayScore}` : relojDe(match.kickoffUtc)}</span>
+
+  </span>
+
+  {
+    realce && (
+      <span class="pointer-events-none col-start-1 flex pt-1">
+        <span
+          class:list={[
+            'truncate rounded border px-1.5 py-px text-[10px] font-medium uppercase tracking-label',
+            TINTA[realce.motivo],
+          ]}
+        >
+          {realce.etiqueta}
+        </span>
+      </span>
+    )
+  }
+</div>

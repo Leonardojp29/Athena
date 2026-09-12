@@ -1,0 +1,108 @@
+---
+import type { MatchCard } from '../../lib/api';
+import { ahoraYProximos, enCuanto, relojDe } from '../../lib/calendario';
+import { minutoEnVivo } from '../../lib/format';
+import { enlaceDePartido } from '../../lib/partido';
+import EscudoTorneo from '../EscudoTorneo.astro';
+import { nombreTorneo } from '../../lib/paises';
+
+/*
+ * Qué pasa a esta hora.
+ *
+ * Es lo primero de la página porque es lo que caduca: un calendario que abre con la lista completa
+ * del día le pide al lector que encuentre el presente entre ochenta filas. Acá el presente viene
+ * dado —lo que rueda y lo que arranca enseguida— y el resto de la página es el día entero.
+ *
+ * Se dibuja sobre la pizarra: es el único bloque de la página que es un estado y no un listado, y
+ * la pizarra es donde Athena pone lo que está pasando.
+ */
+interface Props {
+  partidos: MatchCard[];
+}
+
+const { partidos } = Astro.props;
+const { enJuego, proximos, faltan } = ahoraYProximos(partidos);
+const hayAlgo = enJuego.length > 0 || proximos.length > 0;
+/* Con seis que arrancan juntos la banda se vuelve la página: se muestran cuatro y se dice cuántos. */
+const TOPE = 4;
+const alFrente = enJuego.length > 0 ? enJuego : proximos;
+const visibles = alFrente.slice(0, TOPE);
+const resto = alFrente.length - visibles.length;
+const enVivo = enJuego.length > 0;
+---
+
+{
+  hayAlgo && (
+    <section
+      class="relative w-full overflow-hidden border-b-[3px] border-b-primary bg-banda"
+      aria-label={enVivo ? 'Partidos en juego' : 'Los próximos en arrancar'}
+    >
+      <div class="mx-auto w-full max-w-[1600px] px-4 py-4 sm:px-6 lg:px-8 xl:px-10">
+        <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span class="flex items-center gap-2 font-display text-lg font-semibold uppercase tracking-label text-chalk">
+            {enVivo && <span class="size-2 shrink-0 rounded-full bg-live-on-board animate-live-pulse" />}
+            {enVivo ? 'Ahora' : 'Enseguida'}
+          </span>
+          <span class="text-sm text-chalk/70">
+            {enVivo
+              ? `${enJuego.length} ${enJuego.length === 1 ? 'partido rodando' : 'partidos rodando'}`
+              : faltan !== null && `${proximos.length === 1 ? 'Arranca' : 'Arrancan'} ${enCuanto(faltan)}`}
+          </span>
+        </p>
+
+        <ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {visibles.map((match) => (
+            <li>
+              <a
+                href={enlaceDePartido(match)}
+                data-partido={match.id}
+                class="flex h-full flex-col gap-2 rounded-lg border border-chalk/15 bg-chalk/[0.06] px-3 py-2.5 transition-colors hover:border-chalk/35 hover:bg-chalk/10"
+              >
+                <span class="flex items-center gap-1.5 text-2xs uppercase tracking-label text-chalk/55">
+                  <EscudoTorneo url={match.season.competition.logoUrl} size={13} />
+                  <span class="truncate">{nombreTorneo(match.season.competition.name)}</span>
+                  <span
+                    data-estado
+                    class:list={[
+                      'ml-auto shrink-0 tabular',
+                      enVivo ? 'font-semibold text-live-on-board' : 'text-chalk/70',
+                    ]}
+                  >
+                    {enVivo
+                      ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)
+                      : relojDe(match.kickoffUtc)}
+                  </span>
+                </span>
+
+                <span class="grid gap-1">
+                  {[match.homeTeam, match.awayTeam].map((equipo, lado) => (
+                    <span class="flex items-center gap-2">
+                      {equipo.logoUrl && (
+                        <img src={equipo.logoUrl} alt="" width="18" height="18" loading="lazy" class="shrink-0" />
+                      )}
+                      <span class="min-w-0 flex-1 truncate text-sm text-chalk">{equipo.name}</span>
+                      {enVivo && (
+                        <span
+                          data-marcador-lado={lado}
+                          class="shrink-0 font-display tabular text-base font-semibold text-chalk"
+                        >
+                          {(lado === 0 ? match.homeScore : match.awayScore) ?? 0}
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+
+        {resto > 0 && (
+          <p class="mt-2 text-2xs text-chalk/55">
+            {`Y ${resto} más a la misma hora, abajo en la parrilla.`}
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}

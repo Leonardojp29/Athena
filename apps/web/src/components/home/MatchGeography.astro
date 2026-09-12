@@ -56,8 +56,9 @@ const contarVivos = (continente: GeographyContinent) =>
       const vivos = contarVivos(continente);
       return (
         <details
+          id={`c-${continente.continent}`}
           open={filtrado || abiertos.includes(continente.continent) || vivos > 0}
-          class="group"
+          class="group scroll-mt-24"
           style={`view-transition-name: continente-${continente.continent}`}
         >
           <summary
@@ -79,7 +80,13 @@ const contarVivos = (continente: GeographyContinent) =>
             />
           </summary>
 
-          <div class="mt-2 grid gap-3 sm:pl-3">
+          <!--
+            Los países en pistas de 30rem y no en una columna: a mil doscientos píxeles una fila de
+            partido manda los dos equipos a los bordes y deja el marcador solo en el medio. Con
+            `auto-fill` la grilla se acomoda sola —dos columnas en un escritorio ancho, una en el
+            riel de la home— sin que el componente tenga que saber dónde lo pusieron.
+          -->
+          <div class="mt-2 grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,30rem),1fr))] sm:pl-3">
             {continente.countries.map((pais, orden) => (
               <section
                 data-grupo

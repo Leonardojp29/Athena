@@ -14,7 +14,8 @@ import { expect, test, type Page } from '@playwright/test';
 /* Dónde vive el costado de cada vista y desde qué ancho es de verdad un costado. */
 const VISTAS: Array<[string, number]> = [
   ['/', 1280],
-  ['/partidos', 1900],
+  /* El calendario tiene columna propia desde lg: su hueco no espera a los 1800. */
+  ['/partidos', 1280],
   ['/competencias', 1900],
   ['/competencias/primera-division', 1600],
   ['/equipos/alianza-lima', 1280],
@@ -62,14 +63,17 @@ test.describe('espacio para anuncios', () => {
     });
   }
 
-  /* El riel se asoma solo cuando hay margen de sobra: por debajo le robaría ancho al contenido. */
+  /*
+   * Donde el costado es un riel de 19rem que se gana con el margen sobrante, se asoma recién a los
+   * 1800: por debajo le robaría ancho al contenido.
+   */
   test('el riel aparece desde 1800 px y no antes', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/partidos');
+    await page.goto('/competencias');
     expect(await huecosVisibles(page)).toHaveLength(0);
 
     await page.setViewportSize({ width: 1900, height: 900 });
-    await page.goto('/partidos');
+    await page.goto('/competencias');
     expect((await huecosVisibles(page)).map((h) => h.medida)).toEqual(['riel']);
   });
 

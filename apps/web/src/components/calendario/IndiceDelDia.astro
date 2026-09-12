@@ -1,0 +1,153 @@
+---
+import type { GeographyContinent, MatchCard } from '../../lib/api';
+import { agruparPorHora } from '../../lib/calendario';
+import { isLive } from '../../lib/format';
+import ContinentIcon from '../ContinentIcon.astro';
+
+/*
+ * El índice del día: el riel que hace que esto se lea como un calendario y no como una lista.
+ *
+ * Un calendario necesita una cosa que una lista no tiene: saber dónde estás parado en el tiempo y
+ * poder saltar a otra parte sin recorrer el medio. Eso es lo que hace esta columna. Acompaña el
+ * scroll, marca la hora en curso y lleva de un clic a cualquier bloque.
+ *
+ * Es el mismo riel para los dos ejes y esa simetría es a propósito: por hora indexa horas, por
+ * lugar indexa continentes. Dos lentes sobre el mismo día, no dos páginas.
+ *
+ * Son anclas —`#h18`, `#c-europa`— así que no cuesta un byte de JavaScript.
+ */
+interface Props {
+  ver: 'hora' | 'lugar';
+  partidos: MatchCard[];
+  geografia: GeographyContinent[];
+  /** La hora de Lima en este momento; null cuando la página muestra otro día. */
+  horaActual?: number | null;
+}
+
+const { ver, partidos, geografia, horaActual = null } = Astro.props;
+
+const bloques = agruparPorHora(partidos);
+const pico = Math.max(...bloques.map((b) => b.partidos.length), 1);
+
+const porContinente = geografia.map((continente) => {
+  const suyos = continente.countries.flatMap((p) => p.competitions.flatMap((t) => t.matches));
+  return {
+    clave: continente.continent,
+    etiqueta: continente.label,
+    total: suyos.length,
+    vivos: suyos.filter((m) => isLive(m.status)).length,
+    paises: continente.countries.length,
+  };
+});
+const picoContinente = Math.max(...porContinente.map((c) => c.total), 1);
+
+const filas =
+  ver === 'hora'
+    ? bloques.map((b) => ({
+        ancla: `#h${b.hora}`,
+        titulo: b.etiqueta,
+        detalle: b.vivos > 0 ? `${b.vivos} en juego` : b.terminados === b.partidos.length ? 'jugados' : null,
+        total: b.partidos.length,
+        pico,
+        vivos: b.vivos,
+        ahora: horaActual !== null && Number(b.hora) === horaActual,
+        pasado: horaActual !== null && Number(b.hora) < horaActual && b.vivos === 0,
+        continente: null as string | null,
+      }))
+    : porContinente.map((c) => ({
+        ancla: `#c-${c.clave}`,
+        titulo: c.etiqueta,
+        detalle: `${c.paises} ${c.paises === 1 ? 'país' : 'países'}`,
+        total: c.total,
+        pico: picoContinente,
+        vivos: c.vivos,
+        ahora: false,
+        pasado: false,
+        continente: c.clave,
+      }));
+---
+
+{
+  filas.length > 1 && (
+    <nav
+      aria-label={ver === 'hora' ? 'Saltar a una hora del día' : 'Saltar a un continente'}
+      class="hidden rounded-xl border border-border bg-surface lg:block"
+    >
+      <p class="border-b border-border px-3 py-2.5 font-display text-2xs font-semibold uppercase tracking-label text-ink-muted">
+        {ver === 'hora' ? 'El día, hora por hora' : 'El día, por continente'}
+      </p>
+
+      {/*
+        Con desplazamiento propio: un día grande son dieciséis bloques y el riel no puede ser más
+        alto que la pantalla, o deja de acompañar el scroll y se vuelve otra lista que recorrer.
+      */}
+      <ul class="grid max-h-[min(28rem,calc(100dvh-14rem))] gap-px overflow-y-auto p-1">
+        {filas.map((fila) => (
+          <li>
+            <a
+              href={fila.ancla}
+              class:list={[
+                'group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-canvas-subtle',
+                fila.ahora && 'bg-live/[0.07]',
+              ]}
+            >
+              {fila.continente ? (
+                <ContinentIcon name={fila.continente} size={15} class="text-primary-ink" />
+              ) : (
+                <span
+                  aria-hidden="true"
+                  class:list={[
+                    'size-1.5 rounded-full',
+                    fila.ahora ? 'bg-live animate-live-pulse' : fila.pasado ? 'bg-border' : 'bg-border-strong',
+                  ]}
+                />
+              )}
+
+              <span class="min-w-0">
+                <span
+                  class:list={[
+                    'block truncate text-sm tabular',
+                    fila.ahora
+                      ? 'font-semibold text-live-ink'
+                      : fila.pasado
+                        ? 'text-ink-muted'
+                        : 'font-medium text-ink',
+                  ]}
+                >
+                  {fila.titulo}
+                </span>
+                {fila.detalle && (
+                  <span
+                    class:list={[
+                      'block truncate text-2xs',
+                      fila.vivos > 0 ? 'text-live-ink' : 'text-ink-muted',
+                    ]}
+                  >
+                    {fila.detalle}
+                  </span>
+                )}
+              </span>
+
+              {/* La cifra dice cuántos; la barra deja compararlos de un vistazo, sin leerlos. */}
+              <span class="flex shrink-0 items-center gap-1.5">
+                <span
+                  aria-hidden="true"
+                  class="flex h-3.5 w-6 items-end overflow-hidden rounded-[1px] bg-canvas-subtle"
+                >
+                  <span
+                    class:list={[
+                      'w-full',
+                      fila.vivos > 0 ? 'bg-live/70' : fila.pasado ? 'bg-border-strong' : 'bg-primary/55',
+                    ]}
+                    style={`height:${Math.max(12, Math.round((fila.total / fila.pico) * 100))}%`}
+                  />
+                </span>
+                <span class="w-5 text-right text-2xs tabular text-ink-muted">{fila.total}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}

@@ -8,3 +8,4 @@ export * from './relato.js';
 export * from './rounds.js';
 export * from './slug.js';
 export * from './standings.js';
+export * from './clasicos.js';

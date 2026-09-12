@@ -12,7 +12,7 @@
  * casa.
  */
 import { chance, crearAzar, elegir, entre, limitar, mezclar, pesado, type Azar } from './azar.js';
-import { normalizarCiudad, rivalesDeclarados } from './clasicos.js';
+import { normalizarCiudad, rivalesDeclarados } from '@athena/domain';
 import {
   MAX_OFERTAS,
   type Carrera,

@@ -7,8 +7,8 @@
  * avanzaba y un gol no aparecía hasta recargar. En una página cuya primera línea es "qué se juega
  * hoy", eso es un dato viejo disfrazado de dato.
  *
- * Vive en tres lugares —la home, la competencia y el equipo—, que son los que listan partidos que
- * pueden estar en juego. La página del partido tiene el suyo, que además rehace la cancha.
+ * Vive en cuatro lugares —la home, el calendario, la competencia y el equipo—, que son los que
+ * listan partidos que pueden estar en juego. La página del partido tiene el suyo, que además rehace la cancha.
  *
  * En vez de recargar como hace la página de partido —acá se perdería el scroll del catálogo y el
  * árbol abierto—, se pide la lista del día y se parchean tres cosas por fila: el marcador, el estado
@@ -69,8 +69,22 @@ const { dia, segundos = 30 } = Astro.props;
         const marcador = fila.querySelector<HTMLElement>('[data-marcador]');
         if (marcador) pintarMarcador(marcador, m);
 
+        /*
+         * La banda de "ahora" escribe un gol de cada lado, al lado de su equipo, en vez de "1 – 0"
+         * de una pieza. Son las tarjetas donde el marcador más importa, así que también se parchean.
+         */
+        for (const lado of fila.querySelectorAll<HTMLElement>('[data-marcador-lado]')) {
+          const goles = lado.dataset.marcadorLado === '0' ? m.homeScore : m.awayScore;
+          if (goles !== null) lado.textContent = String(goles);
+        }
+
         const estado = fila.querySelector<HTMLElement>('[data-estado]');
-        if (estado) {
+        /*
+         * Un partido que sigue sin empezar no se toca: en la parrilla esa esquina lleva su horario
+         * exacto —o nada, cuando cae en la hora en punto—, y escribirle "Programado" encima sería
+         * cambiar un dato por una palabra que no dice nada.
+         */
+        if (estado && m.status !== 'scheduled') {
           const vivo = isLive(m.status);
           estado.textContent = vivo
             ? minutoEnVivo(m.status, m.elapsedMinutes, m.statusDetail)

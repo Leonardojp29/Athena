@@ -156,6 +156,10 @@ export interface MatchDayView {
   date: string;
   total: number;
   live: number;
+  /** Puesto en la tabla de cada equipo, por `seasonId:teamId`. Vacío en una copa sin tabla. */
+  posiciones: Record<string, { puesto: number; puntos: number }>;
+  /** Con qué puesto llega cada uno, listo por id de partido. Solo los que tienen tabla. */
+  puestoPorPartido: Record<string, { local: number; visita: number }>;
   sections: MatchSection[];
   geography: GeographyContinent[];
 }

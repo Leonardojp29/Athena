@@ -1,0 +1,78 @@
+---
+import { cargaDelDia, relojDe } from '../../lib/calendario';
+import type { MatchCard } from '../../lib/api';
+
+/*
+ * La forma del día, en una tira.
+ *
+ * Un día de fútbol no es plano: hay tres partidos a las diez de la mañana y dieciocho a las ocho de
+ * la noche, y hasta ahora la única forma de saberlo era bajar la página entera. Cada barra es una
+ * hora y su alto es cuántos partidos empiezan ahí.
+ *
+ * Es un gráfico, así que lleva su tabla debajo para quien no lo ve: la barra sola sería color y
+ * altura, que son los dos canales que un lector de pantalla no tiene.
+ */
+interface Props {
+  partidos: MatchCard[];
+  /** La hora de Lima ahora mismo, cuando la página muestra el día de hoy. */
+  horaActual?: number | null;
+}
+
+const { partidos, horaActual = null } = Astro.props;
+const horas = cargaDelDia(partidos);
+const pico = Math.max(...horas, 1);
+
+/* Se recorta al tramo con fútbol: veinticuatro barras de las que nueve están vacías no dicen nada. */
+const primera = horas.findIndex((n) => n > 0);
+const ultima = horas.length - 1 - [...horas].reverse().findIndex((n) => n > 0);
+const desde = primera === -1 ? 0 : Math.max(0, primera - 1);
+const hasta = primera === -1 ? 23 : Math.min(23, ultima + 1);
+const tramo = horas.slice(desde, hasta + 1).map((cuantos, i) => ({ hora: desde + i, cuantos }));
+
+const dos = (n: number) => String(n).padStart(2, '0');
+const conFutbol = tramo.filter((t) => t.cuantos > 0);
+const masCargada = conFutbol.reduce(
+  (mejor, t) => (t.cuantos > (mejor?.cuantos ?? 0) ? t : mejor),
+  conFutbol[0],
+);
+---
+
+{
+  conFutbol.length > 1 && (
+    <figure class="grid gap-1.5">
+      <div class="flex items-end gap-[3px] border-b border-border" aria-hidden="true">
+        {tramo.map(({ hora, cuantos }) => (
+          <span class="group/hora relative flex flex-1 flex-col justify-end" style="height:2.75rem">
+            <span
+              title={cuantos > 0 ? `${dos(hora)}:00 · ${cuantos}` : undefined}
+              class:list={[
+                'w-full rounded-t-[2px] transition-colors',
+                cuantos === 0 && 'bg-border/70',
+                cuantos > 0 && hora === horaActual && 'bg-live',
+                cuantos > 0 && hora === masCargada?.hora && hora !== horaActual && 'bg-primary',
+                cuantos > 0 && hora !== horaActual && hora !== masCargada?.hora &&
+                  'bg-primary/35 group-hover/hora:bg-primary/70',
+              ]}
+              style={`height:${cuantos === 0 ? 2 : Math.max(12, Math.round((cuantos / pico) * 100))}%`}
+            />
+          </span>
+        ))}
+      </div>
+
+      <div class="flex items-baseline justify-between text-2xs tabular text-ink-muted">
+        <span>{dos(desde)}:00</span>
+        {masCargada && (
+          <span class="text-ink">
+            El grueso, a las <strong class="font-semibold">{dos(masCargada.hora)}:00</strong>
+          </span>
+        )}
+        <span>{dos(hasta)}:00</span>
+      </div>
+
+      <figcaption class="sr-only">
+        Partidos por hora:{' '}
+        {conFutbol.map((t) => `${dos(t.hora)}:00, ${t.cuantos}`).join('; ')}.
+      </figcaption>
+    </figure>
+  )
+}

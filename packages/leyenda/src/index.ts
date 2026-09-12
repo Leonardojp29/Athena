@@ -6,7 +6,7 @@ export * from './legado.js';
 export * from './mercado.js';
 export * from './momentos.js';
 export * from './seleccion.js';
-export { rivalesDeclarados } from './clasicos.js';
+export { rivalesDeclarados } from '@athena/domain';
 export * from './ovr.js';
 export * from './temporada.js';
 export { CATALOGO, redactar } from './eventos/index.js';

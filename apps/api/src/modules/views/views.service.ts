@@ -372,21 +372,83 @@ export class ViewsService {
     const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
     if (Number.isNaN(start.getTime())) throw new BadRequestException('Fecha inválida');
 
-    const matches = await this.prisma.match.findMany({
-      relationLoadStrategy: JOIN,
-      where: { kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) } },
-      select: matchCard,
-      orderBy: { kickoffUtc: 'asc' },
-      take: 300,
-    });
+    /*
+     * En qué puesto llega cada uno. Sin esto, un Bournemouth contra Brentford y un puntero contra
+     * el escolta se ven exactamente igual, y no lo son.
+     *
+     * Las dos consultas salen juntas y la de la tabla no espera a saber qué temporadas hay: pide
+     * las de las temporadas en curso, que son las únicas donde "en qué puesto llega" significa
+     * algo. Encadenarlas costaba dos viajes a la base, y desde fuera de región eso son cuatro
+     * segundos en un día que todavía no está en caché.
+     */
+    const [matches, tabla] = await Promise.all([
+      this.prisma.match.findMany({
+        relationLoadStrategy: JOIN,
+        where: { kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) } },
+        select: { ...matchCard, seasonId: true },
+        orderBy: { kickoffUtc: 'asc' },
+        take: 300,
+      }),
+      this.prisma.standing.findMany({
+        where: { season: { isCurrent: true } },
+        select: { teamId: true, seasonId: true, position: true, points: true },
+      }),
+    ]);
+    const posiciones = Object.fromEntries(
+      tabla.map((fila) => [`${fila.seasonId}:${fila.teamId}`, { puesto: fila.position, puntos: fila.points }]),
+    );
+
+    const sinTemporada = matches.map(({ seasonId: _, ...resto }) => resto);
 
     return {
       date,
       total: matches.length,
       live: matches.filter((m) => m.status === 'in_play' || m.status === 'paused').length,
-      sections: groupByCompetition(matches),
-      geography: groupByGeography(matches),
+      /* La clave es `seasonId:teamId`: un club juega su liga y su copa con puestos distintos. */
+      posiciones,
+      puestoPorPartido: Object.fromEntries(
+        matches.flatMap((m) => {
+          const local = posiciones[`${m.seasonId}:${m.homeTeam.id}`];
+          const visita = posiciones[`${m.seasonId}:${m.awayTeam.id}`];
+          return local && visita ? [[m.id, { local: local.puesto, visita: visita.puesto }]] : [];
+        }),
+      ),
+      sections: groupByCompetition(sinTemporada),
+      geography: groupByGeography(sinTemporada),
     };
+  }
+
+  /**
+   * Cuántos partidos tiene cada día de una ventana.
+   *
+   * La tira de días eran siete cajitas idénticas y ninguna decía nada: elegir el sábado o el martes
+   * costaba lo mismo aunque uno tenga cuarenta partidos y el otro tres. Es un conteo agrupado, no
+   * siete consultas.
+   */
+  async calendarioSemana(desde: string, dias: number) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) throw new BadRequestException('Fecha inválida');
+    const inicio = new Date(`${desde}T00:00:00${LIMA_OFFSET}`);
+    if (Number.isNaN(inicio.getTime())) throw new BadRequestException('Fecha inválida');
+    const cuantos = Math.min(Math.max(dias, 1), 31);
+    const fin = new Date(inicio.getTime() + cuantos * DAY_MS);
+
+    const filas = await this.prisma.match.findMany({
+      where: { kickoffUtc: { gte: inicio, lt: fin } },
+      select: { kickoffUtc: true, status: true },
+    });
+
+    const porDia = new Map<string, { total: number; vivos: number }>();
+    for (let i = 0; i < cuantos; i += 1) {
+      porDia.set(enLima(new Date(inicio.getTime() + i * DAY_MS)), { total: 0, vivos: 0 });
+    }
+    for (const fila of filas) {
+      const dia = porDia.get(enLima(fila.kickoffUtc));
+      if (!dia) continue;
+      dia.total += 1;
+      if (fila.status === 'in_play' || fila.status === 'paused') dia.vivos += 1;
+    }
+
+    return [...porDia].map(([fecha, cuenta]) => ({ fecha, ...cuenta }));
   }
 
   /*

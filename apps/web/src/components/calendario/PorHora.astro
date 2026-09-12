@@ -1,0 +1,143 @@
+---
+import type { MatchCard } from '../../lib/api';
+import { agruparPorHora, realceDe, type Puestos } from '../../lib/calendario';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
+import CountryFlag from '../CountryFlag.astro';
+import EscudoTorneo from '../EscudoTorneo.astro';
+import FilaDeParrilla from './FilaDeParrilla.astro';
+
+/*
+ * El día como una parrilla: la hora manda.
+ *
+ * Es el eje que la página no tenía. Quien entra a las siete de la tarde no busca Bélgica, busca qué
+ * puede ver ahora, y con el orden por continente eso obligaba a barrer dieciocho países. Acá el
+ * reloj baja por la izquierda y cada hora trae lo que arranca ahí, todavía agrupado por torneo
+ * adentro: la liga sigue importando, pero después del horario y no antes.
+ *
+ * El riel es una línea continua con una marca por hora, como la columna de horarios de una pizarra
+ * de entrenador, y **la línea de ahora la cruza**. Ese corte es lo que convierte una lista ordenada
+ * por tiempo en un calendario: sin él hay que leer los números para saber qué ya pasó.
+ */
+interface Props {
+  partidos: MatchCard[];
+  puestos: Puestos;
+  /** La hora de Lima en este momento; null cuando la página muestra otro día. */
+  horaActual?: number | null;
+  /** "14:35" de Lima, para escribirlo en la línea de ahora. */
+  relojActual?: string | null;
+}
+
+const { partidos, puestos, horaActual = null, relojActual = null } = Astro.props;
+const bloques = agruparPorHora(partidos);
+
+/**
+ * Antes de qué bloque va la línea de ahora: el primero que todavía no llegó.
+ *
+ * Cuando ya pasaron todos —de madrugada, mirando el día que termina— no se dibuja: una línea al
+ * pie de la página no orienta a nadie.
+ */
+const cruce =
+  horaActual === null ? -1 : bloques.findIndex((b) => Number(b.hora) > horaActual);
+
+/** Dentro de una hora los partidos siguen agrupados por torneo: sin eso son una lista suelta. */
+function porTorneo(lista: MatchCard[]) {
+  const mapa = new Map<string, { competencia: MatchCard['season']['competition']; partidos: MatchCard[] }>();
+  for (const partido of lista) {
+    const { competition } = partido.season;
+    const grupo = mapa.get(competition.slug);
+    if (grupo) grupo.partidos.push(partido);
+    else mapa.set(competition.slug, { competencia: competition, partidos: [partido] });
+  }
+  return [...mapa.values()];
+}
+---
+
+<ol class="grid gap-0">
+  {
+    bloques.map((bloque, indice) => {
+      const esAhora = horaActual !== null && Number(bloque.hora) === horaActual;
+      const yaPaso = horaActual !== null && Number(bloque.hora) < horaActual && bloque.vivos === 0;
+      const torneos = porTorneo(bloque.partidos);
+      return (
+        <>
+          {indice === cruce && relojActual && (
+            <li aria-hidden="true" class="grid grid-cols-[3.25rem_minmax(0,1fr)] items-center gap-x-3 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-5">
+              <span class="pr-3 text-right font-display text-xs font-semibold tabular text-live-ink">
+                {relojActual}
+              </span>
+              <span class="relative flex items-center">
+                <span class="absolute -left-[calc(0.75rem+3px)] size-1.5 rounded-full bg-live sm:-left-[calc(1.25rem+3px)]" />
+                <span class="h-px w-full bg-live/45" />
+              </span>
+            </li>
+          )}
+
+          <li
+            id={`h${bloque.hora}`}
+            class="grid scroll-mt-24 grid-cols-[3.25rem_minmax(0,1fr)] gap-x-3 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-5"
+          >
+            {/*
+              El riel: la línea baja entera y la hora se apoya en su marca. La línea vive en el
+              pseudo-elemento de la celda para que no se corte entre bloques.
+            */}
+            <div class="relative flex flex-col items-end pt-4 pr-3 text-right after:absolute after:top-0 after:bottom-0 after:right-0 after:w-px after:bg-border">
+              <span
+                class:list={[
+                  'relative font-display text-xl font-semibold leading-none tabular sm:text-2xl',
+                  esAhora ? 'text-live-ink' : yaPaso ? 'text-ink-muted/70' : 'text-ink',
+                ]}
+              >
+                {bloque.etiqueta}
+              </span>
+              <span class="mt-1 text-2xs tabular text-ink-muted">{bloque.partidos.length}</span>
+
+              {/* La marca sobre la línea: un punto lleno en la hora en curso, un filo en el resto. */}
+              <span
+                aria-hidden="true"
+                class:list={[
+                  'absolute right-0 translate-x-1/2',
+                  esAhora
+                    ? 'top-[1.05rem] size-2.5 rounded-full bg-live ring-4 ring-canvas sm:top-[1.15rem]'
+                    : 'top-[1.35rem] h-px w-2 bg-border-strong sm:top-[1.5rem]',
+                ]}
+              />
+            </div>
+
+            <div class="grid items-start gap-3 py-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr))]">
+              {torneos.map(({ competencia, partidos: suyos }) => (
+                <section class="rounded-lg border border-border bg-surface">
+                  <a
+                    href={`/competencias/${competencia.slug}`}
+                    class="flex items-center gap-2 border-b border-border px-3 py-2 transition-colors hover:bg-canvas-subtle"
+                  >
+                    <EscudoTorneo url={competencia.logoUrl} size={15} />
+                    <span class="truncate text-2xs font-semibold uppercase tracking-label">
+                      {nombreTorneo(competencia.name)}
+                    </span>
+                    <span class="ml-auto flex shrink-0 items-center gap-1.5">
+                      <span class="truncate text-2xs text-ink-muted">
+                        {paisEnEspanol(competencia.country) ?? 'Internacional'}
+                      </span>
+                      <CountryFlag
+                        url={competencia.flagUrl}
+                        code={competencia.countryCode}
+                        name={paisEnEspanol(competencia.country)}
+                        size={16}
+                      />
+                    </span>
+                  </a>
+
+                  <div class="grid gap-0.5 p-1">
+                    {suyos.map((match) => (
+                      <FilaDeParrilla match={match} realce={realceDe(match, puestos)} />
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </li>
+        </>
+      );
+    })
+  }
+</ol>

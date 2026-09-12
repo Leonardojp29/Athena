@@ -22,6 +22,7 @@ const TTL = {
   /* Un partido terminado al que le falta el detalle se repara en minutos: la caché no puede taparlo. */
   matchIncompleto: 120,
   matchPorRuta: 3600,
+  semana: 300,
   topPerformers: 300,
   /* La calculadora es una tabla, no un marcador: un minuto le sobra mientras se juega la fecha. */
   calculadoraEnJuego: 60,
@@ -157,6 +158,16 @@ export class ViewsController {
       `public, s-maxage=${ttl}, stale-while-revalidate=${Math.min(ttl * 2, 3600)}`,
     );
     return vista;
+  }
+
+  /* El peso de cada día de la ventana: la tira de días deja de ser siete cajitas idénticas. */
+  @Get('calendario-semana')
+  @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=900')
+  calendarioSemana(@Query('desde') desde: string, @Query('dias') dias?: string) {
+    const cuantos = Number(dias ?? 7) || 7;
+    return this.cache.wrap(`semana:${desde}:${cuantos}`, TTL.semana, () =>
+      this.views.calendarioSemana(desde, cuantos),
+    );
   }
 
   @Get('sitemap/:tipo')

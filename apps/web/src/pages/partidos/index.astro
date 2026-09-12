@@ -1,40 +1,103 @@
 ---
 import Icon from '../../components/Icon.astro';
 import MatchGeography from '../../components/home/MatchGeography.astro';
+import BandaDeAhora from '../../components/calendario/BandaDeAhora.astro';
+import CargaDelDia from '../../components/calendario/CargaDelDia.astro';
+import PorHora from '../../components/calendario/PorHora.astro';
+import SemanaDePartidos, { type Dia } from '../../components/calendario/SemanaDePartidos.astro';
+import Container from '../../components/layout/Container.astro';
+import RefrescoDeMarcadores from '../../components/RefrescoDeMarcadores.astro';
+import Hueco from '../../components/anuncios/Hueco.astro';
+import IndiceDelDia from '../../components/calendario/IndiceDelDia.astro';
 import Base from '../../layouts/Base.astro';
 import { cachear } from '../../lib/cache';
-import { api, type MatchDayView } from '../../lib/api';
+import { api, type MatchCard, type MatchDayView } from '../../lib/api';
+import { type Puestos } from '../../lib/calendario';
 import { formatDateLong } from '../../lib/format';
 import { canonicaCon, migas } from '../../lib/seo';
-import RielDeAnuncios from '../../components/anuncios/RielDeAnuncios.astro';
+
+/*
+ * El calendario, por el reloj.
+ *
+ * Un calendario tiene dos ejes y esta página solo tenía uno: dónde. Con ochenta partidos repartidos
+ * en dieciocho países, quien entra a las siete de la tarde a ver qué puede mirar tenía que barrer el
+ * árbol entero buscando el presente. Ahora manda **cuándo**, y el lugar queda a un clic: los dos son
+ * enlaces de verdad (`?ver=`), así que la elección viaja en la URL y la página sigue costando 0 KB.
+ *
+ * Arriba va lo que caduca —lo que rueda y lo que arranca enseguida—, porque es lo único de la página
+ * que no sirve dentro de una hora.
+ */
 
 const TZ = 'America/Lima';
 const DAY_MS = 86_400_000;
+const DIAS_VISIBLES = 7;
 
 const isoDay = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(d);
 const hoy = isoDay(new Date());
 
 const pedida = Astro.url.searchParams.get('fecha');
 const fecha = pedida && /^\d{4}-\d{2}-\d{2}$/.test(pedida) ? pedida : hoy;
+const esHoy = fecha === hoy;
 
-let dia: MatchDayView | null = null;
-try {
-  dia = await api<MatchDayView>(`/views/matches?fecha=${fecha}`);
-} catch {
-  dia = null;
+const verPedido = Astro.url.searchParams.get('ver');
+const ver = verPedido === 'lugar' ? 'lugar' : 'hora';
+
+/* La tira se ancla al mediodía para que el desplazamiento no cruce un cambio de día. */
+const ancla = new Date(`${fecha}T12:00:00-05:00`);
+const primerDia = isoDay(new Date(ancla.getTime() - 3 * DAY_MS));
+
+interface CuentaDeDia {
+  fecha: string;
+  total: number;
+  vivos: number;
 }
+
+/* Los dos viajes salen juntos: la semana no depende del día y en serie sumaban su latencia. */
+const [dia, semana] = await Promise.all([
+  api<MatchDayView>(`/views/matches?fecha=${fecha}`).catch(() => null),
+  api<CuentaDeDia[]>(`/views/calendario-semana?desde=${primerDia}&dias=${DIAS_VISIBLES}`).catch(
+    () => [] as CuentaDeDia[],
+  ),
+]);
 
 if (dia) cachear(Astro.response, 'dia');
 
-/* La tira de días se ancla al mediodía para que el desplazamiento no cruce un cambio de día. */
-const ancla = new Date(`${fecha}T12:00:00-05:00`);
-const dias = [-3, -2, -1, 0, 1, 2, 3].map((offset) => {
-  const d = new Date(ancla.getTime() + offset * DAY_MS);
+const partidos: MatchCard[] = dia?.sections.flatMap((s) => s.matches) ?? [];
+const puestos: Puestos = dia?.puestoPorPartido ?? {};
+const hayEnVivo = (dia?.live ?? 0) > 0;
+
+/* La hora de Lima ahora mismo: enciende su marca en el riel y dibuja la línea que cruza el día. */
+const ahora = new Date();
+const horaActual = esHoy
+  ? Number(
+      new Intl.DateTimeFormat('es-PE', { timeZone: TZ, hour: '2-digit', hour12: false }).format(ahora),
+    )
+  : null;
+const relojActual = esHoy
+  ? new Intl.DateTimeFormat('es-PE', {
+      timeZone: TZ,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(ahora)
+  : null;
+
+const cuentaDe = new Map(semana.map((d) => [d.fecha, d]));
+const nombreDia = new Intl.DateTimeFormat('es-PE', { timeZone: TZ, weekday: 'short' });
+const numeroDia = new Intl.DateTimeFormat('es-PE', { timeZone: TZ, day: 'numeric' });
+const nombreMes = new Intl.DateTimeFormat('es-PE', { timeZone: TZ, month: 'long' });
+
+const dias: Dia[] = Array.from({ length: DIAS_VISIBLES }, (_, i) => {
+  const d = new Date(ancla.getTime() + (i - 3) * DAY_MS);
   const iso = isoDay(d);
+  const cuenta = cuentaDe.get(iso);
   return {
     iso,
-    dia: new Intl.DateTimeFormat('es-PE', { timeZone: TZ, weekday: 'short' }).format(d),
-    numero: new Intl.DateTimeFormat('es-PE', { timeZone: TZ, day: 'numeric' }).format(d),
+    diaCorto: nombreDia.format(d).replace('.', ''),
+    numero: numeroDia.format(d),
+    mes: nombreMes.format(d),
+    total: cuenta?.total ?? 0,
+    vivos: cuenta?.vivos ?? 0,
     esHoy: iso === hoy,
     activo: iso === fecha,
   };
@@ -44,98 +107,141 @@ const anterior = isoDay(new Date(ancla.getTime() - DAY_MS));
 const siguiente = isoDay(new Date(ancla.getTime() + DAY_MS));
 const titulo = formatDateLong(`${fecha}T12:00:00-05:00`);
 
+const EJES = [
+  { clave: 'hora', etiqueta: 'Por hora', icono: 'reloj' as const },
+  { clave: 'lugar', etiqueta: 'Por lugar', icono: 'bandera' as const },
+];
+const enlaceDeEje = (clave: string) =>
+  `/partidos?fecha=${fecha}${clave === 'lugar' ? '&ver=lugar' : ''}`;
+
 /*
- * El día sí cambia la página: cada `?fecha=` es otra jornada con otros partidos. Sin conservarlo,
- * los siete días que la cabecera ofrece colapsan en una sola dirección y seis quedan sin indexar.
+ * El día sí cambia la página: cada `?fecha=` es otra jornada. El eje no: los dos muestran los
+ * mismos partidos ordenados distinto, así que comparten canónico.
  */
 const canonical = canonicaCon(Astro.url, Astro.site, ['fecha']);
 const jsonLd = migas([{ nombre: 'Partidos', ruta: '/partidos' }], Astro.site, canonical);
+
+const cuantos = dia?.total ?? 0;
+const descripcion = `Los ${cuantos} partidos del ${titulo}, hora por hora: marcadores en vivo, alineaciones y análisis.`;
 ---
 
 <Base
   title={`Partidos del ${titulo} | Athena`}
-  description={`Todos los partidos del ${titulo} en las competencias que sigue Athena.`}
+  description={descripcion}
   canonical={canonical}
   jsonLd={jsonLd}
-  width="wide"
+  width="bleed"
   liveBar={false}
 >
-  <header class="flex flex-wrap items-end justify-between gap-4 pb-5">
-    <div>
-      <h1 class="font-display text-3xl font-semibold uppercase">Partidos</h1>
-      <p class="mt-1 text-sm text-ink-muted first-letter:uppercase">{titulo}</p>
-    </div>
+  <BandaDeAhora partidos={partidos} />
 
-    <!--
-      En un teléfono los siete días más las dos flechas miden 436 px y la página se iba de lado.
-      La tira desplaza sola y el resto de la fila se queda quieto.
-    -->
-    <div class="-mx-4 flex max-w-full items-center gap-1 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <a
-        href={`/partidos?fecha=${anterior}`}
-        aria-label="Día anterior"
-        class="rounded-md border border-border p-2 text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
-      >
-        <Icon name="flecha-izquierda" size={16} />
-      </a>
+  <Container width="content" class="pt-6 pb-5">
+    <header class="grid gap-4 pb-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:gap-7">
+      <div class="grid gap-3">
+        <div>
+          {/* El título nombra la página; el día y la cuenta van debajo, que es donde se los busca. */}
+          <h1 class="font-display text-3xl font-semibold uppercase leading-none sm:text-4xl">
+            Partidos
+          </h1>
+          <p class="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted">
+            {esHoy && <span class="font-semibold text-ink">Hoy</span>}
+            {esHoy && <span aria-hidden="true">·</span>}
+            <span class="first-letter:uppercase">{titulo}</span>
+            {cuantos > 0 && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span class="tabular">
+                  {cuantos} {cuantos === 1 ? 'partido' : 'partidos'}
+                </span>
+              </>
+            )}
+          </p>
+        </div>
 
-      <div class="flex gap-1" role="group" aria-label="Elegir día">
-        {
-          dias.map((d) => (
+        {partidos.length > 0 && <CargaDelDia partidos={partidos} horaActual={horaActual} />}
+      </div>
+
+      <SemanaDePartidos dias={dias} anterior={anterior} siguiente={siguiente} ver={ver} />
+    </header>
+
+    {
+      partidos.length > 0 && (
+        <div
+          class="mb-5 flex w-fit items-center gap-1 rounded-lg border border-border bg-canvas-subtle p-1"
+          role="group"
+          aria-label="Cómo ordenar el día"
+        >
+          {EJES.map((eje) => (
             <a
-              href={`/partidos?fecha=${d.iso}`}
-              aria-current={d.activo ? 'page' : undefined}
+              href={enlaceDeEje(eje.clave)}
+              aria-current={eje.clave === ver ? 'true' : undefined}
               class:list={[
-                'flex w-12 flex-col items-center rounded-md border py-1.5 text-2xs transition-colors',
-                d.activo
-                  ? 'border-primary-ink bg-primary/12 text-ink'
-                  : 'border-border text-ink-muted hover:border-border-strong hover:text-ink',
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                eje.clave === ver
+                  ? 'bg-surface text-ink shadow-card'
+                  : 'text-ink-muted hover:text-ink',
               ]}
             >
-              <span class="uppercase">{d.dia.replace('.', '')}</span>
-              <span class:list={['tabular text-sm font-semibold', d.esHoy && !d.activo && 'text-primary-ink']}>
-                {d.numero}
-              </span>
+              <Icon name={eje.icono} size={14} />
+              {eje.etiqueta}
             </a>
-          ))
+          ))}
+        </div>
+      )
+    }
+
+    <!--
+      El índice vive a la derecha desde `lg` y no desde 1800: un calendario necesita saber dónde
+      estás parado en el tiempo y poder saltar sin recorrer el medio, y eso vale en cualquier
+      escritorio. De paso el ancho se llena con algo que sirve en vez de quedar en blanco.
+    -->
+    <div class="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <div class="min-w-0">
+        {
+          dia === null ? (
+            <p class="rounded-lg border border-border bg-surface p-6 text-sm text-ink-muted">
+              No pudimos cargar el calendario. Intenta de nuevo en un momento.
+            </p>
+          ) : partidos.length === 0 ? (
+            <div class="rounded-lg border border-border bg-surface p-8 text-center">
+              <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
+              <p class="mt-3 text-sm text-ink-muted">
+                Sin partidos este día en las competencias que seguimos.
+              </p>
+              {!esHoy && (
+                <a href="/partidos" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
+                  Ver los de hoy
+                </a>
+              )}
+            </div>
+          ) : ver === 'lugar' ? (
+            <MatchGeography geography={dia.geography} />
+          ) : (
+            <PorHora
+              partidos={partidos}
+              puestos={puestos}
+              horaActual={horaActual}
+              relojActual={relojActual}
+            />
+          )
         }
       </div>
 
-      <a
-        href={`/partidos?fecha=${siguiente}`}
-        aria-label="Día siguiente"
-        class="rounded-md border border-border p-2 text-ink-muted transition-colors hover:border-border-strong hover:text-ink"
-      >
-        <Icon name="chevron-derecha" size={16} />
-      </a>
-    </div>
-  </header>
-
-  <div class="grid items-start gap-7 3xl:grid-cols-[minmax(0,1fr)_19rem]">
-    <div class="min-w-0">
       {
-        dia === null ? (
-          <p class="rounded-lg border border-border bg-surface p-6 text-sm text-ink-muted">
-            No pudimos cargar el calendario. Intenta de nuevo en un momento.
-          </p>
-        ) : dia.sections.length === 0 ? (
-          <div class="rounded-lg border border-border bg-surface p-8 text-center">
-            <Icon name="cancha" size={32} class="mx-auto text-ink-muted" />
-            <p class="mt-3 text-sm text-ink-muted">
-              Sin partidos este día en las competencias que seguimos.
-            </p>
-            {fecha !== hoy && (
-              <a href="/partidos" class="mt-3 inline-block text-sm text-primary-ink hover:underline">
-                Ver los de hoy
-              </a>
-            )}
+        partidos.length > 0 && (
+          <div class="grid gap-4 lg:sticky lg:top-20">
+            <IndiceDelDia
+              ver={ver}
+              partidos={partidos}
+              geografia={dia?.geography ?? []}
+              horaActual={horaActual}
+            />
+            <Hueco medida="bloque" ubicacion="partidos-riel" class="hidden lg:block" />
           </div>
-        ) : (
-          <MatchGeography geography={dia.geography} />
         )
       }
     </div>
+  </Container>
 
-    <RielDeAnuncios ubicacion="partidos-riel" />
-  </div>
+  {hayEnVivo && <RefrescoDeMarcadores dia={fecha} />}
 </Base>
