@@ -59,6 +59,63 @@ test.describe('shell del sitio', () => {
     await expect(dialogo).toBeHidden();
   });
 
+  /*
+   * Lo que se guarda solo se borra a mano. Una reciente de más no es un error —el lector buscó
+   * eso— pero sí algo suyo, y no poder sacarla convierte una comodidad en una cuenta ajena.
+   */
+  test('las búsquedas recientes se borran de a una o todas juntas', async ({ page, isMobile }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'athena:busquedas',
+        JSON.stringify([
+          { type: 'team', name: 'Alianza Lima', slug: 'alianza-lima', imageUrl: null, subtitle: 'Perú' },
+          { type: 'player', name: 'Paolo Guerrero', slug: 'paolo-guerrero', imageUrl: null, subtitle: 'Perú' },
+          { type: 'competition', name: 'Primera División', slug: 'primera-division', imageUrl: null, subtitle: 'Perú' },
+        ]),
+      );
+    });
+    await page.goto('/');
+
+    if (isMobile) await page.getByLabel('Buscar', { exact: true }).click();
+    else await page.keyboard.press('/');
+
+    const recientes = page.locator('[data-olvidar]');
+    await expect(recientes).toHaveCount(3);
+
+    /* Con el teclado: Suprimir sobre la marcada, que es la única vía sin apuntador. */
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Delete');
+    await expect(recientes).toHaveCount(2);
+
+    await recientes.first().click();
+    await expect(recientes).toHaveCount(1);
+
+    await page.getByRole('button', { name: 'Borrar todo' }).click();
+    await expect(recientes).toHaveCount(0);
+    await expect(page.getByText(/Escribe para buscar/)).toBeVisible();
+
+    /* Se borraron de verdad y no de la pantalla: el almacenamiento queda sin la clave. */
+    expect(await page.evaluate(() => window.localStorage.getItem('athena:busquedas'))).toBeNull();
+  });
+
+  test('borrar una reciente no navega a su página', async ({ page, isMobile }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        'athena:busquedas',
+        JSON.stringify([
+          { type: 'team', name: 'Alianza Lima', slug: 'alianza-lima', imageUrl: null, subtitle: 'Perú' },
+        ]),
+      );
+    });
+    await page.goto('/');
+    if (isMobile) await page.getByLabel('Buscar', { exact: true }).click();
+    else await page.keyboard.press('/');
+
+    await page.locator('[data-olvidar]').first().click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('[data-buscador-dialogo][open]')).toBeVisible();
+  });
+
   test('sin nada elegido, Enter lleva a la vista de resultados', async ({ page, isMobile }) => {
     await page.goto('/');
     if (isMobile) await page.getByLabel('Buscar', { exact: true }).click();

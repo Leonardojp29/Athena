@@ -47,6 +47,25 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
   </div>
 
   <!--
+    La franja de recientes vive **fuera** del listbox: un `listbox` solo puede tener opciones, y un
+    botón suelto adentro le rompe la cuenta al lector de pantalla.
+  -->
+  <div
+    data-buscador-recientes
+    hidden
+    class="flex items-center gap-2 border-b border-border px-3.5 py-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-muted"
+  >
+    Recientes
+    <button
+      type="button"
+      data-olvidar-todo
+      class="ml-auto cursor-pointer rounded px-1.5 py-0.5 font-medium normal-case tracking-normal transition-colors hover:bg-canvas-subtle hover:text-ink"
+    >
+      Borrar todo
+    </button>
+  </div>
+
+  <!--
     `aria-live` no: el lector ya sigue la lista por `aria-activedescendant`, y anunciar cada
     resultado mientras se teclea convierte la búsqueda en un parloteo.
   -->
@@ -63,6 +82,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
     <span><kbd class="font-sans">↑↓</kbd> moverse</span>
     <span><kbd class="font-sans">Enter</kbd> abrir</span>
     <span><kbd class="font-sans">Esc</kbd> cerrar</span>
+    <span data-buscador-borrar-pie hidden><kbd class="font-sans">Supr</kbd> borrar la reciente</span>
   </p>
 </dialog>
 
@@ -73,6 +93,8 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
 
     const campo = dialogo.querySelector('[data-buscador-campo]');
     const panel = dialogo.querySelector('[data-buscador-resultados]');
+    const pie = dialogo.querySelector('[data-buscador-borrar-pie]');
+    const franja = dialogo.querySelector('[data-buscador-recientes]');
 
     const ESPERA_MS = 120;
     const RECIENTES_MAX = 6;
@@ -91,6 +113,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
     let opciones = [];
     let elegida = -1;
     let ultimaConsulta = '';
+    let hayRecientes = false;
 
     const normalizar = (texto) =>
       texto
@@ -107,6 +130,15 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       }
     };
 
+    const guardar = (lista) => {
+      try {
+        if (lista.length === 0) localStorage.removeItem(CLAVE_RECIENTES);
+        else localStorage.setItem(CLAVE_RECIENTES, JSON.stringify(lista.slice(0, RECIENTES_MAX)));
+      } catch {
+        /* Sin almacenamiento el buscador funciona igual, solo no recuerda. */
+      }
+    };
+
     const recordar = (hit) => {
       try {
         const previas = recientes().filter((r) => !(r.type === hit.type && r.slug === hit.slug));
@@ -117,13 +149,29 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
           imageUrl: hit.imageUrl ?? null,
           subtitle: hit.subtitle ?? null,
         };
-        localStorage.setItem(
-          CLAVE_RECIENTES,
-          JSON.stringify([guardado, ...previas].slice(0, RECIENTES_MAX)),
-        );
+        guardar([guardado, ...previas]);
       } catch {
-        /* Sin almacenamiento el buscador funciona igual, solo no recuerda. */
+        /* idem */
       }
+    };
+
+    /*
+     * Lo que se guarda solo, se borra a mano. Una reciente de más no es un error del lector —buscó
+     * eso— pero sí algo suyo, y no poder sacarla convierte una comodidad en una cuenta que se
+     * lleva sin permiso.
+     */
+    const olvidar = (indice) => {
+      const previas = recientes();
+      previas.splice(indice, 1);
+      guardar(previas);
+      pintarRecientes();
+      campo.focus();
+    };
+
+    const olvidarTodo = () => {
+      guardar([]);
+      pintarRecientes();
+      campo.focus();
     };
 
     /*
@@ -213,7 +261,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       return `${escapar(nombre.slice(0, i))}<mark class="bg-transparent font-semibold text-ink">${escapar(nombre.slice(i, fin))}</mark>${escapar(nombre.slice(fin))}`;
     };
 
-    const filaHtml = (hit, indiceOpcion, consulta) => {
+    const filaHtml = (hit, indiceOpcion, consulta, borrable = false) => {
       const inicial = escapar(hit.name.slice(0, 1).toUpperCase());
       const medallon = hit.imageUrl
         ? `<img src="${escapar(hit.imageUrl)}" alt="" width="28" height="28" loading="lazy" class="size-7 shrink-0 rounded-full object-contain" />`
@@ -223,14 +271,28 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         hit.matchedBy === 'semántica'
           ? '<span class="ml-auto shrink-0 rounded-full bg-canvas-subtle px-2 py-0.5 text-2xs text-ink-muted">similar</span>'
           : '';
+      /*
+       * La × vive **dentro** de la opción y no como un botón aparte: un `listbox` solo puede tener
+       * opciones, y meter un envoltorio o un botón real rompe esa relación —axe lo marca como
+       * crítico y con razón, porque el lector de pantalla deja de saber cuántas opciones hay—.
+       *
+       * Como eso la deja fuera del recorrido del tabulador, el teclado borra con Suprimir sobre la
+       * reciente marcada, y el pie del diálogo lo dice cuando hay algo que borrar.
+       */
+      const olvidarHtml = borrable
+        ? `<span data-olvidar="${indiceOpcion}" aria-hidden="true"
+             class="absolute right-1 top-1/2 grid size-7 -translate-y-1/2 cursor-pointer place-items-center rounded-md text-ink-muted opacity-0 transition-[opacity,color,background-color] hover:bg-canvas-subtle hover:text-ink group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+           </span>`
+        : '';
       return `<a id="buscador-op-${indiceOpcion}" role="option" aria-selected="false"
         href="${RUTA[hit.type]}/${escapar(hit.slug)}" data-opcion="${indiceOpcion}"
-        class="flex items-center gap-3 rounded-md px-2 py-2 aria-selected:bg-primary/12">
+        class="group relative flex items-center gap-3 rounded-md px-2 py-2 aria-selected:bg-primary/12${borrable ? ' pr-9' : ''}">
         ${medallon}
         <span class="min-w-0 flex-1">
           <span class="block truncate text-sm">${resaltar(hit.name, consulta)}</span>
           <span class="block truncate text-2xs text-ink-muted">${escapar(pie)}</span>
-        </span>${similar}
+        </span>${similar}${olvidarHtml}
       </a>`;
     };
 
@@ -238,6 +300,9 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       `<p class="px-2 py-6 text-center text-sm text-ink-muted">${escapar(texto)}</p>`;
 
     const pintar = (hits, consulta, vacio) => {
+      hayRecientes = false;
+      franja.hidden = true;
+      pie.hidden = true;
       opciones = hits;
       elegida = hits.length > 0 ? 0 : -1;
 
@@ -268,14 +333,18 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       opciones = previas;
       elegida = previas.length > 0 ? 0 : -1;
       if (previas.length === 0) {
+        hayRecientes = false;
+        franja.hidden = true;
         panel.innerHTML = mensaje('Escribe para buscar equipos, jugadores o competencias.');
         campo.setAttribute('aria-expanded', 'false');
+        pie.hidden = true;
         return;
       }
-      panel.innerHTML =
-        '<p class="px-2 pb-1 pt-2 text-2xs font-semibold uppercase tracking-wide text-ink-muted">Recientes</p>' +
-        previas.map((hit, i) => filaHtml(hit, i, '')).join('');
+      hayRecientes = true;
+      franja.hidden = false;
+      panel.innerHTML = previas.map((hit, i) => filaHtml(hit, i, '', true)).join('');
       campo.setAttribute('aria-expanded', 'true');
+      pie.hidden = false;
       marcar(0);
     };
 
@@ -355,6 +424,10 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         marcar((elegida + paso + opciones.length) % opciones.length);
         return;
       }
+      if (evento.key === 'Delete' && hayRecientes && elegida >= 0) {
+        evento.preventDefault();
+        return olvidar(elegida);
+      }
       if (evento.key !== 'Enter') return;
       evento.preventDefault();
       const hit = opciones[elegida];
@@ -367,7 +440,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
       if (consulta) location.href = `/buscar?q=${encodeURIComponent(consulta)}`;
     });
 
+    franja.querySelector('[data-olvidar-todo]').addEventListener('click', olvidarTodo);
+
     panel.addEventListener('click', (evento) => {
+      const quitar = evento.target.closest('[data-olvidar]');
+      if (quitar) {
+        evento.preventDefault();
+        return olvidar(Number(quitar.dataset.olvidar));
+      }
       const fila = evento.target.closest('[data-opcion]');
       if (!fila) return;
       const hit = opciones[Number(fila.dataset.opcion)];
@@ -375,6 +455,7 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
     });
 
     panel.addEventListener('mousemove', (evento) => {
+      if (evento.target.closest('[data-olvidar]')) return;
       const fila = evento.target.closest('[data-opcion]');
       if (fila) marcar(Number(fila.dataset.opcion));
     });
