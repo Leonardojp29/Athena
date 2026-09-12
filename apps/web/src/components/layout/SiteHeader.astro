@@ -82,6 +82,20 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         </button>
 
         <!--
+          La calculadora va antes de Juegos y en variante fantasma: dos pastillas `bg-primary`
+          pegadas se pelean, y de las dos la que manda es Juegos, que es una sección entera.
+        -->
+        <a
+          href="/calculadora"
+          aria-label="Calculadora"
+          aria-current={Astro.url.pathname.startsWith('/calculadora') ? 'page' : undefined}
+          class="flex shrink-0 items-center gap-1.5 rounded-lg border border-chalk/25 px-2 py-1.5 font-medium text-chalk transition-colors hover:bg-chalk/10 aria-[current]:bg-chalk/15 sm:px-3"
+        >
+          <Icon name="calculadora" size={18} />
+          <span class="hidden text-sm font-medium sm:inline">Calculadora</span>
+        </a>
+
+        <!--
           La entrada a los juegos. Va con el grupo de acciones porque es una sección propia y no un
           filtro del catálogo; en móvil queda el icono solo, que es lo que cabe en 16 de alto.
         -->

@@ -1,0 +1,20 @@
+/*
+ * Lo propio de la calculadora, importado solo por su ruta: las celdas de marcador no tienen por
+ * qué pesar en la página de un partido. Todo cuelga de atributos, como `leyenda.css`.
+ */
+
+/* Las flechas del navegador en un campo numérico roban ancho y no sirven para un marcador. */
+[data-partido-calculadora] input::-webkit-outer-spin-button,
+[data-partido-calculadora] input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+[data-partido-calculadora] input {
+  appearance: textfield;
+}
+
+/* Al enfocar, la celda se agranda apenas: dice dónde está el cursor sin mover la fila. */
+[data-partido-calculadora] input:focus-visible {
+  box-shadow: 0 0 0 2px var(--a-color-primary);
+}

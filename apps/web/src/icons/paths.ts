@@ -98,6 +98,9 @@ const REGISTRO = {
     body: '<path d="M3.5 6.5h4.2v5h4.6M3.5 17.5h4.2v-6"/><path d="M20.5 6.5h-4.2v5h-4.3M20.5 17.5h-4.2v-6"/>',
   },
   /* La sección de juegos: un mando, que es lo que se lee como "jugar" sin pensarlo. */
+  calculadora: {
+    body: '<rect x="4" y="2.5" width="16" height="19" rx="2.5" /><path d="M7.5 7h9" /><path d="M8.5 12h0M12 12h0M15.5 12h0M8.5 16.5h0M12 16.5h0M15.5 16.5h0" stroke-linecap="round" />',
+  },
   juego: {
     body: '<path d="M8.5 8.5h7a5 5 0 0 1 4.6 3l.9 4.6a2 2 0 0 1-3.6 1.5l-1.6-2.1H8.2l-1.6 2.1A2 2 0 0 1 3 16.1L3.9 11.5a5 5 0 0 1 4.6-3z"/><path d="M7.2 12.6h2.2M8.3 11.5v2.2"/><circle cx="15.6" cy="12.6" r=".9" fill="currentColor" stroke="none"/>',
   },

@@ -1,0 +1,158 @@
+---
+import Calculadora from '../components/calculadora/Calculadora';
+import Container from '../components/layout/Container.astro';
+import Base from '../layouts/Base.astro';
+import { api } from '../lib/api';
+import { cachear, sinCache } from '../lib/cache';
+import { conFase, decodificar, LIGA1, type DatosDeLaCalculadora } from '@athena/calculadora';
+import '../styles/calculadora.css';
+
+/*
+ * La calculadora de la Liga 1.
+ *
+ * El escenario viaja en la URL y se decodifica **acá**, del lado del servidor, así que la isla ya
+ * se dibuja con las tablas hechas: quien reciba el enlace por WhatsApp ve el escenario aunque el
+ * JavaScript todavía no haya llegado, o no llegue nunca. Es la misma decisión que la carta
+ * compartida de Mi Leyenda, y por la misma razón: un enlace que no dice nada sin hidratar no es
+ * un enlace, es una promesa.
+ *
+ * Nada se guarda en el servidor. La URL es todo el estado.
+ */
+const SLUG = 'primera-division';
+
+interface Crudo {
+  competencia: { nombre: string; slug: string; logo: string | null };
+  temporada: number | null;
+  ronda: string | null;
+  hayEnVivo: boolean;
+  equipos: Array<[string, string, string, string | null]>;
+  partidos: Array<[string, string, number, number, string, number | null, number | null, string]>;
+  ordenOficial: Array<{ etiqueta: string; equipos: number[] }>;
+}
+
+/* El proveedor rotula las tablas con el nombre del torneo adelante: "Primera Division: Clausura". */
+const CLAVES: Array<[RegExp, string]> = [
+  [/anual/i, 'anual'],
+  [/clausura/i, 'clausura'],
+  [/apertura/i, 'apertura'],
+];
+const claveDe = (etiqueta: string) =>
+  CLAVES.find(([patron]) => patron.test(etiqueta))?.[1] ?? etiqueta;
+
+/* La misma expansión que hace la isla: acá solo para decodificar el `?p=` del lado del servidor. */
+function armar(datosCrudos: Crudo): DatosDeLaCalculadora {
+  const equipos = datosCrudos.equipos.map(([id, nombre, slug, logo]) => ({
+    id,
+    nombre,
+    slug,
+    logo,
+    codigo: '',
+  }));
+  return {
+    competencia: datosCrudos.competencia,
+    temporada: datosCrudos.temporada ?? new Date().getFullYear(),
+    fase: datosCrudos.ronda,
+    fecha: null,
+    equipos,
+    partidos: conFase(
+      datosCrudos.partidos.map(([id, ronda, local, visita, estado, gl, gv, kickoff]) => ({
+        id,
+        ronda,
+        local: equipos[local]?.id ?? '',
+        visita: equipos[visita]?.id ?? '',
+        estado: estado as DatosDeLaCalculadora['partidos'][number]['estado'],
+        golesLocal: gl,
+        golesVisita: gv,
+        kickoff,
+      })),
+    ) as DatosDeLaCalculadora['partidos'],
+    ordenOficial: datosCrudos.ordenOficial.map(({ etiqueta, equipos: indices }) => ({
+      clave: claveDe(etiqueta),
+      equipos: indices.flatMap((i) => (equipos[i] ? [equipos[i].id] : [])),
+    })),
+  };
+}
+
+let crudo: Crudo | null = null;
+try {
+  crudo = await api<Crudo>(`/views/calculadora/${SLUG}`);
+} catch {
+  crudo = null;
+}
+
+const hayDatos = crudo !== null && crudo.equipos.length > 0;
+if (hayDatos) {
+  cachear(Astro.response, crudo?.hayEnVivo ? 'dia' : 'competencia');
+} else {
+  Astro.response.status = 503;
+  sinCache(Astro.response);
+}
+
+/*
+ * Las tuplas viajan tal cual a la isla y se expanden allá adentro. Expandirlas acá costaba 350 KB
+ * de props serializadas dentro del HTML —Astro las escribe escapadas en un atributo— contra los
+ * 35 KB que ocupan compactas. La isla las abre en un `useMemo`, que corre igual en el servidor.
+ */
+let datos: DatosDeLaCalculadora | null = null;
+let pronosticos: Array<[string, [number, number]]> = [];
+
+if (crudo && hayDatos) {
+  datos = armar(crudo);
+  pronosticos = [...decodificar(Astro.url.searchParams.get('p'), datos.equipos, datos.partidos)].map(
+    ([id, marcador]) => [id, [marcador[0], marcador[1]]],
+  );
+}
+
+const porJugar = datos?.partidos.filter((p) => p.estado === 'scheduled').length ?? 0;
+const titulo = datos
+  ? `Calculadora ${datos.competencia.nombre} ${datos.temporada} — Athena`
+  : 'Calculadora — Athena';
+---
+
+<Base
+  title={titulo}
+  description="Poné los marcadores que faltan y mirá cómo quedan el Apertura, el Clausura y la tabla anual: campeón, Libertadores, Sudamericana y descenso."
+  chrome="minimal"
+  width="bleed"
+  liveBar={false}
+>
+  {
+    datos && crudo ? (
+      <>
+        <section class="w-full border-b-[3px] border-b-primary bg-banda">
+          <Container width="content">
+            <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-5">
+              <h1 class="font-display text-2xl font-semibold uppercase leading-none text-chalk sm:text-3xl">
+                Calculadora
+              </h1>
+              <p class="text-2xs uppercase tracking-label text-chalk-dim">
+                {datos.competencia.nombre} · {datos.temporada}
+                {datos.fase ? ` · ${datos.fase.replace(' - ', ', fecha ')}` : ''}
+                {porJugar > 0 ? ` · ${porJugar} partidos por jugar` : ''}
+              </p>
+            </div>
+          </Container>
+        </section>
+
+        <Container width="content" class="pt-7 pb-6">
+          <Calculadora client:load crudo={crudo} reglas={LIGA1} inicial={pronosticos} />
+        </Container>
+      </>
+    ) : (
+      <Container width="content" class="py-16">
+        <div class="mx-auto max-w-md text-center">
+          <h1 class="font-display text-2xl font-semibold uppercase tracking-label">Calculadora</h1>
+          <p class="mt-2 text-sm text-ink-muted">
+            No pudimos cargar la temporada. Intentá de nuevo en un momento.
+          </p>
+          <a
+            href="/competencias/primera-division"
+            class="mt-4 inline-block rounded-md border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-canvas-subtle"
+          >
+            Ver la tabla
+          </a>
+        </div>
+      </Container>
+    )
+  }
+</Base>

@@ -52,6 +52,7 @@ const VISTAS: Array<[string, string]> = [
   ['el catálogo', '/competencias'],
   ['un equipo', '/equipos/alianza-lima'],
   ['los resultados de una búsqueda', '/buscar?q=alianza'],
+  ['la calculadora', '/calculadora'],
   ['el catálogo de juegos', '/juegos'],
   ['la creación de Mi Leyenda', '/juegos/mi-leyenda'],
 ];
@@ -114,7 +115,10 @@ test.describe('peso de las páginas', () => {
    * sigue siendo lo mismo: que el juego no crezca sin que nadie se entere.
    */
   const TECHO_DEL_JUEGO_KB = 800;
-  const techoDe = (ruta: string) => (ruta.startsWith('/juegos') ? TECHO_DEL_JUEGO_KB : TECHO_PROPIO_KB);
+  /* Las rutas con isla de React pagan sus 182 KB de entrada: se declaran, no se descubren. */
+  const CON_ISLA = ['/juegos', '/calculadora'];
+  const techoDe = (ruta: string) =>
+    CON_ISLA.some((prefijo) => ruta.startsWith(prefijo)) ? TECHO_DEL_JUEGO_KB : TECHO_PROPIO_KB;
 
   for (const [nombre, ruta] of VISTAS) {
     test(`${nombre} no engorda lo que escribimos nosotros`, async ({ page }) => {

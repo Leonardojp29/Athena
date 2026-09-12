@@ -81,6 +81,9 @@ importers:
       '@astrojs/vercel':
         specifier: ^8.2.11
         version: 8.2.11(astro@5.18.2(@types/node@22.20.1)(@vercel/functions@3.9.3)(ioredis@5.11.1(supports-color@7.2.0))(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.4)(supports-color@7.2.0)(typescript@5.9.3)(yaml@2.9.0))(react@19.2.8)(rollup@4.62.4)(supports-color@7.2.0)
+      '@athena/calculadora':
+        specifier: workspace:*
+        version: link:../../packages/calculadora
       '@athena/domain':
         specifier: workspace:*
         version: link:../../packages/domain
