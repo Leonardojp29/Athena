@@ -18,6 +18,7 @@ interface Props {
   titulo: string;
   pronosticos: ReadonlyMap<string, readonly [number, number]>;
   onPronosticar: (id: string, marcador: readonly [number, number] | null) => void;
+  reiniciar: ReactNode;
 }
 
 const JUGADO = new Set(['finished', 'in_play', 'paused']);
@@ -35,7 +36,14 @@ function tituloDeRonda(ronda: string): string {
   return numero > 0 ? `Fecha ${numero}` : ronda;
 }
 
-export default function Partidos({ datos, fases, titulo, pronosticos, onPronosticar }: Props) {
+export default function Partidos({
+  datos,
+  fases,
+  titulo,
+  pronosticos,
+  onPronosticar,
+  reiniciar,
+}: Props) {
   const porId = useMemo(() => new Map(datos.equipos.map((e) => [e.id, e])), [datos.equipos]);
 
   const rondas = useMemo(() => {
@@ -73,9 +81,12 @@ export default function Partidos({ datos, fases, titulo, pronosticos, onPronosti
 
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-surface">
-      <h2 className="border-b border-border px-4 py-2.5 font-display text-sm font-semibold uppercase tracking-label text-ink-muted">
-        Calendario · {titulo}
-      </h2>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-2.5">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-label text-ink-muted">
+          Calendario · {titulo}
+        </h2>
+        <span className="ml-auto">{reiniciar}</span>
+      </div>
 
       <div className="flex items-center gap-2 border-b border-border px-2 py-2">
         <button

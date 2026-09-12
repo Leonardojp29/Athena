@@ -87,12 +87,14 @@ const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
         -->
         <a
           href="/calculadora"
-          aria-label="Calculadora"
+          aria-label="Calculadora Liga 1"
           aria-current={Astro.url.pathname.startsWith('/calculadora') ? 'page' : undefined}
-          class="flex shrink-0 items-center gap-1.5 rounded-lg border border-chalk/25 px-2 py-1.5 font-medium text-chalk transition-colors hover:bg-chalk/10 aria-[current]:bg-chalk/15 sm:px-3"
+          class="flex shrink-0 items-center gap-2 rounded-lg border border-chalk/25 py-1 pl-1.5 pr-2 font-medium text-chalk transition-colors hover:bg-chalk/10 aria-[current]:bg-chalk/15 sm:pr-3"
         >
-          <Icon name="calculadora" size={18} />
-          <span class="hidden text-sm font-medium sm:inline">Calculadora</span>
+          <img src="/competencias/liga1.png" alt="" width="22" height="22" class="size-[22px] shrink-0 object-contain" />
+          <span class="hidden text-sm font-medium leading-tight sm:inline">
+            Calculadora <span class="text-chalk-dim">Liga 1</span>
+          </span>
         </a>
 
         <!--

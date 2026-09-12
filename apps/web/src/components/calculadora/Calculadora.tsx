@@ -15,6 +15,7 @@ import {
 } from '@athena/calculadora';
 import CaminoAlTitulo from './CaminoAlTitulo';
 import Controles from './Controles';
+import Reiniciar from './Reiniciar';
 import Partidos from './Partidos';
 import Tablas from './Tablas';
 
@@ -272,14 +273,10 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
         ))}
       </nav>
 
-      <div
-        className={
-          streamer
-            ? 'grid gap-4'
-            : 'grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)]'
-        }
-      >
-        {!streamer && calendario && (
+      {/* El calendario se queda aunque la tabla esté tapada: en una transmisión se sigue cargando
+          el escenario en vivo y el resultado se revela al final. */}
+      <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)]">
+        {calendario && (
           <div className="grid gap-4">
             <Partidos
               datos={conPronosticos}
@@ -287,6 +284,7 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
               titulo={calendario.titulo}
               pronosticos={pronosticos}
               onPronosticar={pronosticar}
+              reiniciar={<Reiniciar cuantos={pronosticos.size} onReiniciar={reiniciar} />}
             />
             <CaminoAlTitulo camino={camino} equipos={conPronosticos.equipos} />
           </div>
@@ -300,16 +298,18 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
             conPredicciones={conPredicciones}
             hayPronosticos={pronosticos.size > 0}
             streamer={streamer}
+            onRevelar={() => setStreamer(false)}
             controles={
-              <Controles
-                codigo={codigo}
-                cuantos={pronosticos.size}
-                conPredicciones={conPredicciones}
-                streamer={streamer}
-                onConPredicciones={() => setConPredicciones((v) => !v)}
-                onStreamer={() => setStreamer((v) => !v)}
-                onReiniciar={reiniciar}
-              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Controles
+                  codigo={codigo}
+                  conPredicciones={conPredicciones}
+                  streamer={streamer}
+                  onConPredicciones={() => setConPredicciones((v) => !v)}
+                  onStreamer={() => setStreamer((v) => !v)}
+                />
+                <Reiniciar cuantos={pronosticos.size} onReiniciar={reiniciar} />
+              </div>
             }
           />
         )}

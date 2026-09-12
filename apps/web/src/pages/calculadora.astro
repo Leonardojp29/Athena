@@ -122,26 +122,23 @@ const titulo = datos
         <section class="w-full border-b-[3px] border-b-primary bg-banda">
           <Container width="content">
             <div class="flex items-center gap-3 py-4">
-              {datos.competencia.logo && (
-                <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-chalk p-1.5 shadow-card sm:size-14">
-                  <img
-                    src={datos.competencia.logo}
-                    alt=""
-                    width="48"
-                    height="48"
-                    class="size-full object-contain"
-                  />
-                </span>
-              )}
               <div class="min-w-0">
                 <h1 class="font-display text-2xl font-semibold uppercase leading-none text-chalk sm:text-3xl">
                   Calculadora
                 </h1>
                 <p class="mt-1 truncate text-xs text-chalk-dim sm:text-sm">
-                  {datos.competencia.nombre} · Temporada {datos.temporada}
+                  Temporada {datos.temporada}
                   {porJugar > 0 ? ` · ${porJugar} partidos por jugar` : ''}
                 </p>
               </div>
+              <!-- El escudo ya dice "Liga 1": no hace falta repetirlo, ni encerrarlo en una plaquita. -->
+              <img
+                src="/competencias/liga1.png"
+                alt={datos.competencia.nombre}
+                width="44"
+                height="44"
+                class="size-11 shrink-0 object-contain sm:size-14"
+              />
             </div>
           </Container>
         </section>

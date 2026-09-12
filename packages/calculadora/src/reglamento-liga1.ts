@@ -18,6 +18,12 @@ export const LIGA1: ReglasLiga = {
   claveAcumulada: ANUAL,
   tablas: [
     {
+      clave: APERTURA,
+      titulo: 'Apertura',
+      fases: ['Apertura'],
+      zonas: [{ zona: 'campeon', desde: 1, hasta: 1, etiqueta: 'Ganó el Apertura' }],
+    },
+    {
       clave: CLAUSURA,
       titulo: 'Clausura',
       fases: ['Clausura'],
@@ -32,12 +38,6 @@ export const LIGA1: ReglasLiga = {
         { zona: 'sudamericana', desde: 5, hasta: 8, etiqueta: 'Copa Sudamericana' },
         { zona: 'descenso', desde: 17, hasta: 18, etiqueta: 'Desciende' },
       ],
-    },
-    {
-      clave: APERTURA,
-      titulo: 'Apertura',
-      fases: ['Apertura'],
-      zonas: [{ zona: 'campeon', desde: 1, hasta: 1, etiqueta: 'Ganó el Apertura' }],
     },
   ],
 };

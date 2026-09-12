@@ -4,17 +4,15 @@ import { useState } from 'react';
  * Los tres gestos que no son poner un marcador.
  *
  * **Con predicciones** apaga el escenario sin borrarlo: sirve para comparar contra la tabla de hoy
- * y volver. **Streamer** deja la tabla sola y sin probabilidades, que es lo que se comparte en una
- * transmisión o en una captura. **Reiniciar** pide confirmación porque borra trabajo.
+ * y volver. **Modo streamer** tapa la tabla y deja un botón para revelarla, que es lo que hace
+ * falta en una transmisión donde el resultado se cuenta al final y no al abrir la página.
  */
 interface Props {
   codigo: string;
-  cuantos: number;
   conPredicciones: boolean;
   streamer: boolean;
   onConPredicciones: () => void;
   onStreamer: () => void;
-  onReiniciar: () => void;
 }
 
 const BOTON =
@@ -22,15 +20,12 @@ const BOTON =
 
 export default function Controles({
   codigo,
-  cuantos,
   conPredicciones,
   streamer,
   onConPredicciones,
   onStreamer,
-  onReiniciar,
 }: Props) {
   const [copiado, setCopiado] = useState(false);
-  const [confirmando, setConfirmando] = useState(false);
   const vacio = codigo === '';
 
   const copiar = () => {
@@ -43,40 +38,17 @@ export default function Controles({
       .catch(() => undefined);
   };
 
-  if (confirmando) {
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-2xs text-ink-muted">
-          ¿Borrar {cuantos} {cuantos === 1 ? 'pronóstico' : 'pronósticos'}?
-        </span>
-        <button
-          type="button"
-          onClick={() => {
-            onReiniciar();
-            setConfirmando(false);
-          }}
-          className="cursor-pointer rounded-lg bg-card-red px-2.5 py-1.5 text-2xs font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Borrar todo
-        </button>
-        <button type="button" onClick={() => setConfirmando(false)} className={BOTON}>
-          Cancelar
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <button
         type="button"
         onClick={onStreamer}
         aria-pressed={streamer}
-        title="Deja la tabla sola, sin controles ni probabilidades"
+        title="Oculta la tabla para no adelantar el resultado en una transmisión"
         className={BOTON}
       >
         <Icono nombre="streamer" />
-        Streamer
+        Modo streamer
       </button>
 
       <button
@@ -93,25 +65,10 @@ export default function Controles({
         Con predicciones
       </button>
 
-      {!streamer && (
-        <>
-          <button type="button" onClick={copiar} disabled={vacio} className={BOTON}>
-            <Icono nombre="enlace" />
-            {copiado ? 'Copiado' : 'Compartir'}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setConfirmando(true)}
-            disabled={vacio}
-            aria-label="Reiniciar los pronósticos"
-            title="Reiniciar los pronósticos"
-            className={BOTON}
-          >
-            <Icono nombre="reiniciar" />
-          </button>
-        </>
-      )}
+      <button type="button" onClick={copiar} disabled={vacio} className={BOTON}>
+        <Icono nombre="enlace" />
+        {copiado ? 'Copiado' : 'Compartir'}
+      </button>
     </div>
   );
 }

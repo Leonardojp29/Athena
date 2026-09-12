@@ -35,8 +35,11 @@ test.describe('calculadora', () => {
     await expect(page).toHaveURL(/\?p=/, { timeout: 30_000 });
     await expect(page.locator('[data-partido-calculadora] input').first()).toHaveValue('4');
 
-    await page.getByRole('button', { name: 'Reiniciar los pronósticos' }).click();
-    await page.getByRole('button', { name: 'Borrar todo' }).click();
+    /* Hay uno en el calendario y otro junto a la tabla: los dos lugares donde uno empieza de nuevo. */
+    const reinicios = page.getByRole('button', { name: 'Reiniciar los pronósticos' });
+    expect(await reinicios.count()).toBe(2);
+    await reinicios.first().click();
+    await page.getByRole('button', { name: 'Sí, borrar' }).click();
     await expect(page).not.toHaveURL(/\?p=/, { timeout: 10_000 });
   });
 
@@ -120,6 +123,47 @@ test.describe('calculadora', () => {
     await expect(page.getByText(/Calendario · Apertura/i)).toBeVisible();
     /* El Apertura está jugado: no queda nada por pronosticar en su calendario. */
     expect(await page.locator('[data-partido-calculadora][data-editable]').count()).toBe(0);
+  });
+
+  /*
+   * El movimiento es el dato: quién subió y quién bajó. Si las filas saltan de golpe, el ojo pierde
+   * a quién seguía, así que viajan a su nueva posición y solo se enciende la que cambió de puesto.
+   */
+  test('la tabla se reordena con animación y solo marca a los que se movieron', async ({ page }) => {
+    await page.goto('/calculadora');
+    await page.getByRole('button', { name: 'Tabla anual' }).click();
+    await expect(page.locator('tbody [data-fila]').first()).toBeVisible({ timeout: 15_000 });
+
+    await page.locator('[data-partido-calculadora][data-editable] input').first().fill('6');
+    await page.waitForTimeout(120);
+
+    const animaciones = await page.evaluate(() => {
+      const filas = [...document.querySelectorAll('tbody [data-fila]')];
+      const conRastro = filas.filter((fila) =>
+        fila
+          .getAnimations()
+          .some((a) => (a.effect?.getKeyframes?.() ?? []).some((k) => 'backgroundColor' in k)),
+      ).length;
+      return { filas: filas.length, corriendo: filas.flatMap((f) => f.getAnimations()).length, conRastro };
+    });
+
+    expect(animaciones.corriendo).toBeGreaterThan(0);
+    /* El rastro de color va solo en las que cambiaron de puesto, no en las que se corrieron. */
+    expect(animaciones.conRastro).toBeGreaterThan(0);
+    expect(animaciones.conRastro).toBeLessThan(animaciones.filas);
+  });
+
+  test('el modo streamer tapa la tabla y deja seguir cargando el escenario', async ({ page }) => {
+    await page.goto('/calculadora');
+    await expect(page.locator('tbody [data-fila]').first()).toBeVisible({ timeout: 15_000 });
+
+    await page.getByRole('button', { name: 'Modo streamer' }).click();
+    await expect(page.getByText('Resultados ocultos')).toBeVisible();
+    /* El calendario se queda: en una transmisión se sigue pronosticando con la tabla tapada. */
+    await expect(page.locator('[data-partido-calculadora]').first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Revelar la tabla' }).click();
+    await expect(page.getByText('Resultados ocultos')).toBeHidden();
   });
 
   test('un resultado ya jugado no se puede editar', async ({ page }) => {

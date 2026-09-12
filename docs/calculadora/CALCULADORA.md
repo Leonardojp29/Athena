@@ -127,13 +127,41 @@ A nueve números iguales en gris no se les encuentra el orden. Cada columna llev
 tarjeta sobre blanco no llega a 3:1— y como texto necesitaban su propia tinta por tema. El audit
 de axe corre sobre las dos y es lo que los valida.
 
+El porcentaje va sobre una pastilla de su propio color con el alfa siguiendo al valor: la fila que
+importa se ve de lejos y la que no, casi no se ve. Es la misma información dos veces —color y
+número—, que es lo que permite leerla rápido y citarla exacta. La nota sobre los supuestos de la
+simulación ya no ocupa una línea bajo la tabla: vive en el `title` de la cabecera de esa columna y
+en este documento.
+
+### El movimiento es el dato
+
+Cuando cambia un marcador, las filas **viajan** a su nueva posición en vez de aparecer ahí: es FLIP
+—se mide dónde estaba cada una, se la deja saltar y se la anima desde la diferencia hasta cero—, así
+que el navegador solo compone `transform` y dieciocho filas moviéndose a la vez no cuestan un
+recálculo de layout. La tabla reacciona en **27 ms** medidos; lo único con espera son las
+probabilidades, que van en el Worker.
+
+El rastro de color —verde si subió, rojo si bajó— se dispara por **cambio de puesto** y no por
+desplazamiento de píxeles: cuando alguien sube, los de abajo se corren sin haber cambiado nada, y
+encenderlos a todos convertía el dato en ruido. Los puntos dan un salto corto cuando cambian.
+Todo se apaga con `prefers-reduced-motion`.
+
 ### Los tres controles
 
-- **Streamer** deja la tabla sola, sin controles ni probabilidades: es lo que se comparte en una
-  transmisión o en una captura.
+- **Modo streamer** tapa la tabla con un velo y deja un botón para revelarla; el calendario se
+  queda, porque en una transmisión se sigue cargando el escenario en vivo y el resultado se cuenta
+  al final.
 - **Con predicciones** apaga el escenario sin borrarlo, para comparar contra la tabla de hoy y
   volver.
-- **Reiniciar** pide confirmación porque borra trabajo.
+- **Reiniciar** está en los dos contenedores —el calendario y la tabla—, que son los dos lugares
+  donde a alguien se le ocurre empezar de nuevo, y pregunta con el número adelante: "¿borrar siete
+  pronósticos?" dice más que "¿estás seguro?".
+
+### El escudo
+
+`apps/web/public/competencias/liga1.png`, servido desde nuestro propio origen. El header lo usa en
+el botón —"Calculadora **Liga 1**"— y la cabecera de la página al lado del título, sin plaquita
+blanca: el escudo ya dice "Liga 1", así que el título no lo repite.
 
 ### Los marcadores
 
