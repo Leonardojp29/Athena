@@ -13,6 +13,7 @@
     "backfill:matches": "node --env-file-if-exists=../../.env dist/scripts/backfill-match-detail.js",
     "calentar:vistas": "node --env-file-if-exists=../../.env dist/scripts/calentar-vistas.js",
     "cerrar:pendientes": "node --env-file-if-exists=../../.env dist/scripts/cerrar-pendientes.js",
+    "reconcile:partidos": "node --env-file-if-exists=../../.env dist/scripts/reconcile-matches.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src && pnpm run arch",
     "test": "vitest run",

@@ -24,10 +24,24 @@ async function main(): Promise<void> {
   const budget = app.get(ApiBudgetService);
 
   let total = 0;
+  let anterior: number | null = null;
   for (let vuelta = 1; vuelta <= 20; vuelta++) {
     const escritos = await fixtures.reconcileStale();
-    total += escritos;
     if (escritos === 0) break;
+
+    /*
+     * Cuando una vuelta devuelve lo mismo que la anterior, los que quedan son partidos que el
+     * proveedor tampoco resolvió: los manda "no empezados" con la hora ya pasada, o los dejó
+     * aplazados sin fecha nueva. Volver a preguntar no los va a cambiar, así que se corta. Sin
+     * esto el bucle gastaba las veinte vueltas repreguntando por los mismos cinco.
+     */
+    if (escritos === anterior) {
+      console.log(`Quedan ${escritos} que el proveedor todavía no actualizó: no insisto.`);
+      break;
+    }
+    anterior = escritos;
+
+    total += escritos;
     const { dayRemaining } = await budget.snapshot();
     console.log(`vuelta ${vuelta}: ${escritos} partidos · cuota ${dayRemaining ?? '?'}`);
   }
