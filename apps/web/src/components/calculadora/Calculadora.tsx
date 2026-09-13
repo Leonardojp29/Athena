@@ -201,7 +201,7 @@ export default function Calculadora({ crudo, reglas, inicial }: Props) {
     const hayEnCurso = datos.partidos.some((p) => p.estado === 'in_play' || p.estado === 'paused');
     if (!hayEnCurso) return;
     const tic = window.setInterval(() => {
-      void fetch('/calculadora/datos.json')
+      void fetch('/calculadora-liga-1/datos.json')
         .then((r) => (r.ok ? r.json() : null))
         .then((llegaron: Crudo | null) => {
           if (llegaron?.partidos) setFrescos(armar(llegaron).partidos);

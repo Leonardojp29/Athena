@@ -7,7 +7,7 @@ import { expect, test } from '@playwright/test';
  */
 test.describe('calculadora', () => {
   test('escribir un marcador mueve la tabla y el escenario queda en la URL', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
 
     const celda = page.locator('[data-partido-calculadora] input').first();
     await expect(celda).toBeVisible({ timeout: 15_000 });
@@ -21,7 +21,7 @@ test.describe('calculadora', () => {
   });
 
   test('el escenario sobrevive a una recarga y Reiniciar lo borra', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     const celda = page.locator('[data-partido-calculadora][data-editable] input').first();
     await expect(celda).toBeVisible({ timeout: 15_000 });
     await celda.fill('4');
@@ -61,7 +61,7 @@ test.describe('calculadora', () => {
     const contexto = await browser.newContext({ javaScriptEnabled: false });
     const pagina = await contexto.newPage();
     /* El código lo arma el servidor: acá solo hace falta que la página lo entienda. */
-    await pagina.goto('/calculadora');
+    await pagina.goto('/calculadora-liga-1');
     const sinJs = pagina.locator('table tbody tr');
     await expect(sinJs.first()).toBeVisible({ timeout: 15_000 });
     expect(await sinJs.count()).toBe(18);
@@ -72,7 +72,7 @@ test.describe('calculadora', () => {
   });
 
   test('el selector reparte exactamente los cupos que hay', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await page.getByRole('button', { name: 'Tabla anual' }).click();
 
     const columna = page.locator('table tbody tr td:nth-last-child(2)');
@@ -98,7 +98,7 @@ test.describe('calculadora', () => {
   });
 
   test('los botones de más y menos mueven el marcador', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     const fila = page.locator('[data-partido-calculadora][data-editable]').first();
     await expect(fila).toBeVisible({ timeout: 15_000 });
     const celda = fila.locator('input').first();
@@ -114,7 +114,7 @@ test.describe('calculadora', () => {
   });
 
   test('la fase elegida manda en el calendario y en la tabla', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await expect(page.getByText(/Calendario · Clausura/i)).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: 'Apertura', exact: true }).click();
@@ -129,7 +129,7 @@ test.describe('calculadora', () => {
    * a quién seguía, así que viajan a su nueva posición y solo se enciende la que cambió de puesto.
    */
   test('la tabla se reordena con animación y solo marca a los que se movieron', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await page.getByRole('button', { name: 'Tabla anual' }).click();
     await expect(page.locator('tbody [data-fila]').first()).toBeVisible({ timeout: 15_000 });
 
@@ -153,7 +153,7 @@ test.describe('calculadora', () => {
   });
 
   test('el modo streamer tapa la tabla y deja seguir cargando el escenario', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await expect(page.locator('tbody [data-fila]').first()).toBeVisible({ timeout: 15_000 });
 
     await page.getByRole('button', { name: 'Modo streamer' }).click();
@@ -170,14 +170,14 @@ test.describe('calculadora', () => {
    * de la semana pasada —sobre partidos ya jugados— es peor que empezar limpio.
    */
   test('irse de la calculadora deja el escenario atrás', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     const celda = page.locator('[data-partido-calculadora][data-editable] input').first();
     await expect(celda).toBeVisible({ timeout: 15_000 });
     await celda.fill('3');
     await expect(page).toHaveURL(/\?p=/, { timeout: 10_000 });
 
     await page.goto('/');
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await expect(page.locator('[data-partido-calculadora][data-editable] input').first()).toBeVisible(
       { timeout: 15_000 },
     );
@@ -192,7 +192,7 @@ test.describe('calculadora', () => {
   test('la predicción se vuelve una imagen y la vista previa del enlace la lleva', async ({
     page,
   }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await expect(page.locator('[data-partido-calculadora][data-editable]').first()).toBeVisible({
       timeout: 15_000,
     });
@@ -205,7 +205,7 @@ test.describe('calculadora', () => {
     await expect(boton).toBeEnabled();
 
     const codigo = new URL(page.url()).searchParams.get('p');
-    const imagen = await page.request.get(`/calculadora/tarjeta.png?p=${codigo}`);
+    const imagen = await page.request.get(`/calculadora-liga-1/tarjeta.png?p=${codigo}`);
     expect(imagen.status()).toBe(200);
     expect(imagen.headers()['content-type']).toBe('image/png');
     /* Una tarjeta de 1200×630 pesa decenas de KB: si viniera vacía, esto lo diría. */
@@ -213,16 +213,16 @@ test.describe('calculadora', () => {
 
     const html = await (await page.request.get(page.url())).text();
     expect(html).toContain('og:title" content="Mi predicción:');
-    expect(html).toMatch(/og:image" content="[^"]*\/calculadora\/tarjeta\.png\?p=/);
+    expect(html).toMatch(/og:image" content="[^"]*\/calculadora-liga-1\/tarjeta\.png\?p=/);
   });
 
   test('sin escenario no hay tarjeta que inventar', async ({ request }) => {
-    const sinNada = await request.get('/calculadora/tarjeta.png');
+    const sinNada = await request.get('/calculadora-liga-1/tarjeta.png');
     expect(sinNada.status()).toBe(404);
   });
 
   test('un resultado ya jugado no se puede editar', async ({ page }) => {
-    await page.goto('/calculadora');
+    await page.goto('/calculadora-liga-1');
     await expect(page.locator('[data-partido-calculadora]').first()).toBeVisible({
       timeout: 15_000,
     });

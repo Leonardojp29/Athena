@@ -180,7 +180,7 @@ export function dibujarTarjeta({
       ? `Escenario completo · ${resumen.puestos} partidos puestos`
       : `Faltan ${resumen.faltan} partidos por definir`
   }</text>
-  <text x="${ANCHO - MARGEN}" y="573" text-anchor="end" font-family="Archivo" font-size="19" font-weight="600" fill="${TIZA_TENUE}">${escapar(sitio)}/calculadora</text>
+  <text x="${ANCHO - MARGEN}" y="573" text-anchor="end" font-family="Archivo" font-size="19" font-weight="600" fill="${TIZA_TENUE}">${escapar(sitio)}/calculadora-liga-1</text>
 
   <!-- El labio de la banda, igual que en el sitio: la tarjeta es Athena, no una imagen suelta. -->
   <rect x="0" y="${ALTO - 8}" width="${ANCHO}" height="8" fill="${ACENTO}" />

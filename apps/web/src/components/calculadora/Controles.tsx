@@ -30,7 +30,7 @@ export default function Controles({
   const vacio = codigo === '';
 
   const compartirTarjeta = async () => {
-    const imagen = `/calculadora/tarjeta.png?p=${encodeURIComponent(codigo)}`;
+    const imagen = `/calculadora-liga-1/tarjeta.png?p=${encodeURIComponent(codigo)}`;
     /* `canShare` con archivos: en escritorio casi nunca está, y una pestaña resuelve lo mismo. */
     if (!navigator.canShare?.({ files: [new File([], 'x.png', { type: 'image/png' })] })) {
       window.open(imagen, '_blank', 'noopener');

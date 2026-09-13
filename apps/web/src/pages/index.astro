@@ -316,7 +316,8 @@ cachear(Astro.response, 'home');
           )
         }
 
-        <Hueco medida="bloque" ubicacion="home-riel" class="xl:mt-1" />
+        <!-- Solo cuando es de verdad un costado: apilada, esta columna cae en medio del contenido. -->
+        <Hueco medida="bloque" ubicacion="home-riel" class="mt-1 max-xl:hidden" />
       </aside>
     </div>
   </Container>

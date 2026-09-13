@@ -1,6 +1,6 @@
 # La calculadora de la Liga 1
 
-Poné los marcadores que faltan y mirá cómo quedan las tablas. Vive en `/calculadora`, con un botón
+Poné los marcadores que faltan y mirá cómo quedan las tablas. Vive en `/calculadora-liga-1`, con un botón
 propio en el header.
 
 **El lector pronostica, Athena calcula.** La distinción no es retórica: `docs/product/PRODUCT_SPEC.md`
@@ -109,7 +109,7 @@ enlace, que además se puede mandar.
 ## La predicción compartible
 
 Una imagen de 1200×630, el tamaño que esperan las vistas previas de los chats. `GET
-/calculadora/tarjeta.png?p=…` la arma desde el mismo escenario que la página, y sirve para dos
+/calculadora-liga-1/tarjeta.png?p=…` la arma desde el mismo escenario que la página, y sirve para dos
 cosas: es el `og:image` del enlace —pegado en WhatsApp muestra la tarjeta y no un bloque de texto—
 y es lo que sale del botón **Mi predicción**, junto a Modo streamer.
 

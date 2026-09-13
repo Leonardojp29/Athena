@@ -14,7 +14,7 @@ const PAGINAS: Entrada[] = [
   { ruta: '/' },
   { ruta: '/competencias' },
   { ruta: '/partidos' },
-  { ruta: '/calculadora' },
+  { ruta: '/calculadora-liga-1' },
   { ruta: '/juegos' },
   { ruta: '/juegos/mi-leyenda' },
 ];

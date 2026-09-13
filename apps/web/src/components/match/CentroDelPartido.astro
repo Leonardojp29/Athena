@@ -234,7 +234,8 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
   {vista !== 'alineaciones' && (
   <aside class="grid gap-3 lg:sticky lg:top-20">
     <RielDelPartido match={match} vista={vista} enlaceDeVista={enlaceDeVista} />
-    <Hueco medida="bloque" ubicacion="partido-riel" />
+    <!-- Solo cuando es de verdad un costado: apilada, esta columna cae en medio del contenido. -->
+    <Hueco medida="bloque" ubicacion="partido-riel" class="max-lg:hidden" />
   </aside>
   )}
 </div>
