@@ -6,6 +6,8 @@ import {
   ordenarEtapas,
   type Etapa,
   type Ronda,
+  normalizarNombre,
+  torneoDeTrofeo,
 } from '@athena/domain';
 import type { Prisma } from '@athena/database';
 import { PrismaService } from '../../shared/prisma.service.js';
@@ -1933,7 +1935,8 @@ export class ViewsService {
      * la región de Supabase cada uno cuesta cerca de un segundo. Ahora todo lo que se puede pedir
      * por slug va junto; los equipos son el único paso que necesita el resultado anterior.
      */
-    const [player, teams, events, seasons, recentPerformances, squad, palmares, fichajes] = await Promise.all([
+    const [player, teams, events, seasons, recentPerformances, squad, trofeos, escudos, fichajes] =
+      await Promise.all([
       this.prisma.player.findUnique({
         where: { slug },
         select: {
@@ -2043,35 +2046,20 @@ export class ViewsService {
        * El palmarés y los pases viajan en la misma tanda que el resto de la ficha: pedirlos después
        * sumaría dos idas y vueltas a una vista que ya tiene ocho.
        */
+      this.prisma.playerTrophy.findMany({
+        where: { player: { slug } },
+        orderBy: [{ temporada: 'desc' }, { competencia: 'asc' }],
+        select: { competencia: true, pais: true, temporada: true, puesto: true },
+      }),
       /*
-       * El palmarés con el escudo de cada torneo. El proveedor manda el nombre y no el id, así que
-       * se cruza por nombre contra las competencias que ya tenemos: resuelve el 72% —1.396 de
-       * 1.928— y el resto son torneos que Athena no cubre, que se quedan sin escudo en vez de con
-       * uno inventado.
+       * Las competencias con escudo, para ponerle uno a cada título. Son 77 filas y se piden
+       * enteras una sola vez: cruzarlas en memoria sale más barato que un LEFT JOIN por nombre, y
+       * además deja aplicar la tabla de alias, que en SQL sería un CASE de seis ramas.
        */
-      this.prisma.$queryRaw<
-        Array<{
-          competencia: string;
-          pais: string | null;
-          temporada: string | null;
-          puesto: string;
-          logoUrl: string | null;
-          slug: string | null;
-        }>
-      >`
-        SELECT t.competencia, t.pais, t.temporada, t.puesto,
-               c.logo_url AS "logoUrl", c.slug
-        FROM player_trophies t
-        JOIN players p ON p.id = t.player_id
-        LEFT JOIN LATERAL (
-          SELECT c.logo_url, c.slug FROM competitions c
-          WHERE lower(unaccent(c.name)) = lower(unaccent(t.competencia))
-          ORDER BY c.logo_url IS NULL, c.id
-          LIMIT 1
-        ) c ON true
-        WHERE p.slug = ${slug}
-        ORDER BY t.temporada DESC NULLS LAST, t.competencia ASC
-      `,
+      this.prisma.competition.findMany({
+        where: { logoUrl: { not: null } },
+        select: { name: true, slug: true, logoUrl: true },
+      }),
       this.prisma.transfer.findMany({
         relationLoadStrategy: JOIN,
         where: { player: { slug } },
@@ -2089,6 +2077,17 @@ export class ViewsService {
       }),
     ]);
     if (!player) throw await this.noEncontrado('player', slug, 'Jugador no encontrado');
+
+    /*
+     * A cada título, el escudo de su torneo. El nombre pasa por la tabla de alias porque el
+     * endpoint de trofeos no usa los mismos nombres que el de competencias del mismo proveedor:
+     * escribe "CONMEBOL Copa America" donde en las competencias pone "Copa América".
+     */
+    const porNombre = new Map(escudos.map((c) => [normalizarNombre(c.name), c]));
+    const palmares = trofeos.map((t) => {
+      const torneo = porNombre.get(normalizarNombre(torneoDeTrofeo(t.competencia)));
+      return { ...t, logoUrl: torneo?.logoUrl ?? null, slug: torneo?.slug ?? null };
+    });
 
     /* Los acumulados de todas las temporadas: el hincha quiere "cuántos hizo", no un desglose. */
     const totals = seasons.reduce(

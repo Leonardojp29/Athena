@@ -11,7 +11,12 @@ import { expect, test, type Page } from '@playwright/test';
  * página mientras alguien lee, y eso es a la vez una molestia y una señal que el buscador castiga.
  */
 
-/* Dónde vive el costado de cada vista y desde qué ancho es de verdad un costado. */
+/*
+ * Dónde vive el costado de cada vista y desde qué ancho es de verdad un costado.
+ *
+ * La ficha del futbolista no está: ahí el riel dejaba un hueco muerto a la derecha y encogía la
+ * tabla de la temporada, que es el bloque que manda el ancho de toda la página.
+ */
 const VISTAS: Array<[string, number]> = [
   ['/', 1280],
   /* El calendario tiene columna propia desde lg: su hueco no espera a los 1800. */
@@ -19,7 +24,6 @@ const VISTAS: Array<[string, number]> = [
   ['/competencias', 1900],
   ['/competencias/primera-division', 1600],
   ['/equipos/alianza-lima', 1280],
-  ['/jugadores/alex-valera', 1900],
   ['/comparar', 1900],
 ];
 

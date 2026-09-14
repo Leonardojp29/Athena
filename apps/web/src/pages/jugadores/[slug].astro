@@ -13,7 +13,6 @@ import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
 import { enlaceDePartido } from '../../lib/partido';
 import { absoluta, identidad, migas, nodoEquipo } from '../../lib/seo';
-import RielDeAnuncios from '../../components/anuncios/RielDeAnuncios.astro';
 
 const { slug } = Astro.params;
 
@@ -192,12 +191,10 @@ const jsonLd = [
 
   <Container width="content" class="pt-7 pb-6">
   <!--
-    El riel de anuncios es una columna de la página y no de una fila: cuando encogía solo la fila del
-    medio, "Por temporada" quedaba más ancha que las tarjetas de abajo y que el palmarés. Ahora las
-    tres miden lo mismo y lo que se corre es la página entera.
+    Una sola columna a todo el ancho del contenedor, con las pistas declaradas: sin ellas la grilla
+    se dimensiona a su contenido y la línea del palmarés, que mide seis mil píxeles, la infla.
   -->
-  <div class="grid grid-cols-[minmax(0,1fr)] items-start gap-7 3xl:grid-cols-[minmax(0,1fr)_19rem]">
-  <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
+  <div class="grid grid-cols-[minmax(0,1fr)] gap-4">
   <SeasonTable seasons={seasons} totals={totals} />
 
   <!--
@@ -253,11 +250,8 @@ const jsonLd = [
 
   </div>
 
-  <!-- El palmarés a todo el ancho de la columna: la línea necesita recorrido para leerse como tal. -->
+  <!-- El palmarés a todo el ancho: la línea necesita recorrido para leerse como tal. -->
   <Palmares palmares={palmares} />
-  </div>
-
-  <RielDeAnuncios ubicacion="jugador-riel" />
   </div>
   </Container>
 </Base>
