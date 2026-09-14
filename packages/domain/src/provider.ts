@@ -237,6 +237,46 @@ export interface ProviderMatchDetail {
   playerStatistics: ProviderMatchPlayerStats[] | null;
 }
 
+/**
+ * Un título del palmarés de un futbolista.
+ *
+ * El proveedor manda el nombre del torneo y no su id, así que esto no se puede atar a la tabla de
+ * competencias: "CONMEBOL Sudamericana" llega como texto. Y casi la mitad de las filas viene sin
+ * temporada —medido: 14 de 31 en Paolo Guerrero—, lo que obliga a que el año sea opcional en todo
+ * el camino, desde acá hasta la pantalla.
+ */
+export interface ProviderTrophy {
+  playerRef: string;
+  competencia: string;
+  pais: string | null;
+  /** "2023" o "2023/2024" tal como lo escribe el proveedor; null cuando no lo sabe. */
+  temporada: string | null;
+  puesto: 'campeon' | 'subcampeon';
+}
+
+/**
+ * Qué clase de movimiento fue un fichaje.
+ *
+ * El proveedor usa doce cadenas distintas para cinco cosas —medido sobre un solo club: `Free`,
+ * `Free agent`, `Free Transfer`, `Loan`, `Back from Loan`, `Return from loan`, `Transfer`, `N/A`,
+ * `-`, null y montos como `€ 1.5M`—. Normalizar acá es lo que evita que esa mugre llegue a la
+ * pantalla, y `desconocido` es un valor legítimo: la mitad de las filas no dice nada.
+ */
+export type ClaseDeFichaje = 'traspaso' | 'prestamo' | 'vuelve-de-prestamo' | 'libre' | 'desconocido';
+
+export interface ProviderTransfer {
+  playerRef: string;
+  /** Solo la fecha: el proveedor nunca manda hora y un fichaje no la tiene. */
+  fecha: string;
+  clase: ClaseDeFichaje;
+  /** El monto cuando el proveedor lo escribió dentro del tipo; se guarda tal cual lo mandó. */
+  monto: string | null;
+  entraARef: string | null;
+  entraANombre: string;
+  saleDeRef: string | null;
+  saleDeNombre: string;
+}
+
 export interface FootballDataProvider {
   readonly name: string;
 
@@ -258,4 +298,11 @@ export interface FootballDataProvider {
   getMatchLineups(matchRef: string): Promise<ProviderLineup[]>;
   getMatchPlayerStatistics(matchRef: string): Promise<ProviderMatchPlayerStats[]>;
   getSeasonPlayers(competitionRef: string, seasonYear: number): Promise<ProviderSeasonPlayer[]>;
+  /** El palmarés de un futbolista: un pedido por jugador, y cambia una vez al año. */
+  getTrophies(playerRef: string): Promise<ProviderTrophy[]>;
+  /**
+   * Los movimientos de un club. Un solo pedido devuelve el historial entero de cada futbolista que
+   * alguna vez pasó por ahí —284 en Alianza Lima—, así que se pide por equipo y se filtra acá.
+   */
+  getTransfers(teamRef: string): Promise<ProviderTransfer[]>;
 }

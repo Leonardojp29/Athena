@@ -7,6 +7,7 @@ import Container from '../../components/layout/Container.astro';
 import BotonFavorito from '../../components/BotonFavorito.astro';
 import RecentPerformances from '../../components/player/RecentPerformances.astro';
 import SeasonTable from '../../components/player/SeasonTable.astro';
+import Palmares from '../../components/player/Palmares.astro';
 import { api, ApiError, POSITION_LABEL, type PlayerView } from '../../lib/api';
 import { paisEnEspanol } from '../../lib/paises';
 import { formatDate } from '../../lib/format';
@@ -33,7 +34,7 @@ try {
 
 cachear(Astro.response, 'jugador');
 
-const { player, teams, events, seasons, totals, recentPerformances, shirtNumber } = view;
+const { player, teams, events, seasons, totals, recentPerformances, shirtNumber, palmares } = view;
 const position = player.position ? POSITION_LABEL[player.position] : null;
 
 /* Un cambio no dice nada de un jugador; los goles y las tarjetas sí. */
@@ -183,6 +184,8 @@ const jsonLd = [
           <p class="text-sm text-ink-muted">Sin equipos registrados todavía.</p>
         )}
       </Card>
+
+      <Palmares palmares={palmares} />
     </div>
 
     <Card title="Goles y tarjetas">

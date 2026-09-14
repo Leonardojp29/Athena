@@ -11,6 +11,8 @@
     "sync:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/sync-bootstrap.js",
     "ai:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/ai-bootstrap.js",
     "backfill:matches": "node --env-file-if-exists=../../.env dist/scripts/backfill-match-detail.js",
+    "backfill:palmares": "node --env-file-if-exists=../../.env dist/scripts/backfill-palmares.js",
+    "backfill:fichajes": "node --env-file-if-exists=../../.env dist/scripts/backfill-fichajes.js",
     "calentar:vistas": "node --env-file-if-exists=../../.env dist/scripts/calentar-vistas.js",
     "cerrar:pendientes": "node --env-file-if-exists=../../.env dist/scripts/cerrar-pendientes.js",
     "reconcile:partidos": "node --env-file-if-exists=../../.env dist/scripts/reconcile-matches.js",

@@ -1,0 +1,167 @@
+---
+import type { Trofeo } from '../../lib/api';
+import { agruparPalmares, contarPalmares } from '../../lib/mercado';
+import Card from '../Card.astro';
+import Icon from '../Icon.astro';
+import { paisEnEspanol } from '../../lib/paises';
+import { nombreTorneo } from '../../lib/paises';
+
+/*
+ * El palmarés.
+ *
+ * Lo que convierte una planilla de minutos en una trayectoria. Va agrupado por temporada porque un
+ * año con tres títulos cuenta algo que tres filas sueltas no cuentan, y los que el proveedor mandó
+ * sin año quedan al final en su propio grupo en vez de mezclarse con los fechados.
+ *
+ * Se muestran también los subcampeonatos: "dos veces finalista" es parte de una carrera, y ocultar
+ * lo perdido para dejar solo lo ganado sería contar media historia.
+ */
+interface Props {
+  palmares: Trofeo[];
+}
+
+const { palmares } = Astro.props;
+const grupos = agruparPalmares(palmares);
+const { campeon, subcampeon } = contarPalmares(palmares);
+
+/*
+ * Cuántas temporadas se ven sin desplegar.
+ *
+ * La mediana son ocho títulos y entran enteros, pero el 15% de los futbolistas pasa de veinte y
+ * Messi llega a setenta: ahí la tarjeta deja de ser una tarjeta y se come la columna. Las últimas
+ * seis temporadas quedan a la vista y el resto detrás de un `<details>`, que no cuesta un byte.
+ */
+const TEMPORADAS_A_LA_VISTA = 6;
+const visibles = grupos.slice(0, TEMPORADAS_A_LA_VISTA);
+const resto = grupos.slice(TEMPORADAS_A_LA_VISTA);
+const titulosDelResto = resto.reduce((n, g) => n + g.titulos.length, 0);
+
+/*
+ * Las dos cifras se arman acá y no en el marcado: entre llaves, Astro se come el espacio que
+ * separa el número de su palabra y quedaba "65títulos".
+ */
+const cuentas = [
+  campeon > 0 ? { numero: campeon, palabra: campeon === 1 ? 'título' : 'títulos' } : null,
+  subcampeon > 0
+    ? { numero: subcampeon, palabra: subcampeon === 1 ? 'subcampeonato' : 'subcampeonatos' }
+    : null,
+].flatMap((c) => (c ? [c] : []));
+---
+
+{
+  grupos.length > 0 && (
+    <Card title="Palmarés">
+      <p class="-mt-1 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-ink-muted">
+        {cuentas.map(({ numero, palabra }) => (
+          <span>
+            <strong class="font-display text-lg font-semibold tabular text-ink">{numero}</strong>
+            {` ${palabra}`}
+          </span>
+        ))}
+      </p>
+
+      <ul class="grid gap-3">
+        {visibles.map((grupo) => (
+          <li class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3">
+            <span
+              class:list={[
+                'pt-px text-right font-display text-sm font-semibold tabular',
+                grupo.temporada ? 'text-ink' : 'text-ink-muted',
+              ]}
+            >
+              {/* Sin año no se inventa uno: se dice que no se sabe cuándo. */}
+              {grupo.temporada ?? 'Sin año'}
+            </span>
+
+            <ul class="grid gap-1">
+              {grupo.titulos.map((titulo) => (
+                <li class="flex min-w-0 items-baseline gap-2">
+                  {/*
+                    La copa marca al campeón y nada marca al subcampeón: dos iconos distintos
+                    compiten, y el color no puede ser el único canal, así que la diferencia la
+                    lleva también el texto de la derecha.
+                  */}
+                  <Icon
+                    name="trofeo"
+                    size={13}
+                    class:list={[
+                      'shrink-0 translate-y-0.5',
+                      titulo.puesto === 'campeon' ? 'text-primary-ink' : 'text-border-strong',
+                    ]}
+                  />
+                  <span class="min-w-0 flex-1 truncate text-sm">
+                    {nombreTorneo(titulo.competencia)}
+                    {titulo.pais && (
+                      <span class="text-ink-muted"> · {paisEnEspanol(titulo.pais) ?? titulo.pais}</span>
+                    )}
+                  </span>
+                  {titulo.puesto === 'subcampeon' && (
+                    <span class="shrink-0 text-2xs text-ink-muted">Subcampeón</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+
+      {
+        resto.length > 0 && (
+          <details class="group mt-3 border-t border-border pt-3">
+            <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm text-primary-ink hover:underline">
+              <Icon
+                name="chevron-derecha"
+                size={13}
+                class="transition-transform group-open:rotate-90"
+              />
+              <span>
+                {`Ver ${titulosDelResto === 1 ? 'el otro título' : `los otros ${titulosDelResto} títulos`}`}
+              </span>
+            </summary>
+
+            <ul class="mt-3 grid gap-3">
+              {resto.map((grupo) => (
+                <li class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3">
+                  <span
+                    class:list={[
+                      'pt-px text-right font-display text-sm font-semibold tabular',
+                      grupo.temporada ? 'text-ink' : 'text-ink-muted',
+                    ]}
+                  >
+                    {grupo.temporada ?? 'Sin año'}
+                  </span>
+                  <ul class="grid gap-1">
+                    {grupo.titulos.map((titulo) => (
+                      <li class="flex min-w-0 items-baseline gap-2">
+                        <Icon
+                          name="trofeo"
+                          size={13}
+                          class:list={[
+                            'shrink-0 translate-y-0.5',
+                            titulo.puesto === 'campeon' ? 'text-primary-ink' : 'text-border-strong',
+                          ]}
+                        />
+                        <span class="min-w-0 flex-1 truncate text-sm">
+                          {nombreTorneo(titulo.competencia)}
+                          {titulo.pais && (
+                            <span class="text-ink-muted">
+                              {' '}
+                              · {paisEnEspanol(titulo.pais) ?? titulo.pais}
+                            </span>
+                          )}
+                        </span>
+                        {titulo.puesto === 'subcampeon' && (
+                          <span class="shrink-0 text-2xs text-ink-muted">Subcampeón</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )
+      }
+    </Card>
+  )
+}

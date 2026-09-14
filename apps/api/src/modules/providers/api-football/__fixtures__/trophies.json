@@ -1,0 +1,76 @@
+{
+ "response": [
+  {
+   "league": "CONMEBOL Sudamericana",
+   "country": "South America",
+   "season": "2023",
+   "place": "Winner"
+  },
+  {
+   "league": "Liga Pro",
+   "country": "Ecuador",
+   "season": "2023",
+   "place": "Winner"
+  },
+  {
+   "league": "Gaúcho 1",
+   "country": "Brazil",
+   "season": "2021",
+   "place": "2nd Place"
+  },
+  {
+   "league": "Serie A",
+   "country": "Brazil",
+   "season": "2020/2021",
+   "place": "2nd Place"
+  },
+  {
+   "league": "CONMEBOL Copa America",
+   "country": "South America",
+   "season": "2019",
+   "place": "2nd Place"
+  },
+  {
+   "league": "Copa do Brasil",
+   "country": "Brazil",
+   "season": "2019",
+   "place": "2nd Place"
+  },
+  {
+   "league": "Gaúcho 1",
+   "country": "Brazil",
+   "season": "2019",
+   "place": "2nd Place"
+  },
+  {
+   "league": "CONMEBOL Sudamericana",
+   "country": "South America",
+   "season": "2017",
+   "place": "2nd Place"
+  },
+  {
+   "league": "Carioca Série A",
+   "country": "Brazil",
+   "season": "2017",
+   "place": "Winner"
+  },
+  {
+   "league": "Copa do Brasil",
+   "country": "Brazil",
+   "season": "2017",
+   "place": "2nd Place"
+  },
+  {
+   "league": "Paulista A1",
+   "country": "Brazil",
+   "season": "2013",
+   "place": "Winner"
+  },
+  {
+   "league": "CONMEBOL Recopa",
+   "country": "South America",
+   "season": "2013",
+   "place": "Winner"
+  }
+ ]
+}

@@ -146,6 +146,25 @@ const ALINEACIONES = 5;
 
 /* Perú no tiene horario de verano: el desplazamiento fijo es correcto para siempre. */
 const LIMA_OFFSET = '-05:00';
+
+/* Cuántos movimientos por dirección: una tarjeta de altas y bajas, no un archivo del mercado. */
+const MOVIMIENTOS = 12;
+
+/*
+ * El club del otro lado casi nunca está en Athena —la mayoría de los pases cruzan a ligas que no
+ * cubrimos—, así que el nombre viaja siempre y el slug solo cuando se lo puede resolver. Sin el
+ * nombre, la mitad de las filas serían mudas.
+ */
+const movimientoDeMercado = {
+  fecha: true,
+  clase: true,
+  monto: true,
+  entraANombre: true,
+  saleDeNombre: true,
+  player: { select: { name: true, slug: true, photoUrl: true, position: true } },
+  entraA: { select: { name: true, slug: true, logoUrl: true } },
+  saleDe: { select: { name: true, slug: true, logoUrl: true } },
+} as const;
 const DAY_MS = 86_400_000;
 
 @Injectable()
@@ -1455,7 +1474,9 @@ export class ViewsService {
 
   async team(slug: string) {
     const ultimoJugado = { team: { slug }, match: { status: 'finished' } };
-    const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas] =
+    /* El mercado que a alguien le importa es el de esta temporada, no el de 2014. */
+    const desdeMercado = new Date(Date.now() - 400 * 24 * 3600_000);
+    const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas, altas, bajas] =
       await Promise.all([
         this.prisma.team.findUnique({
           relationLoadStrategy: JOIN,
@@ -1620,6 +1641,25 @@ export class ViewsService {
           take: ALINEACIONES * 30,
           select: { ...matchPlayerStats, matchId: true, player: playerLink },
         }),
+        /*
+         * Altas y bajas del club. Son dos consultas y no un OR sobre las dos columnas justamente
+         * para que cada una entre por su propio índice: medido, 0,014 ms la de altas y 0,039 la de
+         * bajas, contra un mapa de bits combinado que tendría que leer las dos.
+         */
+        this.prisma.transfer.findMany({
+          relationLoadStrategy: JOIN,
+          where: { entraA: { slug }, fecha: { gte: desdeMercado } },
+          orderBy: { fecha: 'desc' },
+          take: MOVIMIENTOS,
+          select: movimientoDeMercado,
+        }),
+        this.prisma.transfer.findMany({
+          relationLoadStrategy: JOIN,
+          where: { saleDe: { slug }, fecha: { gte: desdeMercado } },
+          orderBy: { fecha: 'desc' },
+          take: MOVIMIENTOS,
+          select: movimientoDeMercado,
+        }),
       ]);
     if (!team) throw await this.noEncontrado('team', slug, 'Equipo no encontrado');
 
@@ -1710,6 +1750,7 @@ export class ViewsService {
       squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },
       scorers,
       lineups,
+      mercado: { altas, bajas },
     };
   }
 
@@ -1892,7 +1933,7 @@ export class ViewsService {
      * la región de Supabase cada uno cuesta cerca de un segundo. Ahora todo lo que se puede pedir
      * por slug va junto; los equipos son el único paso que necesita el resultado anterior.
      */
-    const [player, teams, events, seasons, recentPerformances, squad] = await Promise.all([
+    const [player, teams, events, seasons, recentPerformances, squad, palmares, fichajes] = await Promise.all([
       this.prisma.player.findUnique({
         where: { slug },
         select: {
@@ -1998,6 +2039,30 @@ export class ViewsService {
         take: 4,
         select: { year: true, shirtNumber: true, team: teamSummary },
       }),
+      /*
+       * El palmarés y los pases viajan en la misma tanda que el resto de la ficha: pedirlos después
+       * sumaría dos idas y vueltas a una vista que ya tiene ocho.
+       */
+      this.prisma.playerTrophy.findMany({
+        where: { player: { slug } },
+        orderBy: [{ temporada: 'desc' }, { competencia: 'asc' }],
+        select: { competencia: true, pais: true, temporada: true, puesto: true },
+      }),
+      this.prisma.transfer.findMany({
+        relationLoadStrategy: JOIN,
+        where: { player: { slug } },
+        orderBy: { fecha: 'desc' },
+        take: 20,
+        select: {
+          fecha: true,
+          clase: true,
+          monto: true,
+          entraANombre: true,
+          saleDeNombre: true,
+          entraA: { select: { slug: true, logoUrl: true } },
+          saleDe: { select: { slug: true, logoUrl: true } },
+        },
+      }),
     ]);
     if (!player) throw await this.noEncontrado('player', slug, 'Jugador no encontrado');
 
@@ -2023,6 +2088,8 @@ export class ViewsService {
       recentPerformances,
       shirtNumber: squad.find((s) => s.shirtNumber !== null)?.shirtNumber ?? null,
       squad,
+      palmares,
+      fichajes,
     };
   }
 

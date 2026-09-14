@@ -1,0 +1,414 @@
+{
+ "response": [
+  {
+   "player": {
+    "id": 96071,
+    "name": "J. Rivera"
+   },
+   "update": "2021-07-19T03:12:15+00:00",
+   "transfers": [
+    {
+     "date": "2013-01-01",
+     "type": "N/A",
+     "teams": {
+      "in": {
+       "id": null,
+       "name": null,
+       "logo": null
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2012-01-01",
+     "type": "N/A",
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 2555,
+       "name": "Sport Huancayo",
+       "logo": "https://media.api-sports.io/football/teams/2555.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 39951,
+    "name": "Antony Jesús Lavalle Portal"
+   },
+   "update": "2023-09-06T03:52:06+00:00",
+   "transfers": [
+    {
+     "date": "2018-02-08",
+     "type": "Free",
+     "teams": {
+      "in": {
+       "id": 2564,
+       "name": "Atletico Grau",
+       "logo": "https://media.api-sports.io/football/teams/2564.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 478,
+    "name": "Jefferson Agustín Farfán Guadalupe"
+   },
+   "update": "2023-09-06T14:36:57+00:00",
+   "transfers": [
+    {
+     "date": "2021-03-21",
+     "type": "N/A",
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 597,
+       "name": "Lokomotiv Moscow",
+       "logo": "https://media.api-sports.io/football/teams/597.png"
+      }
+     }
+    },
+    {
+     "date": "2004-07-01",
+     "type": "€ 3.5M",
+     "teams": {
+      "in": {
+       "id": 197,
+       "name": "PSV Eindhoven",
+       "logo": "https://media.api-sports.io/football/teams/197.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 25331,
+    "name": "C. Pizarro"
+   },
+   "update": "2023-09-06T22:59:30+00:00",
+   "transfers": [
+    {
+     "date": "1999-08-01",
+     "type": "€ 1.5M",
+     "teams": {
+      "in": {
+       "id": 162,
+       "name": "Werder Bremen",
+       "logo": "https://media.api-sports.io/football/teams/162.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 39448,
+    "name": "Angelo Benedetto Rovegno Agama"
+   },
+   "update": "2023-09-07T06:15:28+00:00",
+   "transfers": [
+    {
+     "date": "2019-03-02",
+     "type": "Loan",
+     "teams": {
+      "in": {
+       "id": 2548,
+       "name": "Alianza Universidad",
+       "logo": "https://media.api-sports.io/football/teams/2548.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 39771,
+    "name": "José Carlos Fernández Piedra"
+   },
+   "update": "2023-09-07T06:19:46+00:00",
+   "transfers": [
+    {
+     "date": "2012-07-01",
+     "type": "€ 315.9K",
+     "teams": {
+      "in": {
+       "id": 458,
+       "name": "Argentinos JRS",
+       "logo": "https://media.api-sports.io/football/teams/458.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2011-08-01",
+     "type": "N/A",
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 1984,
+       "name": "Deportivo Quito",
+       "logo": "https://media.api-sports.io/football/teams/1984.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 51710,
+    "name": "Walter Fernando Ibáñez Costa"
+   },
+   "update": "2023-09-07T06:24:56+00:00",
+   "transfers": [
+    {
+     "date": "2017-02-15",
+     "type": "€ Free",
+     "teams": {
+      "in": {
+       "id": 2362,
+       "name": "Cerro",
+       "logo": "https://media.api-sports.io/football/teams/2362.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2016-01-01",
+     "type": "Free",
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 2994,
+       "name": "U. Catolica",
+       "logo": "https://media.api-sports.io/football/teams/2994.png"
+      }
+     }
+    },
+    {
+     "date": "2015-01-01",
+     "type": "Free",
+     "teams": {
+      "in": {
+       "id": 2994,
+       "name": "U. Catolica",
+       "logo": "https://media.api-sports.io/football/teams/2994.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2012-01-01",
+     "type": "N/A",
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 2350,
+       "name": "Defensor Sporting",
+       "logo": "https://media.api-sports.io/football/teams/2350.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 13661,
+    "name": "R. Ovelar"
+   },
+   "update": "2023-09-07T06:35:46+00:00",
+   "transfers": [
+    {
+     "date": "2012-01-01",
+     "type": "€ 383.2K",
+     "teams": {
+      "in": {
+       "id": 2994,
+       "name": "U. Catolica",
+       "logo": "https://media.api-sports.io/football/teams/2994.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 403601,
+    "name": "M. Arrasco"
+   },
+   "update": "2026-09-14T00:26:12+00:00",
+   "transfers": [
+    {
+     "date": "2024-02-27",
+     "type": "Loan",
+     "teams": {
+      "in": {
+       "id": 2548,
+       "name": "Alianza Universidad",
+       "logo": "https://media.api-sports.io/football/teams/2548.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2025-01-01",
+     "type": "Back from Loan",
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 2548,
+       "name": "Alianza Universidad",
+       "logo": "https://media.api-sports.io/football/teams/2548.png"
+      }
+     }
+    },
+    {
+     "date": "2026-01-02",
+     "type": "Free agent",
+     "teams": {
+      "in": {
+       "id": 22543,
+       "name": "FC Cajamarca",
+       "logo": "https://media.api-sports.io/football/teams/22543.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2026-01-01",
+     "type": "Free agent",
+     "teams": {
+      "in": {
+       "id": 22543,
+       "name": "FC Cajamarca",
+       "logo": "https://media.api-sports.io/football/teams/22543.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "player": {
+    "id": 463989,
+    "name": "A. Agurto"
+   },
+   "update": "2025-07-14T03:11:44+00:00",
+   "transfers": [
+    {
+     "date": "2024-07-01",
+     "type": "Loan",
+     "teams": {
+      "in": {
+       "id": 10014,
+       "name": "Deportivo Llacuabamba",
+       "logo": "https://media.api-sports.io/football/teams/10014.png"
+      },
+      "out": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      }
+     }
+    },
+    {
+     "date": "2025-01-01",
+     "type": null,
+     "teams": {
+      "in": {
+       "id": 2553,
+       "name": "Alianza Lima",
+       "logo": "https://media.api-sports.io/football/teams/2553.png"
+      },
+      "out": {
+       "id": 10014,
+       "name": "Deportivo Llacuabamba",
+       "logo": "https://media.api-sports.io/football/teams/10014.png"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

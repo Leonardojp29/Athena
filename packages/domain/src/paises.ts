@@ -229,6 +229,18 @@ const NOMBRE: Record<string, string> = {
   'vietnam': 'Vietnam',
   'wales': 'Gales',
   'world': 'Internacional',
+  /*
+   * Las confederaciones no son países, pero el proveedor las manda en el mismo campo: un título
+   * continental llega con "Europe" o "South America" donde otro trae "España". Sin esto, un
+   * palmarés en español se llena de nombres en inglés.
+   */
+  'europe': 'Europa',
+  'south america': 'Sudamérica',
+  'north america': 'Norteamérica',
+  'n/c america': 'Norteamérica',
+  'africa': 'África',
+  'asia': 'Asia',
+  'oceania': 'Oceanía',
   'yemen': 'Yemen',
   'zambia': 'Zambia',
   'zimbabwe': 'Zimbabue',

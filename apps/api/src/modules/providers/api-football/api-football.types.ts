@@ -217,3 +217,22 @@ export interface ApiFootballSeasonPlayer {
   };
   statistics: ApiFootballPlayerStatBlock[];
 }
+
+export interface ApiFootballTrophy {
+  league: string | null;
+  country: string | null;
+  season: string | null;
+  place: string | null;
+}
+
+export interface ApiFootballTransfers {
+  player: { id: number | null; name: string | null };
+  transfers: Array<{
+    date: string | null;
+    type: string | null;
+    teams: {
+      in: { id: number | null; name: string | null };
+      out: { id: number | null; name: string | null };
+    };
+  }>;
+}

@@ -489,6 +489,8 @@ export interface TeamView {
   upcoming: MatchCard[];
   /** Con qué salió en sus últimos partidos, del más reciente al más viejo; vacío si no hay ninguna. */
   lineups: UltimaAlineacion[];
+  /** A quién trajo y a quién dejó ir en la última temporada larga. */
+  mercado: { altas: Fichaje[]; bajas: Fichaje[] };
 }
 
 /** El historial entre los dos equipos: el resumen de siempre y los últimos cruces. */
@@ -621,6 +623,28 @@ export interface TeamStatistics {
   passesTotal: number | null;
   passesAccurate: number | null;
   passesPercent: number | null;
+}
+
+/** Un título del palmarés. El torneo llega como texto y casi la mitad de las filas no trae año. */
+export interface Trofeo {
+  competencia: string;
+  pais: string | null;
+  temporada: string | null;
+  puesto: 'campeon' | 'subcampeon';
+}
+
+export type ClaseDeFichaje = 'traspaso' | 'prestamo' | 'vuelve-de-prestamo' | 'libre' | 'desconocido';
+
+/** El club del otro lado casi nunca está en Athena: el nombre siempre, el enlace cuando se puede. */
+export interface Fichaje {
+  fecha: string;
+  clase: ClaseDeFichaje;
+  monto: string | null;
+  entraANombre: string;
+  saleDeNombre: string;
+  entraA: { name?: string; slug: string; logoUrl: string | null } | null;
+  saleDe: { name?: string; slug: string; logoUrl: string | null } | null;
+  player?: { name: string; slug: string; photoUrl: string | null; position: string | null };
 }
 
 export interface PlayerLink {
@@ -813,6 +837,8 @@ export interface PlayerView {
   >;
   shirtNumber: number | null;
   squad: Array<{ year: number; shirtNumber: number | null; team: TeamSummary }>;
+  palmares: Trofeo[];
+  fichajes: Fichaje[];
 }
 
 export const PATH_BY_TYPE: Record<SearchHit['type'], string> = {

@@ -10,7 +10,7 @@
 generator client {
   provider        = "prisma-client-js"
   // Vercel corre sobre Amazon Linux: sin este binario, Prisma no arranca en producción.
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
   previewFeatures = ["relationJoins"]
 }
 
@@ -40,22 +40,22 @@ model ExternalReference {
 // ---------- core entities ----------
 
 model Competition {
-  id       String   @id @default(uuid()) @db.Uuid
-  name     String
-  slug     String   @unique
-  country  String?
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  country     String?
   /// ISO del país, tal como lo publica el proveedor: PE, GB-ENG. Null en los internacionales.
-  countryCode String? @map("country_code")
+  countryCode String?  @map("country_code")
   /// La publica el proveedor; no se construye a mano.
-  flagUrl String? @map("flag_url")
+  flagUrl     String?  @map("flag_url")
   /// sudamerica | europa | norteamerica | africa | asia | mundial. Lo decide el catálogo.
-  continent String?
-  format   String // league | cup
+  continent   String?
+  format      String // league | cup
   /// clubs | national. Lo decide el catálogo: el proveedor no distingue un Mundial de una Champions.
-  scope    String  @default("clubs")
-  logoUrl  String?  @map("logo_url")
-  seasons  Season[]
-  isActive Boolean  @default(false) @map("is_active") // toggles sync scope by data, not code
+  scope       String   @default("clubs")
+  logoUrl     String?  @map("logo_url")
+  seasons     Season[]
+  isActive    Boolean  @default(false) @map("is_active") // toggles sync scope by data, not code
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -147,6 +147,8 @@ model Team {
   playerMatchStatistics  MatchPlayerStatistics[]
   playerSeasonStatistics PlayerSeasonStatistics[]
   squadMemberships       SquadMembership[]
+  altas                  Transfer[]               @relation("fichaje_entra")
+  bajas                  Transfer[]               @relation("fichaje_sale")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -171,6 +173,8 @@ model Player {
   matchStatistics  MatchPlayerStatistics[]
   seasonStatistics PlayerSeasonStatistics[]
   squadMemberships SquadMembership[]
+  trofeos          PlayerTrophy[]
+  fichajes         Transfer[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -239,23 +243,23 @@ model PlayerSeasonStatistics {
   team     Team   @relation(fields: [teamId], references: [id])
   teamId   String @map("team_id") @db.Uuid
 
-  appearances     Int?     @map("appearances")
-  lineups         Int?
-  minutesPlayed   Int?     @map("minutes_played")
-  rating          Decimal? @db.Decimal(4, 2)
-  goals           Int?
-  assists         Int?
-  shotsTotal      Int?     @map("shots_total")
-  shotsOnTarget   Int?     @map("shots_on_target")
-  passesTotal     Int?     @map("passes_total")
-  passesKey       Int?     @map("passes_key")
-  passesAccuracyPercent Int? @map("passes_accuracy_percent")
-  duelsWon        Int?     @map("duels_won")
-  dribblesSuccess Int?     @map("dribbles_success")
-  yellowCards     Int?     @map("yellow_cards")
-  redCards        Int?     @map("red_cards")
-  penaltyScored   Int?     @map("penalty_scored")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  appearances           Int?     @map("appearances")
+  lineups               Int?
+  minutesPlayed         Int?     @map("minutes_played")
+  rating                Decimal? @db.Decimal(4, 2)
+  goals                 Int?
+  assists               Int?
+  shotsTotal            Int?     @map("shots_total")
+  shotsOnTarget         Int?     @map("shots_on_target")
+  passesTotal           Int?     @map("passes_total")
+  passesKey             Int?     @map("passes_key")
+  passesAccuracyPercent Int?     @map("passes_accuracy_percent")
+  duelsWon              Int?     @map("duels_won")
+  dribblesSuccess       Int?     @map("dribbles_success")
+  yellowCards           Int?     @map("yellow_cards")
+  redCards              Int?     @map("red_cards")
+  penaltyScored         Int?     @map("penalty_scored")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
   @@unique([playerId, seasonId, teamId])
   @@index([seasonId, teamId])
@@ -367,19 +371,19 @@ model MatchStatistics {
 /// Alineación por equipo. Los once y el banco viven como JSONB porque siempre se
 /// leen como unidad; el id del jugador va resuelto cuando existe en Athena.
 model MatchLineup {
-  id          String   @id @default(uuid()) @db.Uuid
-  match       Match    @relation(fields: [matchId], references: [id])
-  matchId     String   @map("match_id") @db.Uuid
-  team        Team     @relation(fields: [teamId], references: [id])
-  teamId      String   @map("team_id") @db.Uuid
-  formation   String?
-  coachName   String?  @map("coach_name")
-  startXi     Json     @map("start_xi")
-  substitutes Json
+  id             String   @id @default(uuid()) @db.Uuid
+  match          Match    @relation(fields: [matchId], references: [id])
+  matchId        String   @map("match_id") @db.Uuid
+  team           Team     @relation(fields: [teamId], references: [id])
+  teamId         String   @map("team_id") @db.Uuid
+  formation      String?
+  coachName      String?  @map("coach_name")
+  startXi        Json     @map("start_xi")
+  substitutes    Json
   /// La camiseta de ese partido: de la moda de los partidos de local sale el color del club.
-  kitColor       String? @map("kit_color")
-  kitNumberColor String? @map("kit_number_color")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  kitColor       String?  @map("kit_color")
+  kitNumberColor String?  @map("kit_number_color")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@unique([matchId, teamId])
   @@index([teamId, kitColor])
@@ -430,13 +434,13 @@ model DomainEvent {
 /// Vectores para búsqueda semántica y similitud. `content` guarda el texto
 /// exacto que se embebió (procedencia), `model` permite reindexar sin borrar.
 model Embedding {
-  id         String                      @id @default(uuid()) @db.Uuid
-  entityType String                      @map("entity_type")
-  entityId   String                      @map("entity_id") @db.Uuid
+  id         String                       @id @default(uuid()) @db.Uuid
+  entityType String                       @map("entity_type")
+  entityId   String                       @map("entity_id") @db.Uuid
   model      String
   content    String
   vector     Unsupported("halfvec(1536)")
-  updatedAt  DateTime                    @updatedAt @map("updated_at")
+  updatedAt  DateTime                     @updatedAt @map("updated_at")
 
   @@unique([entityType, entityId, model])
   @@map("embeddings")
@@ -559,4 +563,67 @@ model Kv {
   venceEn DateTime? @map("vence_en")
 
   @@map("kv")
+}
+
+/// Un título del palmarés de un futbolista.
+///
+/// El proveedor manda el nombre del torneo y no su id, así que la competencia vive acá como texto y
+/// no como una llave a `competitions`: "CONMEBOL Sudamericana" es todo lo que llega. Y el 45% de las
+/// filas viene sin temporada —medido sobre datos reales—, por eso el año es opcional.
+///
+/// Se reemplaza entero por jugador en cada sincronización, igual que los eventos de un partido: un
+/// palmarés es corto y cambia una vez al año, así que no vale la pena reconciliar fila por fila.
+model PlayerTrophy {
+  id       BigInt @id @default(autoincrement())
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId String @map("player_id") @db.Uuid
+
+  competencia String
+  pais        String?
+  /// "2023" o "2023/2024" tal como lo escribe el proveedor; null cuando no lo sabe.
+  temporada   String?
+  /// campeon | subcampeon
+  puesto      String
+
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  /// La ficha pide el palmarés de un jugador ordenado por temporada, y nada más.
+  @@index([playerId, temporada(sort: Desc)])
+  @@map("player_trophies")
+}
+
+/// Un movimiento de mercado.
+///
+/// El club puede no existir en Athena —la mayoría de los pases cruzan a ligas que no cubrimos—, así
+/// que el nombre se guarda siempre y la llave al equipo solo cuando se la puede resolver. Sin eso,
+/// la mitad de los fichajes de Alianza serían filas mudas.
+model Transfer {
+  id       BigInt @id @default(autoincrement())
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId String @map("player_id") @db.Uuid
+
+  /// El proveedor nunca manda hora, y un fichaje no la tiene.
+  fecha DateTime @db.Date
+
+  entraA       Team?   @relation("fichaje_entra", fields: [entraATeamId], references: [id])
+  entraATeamId String? @map("entra_a_team_id") @db.Uuid
+  entraANombre String  @map("entra_a_nombre")
+  saleDe       Team?   @relation("fichaje_sale", fields: [saleDeTeamId], references: [id])
+  saleDeTeamId String? @map("sale_de_team_id") @db.Uuid
+  saleDeNombre String  @map("sale_de_nombre")
+
+  /// traspaso | prestamo | vuelve-de-prestamo | libre | desconocido
+  clase String
+  /// Lo que costó, cuando el proveedor lo escribió; tal cual lo mandó, con su moneda.
+  monto String?
+
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  /// Un mismo pase no se puede cargar dos veces aunque llegue por dos equipos distintos.
+  @@unique([playerId, fecha, entraANombre, saleDeNombre], map: "fichaje_unico")
+  /// Las dos preguntas de la vista de equipo: a quién trajo y a quién dejó ir, lo más nuevo arriba.
+  @@index([entraATeamId, fecha(sort: Desc)])
+  @@index([saleDeTeamId, fecha(sort: Desc)])
+  @@index([playerId, fecha(sort: Desc)])
+  @@map("transfers")
 }

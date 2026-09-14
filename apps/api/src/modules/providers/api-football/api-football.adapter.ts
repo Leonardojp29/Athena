@@ -14,6 +14,8 @@ import type {
   ProviderRef,
   ProviderStanding,
   ProviderTeam,
+  ProviderTransfer,
+  ProviderTrophy,
 } from '@athena/domain';
 import { ApiFootballClient } from './api-football.client.js';
 import type {
@@ -27,6 +29,8 @@ import type {
   ApiFootballSquad,
   ApiFootballStatistics,
   ApiFootballTeam,
+  ApiFootballTransfers,
+  ApiFootballTrophy,
 } from './api-football.types.js';
 import {
   mapEvents,
@@ -40,6 +44,8 @@ import {
   mapStandings,
   mapStatistics,
   mapTeam,
+  mapTransfers,
+  mapTrophies,
 } from './mappers.js';
 
 /** El proveedor acepta hasta veinte ids por llamada, separados por guion. */
@@ -71,6 +77,16 @@ export class ApiFootballAdapter implements FootballDataProvider {
   async getSquad(teamRef: string): Promise<ProviderRef<ProviderPlayer>[]> {
     const rows = await this.client.get<ApiFootballSquad>('/players/squads', { team: teamRef });
     return rows[0] ? mapSquad(rows[0]) : [];
+  }
+
+  async getTrophies(playerRef: string): Promise<ProviderTrophy[]> {
+    const rows = await this.client.get<ApiFootballTrophy>('/trophies', { player: playerRef });
+    return mapTrophies(playerRef, rows);
+  }
+
+  async getTransfers(teamRef: string): Promise<ProviderTransfer[]> {
+    const rows = await this.client.get<ApiFootballTransfers>('/transfers', { team: teamRef });
+    return mapTransfers(rows);
   }
 
   async getMatches(

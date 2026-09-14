@@ -10,6 +10,8 @@ import type {
   ProviderMatch,
   ProviderMatchDetail,
   ProviderMatchEvent,
+  ProviderTransfer,
+  ProviderTrophy,
   ProviderMatchStatistics,
   ProviderPlayer,
   ProviderRef,
@@ -29,6 +31,8 @@ import type {
   ApiFootballStatistics,
   ApiFootballTeam,
   ApiFootballVenue,
+  ApiFootballTransfers,
+  ApiFootballTrophy,
 } from './api-football.types.js';
 import { mapMatchStatus } from './status-map.js';
 
@@ -403,5 +407,150 @@ export function mapSeasonPlayers(
         },
       },
     ];
+  });
+}
+
+/*
+ * El palmarés.
+ *
+ * `place` solo trae dos valores sobre los datos reales —`Winner` y `2nd Place`—, y cualquier otra
+ * cosa se descarta en lugar de inventarle un significado: un palmarés con una fila que no se sabe
+ * qué es vale menos que uno con una fila menos.
+ */
+export function mapTrophies(playerRef: string, rows: ApiFootballTrophy[]): ProviderTrophy[] {
+  return sinResumenes(mapTrophiesCrudos(playerRef, rows));
+}
+
+/**
+ * Quita las filas sin año que repiten un título que ya está fechado.
+ *
+ * El proveedor manda las dos cosas: "La Liga 2009/2010" y otra vez "La Liga" sin temporada. Sobre
+ * Messi eso duplicaba veinte títulos en un bloque al pie que parecía un palmarés paralelo. Si el
+ * mismo torneo y el mismo puesto ya existen con año, la fila muda no agrega nada; si es lo único
+ * que hay de ese torneo, se queda, porque entonces sí es el único registro del título.
+ */
+function sinResumenes(palmares: ProviderTrophy[]): ProviderTrophy[] {
+  const fechados = new Set(
+    palmares.filter((t) => t.temporada).map((t) => `${t.competencia}|${t.puesto}`),
+  );
+  return palmares.filter((t) => t.temporada || !fechados.has(`${t.competencia}|${t.puesto}`));
+}
+
+function mapTrophiesCrudos(playerRef: string, rows: ApiFootballTrophy[]): ProviderTrophy[] {
+  const vistos = new Set<string>();
+  return rows.flatMap((row) => {
+    const competencia = row.league?.trim();
+    if (!competencia) return [];
+
+    const puesto = puestoDeTrofeo(row.place);
+    if (!puesto) return [];
+
+    const temporada = row.season?.trim() || null;
+    /*
+     * El proveedor repite filas: la misma Supercopa aparece dos veces en la misma temporada. Se
+     * deduplica acá y no con una restricción en la base, porque casi la mitad de las filas viene
+     * sin temporada y en Postgres dos nulos no chocan entre sí.
+     */
+    const clave = `${competencia}|${temporada ?? ''}|${puesto}`;
+    if (vistos.has(clave)) return [];
+    vistos.add(clave);
+
+    return [{ playerRef, competencia, pais: row.country?.trim() || null, temporada, puesto }];
+  });
+}
+
+function puestoDeTrofeo(place: string | null): ProviderTrophy['puesto'] | null {
+  const limpio = place?.trim().toLowerCase();
+  if (limpio === 'winner') return 'campeon';
+  if (limpio === '2nd place') return 'subcampeon';
+  return null;
+}
+
+/*
+ * Qué clase de movimiento fue, y cuánto costó si el proveedor lo dijo.
+ *
+ * `type` mezcla tres cosas en un mismo campo de texto libre: la clase del pase, un monto con su
+ * moneda, y varias formas de decir "no sé" —`N/A`, `-`, la cadena vacía y null—. Se separan acá,
+ * una sola vez, en lugar de repetir el desarme en cada pantalla que lo muestre.
+ */
+export function claseDeFichaje(tipo: string | null): {
+  clase: ProviderTransfer['clase'];
+  monto: string | null;
+} {
+  const limpio = tipo?.trim() ?? '';
+  if (limpio === '' || limpio === '-' || /^n\/?a$/i.test(limpio)) {
+    return { clase: 'desconocido', monto: null };
+  }
+  /* Un monto es un traspaso con su cifra: "€ 1.5M", "$ 800K". */
+  if (/[\d]/.test(limpio) && /[€$£]|\bm\b|\bk\b/i.test(limpio)) {
+    return { clase: 'traspaso', monto: limpio };
+  }
+  if (/back\s*from\s*loan|return\s*from\s*loan/i.test(limpio)) {
+    return { clase: 'vuelve-de-prestamo', monto: null };
+  }
+  if (/loan/i.test(limpio)) return { clase: 'prestamo', monto: null };
+  if (/free/i.test(limpio)) return { clase: 'libre', monto: null };
+  if (/transfer/i.test(limpio)) return { clase: 'traspaso', monto: null };
+  return { clase: 'desconocido', monto: null };
+}
+
+/*
+ * Cuántos días de distancia siguen siendo el mismo pase.
+ *
+ * El proveedor publica el mismo movimiento dos veces con fechas contiguas —el día que se anunció y
+ * el día que se hizo efectivo—: medido, 3.026 pases repetidos sobre veintidós mil, todos con uno o
+ * dos días de diferencia. Una semana de margen los junta sin llegar a tapar un préstamo de ida y
+ * vuelta, que nunca ocurre en la misma semana.
+ */
+const DIAS_DEL_MISMO_PASE = 7;
+
+/** Se queda el primero: el día en que el movimiento se conoció, y así el criterio no depende del orden. */
+function sinRepetidos(movimientos: ProviderTransfer[]): ProviderTransfer[] {
+  const porCruce = new Map<string, ProviderTransfer[]>();
+  for (const mov of [...movimientos].sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+    const clave = `${mov.playerRef}|${mov.entraANombre}|${mov.saleDeNombre}`;
+    const previos = porCruce.get(clave) ?? [];
+    const ultimo = previos[previos.length - 1];
+    if (ultimo && diasEntre(ultimo.fecha, mov.fecha) <= DIAS_DEL_MISMO_PASE) continue;
+    porCruce.set(clave, [...previos, mov]);
+  }
+  return [...porCruce.values()].flat();
+}
+
+const diasEntre = (a: string, b: string): number =>
+  Math.abs(Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000;
+
+export function mapTransfers(rows: ApiFootballTransfers[]): ProviderTransfer[] {
+  return sinRepetidos(mapTransfersCrudos(rows));
+}
+
+function mapTransfersCrudos(rows: ApiFootballTransfers[]): ProviderTransfer[] {
+  return rows.flatMap((fila) => {
+    const playerRef = fila.player?.id === null || fila.player?.id === undefined
+      ? null
+      : String(fila.player.id);
+    if (!playerRef) return [];
+
+    return fila.transfers.flatMap((mov) => {
+      /* Sin fecha no hay movimiento que ordenar ni con qué desempatar una repetición. */
+      const fecha = mov.date?.trim();
+      const entraANombre = mov.teams?.in?.name?.trim();
+      const saleDeNombre = mov.teams?.out?.name?.trim();
+      if (!fecha || !entraANombre || !saleDeNombre) return [];
+
+      const { clase, monto } = claseDeFichaje(mov.type);
+      return [
+        {
+          playerRef,
+          fecha,
+          clase,
+          monto,
+          entraARef: mov.teams.in.id === null ? null : String(mov.teams.in.id),
+          entraANombre,
+          saleDeRef: mov.teams.out.id === null ? null : String(mov.teams.out.id),
+          saleDeNombre,
+        },
+      ];
+    });
   });
 }

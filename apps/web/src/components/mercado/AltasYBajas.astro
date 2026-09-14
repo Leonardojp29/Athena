@@ -1,0 +1,86 @@
+---
+import type { Fichaje } from '../../lib/api';
+import { detalleDeFichaje } from '../../lib/mercado';
+import { formatDate } from '../../lib/format';
+import Card from '../Card.astro';
+import Icon from '../Icon.astro';
+
+/*
+ * El mercado de un club: a quién trajo y a quién dejó ir.
+ *
+ * Es lo que le da algo que contar a la web los días sin fútbol, que hoy es cuando no hay razón para
+ * entrar. Cada fila lleva al futbolista y también al otro club cuando lo tenemos, porque un fichaje
+ * es una relación entre dos partes y las dos se pueden seguir.
+ *
+ * Las dos direcciones van en la misma tarjeta y no en dos: leídas juntas cuentan el saldo de la
+ * ventana, que es la pregunta de verdad —"¿se reforzó o se desarmó?"—.
+ */
+interface Props {
+  altas: Fichaje[];
+  bajas: Fichaje[];
+}
+
+const { altas, bajas } = Astro.props;
+
+const columnas = [
+  { titulo: 'Llegaron', movimientos: altas, icono: 'flecha-izquierda' as const, entra: true },
+  { titulo: 'Se fueron', movimientos: bajas, icono: 'chevron-derecha' as const, entra: false },
+];
+const hayAlgo = altas.length > 0 || bajas.length > 0;
+---
+
+{
+  hayAlgo && (
+    <Card title="Altas y bajas">
+      <div class="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+        {columnas.map(({ titulo, movimientos, icono, entra }) => (
+          <section class="min-w-0">
+            <p class="mb-2 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-label text-ink-muted">
+              <Icon
+                name={icono}
+                size={12}
+                class={entra ? 'text-win' : 'text-card-red'}
+              />
+              {titulo}
+              <span class="ml-auto tabular">{movimientos.length}</span>
+            </p>
+
+            {movimientos.length === 0 ? (
+              <p class="text-sm text-ink-muted">Sin movimientos.</p>
+            ) : (
+              <ul class="grid gap-0.5">
+                {movimientos.map((mov) => {
+                  /* El otro lado del pase: de dónde vino si llegó, a dónde fue si se fue. */
+                  const otro = entra ? mov.saleDe : mov.entraA;
+                  const otroNombre = entra ? mov.saleDeNombre : mov.entraANombre;
+                  const detalle = detalleDeFichaje(mov);
+                  return (
+                    <li>
+                      <a
+                        href={`/jugadores/${mov.player?.slug ?? ''}`}
+                        class="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-2 rounded-md px-1.5 py-1.5 transition-colors hover:bg-canvas-subtle"
+                      >
+                        <span class="min-w-0 truncate text-sm font-medium">{mov.player?.name}</span>
+                        <span class="shrink-0 text-2xs tabular text-ink-muted">
+                          {formatDate(mov.fecha)}
+                        </span>
+                        <span class="col-span-2 flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
+                          {otro?.logoUrl && (
+                            <img src={otro.logoUrl} alt="" width="13" height="13" loading="lazy" class="shrink-0" />
+                          )}
+                          <span class="truncate">{otro?.name ?? otroNombre}</span>
+                          {/* Sin clase ni monto no se escribe nada: el proveedor calla cuatro de cada diez. */}
+                          {detalle && <span class="shrink-0 before:content-['·'] before:mr-1.5">{detalle}</span>}
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        ))}
+      </div>
+    </Card>
+  )
+}

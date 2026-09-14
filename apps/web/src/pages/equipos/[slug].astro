@@ -15,6 +15,7 @@ import CountryFlag from '../../components/CountryFlag.astro';
 import ListaPartidosCompacta from '../../components/home/ListaPartidosCompacta.astro';
 import SquadGrid from '../../components/team/SquadGrid.astro';
 import TablaPlantel from '../../components/team/TablaPlantel.astro';
+import AltasYBajas from '../../components/mercado/AltasYBajas.astro';
 import { api, ApiError, type SearchHit, type TeamView } from '../../lib/api';
 import { coloresDeClub, temaEquipo } from '../../lib/color';
 import { nombreFase, nombreTorneo, paisEnEspanol } from '../../lib/paises';
@@ -44,7 +45,7 @@ try {
   throw error;
 }
 
-const { team, standings, recent, upcoming, squad, scorers } = view;
+const { team, standings, recent, upcoming, squad, scorers, mercado } = view;
 
 /* Con un partido suyo en juego, el marcador de esta página se mantiene solo. Sin eso, 0 KB. */
 const hayEnVivo = [...recent, ...upcoming].some((m) => isLive(m.status));
@@ -329,6 +330,8 @@ const jsonLd = [
         </section>
 
         {scorers.length > 0 && <TablaPlantel jugadores={scorers} />}
+
+        <AltasYBajas altas={mercado.altas} bajas={mercado.bajas} />
 
         <SquadGrid squad={squad} />
       </div>

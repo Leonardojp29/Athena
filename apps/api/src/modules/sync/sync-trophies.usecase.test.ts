@@ -1,0 +1,66 @@
+import { describe, expect, it } from 'vitest';
+import type { ProviderTrophy } from '@athena/domain';
+import type { PrismaService } from '../../shared/prisma.service.js';
+import type { ExternalReferenceService } from './external-reference.service.js';
+import { SyncTrophiesUseCase } from './sync-trophies.usecase.js';
+
+const JUGADOR = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+function armar(palmares: ProviderTrophy[], resuelve: string | null = JUGADOR) {
+  const hechas: string[] = [];
+  let creadas: Array<Record<string, unknown>> = [];
+  const prisma = {
+    $transaction: (ops: unknown[]) => Promise.resolve(ops),
+    playerTrophy: {
+      deleteMany: () => (hechas.push('borrar'), null),
+      createMany: ({ data }: { data: Array<Record<string, unknown>> }) => (
+        hechas.push('crear'), (creadas = data), null
+      ),
+    },
+  } as unknown as PrismaService;
+  const refs = { resolve: () => Promise.resolve(resuelve) } as unknown as ExternalReferenceService;
+  const provider = { name: 'api-football', getTrophies: () => Promise.resolve(palmares) } as never;
+
+  return { uso: new SyncTrophiesUseCase(prisma, refs, provider), hechas, leer: () => creadas };
+}
+
+const titulo = (competencia: string, temporada: string | null): ProviderTrophy => ({
+  playerRef: '1',
+  competencia,
+  pais: 'Peru',
+  temporada,
+  puesto: 'campeon',
+});
+
+describe('SyncTrophiesUseCase', () => {
+  it('reemplaza el palmarés entero en una sola transacción', async () => {
+    const { uso, hechas, leer } = armar([titulo('Liga 1', '2024'), titulo('Copa', null)]);
+    expect(await uso.execute('1')).toBe(2);
+    expect(hechas).toEqual(['borrar', 'crear']);
+    expect(leer()).toHaveLength(2);
+    expect(leer()[0]).toMatchObject({ playerId: JUGADOR, competencia: 'Liga 1', temporada: '2024' });
+  });
+
+  /* Un título sin año es casi la mitad de los que manda el proveedor: tiene que entrar igual. */
+  it('guarda un título sin temporada', async () => {
+    const { leer, uso } = armar([titulo('Copa América', null)]);
+    await uso.execute('1');
+    expect(leer()[0]).toMatchObject({ temporada: null });
+  });
+
+  /*
+   * Que el proveedor no conteste no significa que el jugador haya dejado de ganar títulos: vaciar
+   * una ficha por un hueco del feed es peor que dejarla como estaba.
+   */
+  it('no borra lo que ya había cuando el proveedor no manda nada', async () => {
+    const { uso, hechas } = armar([]);
+    expect(await uso.execute('1')).toBe(0);
+    expect(hechas).toEqual([]);
+  });
+
+  it('no escribe si el jugador no está en Athena', async () => {
+    const { uso, hechas } = armar([titulo('Liga 1', '2024')], null);
+    expect(await uso.execute('1')).toBe(0);
+    expect(hechas).toEqual([]);
+  });
+});
