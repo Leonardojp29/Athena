@@ -23,6 +23,18 @@ describe('torneoDeTrofeo', () => {
     expect(torneoDeTrofeo('FIFA Club World Cup')).toBe('FIFA Club World Cup');
   });
 
+  it('traduce la Finalissima, que Athena sí tiene', () => {
+    expect(torneoDeTrofeo('CONMEBOL/UEFA Finalissima')).toBe('Finalissima');
+  });
+
+  /*
+   * La Copa Intercontinental de clubes no es el repechaje de eliminatorias, por mucho que las dos
+   * digan "intercontinental". Sin alias se queda sin escudo, que es lo correcto.
+   */
+  it('no confunde la Copa Intercontinental con el repechaje', () => {
+    expect(torneoDeTrofeo('FIFA Intercontinental Cup')).toBe('FIFA Intercontinental Cup');
+  });
+
   it('lo que no está en la tabla se queda como vino', () => {
     expect(torneoDeTrofeo('Community Shield')).toBe('Community Shield');
     expect(torneoDeTrofeo('Trofeo Joan Gamper')).toBe('Trofeo Joan Gamper');

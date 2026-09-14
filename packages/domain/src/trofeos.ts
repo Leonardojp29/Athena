@@ -17,7 +17,16 @@ const ALIAS: Record<string, string> = {
   'concacaf nations league': 'Nations League Concacaf',
   'fifa world cup': 'Mundial',
   'uefa conference league': 'UEFA Europa Conference League',
+  'conmebol/uefa finalissima': 'Finalissima',
 };
+
+/*
+ * Lo que se parece y NO es lo mismo, anotado para que nadie lo agregue por error:
+ *   · "FIFA World Cup" contra "FIFA Club World Cup": el Mundial no es el Mundial de Clubes.
+ *   · "FIFA Intercontinental Cup" contra "Repechaje Intercontinental": una es la copa de clubes
+ *     que jugaban campeón de Europa y de América; el otro es un repechaje de eliminatorias.
+ * Ninguna de las dos lleva alias, y por eso esos títulos se quedan sin escudo.
+ */
 
 export const normalizarNombre = (nombre: string): string =>
   nombre

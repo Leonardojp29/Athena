@@ -19,8 +19,13 @@ export class SyncTrophiesUseCase {
     @Inject(FOOTBALL_DATA_PROVIDER) private readonly provider: FootballDataProvider,
   ) {}
 
-  async execute(playerRef: string): Promise<number> {
-    const playerId = await this.refs.resolve(this.provider.name, 'player', playerRef);
+  /**
+   * @param yaResuelto El id del futbolista cuando quien llama ya lo tiene. Se ahorra un viaje a la
+   * base por jugador, que rellenando veintisiete mil fichas son horas.
+   */
+  async execute(playerRef: string, yaResuelto?: string): Promise<number> {
+    const playerId =
+      yaResuelto ?? (await this.refs.resolve(this.provider.name, 'player', playerRef));
     if (!playerId) return 0;
 
     const palmares = await this.provider.getTrophies(playerRef);
