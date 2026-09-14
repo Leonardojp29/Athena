@@ -47,10 +47,15 @@ export class ColaDeTareas {
     datos: Record<string, unknown>,
     opts?: { delayMs?: number; prioridad?: number },
   ): Promise<void> {
+    /*
+     * Si ya hay una pendiente igual, esta sobra: la que está gana y conserva su turno. Sin esto la
+     * cola creció a setenta mil filas con solo dos mil seiscientas tareas distintas adentro.
+     */
     await this.prisma.$executeRaw`
       INSERT INTO tareas (tipo, datos, prioridad, corre_despues)
       VALUES (${tipo}, ${JSON.stringify(datos)}::jsonb, ${opts?.prioridad ?? 5},
-              now() + make_interval(secs => ${(opts?.delayMs ?? 0) / 1000}))`;
+              now() + make_interval(secs => ${(opts?.delayMs ?? 0) / 1000}))
+      ON CONFLICT (tipo, datos) DO NOTHING`;
   }
 
   /** Toma hasta `limite` tareas listas, candadeadas para este proceso. */

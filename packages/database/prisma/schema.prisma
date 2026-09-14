@@ -540,6 +540,8 @@ model Tarea {
   ultimoError  String?   @map("ultimo_error")
   creadaEn     DateTime  @default(now()) @map("creada_en")
 
+  /* Una fila viva es trabajo pendiente: encolar dos veces lo mismo no es dos trabajos. */
+  @@unique([tipo, datos], map: "tarea_unica")
   @@index([prioridad, correDespues, id])
   @@map("tareas")
 }

@@ -37,6 +37,21 @@ const LOTES_DE_CIERRE_POR_TIC = 3;
 /* Con la cuota agotada no se insiste: el minuto se recupera solo, el día no. */
 const PAUSA_POR_CUOTA_S = { minute: 60, day: 3600 } as const;
 
+/*
+ * La franja del tic que nadie más puede tocar, para que la cola siempre avance.
+ *
+ * Sin ella lo urgente se quedaba con todo: con el latido caído una semana, `liveTick` y el outbox
+ * agotaban los cincuenta y cinco segundos y `drenar` no alcanzaba a tomar una sola tarea. La cola
+ * llegó a setenta mil tareas vencidas creciendo sola, sin que nada fallara ni quedara registrado.
+ */
+const RESERVA_DE_DRENADO_MS = 25_000;
+
+/*
+ * Cuántas tareas por lote. Cada una es un pedido al proveedor, que admite novecientos por minuto:
+ * ocho a la vez no llega ni a la mitad de eso ni siquiera si todas responden al instante.
+ */
+const LOTE_DE_DRENADO = 8;
+
 type SyncJob =
   | { name: 'competition'; data: { competitionRef: string } }
   | { name: 'teams'; data: { competitionRef: string; seasonYear: number } }
@@ -98,44 +113,82 @@ export class SyncQueueService {
     if (await this.pausada()) return { vivos: 0, tareas: 0 };
 
     const arranque = Date.now();
+    /* Lo urgente trabaja contra un presupuesto recortado; lo que sobra es de la cola. */
+    const topeDeLoUrgente = presupuestoMs - RESERVA_DE_DRENADO_MS;
+
     await this.schedules.markRun('live-tick');
     const vivos = await this.liveTick();
-    await this.cerrarLoPendiente(arranque, presupuestoMs);
+    const trasVivo = Date.now() - arranque;
+
+    await this.cerrarLoPendiente(arranque, topeDeLoUrgente);
     await this.schedules.markRun('process-outbox');
     await this.processOutbox();
+    const trasUrgente = Date.now() - arranque;
 
-    const hechas = await this.drenar(arranque, presupuestoMs);
+    /*
+     * La cola trabaja contra su propia fecha límite: lo que lo urgente se pasó de largo no se le
+     * descuenta. Medido acá, `liveTick` solo son noventa segundos de ida y vuelta al proveedor —los
+     * partidos en curso cuestan varios endpoints cada uno—, así que contra el presupuesto común el
+     * drenado arrancaba ya vencido y no tomaba nada.
+     */
+    const hastaCuando = Math.max(arranque + presupuestoMs, Date.now() + RESERVA_DE_DRENADO_MS);
+    const hechas = await this.drenar(hastaCuando);
+    logJson('info', 'tick_terminado', {
+      vivos,
+      tareas: hechas,
+      msVivo: trasVivo,
+      msUrgente: trasUrgente,
+      msTotal: Date.now() - arranque,
+    });
     return { vivos, tareas: hechas };
   }
 
-  private async drenar(arranque: number, presupuestoMs: number): Promise<number> {
+  private async drenar(hastaCuando: number): Promise<number> {
     let hechas = 0;
-    while (Date.now() - arranque < presupuestoMs) {
-      const tareas = await this.cola.tomar(3);
+    /*
+     * Un lote siempre, aunque lo urgente se haya pasado de su franja. Un tic que no toma ni una
+     * tarea deja la cola igual que como la encontró, y así estuvo nueve días.
+     */
+    do {
+      const tareas = await this.cola.tomar(LOTE_DE_DRENADO);
       if (tareas.length === 0) break;
-      for (const tarea of tareas) {
-        try {
-          await this.process(tarea);
-          await this.cola.completar(tarea.id);
-          hechas++;
-        } catch (error) {
-          if (error instanceof ApiBudgetExhaustedError) {
-            await this.pausar(error);
-            await this.cola.posponer(tarea, PAUSA_POR_CUOTA_S[error.scope] * 1000, error.message);
-            return hechas;
-          }
-          await this.cola.fallar(tarea, error);
-          logJson('error', 'tarea_fallida', {
-            tipo: tarea.tipo,
-            id: String(tarea.id),
-            intentos: tarea.intentos,
-            error: String(error).slice(0, 200),
-          });
-          reportError(error, { tarea: tarea.tipo });
-        }
-      }
-    }
+
+      const resultados = await Promise.all(tareas.map((tarea) => this.procesarUna(tarea)));
+      hechas += resultados.filter((r) => r === 'hecha').length;
+      /* Sin cuota no sirve seguir pidiendo: el lote que quedó a medias ya volvió a la cola. */
+      if (resultados.includes('sin-cuota')) return hechas;
+    } while (Date.now() < hastaCuando);
     return hechas;
+  }
+
+  /**
+   * Una tarea de punta a punta, sin dejar escapar el error.
+   *
+   * Vive aparte porque el lote corre en paralelo: casi todo el costo de una tarea es espera —un
+   * pedido al proveedor y escrituras a una base fuera de región— y en serie el tic se iba entero
+   * en tres tareas.
+   */
+  private async procesarUna(tarea: Tarea): Promise<'hecha' | 'fallida' | 'sin-cuota'> {
+    try {
+      await this.process(tarea);
+      await this.cola.completar(tarea.id);
+      return 'hecha';
+    } catch (error) {
+      if (error instanceof ApiBudgetExhaustedError) {
+        await this.pausar(error);
+        await this.cola.posponer(tarea, PAUSA_POR_CUOTA_S[error.scope] * 1000, error.message);
+        return 'sin-cuota';
+      }
+      await this.cola.fallar(tarea, error);
+      logJson('error', 'tarea_fallida', {
+        tipo: tarea.tipo,
+        id: String(tarea.id),
+        intentos: tarea.intentos,
+        error: String(error).slice(0, 200),
+      });
+      reportError(error, { tarea: tarea.tipo });
+      return 'fallida';
+    }
   }
 
   private async pausada(): Promise<boolean> {
@@ -239,7 +292,9 @@ export class SyncQueueService {
      * el worker caído toda una semana los partidos de esos días se quedaban invisibles hasta que
      * volviera a haber algo en juego. Cuesta cero requests cuando no hay ninguno.
      */
+    const t0 = Date.now();
     await this.syncFixtures.reconcileStale();
+    const msReconcilio = Date.now() - t0;
 
     const now = new Date();
     const soon = new Date(now.getTime() + 30 * 60 * 1000);
@@ -253,11 +308,24 @@ export class SyncQueueService {
         ],
       },
     });
+    const msCandidatos = Date.now() - t0;
     /* Va antes del corte: su propia consulta decide, y con la ventana más ancha que el feed en vivo. */
     await this.seguirLosEnCurso();
-    if (candidates === 0) return 0;
+    const msEnCurso = Date.now() - t0;
+    if (candidates === 0) {
+      logJson('info', 'live_tick', { msReconcilio, msCandidatos, msEnCurso, candidates });
+      return 0;
+    }
 
-    return this.syncFixtures.syncLive();
+    const vivos = await this.syncFixtures.syncLive();
+    logJson('info', 'live_tick', {
+      msReconcilio,
+      msCandidatos,
+      msEnCurso,
+      msTotal: Date.now() - t0,
+      candidates,
+    });
+    return vivos;
   }
 
   /**
