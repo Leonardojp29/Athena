@@ -47,10 +47,14 @@ const PAUSA_POR_CUOTA_S = { minute: 60, day: 3600 } as const;
 const RESERVA_DE_DRENADO_MS = 25_000;
 
 /*
- * Cuántas tareas por lote. Cada una es un pedido al proveedor, que admite novecientos por minuto:
- * ocho a la vez no llega ni a la mitad de eso ni siquiera si todas responden al instante.
+ * Cuántas tareas por lote.
+ *
+ * Es el único parámetro que escala el drenado en línea recta: un `match-detail` son cuatro llamadas
+ * al proveedor y unos quince segundos, casi todo espera. Ocho a la vez son menos de cuatrocientos
+ * pedidos por minuto contra los novecientos que admite el plan, y queda margen para lo que corra al
+ * lado. `drenar:cola`, que no compite con el latido en vivo, lo sube por ambiente.
  */
-const LOTE_DE_DRENADO = 8;
+const LOTE_DE_DRENADO = Math.min(Math.max(Number(process.env.LOTE_DE_DRENADO ?? 8), 1), 32);
 
 type SyncJob =
   | { name: 'competition'; data: { competitionRef: string } }
@@ -143,7 +147,13 @@ export class SyncQueueService {
     return { vivos, tareas: hechas };
   }
 
-  private async drenar(hastaCuando: number): Promise<number> {
+  /**
+   * Drena la cola hasta la fecha límite dada, o hasta que no quede nada listo.
+   *
+   * Pública porque el tic no es el único que drena: con semanas de atraso, el script `drenar:cola`
+   * la llama sin el peso del latido en vivo, que en un tic se lleva el ochenta por ciento del turno.
+   */
+  async drenar(hastaCuando: number): Promise<number> {
     let hechas = 0;
     /*
      * Un lote siempre, aunque lo urgente se haya pasado de su franja. Un tic que no toma ni una
