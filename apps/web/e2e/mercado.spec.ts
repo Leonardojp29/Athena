@@ -9,44 +9,48 @@ import { expect, test } from '@playwright/test';
  */
 
 test.describe('el palmarés de un futbolista', () => {
-  test('cuenta los títulos y los agrupa por temporada', async ({ page }) => {
+  const tarjetaDe = (page: import('@playwright/test').Page) =>
+    page.locator('section').filter({ has: page.getByRole('heading', { name: 'Palmarés' }) });
+
+  test('cuenta los títulos y los ordena del más nuevo al más viejo', async ({ page }) => {
     await page.goto('/jugadores/lionel-messi');
-    const tarjeta = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Palmarés' }) });
+    const tarjeta = tarjetaDe(page);
     await expect(tarjeta).toBeVisible();
     await expect(tarjeta).toContainText(/\d+ títulos/);
 
-    /* Los años bajan del más nuevo al más viejo: un palmarés desordenado no se puede leer. */
-    const anios = await tarjeta
-      .locator('li > span.text-right')
-      .allTextContents()
-      .then((t) => t.map((x) => x.trim()).filter((x) => /^\d{4}/.test(x)));
+    /* Es una línea de tiempo: si los años no bajan, no es una línea, es una lista desordenada. */
+    const anios = (await tarjeta.locator('ol > li > span').first().textContent())
+      ? await tarjeta.locator('ol > li').evaluateAll((nodos) =>
+          nodos.map((n) => n.querySelector('span')?.textContent?.trim() ?? '').filter((t) => /^\d{4}/.test(t)),
+        )
+      : [];
     expect(anios.length).toBeGreaterThan(1);
     expect([...anios]).toEqual([...anios].sort().reverse());
   });
 
-  /*
-   * Messi tiene setenta títulos: sin plegar, la tarjeta se come la columna entera. La mediana son
-   * ocho y esos entran sin plegable, así que el plegable aparece solo donde hace falta.
-   */
-  test('una carrera larga se pliega y se puede abrir sin JavaScript', async ({ page }) => {
+  /* La línea corre a lo ancho: apretada en media columna deja de ser una línea. */
+  test('la línea desplaza a lo ancho en vez de crecer a lo alto', async ({ page }) => {
     await page.goto('/jugadores/lionel-messi');
-    const tarjeta = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Palmarés' }) });
-    const alto = (await tarjeta.boundingBox())?.height ?? 0;
-    expect(alto).toBeLessThan(900);
+    const tarjeta = tarjetaDe(page);
+    expect((await tarjeta.boundingBox())?.height ?? 0).toBeLessThan(400);
 
-    const desplegar = tarjeta.locator('summary');
-    await expect(desplegar).toContainText(/Ver (el otro título|los otros \d+ títulos)/);
-    await desplegar.click();
-    expect((await tarjeta.boundingBox())?.height ?? 0).toBeGreaterThan(alto);
+    const riel = tarjeta.locator('.palmares-riel');
+    const [ancho, visible] = await riel.evaluate((n) => [n.scrollWidth, n.clientWidth]);
+    expect(ancho).toBeGreaterThan(visible);
   });
 
   /* El proveedor manda el mismo título dos veces, una con año y otra sin: no pueden salir los dos. */
-  test('no repite un título fechado en un bloque sin año', async ({ page }) => {
+  test('no repite un título fechado en un grupo sin año', async ({ page }) => {
     await page.goto('/jugadores/lionel-messi');
-    const tarjeta = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Palmarés' }) });
-    await tarjeta.locator('summary').click();
-    const sinAnio = tarjeta.locator('li > span.text-right', { hasText: 'Sin año' });
+    const sinAnio = tarjetaDe(page).locator('ol > li > span', { hasText: 'Sin año' });
     expect(await sinAnio.count()).toBeLessThanOrEqual(1);
+  });
+
+  /* Los clubes son parte de quién es el futbolista, no un dato de su temporada. */
+  test('los clubes viven en la banda y llevan a su página', async ({ page }) => {
+    await page.goto('/jugadores/lionel-messi');
+    const enLaBanda = page.locator('section.bg-banda a[href^="/equipos/"]');
+    expect(await enLaBanda.count()).toBeGreaterThan(0);
   });
 });
 

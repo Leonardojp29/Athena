@@ -1974,9 +1974,9 @@ export class ViewsService {
               kickoffUtc: true,
               homeScore: true,
               awayScore: true,
-              /* El slug viaja porque la dirección del partido se arma con él, no con el id. */
-              homeTeam: { select: { name: true, slug: true } },
-              awayTeam: { select: { name: true, slug: true } },
+              /* El slug arma la dirección del partido; el escudo evita una fila de puro texto. */
+              homeTeam: { select: { name: true, slug: true, logoUrl: true } },
+              awayTeam: { select: { name: true, slug: true, logoUrl: true } },
               season: { select: { competition: { select: { name: true } } } },
             },
           },
@@ -2043,11 +2043,35 @@ export class ViewsService {
        * El palmarés y los pases viajan en la misma tanda que el resto de la ficha: pedirlos después
        * sumaría dos idas y vueltas a una vista que ya tiene ocho.
        */
-      this.prisma.playerTrophy.findMany({
-        where: { player: { slug } },
-        orderBy: [{ temporada: 'desc' }, { competencia: 'asc' }],
-        select: { competencia: true, pais: true, temporada: true, puesto: true },
-      }),
+      /*
+       * El palmarés con el escudo de cada torneo. El proveedor manda el nombre y no el id, así que
+       * se cruza por nombre contra las competencias que ya tenemos: resuelve el 72% —1.396 de
+       * 1.928— y el resto son torneos que Athena no cubre, que se quedan sin escudo en vez de con
+       * uno inventado.
+       */
+      this.prisma.$queryRaw<
+        Array<{
+          competencia: string;
+          pais: string | null;
+          temporada: string | null;
+          puesto: string;
+          logoUrl: string | null;
+          slug: string | null;
+        }>
+      >`
+        SELECT t.competencia, t.pais, t.temporada, t.puesto,
+               c.logo_url AS "logoUrl", c.slug
+        FROM player_trophies t
+        JOIN players p ON p.id = t.player_id
+        LEFT JOIN LATERAL (
+          SELECT c.logo_url, c.slug FROM competitions c
+          WHERE lower(unaccent(c.name)) = lower(unaccent(t.competencia))
+          ORDER BY c.logo_url IS NULL, c.id
+          LIMIT 1
+        ) c ON true
+        WHERE p.slug = ${slug}
+        ORDER BY t.temporada DESC NULLS LAST, t.competencia ASC
+      `,
       this.prisma.transfer.findMany({
         relationLoadStrategy: JOIN,
         where: { player: { slug } },

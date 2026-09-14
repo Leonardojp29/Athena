@@ -607,10 +607,12 @@ model Transfer {
 
   entraA       Team?   @relation("fichaje_entra", fields: [entraATeamId], references: [id])
   entraATeamId String? @map("entra_a_team_id") @db.Uuid
-  entraANombre String  @map("entra_a_nombre")
+  /// Null cuando el futbolista quedó sin club: el proveedor pone ahí su propio nombre.
+  entraANombre String? @map("entra_a_nombre")
   saleDe       Team?   @relation("fichaje_sale", fields: [saleDeTeamId], references: [id])
   saleDeTeamId String? @map("sale_de_team_id") @db.Uuid
-  saleDeNombre String  @map("sale_de_nombre")
+  /// Null cuando llegó sin contrato, por el mismo motivo.
+  saleDeNombre String? @map("sale_de_nombre")
 
   /// traspaso | prestamo | vuelve-de-prestamo | libre | desconocido
   clase String

@@ -272,9 +272,11 @@ export interface ProviderTransfer {
   /** El monto cuando el proveedor lo escribió dentro del tipo; se guarda tal cual lo mandó. */
   monto: string | null;
   entraARef: string | null;
-  entraANombre: string;
+  /** Null cuando el futbolista quedó sin club: no es lo mismo que no saber a dónde fue. */
+  entraANombre: string | null;
   saleDeRef: string | null;
-  saleDeNombre: string;
+  /** Null cuando llegó sin contrato, por el mismo motivo. */
+  saleDeNombre: string | null;
 }
 
 export interface FootballDataProvider {

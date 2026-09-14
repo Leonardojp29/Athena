@@ -517,6 +517,36 @@ function sinRepetidos(movimientos: ProviderTransfer[]): ProviderTransfer[] {
   return [...porCruce.values()].flat();
 }
 
+const sinAcentos = (texto: string): string =>
+  texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+const iguales = (a: string, b: string): boolean => sinAcentos(a) === sinAcentos(b);
+
+/*
+ * Si el "club" es el nombre del futbolista con las palabras en otro orden.
+ *
+ * El proveedor escribe el apellido primero: "Mohamed Salah → Salah Mohamed". La regla es que
+ * **todas** las palabras largas del futbolista estén en el club, no que compartan algunas: con
+ * "G. Viscarra" contra "Viscarra Guillermo" la inicial no cuenta y el apellido solo alcanza, pero
+ * un tal "Diego Racing" fichado por el "Racing Club" no cuela, porque "diego" no está ahí.
+ */
+function esElMismoNombre(club: string, jugador: string): boolean {
+  if (!jugador) return false;
+  if (iguales(club, jugador)) return true;
+
+  const palabras = (texto: string) =>
+    new Set(sinAcentos(texto).split(/[\s.]+/).filter((w) => w.length > 2));
+  const delClub = palabras(club);
+  const delJugador = palabras(jugador);
+  if (delClub.size === 0 || delJugador.size === 0) return false;
+
+  return [...delJugador].every((w) => delClub.has(w));
+}
+
 const diasEntre = (a: string, b: string): number =>
   Math.abs(Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000;
 
@@ -534,9 +564,23 @@ function mapTransfersCrudos(rows: ApiFootballTransfers[]): ProviderTransfer[] {
     return fila.transfers.flatMap((mov) => {
       /* Sin fecha no hay movimiento que ordenar ni con qué desempatar una repetición. */
       const fecha = mov.date?.trim();
-      const entraANombre = mov.teams?.in?.name?.trim();
-      const saleDeNombre = mov.teams?.out?.name?.trim();
-      if (!fecha || !entraANombre || !saleDeNombre) return [];
+      const crudoEntra = mov.teams?.in?.name?.trim() || null;
+      const crudoSale = mov.teams?.out?.name?.trim() || null;
+      if (!fecha || !crudoEntra || !crudoSale) return [];
+
+      /*
+       * Un club que se llama igual que el futbolista no es un club: es que quedó libre.
+       * El proveedor escribe "Mohamed Salah → Salah Mohamed", con el apellido primero.
+       */
+      const nombre = fila.player?.name ?? '';
+      const entraANombre = esElMismoNombre(crudoEntra, nombre) ? null : crudoEntra;
+      const saleDeNombre = esElMismoNombre(crudoSale, nombre) ? null : crudoSale;
+
+      /*
+       * Del club a sí mismo tampoco es un pase: son renovaciones y ascensos de filial, que el
+       * proveedor manda con tipo `Raise` o `-`. Salían en las dos columnas de la misma tarjeta.
+       */
+      if (entraANombre && saleDeNombre && iguales(entraANombre, saleDeNombre)) return [];
 
       const { clase, monto } = claseDeFichaje(mov.type);
       return [
@@ -545,9 +589,9 @@ function mapTransfersCrudos(rows: ApiFootballTransfers[]): ProviderTransfer[] {
           fecha,
           clase,
           monto,
-          entraARef: mov.teams.in.id === null ? null : String(mov.teams.in.id),
+          entraARef: entraANombre === null || mov.teams.in.id === null ? null : String(mov.teams.in.id),
           entraANombre,
-          saleDeRef: mov.teams.out.id === null ? null : String(mov.teams.out.id),
+          saleDeRef: saleDeNombre === null || mov.teams.out.id === null ? null : String(mov.teams.out.id),
           saleDeNombre,
         },
       ];

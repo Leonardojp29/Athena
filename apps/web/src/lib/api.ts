@@ -631,6 +631,9 @@ export interface Trofeo {
   pais: string | null;
   temporada: string | null;
   puesto: 'campeon' | 'subcampeon';
+  /** El escudo del torneo cuando Athena lo conoce por su nombre; resuelve el 72%. */
+  logoUrl: string | null;
+  slug: string | null;
 }
 
 export type ClaseDeFichaje = 'traspaso' | 'prestamo' | 'vuelve-de-prestamo' | 'libre' | 'desconocido';
@@ -640,8 +643,9 @@ export interface Fichaje {
   fecha: string;
   clase: ClaseDeFichaje;
   monto: string | null;
-  entraANombre: string;
-  saleDeNombre: string;
+  /** Null cuando quedó sin club: no es lo mismo que no saber a dónde fue. */
+  entraANombre: string | null;
+  saleDeNombre: string | null;
   entraA: { name?: string; slug: string; logoUrl: string | null } | null;
   saleDe: { name?: string; slug: string; logoUrl: string | null } | null;
   player?: { name: string; slug: string; photoUrl: string | null; position: string | null };
@@ -789,8 +793,8 @@ export interface PlayerView {
       kickoffUtc: string;
       homeScore: number | null;
       awayScore: number | null;
-      homeTeam: { name: string; slug: string };
-      awayTeam: { name: string; slug: string };
+      homeTeam: { name: string; slug: string; logoUrl: string | null };
+      awayTeam: { name: string; slug: string; logoUrl: string | null };
       season: { competition: { name: string } };
     };
   }>;

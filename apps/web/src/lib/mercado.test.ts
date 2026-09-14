@@ -7,6 +7,8 @@ const titulo = (competencia: string, temporada: string | null, puesto: Trofeo['p
   pais: 'Peru',
   temporada,
   puesto,
+  logoUrl: null,
+  slug: null,
 });
 
 describe('nombreDeClase', () => {

@@ -97,7 +97,11 @@ export class SyncTransfersUseCase {
 /* Los mismos siete días que usa el mapeador para juntar el anuncio con la fecha efectiva. */
 const VENTANA_MS = 7 * 24 * 3600_000;
 
-const cruce = (f: { playerId: string; entraANombre: string; saleDeNombre: string }): string =>
-  `${f.playerId}|${f.entraANombre}|${f.saleDeNombre}`;
+/* Sin club de un lado el nombre es null, y dos nulos tienen que compararse iguales. */
+const cruce = (f: {
+  playerId: string;
+  entraANombre: string | null;
+  saleDeNombre: string | null;
+}): string => `${f.playerId}|${f.entraANombre ?? ''}|${f.saleDeNombre ?? ''}`;
 
 const esTexto = (v: string | null): v is string => v !== null;

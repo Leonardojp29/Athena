@@ -13,10 +13,11 @@ const { performances } = Astro.props;
 
 {
   performances.length > 0 && (
-    <section class="rounded-lg border border-border bg-surface p-4">
-      <h2 class="mb-3 text-base font-semibold">Últimos partidos</h2>
+    <!-- Cabecera fija y la lista desplazando por dentro: así las dos tarjetas del par miden igual. -->
+    <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-3 shrink-0 text-base font-semibold">Últimos partidos</h2>
 
-      <ul class="grid gap-0">
+      <ul class="grid min-h-0 flex-1 gap-0 overflow-y-auto pr-1">
         {performances.map((p) => {
           const nota = p.rating === null ? null : Number(p.rating);
           const goles = (p.goals ?? 0) + (p.penaltyScored ?? 0);

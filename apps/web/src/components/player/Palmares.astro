@@ -1,20 +1,22 @@
 ---
 import type { Trofeo } from '../../lib/api';
 import { agruparPalmares, contarPalmares } from '../../lib/mercado';
-import Card from '../Card.astro';
+import EscudoTorneo from '../EscudoTorneo.astro';
 import Icon from '../Icon.astro';
-import { paisEnEspanol } from '../../lib/paises';
-import { nombreTorneo } from '../../lib/paises';
+import { nombreTorneo, paisEnEspanol } from '../../lib/paises';
 
 /*
- * El palmarés.
+ * El palmarés como una línea de tiempo.
  *
- * Lo que convierte una planilla de minutos en una trayectoria. Va agrupado por temporada porque un
- * año con tres títulos cuenta algo que tres filas sueltas no cuentan, y los que el proveedor mandó
- * sin año quedan al final en su propio grupo en vez de mezclarse con los fechados.
+ * Una lista vertical cuenta qué ganó; una línea cuenta **cuándo** lo ganó, que es lo que hace que se
+ * lea como una carrera y no como un inventario. Va a todo el ancho porque el eje necesita recorrido:
+ * apretada en media columna, una temporada con cuatro títulos se apila y deja de ser una línea.
  *
- * Se muestran también los subcampeonatos: "dos veces finalista" es parte de una carrera, y ocultar
- * lo perdido para dejar solo lo ganado sería contar media historia.
+ * De lo más nuevo a lo más viejo, como el resto del sitio: quien entra quiere saber qué ganó hace
+ * poco, no en qué año debutó.
+ *
+ * El escudo del torneo sale de cruzar su nombre con las competencias que ya tenemos —resuelve el
+ * 72%—; el resto se queda con la copa sola en lugar de un escudo inventado.
  */
 interface Props {
   palmares: Trofeo[];
@@ -25,20 +27,8 @@ const grupos = agruparPalmares(palmares);
 const { campeon, subcampeon } = contarPalmares(palmares);
 
 /*
- * Cuántas temporadas se ven sin desplegar.
- *
- * La mediana son ocho títulos y entran enteros, pero el 15% de los futbolistas pasa de veinte y
- * Messi llega a setenta: ahí la tarjeta deja de ser una tarjeta y se come la columna. Las últimas
- * seis temporadas quedan a la vista y el resto detrás de un `<details>`, que no cuesta un byte.
- */
-const TEMPORADAS_A_LA_VISTA = 6;
-const visibles = grupos.slice(0, TEMPORADAS_A_LA_VISTA);
-const resto = grupos.slice(TEMPORADAS_A_LA_VISTA);
-const titulosDelResto = resto.reduce((n, g) => n + g.titulos.length, 0);
-
-/*
- * Las dos cifras se arman acá y no en el marcado: entre llaves, Astro se come el espacio que
- * separa el número de su palabra y quedaba "65títulos".
+ * Las cifras se arman acá y no entre llaves: Astro se come el espacio que separa el número de su
+ * palabra y quedaba "65títulos".
  */
 const cuentas = [
   campeon > 0 ? { numero: campeon, palabra: campeon === 1 ? 'título' : 'títulos' } : null,
@@ -50,118 +40,93 @@ const cuentas = [
 
 {
   grupos.length > 0 && (
-    <Card title="Palmarés">
-      <p class="-mt-1 mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-ink-muted">
-        {cuentas.map(({ numero, palabra }) => (
-          <span>
-            <strong class="font-display text-lg font-semibold tabular text-ink">{numero}</strong>
-            {` ${palabra}`}
-          </span>
-        ))}
-      </p>
-
-      <ul class="grid gap-3">
-        {visibles.map((grupo) => (
-          <li class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3">
-            <span
-              class:list={[
-                'pt-px text-right font-display text-sm font-semibold tabular',
-                grupo.temporada ? 'text-ink' : 'text-ink-muted',
-              ]}
-            >
-              {/* Sin año no se inventa uno: se dice que no se sabe cuándo. */}
-              {grupo.temporada ?? 'Sin año'}
+    <section class="min-w-0 rounded-lg border border-border bg-surface">
+      <header class="flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b border-border px-4 py-3">
+        <h2 class="text-base font-semibold">Palmarés</h2>
+        <p class="flex flex-wrap items-baseline gap-x-3 text-sm text-ink-muted">
+          {cuentas.map(({ numero, palabra }) => (
+            <span>
+              <strong class="font-display text-lg font-semibold tabular text-ink">{numero}</strong>
+              {` ${palabra}`}
             </span>
+          ))}
+        </p>
+      </header>
 
-            <ul class="grid gap-1">
-              {grupo.titulos.map((titulo) => (
-                <li class="flex min-w-0 items-baseline gap-2">
-                  {/*
-                    La copa marca al campeón y nada marca al subcampeón: dos iconos distintos
-                    compiten, y el color no puede ser el único canal, así que la diferencia la
-                    lleva también el texto de la derecha.
-                  */}
-                  <Icon
-                    name="trofeo"
-                    size={13}
-                    class:list={[
-                      'shrink-0 translate-y-0.5',
-                      titulo.puesto === 'campeon' ? 'text-primary-ink' : 'text-border-strong',
-                    ]}
-                  />
-                  <span class="min-w-0 flex-1 truncate text-sm">
-                    {nombreTorneo(titulo.competencia)}
-                    {titulo.pais && (
-                      <span class="text-ink-muted"> · {paisEnEspanol(titulo.pais) ?? titulo.pais}</span>
-                    )}
-                  </span>
-                  {titulo.puesto === 'subcampeon' && (
-                    <span class="shrink-0 text-2xs text-ink-muted">Subcampeón</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
+      {/*
+        El riel desplaza a lo ancho con la línea corriendo por debajo. Los bordes se desvanecen con
+        una máscara: cortado a filo, el título de la punta parece un error de maquetado.
+      */}
+      <div class="palmares-riel overflow-x-auto px-4 pb-4 pt-5">
+        <ol class="relative flex w-max items-start gap-7">
+          {/* La línea del tiempo, detrás de todo y de punta a punta. */}
+          <span aria-hidden="true" class="absolute inset-x-0 top-[1.375rem] h-px bg-border" />
 
-      {
-        resto.length > 0 && (
-          <details class="group mt-3 border-t border-border pt-3">
-            <summary class="flex cursor-pointer list-none items-center gap-1.5 text-sm text-primary-ink hover:underline">
-              <Icon
-                name="chevron-derecha"
-                size={13}
-                class="transition-transform group-open:rotate-90"
-              />
-              <span>
-                {`Ver ${titulosDelResto === 1 ? 'el otro título' : `los otros ${titulosDelResto} títulos`}`}
+          {grupos.map((grupo) => (
+            <li class="relative flex shrink-0 flex-col items-center gap-2">
+              <span
+                class:list={[
+                  'font-display text-xs font-semibold tabular',
+                  grupo.temporada ? 'text-ink' : 'text-ink-muted',
+                ]}
+              >
+                {grupo.temporada ?? 'Sin año'}
               </span>
-            </summary>
 
-            <ul class="mt-3 grid gap-3">
-              {resto.map((grupo) => (
-                <li class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3">
-                  <span
-                    class:list={[
-                      'pt-px text-right font-display text-sm font-semibold tabular',
-                      grupo.temporada ? 'text-ink' : 'text-ink-muted',
-                    ]}
-                  >
-                    {grupo.temporada ?? 'Sin año'}
-                  </span>
-                  <ul class="grid gap-1">
-                    {grupo.titulos.map((titulo) => (
-                      <li class="flex min-w-0 items-baseline gap-2">
-                        <Icon
-                          name="trofeo"
-                          size={13}
-                          class:list={[
-                            'shrink-0 translate-y-0.5',
-                            titulo.puesto === 'campeon' ? 'text-primary-ink' : 'text-border-strong',
-                          ]}
-                        />
-                        <span class="min-w-0 flex-1 truncate text-sm">
-                          {nombreTorneo(titulo.competencia)}
-                          {titulo.pais && (
-                            <span class="text-ink-muted">
-                              {' '}
-                              · {paisEnEspanol(titulo.pais) ?? titulo.pais}
-                            </span>
-                          )}
-                        </span>
-                        {titulo.puesto === 'subcampeon' && (
-                          <span class="shrink-0 text-2xs text-ink-muted">Subcampeón</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )
-      }
-    </Card>
+              {/* La marca sobre la línea: el punto que ancla la temporada en el eje. */}
+              <span
+                aria-hidden="true"
+                class="size-1.5 rounded-full bg-border-strong ring-4 ring-surface"
+              />
+
+              <ul class="flex items-start gap-3">
+                {grupo.titulos.map((titulo) => (
+                  <li class="flex w-[4.5rem] flex-col items-center gap-1.5 text-center">
+                    <span class="relative">
+                      <EscudoTorneo url={titulo.logoUrl} size={34} />
+                      {/*
+                        La copa se posa sobre el escudo y no al lado: dorada para lo ganado y en
+                        contorno gris para el subcampeonato, que además lo dice con palabras abajo.
+                      */}
+                      <span
+                        class:list={[
+                          'absolute -bottom-1 -right-1 grid size-[1.125rem] place-items-center rounded-full ring-2 ring-surface',
+                          titulo.puesto === 'campeon'
+                            ? 'bg-card-yellow text-banda'
+                            : 'bg-canvas-subtle text-ink-muted',
+                        ]}
+                      >
+                        <Icon name="trofeo" size={11} />
+                      </span>
+                    </span>
+
+                    <span class="text-2xs leading-tight text-ink" title={titulo.competencia}>
+                      {nombreTorneo(titulo.competencia)}
+                    </span>
+                    <span class="text-[10px] leading-none text-ink-muted">
+                      {titulo.puesto === 'subcampeon'
+                        ? 'Subcampeón'
+                        : (paisEnEspanol(titulo.pais) ?? titulo.pais ?? '')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
   )
 }
+
+<style>
+  /* Cortado a filo, el título de la punta parece un error; desvanecido, se lee como que sigue. */
+  .palmares-riel {
+    mask-image: linear-gradient(to right, transparent, black 1.5rem, black calc(100% - 1.5rem), transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .palmares-riel {
+      scroll-behavior: auto;
+    }
+  }
+</style>

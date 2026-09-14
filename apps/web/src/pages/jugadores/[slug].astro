@@ -38,6 +38,10 @@ const { player, teams, events, seasons, totals, recentPerformances, shirtNumber,
 const position = player.position ? POSITION_LABEL[player.position] : null;
 
 /* Un cambio no dice nada de un jugador; los goles y las tarjetas sí. */
+/*
+ * Un cambio no dice nada de un futbolista; los goles y las tarjetas sí. No se recortan: la tarjeta
+ * tiene alto fijo y desplaza por dentro, así que mostrar menos solo escondería datos.
+ */
 const destacados = events.filter((e) => e.kind !== 'substitution' && e.kind !== 'var');
 
 const EVENT_LABEL: Record<string, string> = {
@@ -121,7 +125,7 @@ const jsonLd = [
         />
       )
     }
-    <div>
+    <div class="min-w-0">
       <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
         {shirtNumber !== null && <span class="tabular text-chalk-dim">{shirtNumber} </span>}
         {player.name}
@@ -136,6 +140,31 @@ const jsonLd = [
           .filter(Boolean)
           .join(' · ')}
       </p>
+
+      {/*
+        Los clubes viven acá y no en una tarjeta del cuerpo: son parte de quién es el futbolista,
+        no un dato más de su temporada. Sobre la pizarra van con tinta de tiza y su escudo en una
+        plaquita clara, porque los logos del proveedor son negros macizos y ahí desaparecerían.
+      */}
+      {teams.length > 0 && (
+        <ul class="mt-2 flex flex-wrap items-center gap-1.5">
+          {teams.map((team) => (
+            <li>
+              <a
+                href={`/equipos/${team.slug}`}
+                class="flex items-center gap-1.5 rounded-full border border-chalk/20 bg-chalk/8 py-0.5 pl-2 pr-2.5 text-2xs font-medium text-chalk transition-colors hover:border-chalk/45 hover:bg-chalk/15 has-[img]:pl-0.5"
+              >
+                {team.logoUrl && (
+                  <span class="grid size-5 shrink-0 place-items-center rounded-full bg-chalk p-0.5">
+                    <img src={team.logoUrl} alt="" width="16" height="16" loading="lazy" class="size-full object-contain" />
+                  </span>
+                )}
+                <span class="truncate">{team.name}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
 
     <div class="ml-auto shrink-0">
@@ -162,44 +191,54 @@ const jsonLd = [
   </section>
 
   <Container width="content" class="pt-7 pb-6">
+  <!--
+    El riel de anuncios es una columna de la página y no de una fila: cuando encogía solo la fila del
+    medio, "Por temporada" quedaba más ancha que las tarjetas de abajo y que el palmarés. Ahora las
+    tres miden lo mismo y lo que se corre es la página entera.
+  -->
+  <div class="grid grid-cols-[minmax(0,1fr)] items-start gap-7 3xl:grid-cols-[minmax(0,1fr)_19rem]">
+  <div class="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
   <SeasonTable seasons={seasons} totals={totals} />
 
-  <div class="mt-4 grid gap-7 items-start lg:grid-cols-2 3xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_19rem]">
-    <div class="grid gap-4">
-      <RecentPerformances performances={recentPerformances} />
+  <!--
+    Dos tarjetas del mismo peso, mitad y mitad: lo que pasó en la cancha y lo que hizo en ella. Del
+    mismo alto por la grilla, y la que se pase desplaza por dentro en vez de estirar a su pareja.
+  -->
+  <div class="grid gap-7 lg:grid-cols-2 lg:[&>*]:max-h-[34rem]">
+    <RecentPerformances performances={recentPerformances} />
 
-      <Card title="Equipos">
-        {teams.length > 0 ? (
-          <ul class="grid gap-2">
-            {teams.map((team) => (
-              <li>
-                <a href={`/equipos/${team.slug}`} class="flex items-center gap-2 text-sm hover:text-primary-ink transition-colors">
-                  {team.logoUrl && <img src={team.logoUrl} alt="" width="20" height="20" loading="lazy" />}
-                  {team.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p class="text-sm text-ink-muted">Sin equipos registrados todavía.</p>
-        )}
-      </Card>
-
-      <Palmares palmares={palmares} />
-    </div>
-
-    <Card title="Goles y tarjetas">
+    <!--
+      La misma forma que la tarjeta de al lado: cabecera fija y la lista desplazando por dentro. Sin
+      el tope, veinte goles estiraban esta columna al doble y dejaban medio metro de vacío enfrente.
+    -->
+    <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-3 shrink-0 text-base font-semibold">Goles y tarjetas</h2>
       {destacados.length > 0 ? (
-        <ul class="divide-y divide-border/40">
+        <ul class="min-h-0 flex-1 divide-y divide-border/40 overflow-y-auto pr-1">
           {destacados.map((event) => (
-            <li class="py-2">
-              <a href={enlaceDePartido(event.match)} class="block hover:text-primary-ink transition-colors">
+            <li>
+              <a
+                href={enlaceDePartido(event.match)}
+                class="-mx-1.5 block rounded-md px-1.5 py-2 transition-colors hover:bg-canvas-subtle"
+              >
                 <span class="text-sm">
                   {EVENT_LABEL[event.kind] ?? event.kind} · <span class="tabular">{event.minute}'</span>
                 </span>
-                <span class="block text-xs text-ink-muted">
-                  {event.match.homeTeam.name} {event.match.homeScore ?? 0}-{event.match.awayScore ?? 0}{' '}
-                  {event.match.awayTeam.name} · {formatDate(event.match.kickoffUtc)}
+                <span class="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
+                  {/* Los dos escudos: una fila de puro texto no deja reconocer el partido de un vistazo. */}
+                  {event.match.homeTeam.logoUrl && (
+                    <img src={event.match.homeTeam.logoUrl} alt="" width="14" height="14" loading="lazy" class="shrink-0" />
+                  )}
+                  <span class="tabular">
+                    {event.match.homeScore ?? 0}-{event.match.awayScore ?? 0}
+                  </span>
+                  {event.match.awayTeam.logoUrl && (
+                    <img src={event.match.awayTeam.logoUrl} alt="" width="14" height="14" loading="lazy" class="shrink-0" />
+                  )}
+                  <span class="min-w-0 truncate">
+                    {event.match.homeTeam.name} · {event.match.awayTeam.name}
+                  </span>
+                  <span class="ml-auto shrink-0">{formatDate(event.match.kickoffUtc)}</span>
                 </span>
               </a>
             </li>
@@ -210,9 +249,15 @@ const jsonLd = [
           Sin goles ni tarjetas en los partidos que Athena tiene sincronizados.
         </p>
       )}
-    </Card>
+    </section>
 
-    <RielDeAnuncios ubicacion="jugador-riel" />
+  </div>
+
+  <!-- El palmarés a todo el ancho de la columna: la línea necesita recorrido para leerse como tal. -->
+  <Palmares palmares={palmares} />
+  </div>
+
+  <RielDeAnuncios ubicacion="jugador-riel" />
   </div>
   </Container>
 </Base>

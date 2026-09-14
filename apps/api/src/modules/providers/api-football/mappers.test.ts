@@ -362,3 +362,53 @@ describe('mapTrophies · la fila sin año que repite', () => {
     expect(palmares).toHaveLength(2);
   });
 });
+
+describe('mapTransfers · lo que no es un club', () => {
+  const pase = (
+    jugador: string,
+    entra: string | null,
+    sale: string | null,
+    tipo = 'Free',
+  ): ApiFootballTransfers[] => [
+    {
+      player: { id: 10, name: jugador },
+      transfers: [
+        {
+          date: '2026-07-01',
+          type: tipo,
+          teams: { in: { id: entra ? 1 : null, name: entra }, out: { id: sale ? 2 : null, name: sale } },
+        },
+      ],
+    },
+  ];
+
+  /*
+   * Cuando alguien queda libre el proveedor escribe su propio nombre como club de destino, con el
+   * apellido primero: "Mohamed Salah → Salah Mohamed". Son 213 filas sobre sesenta mil.
+   */
+  it('el nombre del futbolista al revés no es un club de destino', () => {
+    const [mov] = mapTransfers(pase('Mohamed Salah', 'Salah Mohamed', 'Liverpool'));
+    expect(mov).toMatchObject({ entraANombre: null, entraARef: null, saleDeNombre: 'Liverpool' });
+  });
+
+  it('también lo reconoce de un solo nombre', () => {
+    const [mov] = mapTransfers(pase('Casemiro', 'Casemiro', 'Manchester United'));
+    expect(mov!.entraANombre).toBeNull();
+  });
+
+  it('y del lado de origen, para quien llega sin contrato', () => {
+    const [mov] = mapTransfers(pase('G. Viscarra', 'Alianza Lima', 'Viscarra Guillermo'));
+    expect(mov).toMatchObject({ saleDeNombre: null, entraANombre: 'Alianza Lima' });
+  });
+
+  /* Un club que comparte una palabra con el apellido sigue siendo un club. */
+  it('no confunde un club que se parece de refilón', () => {
+    const [mov] = mapTransfers(pase('Diego Racing', 'Racing Club', 'Boca Juniors'));
+    expect(mov!.entraANombre).toBe('Racing Club');
+  });
+
+  /* Del club a sí mismo son renovaciones y ascensos de filial, que el proveedor manda como `Raise`. */
+  it('descarta el movimiento de un club a sí mismo', () => {
+    expect(mapTransfers(pase('J. Diaz', 'Universitario', 'Universitario', 'Raise'))).toEqual([]);
+  });
+});

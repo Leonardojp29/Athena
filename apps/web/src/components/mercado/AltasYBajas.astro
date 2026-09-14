@@ -53,7 +53,13 @@ const hayAlgo = altas.length > 0 || bajas.length > 0;
                   /* El otro lado del pase: de dónde vino si llegó, a dónde fue si se fue. */
                   const otro = entra ? mov.saleDe : mov.entraA;
                   const otroNombre = entra ? mov.saleDeNombre : mov.entraANombre;
-                  const detalle = detalleDeFichaje(mov);
+                  /*
+                   * Sin club del otro lado el futbolista quedó libre. Escribirlo así es más honesto
+                   * que dejar el renglón a medias, y es lo que el proveedor estaba diciendo con su
+                   * nombre puesto donde va un club.
+                   */
+                  const sinClub = otroNombre === null;
+                  const detalle = sinClub ? null : detalleDeFichaje(mov);
                   return (
                     <li>
                       <a
@@ -65,10 +71,12 @@ const hayAlgo = altas.length > 0 || bajas.length > 0;
                           {formatDate(mov.fecha)}
                         </span>
                         <span class="col-span-2 flex min-w-0 items-center gap-1.5 text-2xs text-ink-muted">
-                          {otro?.logoUrl && (
+                          {!sinClub && otro?.logoUrl && (
                             <img src={otro.logoUrl} alt="" width="13" height="13" loading="lazy" class="shrink-0" />
                           )}
-                          <span class="truncate">{otro?.name ?? otroNombre}</span>
+                          <span class="truncate">
+                            {sinClub ? (entra ? 'Llegó libre' : 'Quedó libre') : (otro?.name ?? otroNombre)}
+                          </span>
                           {/* Sin clase ni monto no se escribe nada: el proveedor calla cuatro de cada diez. */}
                           {detalle && <span class="shrink-0 before:content-['·'] before:mr-1.5">{detalle}</span>}
                         </span>
