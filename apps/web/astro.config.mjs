@@ -6,11 +6,19 @@ import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'astro/config';
 
-// El .env vive en la raíz del monorepo, no en apps/web: sin esto las variables
-// PUBLIC_ (la URL del API, la del sitio) se compilarían vacías.
-const ENV_DIR = '../..';
-const rootEnv = new URL('../../.env', import.meta.url);
-if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
+/*
+ * El env de la web vive acá, no en la raíz: es exactamente lo que este proyecto necesita y lo que
+ * se pega en Vercel. Se carga a mano porque esta config se evalúa antes de que Astro cargue el
+ * suyo, y sin esto las variables PUBLIC_ se compilarían vacías.
+ *
+ * `.env.local` va PRIMERO a propósito: `loadEnvFile` no pisa lo ya cargado —al revés que el flag
+ * `--env-file` de la línea de comandos, donde gana el último—, así que el orden es lo único que
+ * decide quién manda.
+ */
+for (const archivo of ['.env.local', '.env']) {
+  const ruta = new URL(archivo, import.meta.url);
+  if (existsSync(ruta)) process.loadEnvFile(ruta);
+}
 
 /*
  * Sin PUBLIC_SITE_URL el sitio se compila igual y sale a producción con los canónicos, el sitemap y
@@ -61,7 +69,6 @@ export default defineConfig({
     })),
   },
   vite: {
-    envDir: ENV_DIR,
     plugins: [tailwindcss()],
   },
 });

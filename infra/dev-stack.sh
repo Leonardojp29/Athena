@@ -58,8 +58,8 @@ done
 mkdir -p "$LOGS"
 stop_stack
 
-setsid node --env-file-if-exists="$ROOT/.env" "$ROOT/apps/api/dist/main.api.js" >> "$LOGS/api.log" 2>&1 < /dev/null &
-setsid node --env-file-if-exists="$ROOT/.env" "$ROOT/apps/api/dist/main.worker.js" >> "$LOGS/worker.log" 2>&1 < /dev/null &
+setsid node --env-file-if-exists="$ROOT/apps/api/.env" --env-file-if-exists="$ROOT/apps/api/.env.local" "$ROOT/apps/api/dist/main.api.js" >> "$LOGS/api.log" 2>&1 < /dev/null &
+setsid node --env-file-if-exists="$ROOT/apps/api/.env" --env-file-if-exists="$ROOT/apps/api/.env.local" "$ROOT/apps/api/dist/main.worker.js" >> "$LOGS/worker.log" 2>&1 < /dev/null &
 setsid env PORT=4321 node "$ROOT/apps/web/dist/server/entry.mjs" >> "$LOGS/web.log" 2>&1 < /dev/null &
 
 # con límite: si un proceso no arranca, reportamos en lugar de esperar para siempre

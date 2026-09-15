@@ -23,8 +23,15 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
 ## Paso 0 — Lo que necesitas a mano
 
 - La cuenta de GitHub con el repo `Leonardojp29/Athena`.
-- Las credenciales de Supabase del proyecto real (las mismas del `.env` local):
-  `DATABASE_URL` y `DIRECT_URL`. Nada más: sin login, el API solo necesita la base.
+- Las credenciales de Supabase del proyecto real (las mismas de
+  `apps/api/.env`): `DATABASE_URL` y `DIRECT_URL`. Nada más: sin login, el API
+  solo necesita la base.
+
+> **Cada aplicación tiene su propio `.env`** y son dos proyectos distintos en
+> Vercel. `apps/api/.env` lleva base de datos, proveedor y secretos;
+> `apps/web/.env` lleva dos URL y nada más. Ninguna variable está en los dos
+> lados, así que cada archivo se pega entero en su proyecto sin revisar línea
+> por línea qué sobra.
 - La clave de API-Football y la de OpenAI.
 - Un secreto nuevo para el cron. Generarlo así y guardarlo:
 
@@ -60,19 +67,19 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
      que más se olvida; sin él, Vercel intenta construir el monorepo entero mal.
    - **Framework Preset**: Other. Build y demás comandos ya vienen del
      `apps/api/vercel.json` del repo; no tocar nada.
-4. Abrir **Environment Variables** y cargar (valores del `.env` local salvo
-   donde se indica):
+4. Abrir **Environment Variables** → **Import .env** y pegar el contenido de
+   `apps/api/.env` entero. Ese archivo es exactamente lo que este proyecto
+   necesita: por eso vive al lado del API y no en la raíz.
 
-   | Variable | Valor |
+   Después, ajustar las tres que cambian respecto de tu equipo:
+
+   | Variable | Valor en Vercel |
    |---|---|
-   | `DATABASE_URL` | la del pooler (puerto 6543, `?pgbouncer=true&connection_limit=10&pool_timeout=20`) |
-   | `DIRECT_URL` | la directa (puerto 5432) |
-   | `API_FOOTBALL_KEY` | igual que local |
-   | `OPENAI_API_KEY` | igual que local |
-   | `OPENAI_DAILY_TOKEN_CAP` | `2000000` |
-   | `CRON_SECRET` | el secreto generado en el paso 0 |
    | `WEB_ORIGIN` | la URL de la web (paso 3), **sin barra final**; se puede volver a editar después |
-   | `NODE_ENV` | `production` |
+   | `PORT` | **borrarla**: la pone la plataforma |
+   | `CRON_SECRET` | tiene que ser **el mismo** que está dentro de `cron.schedule` en Supabase (paso 4), o el latido responde 401 |
+
+   `NODE_ENV=production` no hace falta: Vercel ya lo define.
 
 5. **Deploy**. Al terminar, Vercel muestra la URL del proyecto, algo como
    `https://athena-api.vercel.app`. Comprobar que vive:
@@ -91,14 +98,17 @@ pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
    - **Project Name**: `athena` (la URL pública sale de acá)
    - **Root Directory**: `apps/web`
    - **Framework Preset**: Astro (lo detecta solo).
-3. Variables de entorno:
+3. Variables de entorno: **Import .env** con el contenido de `apps/web/.env`,
+   y corregir las dos URL, que en tu equipo apuntan a localhost:
 
-   | Variable | Valor |
+   | Variable | Valor en Vercel |
    |---|---|
    | `PUBLIC_API_URL` | la URL real del paso 2, **sin `/v1` y sin barra final**: `https://athena-api.vercel.app` — el código agrega `/v1` solo, y una barra de más arma `//v1/...`, que es 404 |
    | `PUBLIC_SITE_URL` | `https://athena.vercel.app` (la URL real de este proyecto) |
 
-   Nada más: la web nunca lleva claves de proveedores.
+   Son dos, y ninguna es un secreto: la web no lleva claves de proveedores.
+   Si `PUBLIC_SITE_URL` falta, el build se rompe a propósito — salir con los
+   canónicos apuntando a localhost desindexa el sitio entero.
 4. **Deploy** y abrir la URL: la home tiene que cargar con datos reales (la web
    lee Postgres a través del API).
 5. Volver al proyecto `athena-api` → **Settings → Environment Variables** →
