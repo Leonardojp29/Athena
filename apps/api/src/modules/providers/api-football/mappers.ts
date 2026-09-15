@@ -20,6 +20,7 @@ import type {
 } from '@athena/domain';
 import { paisEnEspanol } from '@athena/domain';
 import type {
+  ApiFootballPlayerProfile,
   ApiFootballEvent,
   ApiFootballFixture,
   ApiFootballFixturePlayers,
@@ -133,6 +134,23 @@ export function mapSquad(raw: ApiFootballSquad): ProviderRef<ProviderPlayer>[] {
       photoUrl: p.photo,
     },
   }));
+}
+
+export function mapPlayerProfile(raw: ApiFootballPlayerProfile): ProviderRef<ProviderPlayer> {
+  const fullName = [raw.player.firstname, raw.player.lastname].filter(Boolean).join(' ');
+  return {
+    providerRef: String(raw.player.id),
+    data: {
+      name: raw.player.name,
+      fullName: fullName || null,
+      birthDate: raw.player.birth?.date ?? null,
+      nationality: raw.player.nationality,
+      heightCm: intOrNull(raw.player.height?.replace(' cm', '')),
+      /* La ficha no dice en qué puesto jugaba; eso vive en las estadísticas de cada temporada. */
+      position: null,
+      photoUrl: raw.player.photo,
+    },
+  };
 }
 
 export function mapFixture(raw: ApiFootballFixture): ProviderRef<ProviderMatch> {

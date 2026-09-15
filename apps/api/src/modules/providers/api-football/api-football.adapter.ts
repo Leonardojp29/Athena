@@ -19,6 +19,7 @@ import type {
 } from '@athena/domain';
 import { ApiFootballClient } from './api-football.client.js';
 import type {
+  ApiFootballPlayerProfile,
   ApiFootballEvent,
   ApiFootballStandings,
   ApiFootballFixture,
@@ -33,6 +34,7 @@ import type {
   ApiFootballTrophy,
 } from './api-football.types.js';
 import {
+  mapPlayerProfile,
   mapEvents,
   mapFixture,
   mapFixtureDetail,
@@ -77,6 +79,21 @@ export class ApiFootballAdapter implements FootballDataProvider {
   async getSquad(teamRef: string): Promise<ProviderRef<ProviderPlayer>[]> {
     const rows = await this.client.get<ApiFootballSquad>('/players/squads', { team: teamRef });
     return rows[0] ? mapSquad(rows[0]) : [];
+  }
+
+  /**
+   * `/players/profiles` acepta un solo jugador por pedido, así que se piden en serie. Es un camino
+   * de relleno —futbolistas retirados que ya no están en ninguna plantilla— y no de operación.
+   */
+  async getPlayerProfiles(playerRefs: string[]): Promise<ProviderRef<ProviderPlayer>[]> {
+    const fichas: ProviderRef<ProviderPlayer>[] = [];
+    for (const ref of playerRefs) {
+      const rows = await this.client.get<ApiFootballPlayerProfile>('/players/profiles', {
+        player: ref,
+      });
+      if (rows[0]) fichas.push(mapPlayerProfile(rows[0]));
+    }
+    return fichas;
   }
 
   async getTrophies(playerRef: string): Promise<ProviderTrophy[]> {

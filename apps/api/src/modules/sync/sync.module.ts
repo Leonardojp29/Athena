@@ -46,6 +46,8 @@ import { VenueService } from './venue.service.js';
     SyncTrophiesUseCase,
   ],
   exports: [
+    ExternalReferenceService,
+    PlayerResolverService,
     OutboxService,
     MatchSyncService,
     CerrarPartidosUseCase,

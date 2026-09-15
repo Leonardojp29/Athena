@@ -218,6 +218,11 @@ export interface ApiFootballSeasonPlayer {
   statistics: ApiFootballPlayerStatBlock[];
 }
 
+/** `/players/profiles` devuelve la misma ficha que `/players` pero sin el bloque de estadísticas. */
+export interface ApiFootballPlayerProfile {
+  player: ApiFootballSeasonPlayer['player'];
+}
+
 export interface ApiFootballTrophy {
   league: string | null;
   country: string | null;

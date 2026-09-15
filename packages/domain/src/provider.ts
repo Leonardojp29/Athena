@@ -300,6 +300,13 @@ export interface FootballDataProvider {
   getMatchLineups(matchRef: string): Promise<ProviderLineup[]>;
   getMatchPlayerStatistics(matchRef: string): Promise<ProviderMatchPlayerStats[]>;
   getSeasonPlayers(competitionRef: string, seasonYear: number): Promise<ProviderSeasonPlayer[]>;
+  /**
+   * La ficha de futbolistas sueltos.
+   *
+   * Es el único camino para quien ya no está en ninguna plantilla: un retirado no aparece en
+   * `getSquad` ni en `getSeasonPlayers`, y de una alineación solo llega "A. Iniesta".
+   */
+  getPlayerProfiles(playerRefs: string[]): Promise<ProviderRef<ProviderPlayer>[]>;
   /** El palmarés de un futbolista: un pedido por jugador, y cambia una vez al año. */
   getTrophies(playerRef: string): Promise<ProviderTrophy[]>;
   /**

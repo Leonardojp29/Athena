@@ -153,6 +153,8 @@ model Team {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  retosComoObjetivo RetoDelOnce[] @relation("reto_objetivo")
+
   @@index([relevancia(sort: Desc)])
   @@map("teams")
 }
@@ -175,8 +177,11 @@ model Player {
   squadMemberships SquadMembership[]
   trofeos          PlayerTrophy[]
   fichajes         Transfer[]
+  titularEnRetos   TitularDelReto[]
 
-  /* Cuándo se le preguntó el palmarés al proveedor, que no es lo mismo que tener títulos. */
+  /**
+   * Cuándo se le preguntó el palmarés al proveedor, que no es lo mismo que tener títulos.
+   */
   palmaresRevisadoEn DateTime? @map("palmares_revisado_en") @db.Timestamptz(3)
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -543,7 +548,9 @@ model Tarea {
   ultimoError  String?   @map("ultimo_error")
   creadaEn     DateTime  @default(now()) @map("creada_en")
 
-  /* Una fila viva es trabajo pendiente: encolar dos veces lo mismo no es dos trabajos. */
+  /**
+   * Una fila viva es trabajo pendiente: encolar dos veces lo mismo no es dos trabajos.
+   */
   @@unique([tipo, datos], map: "tarea_unica")
   @@index([prioridad, correDespues, id])
   @@map("tareas")
@@ -633,4 +640,71 @@ model Transfer {
   @@index([saleDeTeamId, fecha(sort: Desc)])
   @@index([playerId, fecha(sort: Desc)])
   @@map("transfers")
+}
+
+/// Un reto de Adivina el XI: un partido real y el once que hay que reconstruir.
+model RetoDelOnce {
+  id         BigInt @id @default(autoincrement())
+  /// La misma clave del catálogo en código: 'int-dificil-12'. Es la que usa el juego.
+  clave      String @unique
+  /// internacional | peruano
+  catalogo   String
+  /// facil | normal | dificil
+  dificultad String
+
+  /// El fixture de API-Football, para poder rehacer el reto sin volver a buscarlo.
+  fixtureRef String @map("fixture_ref")
+
+  competencia        String
+  competenciaLogoUrl String?  @map("competencia_logo_url")
+  /// Lo que lee el hincha: '2018/19' o '2022'.
+  temporada          String
+  fase               String?
+  jugadoEn           DateTime @map("jugado_en") @db.Date
+
+  objetivoNombre    String  @map("objetivo_nombre")
+  objetivoEscudoUrl String? @map("objetivo_escudo_url")
+  /// Null cuando el equipo no es una entidad de Athena; el reto se juega igual.
+  objetivo          Team?   @relation("reto_objetivo", fields: [objetivoTeamId], references: [id])
+  objetivoTeamId    String? @map("objetivo_team_id") @db.Uuid
+
+  rivalNombre    String  @map("rival_nombre")
+  rivalEscudoUrl String? @map("rival_escudo_url")
+
+  /// Si el equipo objetivo jugó de local, para escribir el marcador en el orden del acta.
+  deLocal       Boolean @map("de_local")
+  golesObjetivo Int     @map("goles_objetivo")
+  golesRival    Int     @map("goles_rival")
+  /// 'ganó 4-2 en penales', 'en prórroga'. Contexto que el marcador solo no cuenta.
+  nota          String?
+
+  formacion String
+  /// Verdadero cuando la disposición se escribió a mano porque el proveedor no la publica.
+  aMano     Boolean @default(false) @map("a_mano")
+
+  titulares     TitularDelReto[]
+  actualizadoEn DateTime         @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  /// El sorteo filtra por las dos cosas a la vez y nunca por una sola.
+  @@index([catalogo, dificultad])
+  @@map("retos_del_once")
+}
+
+/// Un titular del reto, con la casilla en la que se dibuja.
+model TitularDelReto {
+  id       BigInt      @id @default(autoincrement())
+  reto     RetoDelOnce @relation(fields: [retoId], references: [id], onDelete: Cascade)
+  retoId   BigInt      @map("reto_id")
+  player   Player      @relation(fields: [playerId], references: [id])
+  playerId String      @map("player_id") @db.Uuid
+
+  /// 'fila:columna' desde el arco propio, como las numera el proveedor.
+  grid   String
+  /// G | D | M | F, cuando el proveedor lo dice.
+  puesto String?
+  dorsal Int?
+
+  /// El mismo futbolista no puede ocupar dos casillas del mismo once.
+  @@unique([retoId, playerId], map: "titular_unico")
+  @@map("titulares_del_reto")
 }
