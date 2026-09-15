@@ -27,25 +27,32 @@ packages/
   tokens/     Design tokens (fuente única de verdad visual)
   ui/         Design system (shadcn/ui sobre tokens)
   config/     tsconfig / eslint compartidos
-infra/        docker-compose (Redis; Postgres local opcional)
-docs/         Arquitectura, ADRs y producto
+infra/        pm2, cron de Supabase y docker-compose
+docs/         Despliegue, rutas, arquitectura, ADRs y producto
 ```
 
 ## Desarrollo
 
-Requisitos: Node ≥20, pnpm, Docker.
+Requisitos: Node ≥20 y pnpm. La base vive en Supabase, no hace falta Docker.
+
+Cada aplicación tiene su propio `.env`, al lado de su código.
 
 ```bash
-cp .env.example .env       # completar credenciales
-docker compose -f infra/docker-compose.yml up -d
+cp apps/api/.env.example apps/api/.env    # base de datos, proveedores, secretos
+cp apps/web/.env.example apps/web/.env    # dos URL, ningún secreto
 pnpm install
 pnpm dev                   # web :4321 · api :3001 (docs OpenAPI en /docs)
 ```
 
-Verificación completa: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
+O con los builds, que es lo que se despliega: `pnpm start`, `pnpm estado`, `pnpm stop`.
+
+Verificación completa: `pnpm verify` (lint, typecheck, tests y build). Es lo que corre CI.
 
 ## Documentación
 
+- **Desplegar**: [docs/DEPLOY.md](docs/DEPLOY.md) — Vercel y AWS, paso a paso
+- **Rutas y caché**: [docs/RUTAS.md](docs/RUTAS.md) — cada ruta con su caché, para configurar un CDN
+- **Operar**: [docs/RUNBOOK.md](docs/RUNBOOK.md) · **El vivo**: [docs/EN-VIVO.md](docs/EN-VIVO.md)
 - [Plan y arquitectura](docs/architecture/) · [ADRs](docs/decisions/) · [Producto](docs/product/)
 - Referencia del proveedor de datos: [docs/architecture/api-football-reference.md](docs/architecture/api-football-reference.md)
 

@@ -1,139 +1,315 @@
-# Lanzar Athena en Vercel + Supabase
+# Desplegar Athena
 
-Guía paso a paso, pensada para la primera vez en Vercel. Al final hay dos
-proyectos en Vercel (web y API), la base sigue en Supabase, y el sync del vivo
-late cada minuto gracias a pg_cron. Vercel va en plan Hobby ($0); Supabase en
-plan Pro ($25/mes, spend cap encendido): el archivo completo con detalle fino
-pesa más de lo que el free tier (500 MB) admite — está medido, no estimado.
+Guía para alguien que llega nuevo al repositorio y tiene que poner el sitio en producción.
+No hace falta conocer el código: hace falta entender que son **dos aplicaciones, dos archivos de
+configuración y un latido**.
 
-**Cómo queda armado**:
+Hay dos caminos, y los dos parten de la misma base:
 
-```
-visitante ─→ Vercel (web, Astro SSR) ─→ Vercel (API, NestJS serverless) ─→ Supabase (Postgres)
-                                                    ▲
-             Supabase pg_cron ── cada minuto ───────┘  POST /v1/internal/tick
-                                (con el header x-cron-secreto)
-```
+- **Vercel** (lo que está en uso hoy): dos proyectos serverless, y el latido lo dispara la base.
+- **AWS** (o cualquier servidor propio): un servidor con tres procesos bajo pm2 y un CDN delante.
 
-El "worker" de local no existe en producción: su `tick()` es el mismo código,
-pero lo dispara un cron dentro de Supabase que llama al API por HTTP.
+El catálogo de rutas, con su caché y su autenticación, está en [RUTAS.md](RUTAS.md). Es lo que hace
+falta para configurar CloudFront o cualquier otro CDN.
 
 ---
 
-## Paso 0 — Lo que necesitas a mano
+## 1. Qué se despliega
 
-- La cuenta de GitHub con el repo `Leonardojp29/Athena`.
-- Las credenciales de Supabase del proyecto real (las mismas de
-  `apps/api/.env`): `DATABASE_URL` y `DIRECT_URL`. Nada más: sin login, el API
-  solo necesita la base.
+```
+visitante ──→ WEB (Astro SSR)  ──→ API (NestJS) ──→ Postgres (Supabase)
+                                        ▲
+              el latido ────────────────┘   POST /v1/internal/{marcador,tick,daily}
+                                            con el header x-cron-secreto
+```
 
-> **Cada aplicación tiene su propio `.env`** y son dos proyectos distintos en
-> Vercel. `apps/api/.env` lleva base de datos, proveedor y secretos;
-> `apps/web/.env` lleva dos URL y nada más. Ninguna variable está en los dos
-> lados, así que cada archivo se pega entero en su proyecto sin revisar línea
-> por línea qué sobra.
-- La clave de API-Football y la de OpenAI.
-- Un secreto nuevo para el cron. Generarlo así y guardarlo:
+| Pieza | Qué es | Dónde vive |
+|---|---|---|
+| **Web** | Astro 5 en modo servidor. Arma cada página en cada pedido. | `apps/web` |
+| **API** | NestJS. Todo lo que lee la base y habla con los proveedores. | `apps/api` |
+| **Worker** | El sync: marcadores, alineaciones, estadísticas, cola de tareas. | `apps/api`, entrada `main.worker.ts` |
+| **Base** | Postgres en Supabase. Todo el estado. | Supabase |
+
+El navegador **nunca** habla con la base ni con los proveedores. Habla con la web, y la web habla
+con el API. Es lo que permite que todo el sitio se cachee en el borde.
+
+**El worker no es un cuarto servicio obligatorio.** Es el mismo `tick()` que expone el API por HTTP.
+En serverless no hay proceso que viva, así que lo dispara un cron dentro de la base; en un servidor
+propio se corre como proceso y el cron sobra. Más sobre esto en la sección 6.
+
+---
+
+## 2. Los dos archivos de configuración
+
+Cada aplicación tiene **su propio `.env`, al lado de su código**:
+
+| Archivo | Para | Qué lleva |
+|---|---|---|
+| `apps/api/.env` | El API y el worker | Base de datos, claves de proveedores, el secreto del cron |
+| `apps/web/.env` | La web | Dos URL. Ningún secreto |
+
+Ninguna variable está en los dos lados. Cada archivo se copia entero y se pega en su proyecto sin
+revisar línea por línea qué sobra. Los dos `.env.example` son el mapa versionado: ahí está cada
+variable con su explicación, y lo opcional viene comentado.
+
+Ninguno de los dos se commitea. Para cambiar algo solo en tu equipo, crea un `.env.local` al lado:
+gana sobre el `.env`.
+
+### La diferencia que sorprende: cuándo se lee cada archivo
+
+Esto es lo más importante de toda la guía y no es obvio.
+
+| Aplicación | Cuándo lee su configuración | Para cambiar una variable |
+|---|---|---|
+| **API** | En cada arranque del proceso | Editar y **reiniciar** |
+| **Web** | **Al construir** | Editar y **volver a construir** |
+
+Las variables `PUBLIC_*` de la web quedan escritas dentro del código compilado. Está verificado: en
+`dist/server/chunks` aparece el valor literal, no el nombre de la variable. Cambiar
+`PUBLIC_API_URL` y reiniciar la web **no hace nada**: hay que reconstruirla.
+
+En Vercel esto pasa solo, porque editar una variable y redeployar reconstruye. En un servidor
+propio hay que acordarse.
+
+### Lo que hay que conseguir antes de empezar
+
+- Acceso al repositorio.
+- Las credenciales de Supabase: `DATABASE_URL` (la agrupada, puerto 6543) y `DIRECT_URL` (la
+  directa, 5432, solo para migraciones).
+- La clave de **API-Football**.
+- La de **OpenAI**, si se quiere el análisis generado. Sin ella el sitio funciona igual.
+- Un secreto para el latido, nuevo:
 
   ```bash
   openssl rand -base64 24 | tr -d '/+=' | head -c 32; echo
   ```
 
-  Ese valor es `CRON_SECRET`: se pone en el API (Vercel) y en el cron
-  (Supabase). Tienen que ser idénticos.
-
-> El plan Hobby de Vercel es para uso no comercial. Para lanzar con publicidad
-> o cobro hay que pasar a Pro; para lanzar y validar, Hobby alcanza.
+  Ese valor es `CRON_SECRET`. Va en el `.env` del API **y** en el cron. Tienen que ser idénticos:
+  si difieren, el latido responde 401 y los marcadores no avanzan.
 
 ---
 
-## Paso 1 — Crear la cuenta en Vercel
+## 3. Construir, en cualquier plataforma
 
-1. Entrar a [vercel.com/signup](https://vercel.com/signup) y elegir
-   **Continue with GitHub** (así el deploy sale del repo directo).
-2. Aceptar los permisos. Cuando pregunte, darle acceso al repo
-   `Leonardojp29/Athena` (se puede limitar a solo ese repo).
-3. Plan **Hobby** (gratis).
+Node 20 o superior y pnpm 11.
+
+```bash
+pnpm install
+pnpm build            # construye todo el monorepo
+pnpm verify           # lint, typecheck, tests y build. Lo que corre CI
+```
+
+Para construir una sola aplicación con sus dependencias internas:
+
+```bash
+pnpm turbo run build --filter=@athena/api...
+pnpm turbo run build --filter=@athena/web...
+```
+
+Resultado:
+
+| Aplicación | Artefacto | Cómo se arranca |
+|---|---|---|
+| API | `apps/api/dist/main.api.js` | `pnpm --filter @athena/api start:api` |
+| Worker | `apps/api/dist/main.worker.js` | `pnpm --filter @athena/api start:worker` |
+| Web | `apps/web/dist/server/entry.mjs` | `PORT=4321 node apps/web/dist/server/entry.mjs` |
+
+La web elige su adaptador sola: si detecta Vercel usa el suyo, y en cualquier otro lado se compila
+como un servidor Node normal. Un solo código para las dos plataformas.
+
+Para levantar las tres cosas en tu equipo:
+
+```bash
+pnpm start     # API, worker y web, con los builds
+pnpm estado    # dice qué está arriba
+pnpm stop
+```
 
 ---
 
-## Paso 2 — Desplegar el API
+## 4. Camino A — Vercel
 
-1. En el dashboard de Vercel: **Add New… → Project**.
-2. Elegir el repo **Athena** → **Import**.
-3. En la pantalla de configuración:
+Dos proyectos del mismo repositorio, cada uno con su **Root Directory**. Es el paso que más se
+olvida y sin él el build falla.
+
+### 4.1 El API
+
+1. **Add New… → Project** → el repositorio → **Import**.
+2. Configuración:
    - **Project Name**: `athena-api`
-   - **Root Directory**: pulsar **Edit** y elegir `apps/api` ← este es el paso
-     que más se olvida; sin él, Vercel intenta construir el monorepo entero mal.
-   - **Framework Preset**: Other. Build y demás comandos ya vienen del
-     `apps/api/vercel.json` del repo; no tocar nada.
-4. Abrir **Environment Variables** → **Import .env** y pegar el contenido de
-   `apps/api/.env` entero. Ese archivo es exactamente lo que este proyecto
-   necesita: por eso vive al lado del API y no en la raíz.
-
-   Después, ajustar las tres que cambian respecto de tu equipo:
+   - **Root Directory**: `apps/api` ← obligatorio
+   - **Framework Preset**: Other. Los comandos ya vienen de `apps/api/vercel.json`.
+3. **Environment Variables → Import .env** y pegar `apps/api/.env` entero. Después ajustar:
 
    | Variable | Valor en Vercel |
    |---|---|
-   | `WEB_ORIGIN` | la URL de la web (paso 3), **sin barra final**; se puede volver a editar después |
    | `PORT` | **borrarla**: la pone la plataforma |
-   | `CRON_SECRET` | tiene que ser **el mismo** que está dentro de `cron.schedule` en Supabase (paso 4), o el latido responde 401 |
+   | `WEB_ORIGIN` | la URL de la web, sin barra final. Todavía no existe; se vuelve en el paso 4.3 |
+   | `CRON_SECRET` | el mismo que irá en el cron (sección 6) |
 
    `NODE_ENV=production` no hace falta: Vercel ya lo define.
-
-5. **Deploy**. Al terminar, Vercel muestra la URL del proyecto, algo como
-   `https://athena-api.vercel.app`. Comprobar que vive:
+4. **Deploy**, y comprobar:
 
    ```bash
    curl https://athena-api.vercel.app/v1/health
    ```
 
----
+### 4.2 La web
 
-## Paso 3 — Desplegar la web
-
-1. Otra vez **Add New… → Project** y el mismo repo **Athena** (sí, dos
-   proyectos del mismo repo: cada uno con su Root Directory).
+1. **Add New… → Project**, el mismo repositorio otra vez.
 2. Configuración:
-   - **Project Name**: `athena` (la URL pública sale de acá)
+   - **Project Name**: `athena`
    - **Root Directory**: `apps/web`
-   - **Framework Preset**: Astro (lo detecta solo).
-3. Variables de entorno: **Import .env** con el contenido de `apps/web/.env`,
-   y corregir las dos URL, que en tu equipo apuntan a localhost:
+   - **Framework Preset**: Astro, lo detecta solo.
+3. **Import .env** con `apps/web/.env`, y corregir las dos URL, que apuntan a localhost:
 
    | Variable | Valor en Vercel |
    |---|---|
-   | `PUBLIC_API_URL` | la URL real del paso 2, **sin `/v1` y sin barra final**: `https://athena-api.vercel.app` — el código agrega `/v1` solo, y una barra de más arma `//v1/...`, que es 404 |
-   | `PUBLIC_SITE_URL` | `https://athena.vercel.app` (la URL real de este proyecto) |
+   | `PUBLIC_API_URL` | la URL del paso 4.1, **sin `/v1` y sin barra final**. El código agrega `/v1` solo, y una barra de más arma `//v1/…`, que es 404 |
+   | `PUBLIC_SITE_URL` | la URL real de este proyecto |
 
-   Son dos, y ninguna es un secreto: la web no lleva claves de proveedores.
-   Si `PUBLIC_SITE_URL` falta, el build se rompe a propósito — salir con los
-   canónicos apuntando a localhost desindexa el sitio entero.
-4. **Deploy** y abrir la URL: la home tiene que cargar con datos reales (la web
-   lee Postgres a través del API).
-5. Volver al proyecto `athena-api` → **Settings → Environment Variables** →
-   editar `WEB_ORIGIN` con la URL real de la web (por ejemplo
-   `https://athena.vercel.app`) → **Redeploy** (pestaña Deployments, botón ⋯ →
-   Redeploy). Sin esto, el navegador bloquea el minuto a minuto por CORS.
+   Si `PUBLIC_SITE_URL` falta, el build se rompe a propósito: salir a producción con los canónicos
+   apuntando a localhost no falla en ningún lado y desindexa el sitio entero.
+4. **Deploy** y abrir la URL.
+
+### 4.3 Cerrar el círculo
+
+Volver a `athena-api` → **Settings → Environment Variables** → poner en `WEB_ORIGIN` la URL real de
+la web → **Redeploy**. Sin esto el navegador bloquea los marcadores por CORS.
 
 ---
 
-## Paso 4 — El latido: pg_cron en Supabase
+## 5. Camino B — AWS, o cualquier servidor propio
 
-Esto es lo que mantiene el vivo vivo. Sin este paso la web funciona pero los
-marcadores no avanzan.
+Una instancia EC2 con los tres procesos bajo pm2, y CloudFront delante. Sirve igual para Lightsail,
+un droplet o una máquina propia: lo único específico de AWS es el CDN.
 
-1. En [supabase.com/dashboard](https://supabase.com/dashboard), abrir el
-   proyecto → **Database → Extensions** → buscar y habilitar **pg_cron** y
-   **pg_net** (schema `extensions` está bien).
-2. Ir a **SQL Editor** y ejecutar `infra/supabase/cron.sql`, **reemplazando antes**
-   `TU-API.vercel.app` por la URL real del paso 2 y `TU_CRON_SECRET` por el
-   mismo valor que quedó en `CRON_SECRET` de Vercel. Pegado sin reemplazar, el
-   cron llama a una URL que no existe y queda registrando 404 en silencio; con
-   el secreto distinto al de Vercel, registra 401.
+Una `t3.small` alcanza. La base puede seguir en Supabase.
 
-   El archivo crea cuatro trabajos y se puede volver a correr cuando cambie la
-   URL o el secreto:
+### 5.1 Preparar la máquina
+
+```bash
+sudo apt update && sudo apt install -y git curl
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.nvm/nvm.sh
+nvm install 22 && nvm alias default 22
+
+corepack enable && corepack prepare pnpm@11.20.0 --activate
+npm install -g pm2
+```
+
+### 5.2 Traer el código y configurarlo
+
+```bash
+git clone <repositorio> /srv/athena
+cd /srv/athena
+
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+```
+
+Llenar los dos archivos. En la web, `PUBLIC_SITE_URL` y `PUBLIC_API_URL` son las URL **públicas**,
+las que ve el visitante a través de CloudFront, no las internas de la instancia.
+
+### 5.3 Construir y levantar
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+
+pm2 start infra/pm2/ecosystem.config.cjs
+pm2 save
+pm2 startup          # imprime un comando con sudo: copiarlo y ejecutarlo
+```
+
+Eso deja tres procesos arriba: `athena-api`, `athena-worker` y `athena-web`. Los puertos salen de
+`API_PORT`, `WEB_PORT` y `WEB_HOST`, con 3001, 4321 y `127.0.0.1` por omisión. La web escucha solo
+en loopback a propósito: quien la expone es el CDN, o un Nginx delante.
+
+### 5.4 Comandos de pm2, los que se usan de verdad
+
+```bash
+pm2 status                          # qué está arriba, memoria, reinicios
+pm2 logs                            # todo junto, en vivo
+pm2 logs athena-worker --lines 200  # solo el worker
+pm2 restart athena-api              # reiniciar uno
+pm2 reload all                      # reiniciar todo sin cortar
+pm2 stop athena-worker
+pm2 delete athena-worker
+pm2 monit                           # panel de CPU y memoria
+pm2 flush                           # vaciar los logs
+```
+
+Desplegar una versión nueva:
+
+```bash
+cd /srv/athena
+git pull
+pnpm install --frozen-lockfile
+pnpm build
+pm2 reload all
+```
+
+**El `pnpm build` no es opcional aunque solo hayas cambiado una variable de la web.** Sus
+`PUBLIC_*` viven dentro del código compilado (sección 2).
+
+Si pm2 se reinicia y no levanta nada, es que faltó `pm2 save` después del último `pm2 start`.
+
+### 5.5 CloudFront
+
+Una sola distribución, dos orígenes:
+
+| Origen | Apunta a | Para |
+|---|---|---|
+| `web` | el balanceador o la instancia, puerto de la web | todo lo demás |
+| `api` | el mismo host, puerto del API | `/v1/*` |
+
+Los comportamientos por ruta, con su política de caché y qué reenviar, están en
+**[RUTAS.md](RUTAS.md)**. Lo esencial: una política que **respete el `Cache-Control` del origen**
+(`MinTTL 0`, `DefaultTTL 0`, cabeceras de caché del origen activadas, compresión encendida), y
+comportamientos aparte sin caché para `/v1/internal/*` y para las rutas de juego que sortean.
+
+Servir la web y el API bajo **el mismo dominio** ahorra el CORS entero: `PUBLIC_API_URL` pasa a ser
+`https://<dominio>` y `WEB_ORIGIN` el mismo valor.
+
+Para el certificado, ACM **en `us-east-1`**: CloudFront no acepta certificados de otra región.
+
+### 5.6 Qué falta para que sea AWS de verdad
+
+Lo de arriba funciona. Para producción seria, en orden de valor:
+
+- **Balanceador (ALB) delante de la instancia**, con el certificado de ACM y health check contra
+  `/v1/health`. Permite reemplazar la instancia sin cortar el sitio.
+- **Los secretos en SSM Parameter Store o Secrets Manager**, no en un archivo. Se leen al arrancar
+  y se escriben a los dos `.env` antes del `pm2 start`.
+- **Logs a CloudWatch** con el agente. El API ya escribe JSON por línea, así que se consulta directo.
+- **El worker en una sola instancia.** Si algún día hay dos servidores web, el worker corre en una
+  sola: sus candados son de base, así que dos no rompen nada, pero gastan cuota del proveedor por
+  duplicado.
+
+---
+
+## 6. El latido
+
+Sin esto la web funciona pero los marcadores no avanzan. Hay dos formas y **se elige una**.
+
+| | Cuándo | Cómo |
+|---|---|---|
+| **pg_cron** | Serverless (Vercel): no hay proceso que viva | La base llama al API por HTTP |
+| **Worker** | Servidor propio (AWS): ya hay procesos | `athena-worker` bajo pm2, con sus bucles adentro |
+
+**No se corren las dos a la vez.** Compiten por los mismos candados y gastan cuota del proveedor por
+duplicado. En Vercel, pg_cron. En un servidor, el worker y nada de cron.
+
+### 6.1 Con pg_cron (Vercel)
+
+1. Supabase → **Database → Extensions** → habilitar **pg_cron** y **pg_net**.
+2. **SQL Editor** → ejecutar `infra/supabase/cron.sql`, reemplazando antes `TU-API.vercel.app` por
+   la URL real del API y `TU_CRON_SECRET` por el mismo valor que quedó en Vercel.
+
+   Es idempotente: se puede volver a correr cada vez que cambie la URL o el secreto. Crea cuatro
+   trabajos:
 
    | Trabajo | Cada | Para qué |
    |---|---|---|
@@ -142,75 +318,108 @@ marcadores no avanzan.
    | `athena-daily` | 05:00 Lima | refresco del catálogo |
    | `athena-purga-cron` | diario | borra el historial de pg_cron y pg_net |
 
-3. Comprobar que corre:
+3. Comprobar. Ojo con esto, porque es donde se pierde la gente:
 
    ```sql
    select jobname, schedule, active from cron.job;
-   -- y un par de minutos después, las últimas corridas:
-   select j.jobname, d.status, d.return_message, d.start_time
-   from cron.job_run_details d join cron.job j on j.jobid = d.jobid
-   order by d.start_time desc limit 5;
    ```
 
-   Ojo: `succeeded` ahí solo dice que el pedido HTTP salió. La respuesta real
-   del API está en otra tabla — esta es la comprobación que vale:
+   `succeeded` en `cron.job_run_details` **solo dice que el pedido HTTP salió**, no que el API
+   contestó. La comprobación que vale es la respuesta real:
 
    ```sql
    select status_code, content::text, created
    from net._http_response order by created desc limit 5;
    ```
 
-   `status_code = 200` con `{"vivos":...,"tareas":...}` y listo: el mismo
-   `tick()` que corre en local está corriendo en producción cada minuto. Un
-   404 es la URL mal puesta; un 401, el secreto distinto al de Vercel.
+   `200` y listo. Un **404** es la URL mal puesta. Un **401**, el secreto distinto al del API. Un
+   cron apuntando a una URL vieja registra 404 durante semanas sin que nadie se entere.
 
-   Si un job quedó creado con valores equivocados, se borra y se vuelve a
-   crear:
+4. Red de seguridad: `.github/workflows/latido.yml` dispara el tic cada 30 minutos usando el secreto
+   `CRON_SECRET` y la variable `API_URL` del repositorio en GitHub. Hay que configurarlos ahí.
 
-   ```sql
-   select cron.unschedule('athena-tick');
-   select cron.unschedule('athena-daily');
-   ```
+### 6.2 Con el worker (servidor propio)
 
----
+No hay nada que hacer: `athena-worker` ya trae los dos bucles, cada 15 segundos y cada minuto, y
+recupera lo diario atrasado al arrancar. Se comprueba con `pm2 logs athena-worker`.
 
-## Paso 5 — Verificación final
+Si en la base quedaron los trabajos de pg_cron de un despliegue anterior, hay que quitarlos:
 
-1. `curl https://athena-api.vercel.app/v1/health` responde.
-2. La home carga y, si hay partidos en juego, el marcador se mueve solo
-   (el poll de 30 s de la web + el tic del cron).
-3. Probar el candado del cron: sin header tiene que dar 401.
-
-   ```bash
-   curl -s -o /dev/null -w "%{http_code}\n" -X POST \
-     https://athena-api.vercel.app/v1/internal/tick
-   ```
-
-4. En Supabase, `select count(*) from tareas;` — debería tender a cero entre
-   tics: la cola se encola y se drena.
+```sql
+select cron.unschedule('athena-marcador');
+select cron.unschedule('athena-tick');
+select cron.unschedule('athena-daily');
+```
 
 ---
 
-## Después del lanzamiento
+## 7. Migraciones y datos
 
-- **Cada `git push` a `main` despliega solo** los dos proyectos. Preview
-  deploys en cada rama, si algún día se usan ramas.
-- **Logs**: en cada proyecto de Vercel, pestaña **Logs** (los `logJson` del API
-  salen ahí). Los del cron, en `cron.job_run_details` de Supabase.
-- **Apagar una funcionalidad sin desplegar**: igual que siempre,
-  `UPDATE feature_flags SET enabled = false WHERE key = '...'` (tarda ≤45 s en
-  llegar a todas las instancias).
-- **Migraciones**: siguen siendo manuales y locales, como dice el RUNBOOK:
-  `pnpm exec prisma migrate deploy` contra `DIRECT_URL`. Vercel no migra nada.
-- **Dominio propio**: proyecto `athena` → Settings → Domains. Al agregarlo,
-  actualizar `PUBLIC_SITE_URL` (web) y `WEB_ORIGIN` (API) y redeploy de ambos.
+**Las migraciones son manuales, en las dos plataformas.** Ni Vercel ni pm2 migran nada, a propósito:
+un despliegue no debe cambiar el esquema sin que alguien lo decida.
 
-## Si algo no anda
+```bash
+pnpm --filter @athena/database db:deploy
+```
+
+Ese script lee `apps/api/.env` y usa `DIRECT_URL`, la conexión directa. La agrupada no sirve para
+migrar.
+
+La primera vez, además, hay que poblar la base. Son procesos largos y se corren una sola vez:
+
+```bash
+pnpm --filter @athena/api sync:bootstrap      # competencias, equipos y calendario
+pnpm --filter @athena/api importar:retos      # Adivina el XI
+pnpm --filter @athena/api importar:impostor   # El Impostor
+pnpm --filter @athena/api importar:60         # 60 Segundos
+```
+
+---
+
+## 8. Verificación
+
+```bash
+curl https://<api>/v1/health                       # responde
+curl -s https://<api>/v1/views/marcadores | head   # trae los partidos en juego
+
+# el candado del latido: sin cabecera tiene que dar 401
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://<api>/v1/internal/tick
+```
+
+Además:
+
+1. La home carga con datos reales.
+2. Con partidos en juego, el marcador se mueve solo sin recargar la página.
+3. En la base, `select count(*) from tareas;` tiende a cero entre tics: la cola se encola y se drena.
+4. `GET /v1/internal/salud` con la cabecera del cron dice cuándo fue el último tic y el último latido.
+   Los dos deberían estar por debajo de 90 segundos.
+
+---
+
+## 9. Después del lanzamiento
+
+- **Vercel**: cada `push` a `main` despliega los dos proyectos solo.
+- **Servidor propio**: el ciclo de la sección 5.4.
+- **Logs**: pestaña **Logs** de cada proyecto en Vercel, o `pm2 logs`. Los del cron, en
+  `cron.job_run_details` y `net._http_response` de Supabase.
+- **Apagar una funcionalidad sin desplegar**:
+  `update feature_flags set enabled = false where key = '…'`. Tarda 45 segundos o menos en llegar a
+  todas las instancias.
+- **Dominio propio**: al agregarlo hay que actualizar `PUBLIC_SITE_URL` y `PUBLIC_API_URL` en la web
+  y `WEB_ORIGIN` en el API, y **reconstruir la web**, no solo reiniciarla.
+
+---
+
+## 10. Si algo no anda
 
 | Síntoma | Dónde mirar |
 |---|---|
-| El marcador no avanza | `cron.job_run_details` en Supabase; que el tic dé `succeeded` y no 401 (secreto distinto) ni 503 (`CRON_SECRET` sin definir en Vercel) |
-| CORS bloquea el minuto a minuto | `WEB_ORIGIN` del API tiene que ser exactamente la URL de la web, sin barra final, y hay que redeployar el API tras cambiarla |
-| 500 con `PrismaClientInitializationError` | `DATABASE_URL` debe ser la del pooler (6543 + `?pgbouncer=true`); la directa agota conexiones en serverless |
-| El primer request tarda | Arranque en frío de la función: Nest se arma una vez por instancia; los siguientes son normales |
-| El build del API falla en Vercel | Ver el log del deploy: casi siempre es Root Directory sin configurar en `apps/api` |
+| El marcador no avanza | `net._http_response` en Supabase. Un 404 es la URL del cron; un 401, el secreto distinto; un 503, `CRON_SECRET` sin definir en el API. En un servidor propio, `pm2 logs athena-worker` |
+| Cambié una variable de la web y no pasó nada | Sus `PUBLIC_*` se hornean en el build. Hay que reconstruir, no reiniciar |
+| CORS bloquea los marcadores | `WEB_ORIGIN` del API tiene que ser exactamente la URL de la web, sin barra final, y hay que reiniciar o redeployar el API |
+| 500 con `PrismaClientInitializationError` | `DATABASE_URL` debe ser la del pooler (6543 con `?pgbouncer=true`). La directa agota conexiones |
+| Todas las llamadas al API dan 404 | `PUBLIC_API_URL` con `/v1` o con barra final. El código agrega `/v1` solo |
+| El build de la web falla con "Falta PUBLIC_SITE_URL" | Es a propósito. Definirla antes de construir |
+| El primer pedido tarda mucho | Arranque en frío de la función serverless. Los siguientes son normales. En un servidor propio no pasa |
+| El build falla en Vercel | Casi siempre es el **Root Directory** sin configurar en `apps/api` o `apps/web` |
+| pm2 no levantó nada tras reiniciar | Faltó `pm2 save` después del último `pm2 start` |
