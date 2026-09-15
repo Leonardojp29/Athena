@@ -134,6 +134,66 @@ test.describe('Adivina el XI', () => {
     await expect(page.getByRole('button', { name: /Siguiente XI/ })).toBeVisible();
   });
 
+  /*
+   * La partida ganada, de punta a punta.
+   *
+   * El resultado tiene que aparecer en el acto: esperar a que llegue la solución dejaba casi un
+   * segundo de pantalla quieta justo al ganar, y quien completó los once ya conoce los once nombres.
+   * Por eso la solución se retrasa a propósito acá: si el resultado dependiera de ella, no llegaría.
+   */
+  test('completar el once gana la partida sin esperar a la solución', async ({ page }) => {
+    let clave: string | null = null;
+    page.on('response', (respuesta) => {
+      if (respuesta.url().includes('reto.json') && respuesta.ok()) {
+        void respuesta
+          .json()
+          .then((cuerpo: { clave?: string }) => (clave = cuerpo.clave ?? null))
+          .catch(() => undefined);
+      }
+    });
+
+    await jugar(page);
+    await page.waitForTimeout(1500);
+    expect(clave).not.toBeNull();
+
+    const solucion = await page.request.get(`${RUTA}/solucion.json?clave=${clave}`);
+    const { titulares } = (await solucion.json()) as {
+      titulares: Array<{ ref: string; nombre: string }>;
+    };
+
+    /* A partir de acá la solución tarda: el final no puede depender de ella. */
+    await page.route('**/solucion.json*', async (ruta) => {
+      await new Promise((listo) => setTimeout(listo, 8000));
+      await ruta.abort();
+    });
+
+    /*
+     * Se prueba primero por el apellido, que es como busca cualquiera, y si ese no lo trae entre los
+     * ocho se escribe el nombre completo. Lo que se verifica acá es ganar la partida; a qué altura
+     * de la lista aparece cada uno lo cubre la prueba del orden.
+     */
+    const buscar = async (texto: string, ref: string): Promise<number> => {
+      await page.locator('#once-buscador').fill(texto);
+      await expect(page.locator('#once-resultados li').first()).toBeVisible({ timeout: 15_000 });
+      const fotos = await page.$$eval('#once-resultados li button img', (nodos) =>
+        nodos.map((n) => n.getAttribute('src') ?? ''),
+      );
+      return fotos.findIndex((src) => src.includes(`/${ref}.png`));
+    };
+
+    const apellido = (nombre: string): string => nombre.trim().split(/\s+/).pop() ?? nombre;
+    for (const titular of titulares) {
+      let cual = await buscar(apellido(titular.nombre), titular.ref);
+      if (cual < 0) cual = await buscar(titular.nombre, titular.ref);
+      expect(cual, `${titular.nombre} tiene que poder encontrarse`).toBeGreaterThanOrEqual(0);
+      await page.locator('#once-resultados li').nth(cual).click();
+    }
+
+    await expect(page.locator('[data-resultado]')).toBeVisible({ timeout: 3000 });
+    await expect(page.locator('[data-resultado]')).toContainText('11/11');
+    await expect(page.locator('[data-resultado]')).toContainText('Once de once');
+  });
+
   test('contra reloj la barra se vacía', async ({ page }) => {
     await jugar(page);
 

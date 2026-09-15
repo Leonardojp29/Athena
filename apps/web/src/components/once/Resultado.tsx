@@ -1,19 +1,42 @@
-import type { Resumen } from '@athena/adivina-el-xi';
+import type { Acierto, Resumen } from '@athena/adivina-el-xi';
 import type { RetoParaJugar, TitularRevelado } from '../../lib/api';
 import { fotoDe, relojDe } from '../../lib/adivina';
 
 interface Props {
   reto: RetoParaJugar;
   resumen: Resumen;
-  solucion: TitularRevelado[];
+  /** Null mientras la solución viaja. Con el once completo no hace falta esperarla. */
+  solucion: TitularRevelado[] | null;
+  aciertos: Acierto[];
   acertados: Set<string>;
   onSiguiente: () => void;
   onVolver: () => void;
   cargando: boolean;
 }
 
-export function Resultado({ reto, resumen, solucion, acertados, onSiguiente, onVolver, cargando }: Props) {
+export function Resultado({
+  reto,
+  resumen,
+  solucion,
+  aciertos,
+  acertados,
+  onSiguiente,
+  onVolver,
+  cargando,
+}: Props) {
   const perfecto = resumen.aciertos === resumen.total;
+
+  /*
+   * Con el once completo la lista sale de lo que el jugador acertó: ya conoce los once nombres, así
+   * que esperar a que llegue la solución solo agregaría un segundo de pantalla quieta justo en el
+   * momento de ganar. Cuando faltó alguno sí hay que esperarla, y mientras tanto se avisa.
+   */
+  const once: TitularRevelado[] =
+    solucion ??
+    [...aciertos]
+      .sort((a, b) => a.grid.localeCompare(b.grid))
+      .map((a) => ({ ref: a.ref, nombre: a.nombre, slug: '', fotoUrl: null, grid: a.grid }));
+  const faltanNombres = solucion === null && !perfecto;
 
   return (
     <div data-resultado className="mx-auto w-full max-w-2xl px-4 py-8">
@@ -41,14 +64,15 @@ export function Resultado({ reto, resumen, solucion, acertados, onSiguiente, onV
 
       <h2 className="mt-8 font-display text-xs font-semibold uppercase tracking-label text-ink-muted">
         El once completo
+        {faltanNombres && <span className="ml-2 normal-case tracking-normal">buscando los que faltaron…</span>}
       </h2>
       <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
-        {solucion.map((titular) => {
+        {once.map((titular) => {
           const acertado = acertados.has(titular.ref);
           return (
             <li key={titular.ref}>
               <a
-                href={`/jugadores/${titular.slug}`}
+                href={titular.slug ? `/jugadores/${titular.slug}` : undefined}
                 className={[
                   'flex items-center gap-2.5 rounded-lg border px-2.5 py-1.5 transition-colors duration-200',
                   acertado

@@ -179,6 +179,22 @@
     text-decoration-thickness: from-font;
   }
 
+  /*
+   * La manito sobre lo que se puede pulsar.
+   *
+   * Tailwind 4 dejó los botones con el cursor de flecha —es lo que dice la especificación— y en el
+   * proyecto se venía corrigiendo botón por botón: sesenta y siete `cursor-pointer` repartidos, y
+   * cada pantalla nueva volvía a olvidarlo. Va acá una sola vez. El deshabilitado no lleva manito
+   * porque no hace nada al pulsarlo.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label:has(input[type='checkbox']),
+  label:has(input[type='radio']) {
+    cursor: pointer;
+  }
+
   /* Los marcadores no pueden bailar cuando un 0 pasa a 10. */
   .tabular,
   [data-marcador],

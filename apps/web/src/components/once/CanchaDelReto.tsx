@@ -96,7 +96,7 @@ export function CanchaDelReto({
               /* El largo crece hacia el arco rival, que acá está arriba: por eso se resta del 100%. */
               style={{ '--largo': `${y}%`, '--ancho': `${x}%` } as React.CSSProperties}
               className={[
-                'group absolute flex w-[4.25rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center sm:w-[5rem]',
+                'group absolute flex w-[5rem] -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center sm:w-[6rem]',
                 'left-[var(--ancho)] top-[calc(100%-var(--largo))]',
                 Casilla === 'button'
                   ? 'cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ink'
@@ -126,7 +126,7 @@ function Iman({ nombre, ref_, revelado }: { nombre: string; ref_: string; revela
     <>
       <span
         className={[
-          'relative grid size-10 place-items-center rounded-full border-2 bg-board sm:size-11',
+          'relative grid size-12 place-items-center rounded-full border-2 bg-board sm:size-14',
           'animate-magnet-place shadow-magnet',
           revelado ? 'border-chalk/35 grayscale' : 'border-win',
         ].join(' ')}
@@ -140,15 +140,15 @@ function Iman({ nombre, ref_, revelado }: { nombre: string; ref_: string; revela
         <img
           src={fotoDe(ref_)}
           alt=""
-          width="44"
-          height="44"
+          width="56"
+          height="56"
           loading="lazy"
           className="size-full rounded-full object-cover"
         />
       </span>
       <span
         className={[
-          'mt-1 w-max max-w-[5.5rem] truncate rounded bg-board/85 px-1 py-0.5 text-[11px] font-medium leading-tight',
+          'mt-1 w-max max-w-[6.5rem] truncate rounded bg-board/85 px-1.5 py-0.5 text-[13px] font-semibold leading-tight sm:text-sm',
           revelado ? 'text-chalk-dim' : 'text-chalk',
         ].join(' ')}
       >
@@ -164,7 +164,7 @@ function Vacia({ rotulo, pista, apuntable }: { rotulo: string; pista?: string; a
     <>
       <span
         className={[
-          'grid size-11 place-items-center rounded-full border-2 border-dashed bg-board/55 sm:size-12',
+          'grid size-12 place-items-center rounded-full border-2 border-dashed bg-board/55 sm:size-14',
           'transition-[background-color,border-color] duration-200',
           apuntable
             ? 'border-card-yellow bg-card-yellow/20'
@@ -172,11 +172,11 @@ function Vacia({ rotulo, pista, apuntable }: { rotulo: string; pista?: string; a
         ].join(' ')}
       >
         {pista ? (
-          <span data-pista-letra className="font-display text-xl font-semibold uppercase text-card-yellow">
+          <span data-pista-letra className="font-display text-2xl font-semibold uppercase text-card-yellow">
             {pista}
           </span>
         ) : (
-          <span className="font-display text-base font-semibold text-chalk/35" aria-hidden="true">
+          <span className="font-display text-lg font-semibold text-chalk/35" aria-hidden="true">
             ?
           </span>
         )}

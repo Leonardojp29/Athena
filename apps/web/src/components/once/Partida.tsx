@@ -115,12 +115,14 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
     return mapa;
   }, [fin, solucion, acertados]);
 
-  if (fin && solucion) {
+  /* Apenas termina se muestra el resultado: la solución, si falta, llega mientras ya se está leyendo. */
+  if (fin) {
     return (
       <Resultado
         reto={reto}
         resumen={resumirPartida(partida, ahora)}
         solucion={solucion}
+        aciertos={partida.aciertos}
         acertados={acertados}
         cargando={cargandoSiguiente}
         onSiguiente={onSiguiente}
