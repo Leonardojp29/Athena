@@ -12,6 +12,7 @@
     "ai:bootstrap": "node --env-file-if-exists=../../.env dist/scripts/ai-bootstrap.js",
     "backfill:matches": "node --env-file-if-exists=../../.env dist/scripts/backfill-match-detail.js",
     "backfill:palmares": "node --env-file-if-exists=../../.env dist/scripts/backfill-palmares.js",
+    "auditar:retos": "node --env-file-if-exists=../../.env dist/scripts/auditar-retos-once.js",
     "backfill:fichajes": "node --env-file-if-exists=../../.env dist/scripts/backfill-fichajes.js",
     "calentar:vistas": "node --env-file-if-exists=../../.env dist/scripts/calentar-vistas.js",
     "cerrar:pendientes": "node --env-file-if-exists=../../.env dist/scripts/cerrar-pendientes.js",
