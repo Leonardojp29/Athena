@@ -3,12 +3,20 @@ import type { Acierto, Casillero } from '@athena/adivina-el-xi';
 import { apellidoDe, fotoDe } from '../../lib/adivina';
 import { MarcasDeCancha } from './MarcasDeCancha';
 
-/* Los puestos del proveedor, ya en español, para rotular la casilla sin delatar quién la ocupó. */
-const ROTULO: Record<string, string> = {
-  arquero: 'Arquero',
-  defensor: 'Defensa',
-  mediocampista: 'Medio',
-  delantero: 'Ataque',
+/**
+ * El rótulo sale de la fila en la que se dibuja, no de la posición que el proveedor le pone al
+ * futbolista.
+ *
+ * Con la posición del proveedor la cancha se leía mal: un volante que jugó abierto aparecía como
+ * "Medio" por encima de un "Ataque", y el que viene sin posición se quedaba sin rótulo. La fila,
+ * en cambio, es lo que el jugador está viendo: la de abajo es el arco, la de arriba el ataque y
+ * todo lo del medio es medio.
+ */
+const rotuloDeFila = (fila: number, filas: number): string => {
+  if (fila === 0) return 'Arquero';
+  if (fila === filas - 1) return 'Ataque';
+  if (fila === 1) return 'Defensa';
+  return 'Medio';
 };
 
 interface Props {
@@ -38,6 +46,7 @@ export function CanchaDelReto({
     ) ?? [];
 
   const porGrid = new Map(aciertos.map((a) => [a.grid, a]));
+  const filas = new Set(ubicados.map((u) => u.row)).size;
 
   return (
     <div
@@ -49,7 +58,7 @@ export function CanchaDelReto({
       /* El alto manda y el ancho lo sigue: así la cancha y sus controles entran en una pantalla. */
       className={[
         'relative mx-auto aspect-[680/1000] overflow-hidden rounded-lg border border-board-edge',
-        'h-[min(68dvh,36rem)] w-auto max-w-full',
+        'h-[min(80dvh,46rem)] w-auto max-w-full',
       ].join(' ')}
     >
       <svg
@@ -70,7 +79,7 @@ export function CanchaDelReto({
         se deforma.
       */}
       <div className="absolute inset-x-0 top-0 bottom-7">
-        {ubicados.map(({ player, x, y }) => {
+        {ubicados.map(({ player, x, y, row }) => {
           const acierto = porGrid.get(player.grid);
           const revelado = acierto ? null : revelados.get(player.grid);
           const pista = pistas[player.grid];
@@ -100,7 +109,7 @@ export function CanchaDelReto({
                   revelado={!acierto}
                 />
               ) : (
-                <Vacia rotulo={ROTULO[player.puesto ?? ''] ?? null} pista={pista} apuntable={eligiendoPista} />
+                <Vacia rotulo={rotuloDeFila(row, filas)} pista={pista} apuntable={eligiendoPista} />
               )}
             </Casilla>
           );
@@ -149,7 +158,7 @@ function Iman({ nombre, ref_, revelado }: { nombre: string; ref_: string; revela
 }
 
 /* La casilla vacía es tiza: un círculo trazado, el puesto y, si se pidió, la letra. */
-function Vacia({ rotulo, pista, apuntable }: { rotulo: string | null; pista?: string; apuntable: boolean }) {
+function Vacia({ rotulo, pista, apuntable }: { rotulo: string; pista?: string; apuntable: boolean }) {
   return (
     <>
       <span
@@ -171,11 +180,9 @@ function Vacia({ rotulo, pista, apuntable }: { rotulo: string | null; pista?: st
           </span>
         )}
       </span>
-      {rotulo && (
-        <span className="mt-1 w-max max-w-[5.5rem] truncate rounded bg-board/80 px-1.5 py-0.5 text-[10px] uppercase leading-tight tracking-label text-chalk-dim">
-          {rotulo}
-        </span>
-      )}
+      <span className="mt-1 w-max max-w-[5.5rem] truncate rounded bg-board/80 px-1.5 py-0.5 text-[10px] uppercase leading-tight tracking-label text-chalk-dim">
+        {rotulo}
+      </span>
     </>
   );
 }
