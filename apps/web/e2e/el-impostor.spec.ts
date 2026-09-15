@@ -116,8 +116,8 @@ test.describe('El Impostor', () => {
   test('quedarse sin tiempo cierra la racha sin que nadie toque nada', async ({ page }) => {
     await jugar(page);
 
-    /* Diez segundos de ronda más lo que dura el revelado: el reloj cierra solo. */
-    await expect(page.locator('[data-aviso="sin-tiempo"]')).toBeVisible({ timeout: 20_000 });
+    /* Veinte segundos de ronda más lo que dura el revelado: el reloj cierra solo. */
+    await expect(page.locator('[data-aviso="sin-tiempo"]')).toBeVisible({ timeout: 35_000 });
     await expect(page.locator('[data-desenlace="sin-tiempo"]')).toBeVisible({ timeout: 15_000 });
   });
 

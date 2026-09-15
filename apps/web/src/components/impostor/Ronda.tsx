@@ -52,7 +52,7 @@ export function Ronda({
       </header>
 
       {/*
-        El reloj: barra y número juntos. Diez segundos son pocos y el color no puede ser el único
+        El reloj: barra y número juntos. El color no puede ser el único
         canal —quien no distingue el lima del rojo tiene que poder leer que le quedan dos—.
       */}
       <div className="mt-3 flex items-center gap-3">

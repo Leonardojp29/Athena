@@ -56,7 +56,7 @@ describe('el motor de El Impostor', () => {
     expect(siguiente(fallada, T0 + 5_000).indice).toBe(0);
   });
 
-  it('el reloj cierra la ronda a los diez segundos y no antes', () => {
+  it('el reloj cierra la ronda al cumplirse su duración y no antes', () => {
     const empezada = empezar([ronda('IMP-001')], T0);
 
     expect(tictac(empezada, T0 + DURACION_MS - 1).desenlace).toBeNull();

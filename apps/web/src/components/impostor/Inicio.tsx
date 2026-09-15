@@ -23,7 +23,7 @@ export function Inicio({ marcas, cargando, error, onJugar }: Props) {
         </h1>
         <p className="mt-3 text-pretty text-sm leading-relaxed text-ink-muted">
           Seis futbolistas, cinco cumplen la condición. Encuentra al que se coló antes de que se
-          acaben los diez segundos. Un error y la racha termina.
+          acaben los veinte segundos. Un error y la racha termina.
         </p>
 
         {marcas.mejorRacha > 0 && (

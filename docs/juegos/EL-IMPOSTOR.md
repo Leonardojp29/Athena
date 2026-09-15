@@ -1,6 +1,6 @@
 # El Impostor
 
-Seis futbolistas, cinco cumplen la condición y uno se coló. Diez segundos para encontrarlo.
+Seis futbolistas, cinco cumplen la condición y uno se coló. Veinte segundos para encontrarlo.
 
 > 5 fueron titulares del Bayern en la final de Champions 2020. Uno venía de otro lado.
 > **Neuer · Kimmich · Gnabry · Lewandowski · Müller · Perišić**
@@ -10,7 +10,7 @@ juego entero: no se trata de saber más, sino de no equivocarse nunca.
 
 ## La idea que ordena todo
 
-**El ritmo manda sobre todo lo demás.** Diez segundos por ronda es la regla, no un parámetro; de ahí
+**El ritmo manda sobre todo lo demás.** Veinte segundos por ronda es la regla, no un parámetro; de ahí
 sale cada decisión:
 
 - **Las cartas llevan rostro y apellido y nada más.** Ni club, ni puesto, ni país: cualquiera de

@@ -2,14 +2,19 @@
  * Las reglas de El Impostor, sin DOM y sin reloj propio.
  *
  * El tiempo entra por parámetro, como en el motor de Adivina el XI: así un test comprueba que a los
- * diez segundos la ronda se cierra sin esperarlos, y la isla de React se queda con una sola
+ * veinte segundos la ronda se cierra sin esperarlos, y la isla de React se queda con una sola
  * responsabilidad, que es pintar.
  */
 
-/** Lo que dura una ronda. Es un juego de reflejos: diez segundos son la regla, no un parámetro. */
-export const DURACION_MS = 10_000;
-/** Cuando falta esto, el reloj apremia: cambia de color y late. */
-export const APREMIO_MS = 3_000;
+/** Lo que dura una ronda. Es un juego de reflejos: veinte segundos son la regla, no un parámetro. */
+export const DURACION_MS = 20_000;
+/**
+ * Cuando falta esto, el reloj apremia: cambia de color y late.
+ *
+ * Es un cuarto de la ronda. Con los diez segundos de antes eran tres; al pasar a veinte, dejarlo
+ * igual convertía el aviso en un sobresalto que llegaba cuando ya no había nada que hacer.
+ */
+export const APREMIO_MS = 5_000;
 
 export interface Opcion {
   /** El id del proveedor: la identidad del juego y de donde sale la foto. */

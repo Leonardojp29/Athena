@@ -10,7 +10,7 @@ interface Props {
 /**
  * La largada.
  *
- * Existe porque la ronda dura diez segundos: entrar de golpe y encontrarse el reloj ya corriendo
+ * Existe porque la ronda es contra reloj: entrar de golpe y encontrarse el cronómetro ya corriendo
  * regala la primera ronda. Acá se sabe exactamente cuándo empieza a contar.
  */
 export function Largada({ onListo }: Props) {
