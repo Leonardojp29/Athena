@@ -46,12 +46,15 @@ const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
 const ALTO_MAXIMO_DE_FILA = 4;
 
 /*
- * Los lavados del rayado. Bajos a propósito: sobre ellos van la foto, el nombre y la nota, y un
- * fondo más fuerte les come el contraste sin agregar información.
+ * Cuánto tiñe la fila con color. Una sola de cada dos se pinta y la otra se queda con la tarjeta:
+ * tiñendo las dos se gastaba la mitad del contraste en un escalón que casi no se veía.
+ *
+ * El alfa sube con la claridad del color porque un color claro sobre una tarjeta clara casi no tiñe:
+ * el crema de Universitario al 11% era blanco, mientras que el azul de Alianza al 11% ya se notaba.
  */
-const LAVADO_PAR = 0.05;
-const LAVADO_IMPAR = 0.11;
-const LAVADO_AL_PASAR = 0.2;
+const LAVADO_BASE = 0.1;
+const LAVADO_POR_CLARIDAD = 0.26;
+const REALCE_AL_PASAR = 1.8;
 
 function paletaDeBanco(team: TeamSummary) {
   const [primario, secundario] = coloresDeClub(team.slug, team.primaryColor, team.secondaryColor);
@@ -59,15 +62,16 @@ function paletaDeBanco(team: TeamSummary) {
   const tema = temaEquipo(primario, secundario);
   if (!color || !tema) return null;
 
+  const lavado = LAVADO_BASE + color.luminancia * LAVADO_POR_CLARIDAD;
+
   return {
     /* Plano y no degradado: la cabecera es una etiqueta, no una portada. */
     fondo: color.base,
     tinta: tema.tinta,
     tintaSuave: tema.tintaSuave,
     linea: tema.linea,
-    par: color.suave(LAVADO_PAR),
-    impar: color.suave(LAVADO_IMPAR),
-    alPasar: color.suave(LAVADO_AL_PASAR),
+    fila: color.suave(lavado),
+    alPasar: color.suave(lavado * REALCE_AL_PASAR),
   };
 }
 
@@ -79,8 +83,8 @@ const lados = [homeTeam, awayTeam]
     lineup,
     /*
      * El banco con los colores del club, que es lo que hace que de un vistazo se sepa cuál es cuál
-     * sin leer el nombre: la cabecera con el color plano y las filas alternando dos lavados del
-     * mismo, como el rayado de una tabla.
+     * sin leer el nombre: la cabecera con el color plano y una fila de cada dos lavada con él, como
+     * el rayado de una tabla.
      *
      * `coloresDeClub` descarta los que no dicen nada —blanco, negro y gris son un tercio de los
      * equipos con dato— y `temaEquipo` elige la tinta por luminancia, así un crema como el de
@@ -151,11 +155,10 @@ const lados = [homeTeam, awayTeam]
 
           <ul
             data-banco
-            class="grid flex-1 gap-0 px-1.5 py-1 [grid-auto-rows:minmax(0,1fr)]"
+            class="grid flex-1 gap-0 [grid-auto-rows:minmax(0,1fr)]"
             style={[
               `max-height:${banco.length * ALTO_MAXIMO_DE_FILA}rem`,
-              paleta &&
-                `--fila-par:${paleta.par};--fila-impar:${paleta.impar};--fila-al-pasar:${paleta.alPasar}`,
+              paleta && `--fila:${paleta.fila};--fila-al-pasar:${paleta.alPasar}`,
             ]
               .filter(Boolean)
               .join(';')}
@@ -166,7 +169,7 @@ const lados = [homeTeam, awayTeam]
                   type="button"
                   data-ficha={ficha ?? undefined}
                   disabled={ficha === null}
-                  class="flex h-full w-full items-center gap-2 rounded px-1.5 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-canvas-subtle"
+                  class="flex h-full w-full items-center gap-2 px-3 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-canvas-subtle"
                 >
                   {entrada ? (
                     <span class="flex w-10 shrink-0 items-center gap-0.5 text-xs font-medium tabular text-live-ink">
@@ -219,17 +222,16 @@ const lados = [homeTeam, awayTeam]
   /*
    * El rayado con el color del club. Va en CSS y no en cada fila porque el color sale de una
    * variable y `nth-child` ya sabe alternar: quince atributos de estilo repetidos por banco pesaban
-   * más que estas cuatro reglas.
+   * más que estas dos reglas.
+   *
+   * Se pinta una de cada dos y la otra se queda con el fondo de la tarjeta. Las filas llegan a los
+   * bordes: con relleno en la lista el rayado quedaba flotando dentro de un marco blanco.
    *
    * El fondo va en el `li` y el realce al pasar en el botón, que es quien recibe el puntero. Sin
    * color de club no se define ninguna variable y manda el `hover` de siempre.
    */
   [data-banco] li:nth-child(odd) {
-    background: var(--fila-impar, transparent);
-  }
-
-  [data-banco] li:nth-child(even) {
-    background: var(--fila-par, transparent);
+    background: var(--fila, transparent);
   }
 
   [data-banco] button:enabled:hover {

@@ -13,6 +13,8 @@ export interface ColorEquipo {
   base: string;
   /** El mismo color translúcido, para lavados y halos. */
   suave: (alfa: number) => string;
+  /** Luminancia relativa de WCAG, de 0 a 1. Un color claro tiñe menos y necesita más alfa. */
+  luminancia: number;
   esOscuro: boolean;
 }
 
@@ -85,6 +87,7 @@ export function colorEquipo(hex: string | null | undefined): ColorEquipo | null 
   return {
     base: `#${hex.toLowerCase()}`,
     suave: (alfa: number) => `rgb(${r} ${g} ${b} / ${alfa})`,
+    luminancia,
     esOscuro: luminancia < 0.4,
   };
 }
