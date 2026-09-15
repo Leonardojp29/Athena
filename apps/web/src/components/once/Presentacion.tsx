@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { RetoParaJugar } from '../../lib/api';
+import { cargarIndice } from '../../lib/adivina';
 
 /* Lo que dura la ficha del partido antes de la cuenta. Alcanza para leerla sin que se haga larga. */
-const LECTURA_MS = 2200;
+const LECTURA_MS = 2400;
+/* Un segundo por número, como una largada: tres, dos, uno y a jugar. */
+const PASO_DE_CUENTA_MS = 1000;
 
 interface Props {
   reto: RetoParaJugar;
@@ -19,6 +22,11 @@ export function Presentacion({ reto, onListo }: Props) {
   const [cuenta, setCuenta] = useState<number | null>(null);
 
   useEffect(() => {
+    /*
+     * El índice del buscador baja mientras se lee el partido y corre la cuenta. Son unos cuatro
+     * segundos que de otro modo se perderían, y con él listo el primer nombre se busca sin red.
+     */
+    void cargarIndice();
     const entrada = window.setTimeout(() => setCuenta(3), LECTURA_MS);
     return () => window.clearTimeout(entrada);
   }, []);
@@ -29,7 +37,7 @@ export function Presentacion({ reto, onListo }: Props) {
       onListo();
       return;
     }
-    const paso = window.setTimeout(() => setCuenta(cuenta - 1), 700);
+    const paso = window.setTimeout(() => setCuenta(cuenta - 1), PASO_DE_CUENTA_MS);
     return () => window.clearTimeout(paso);
   }, [cuenta, onListo]);
 
@@ -72,15 +80,39 @@ export function Presentacion({ reto, onListo }: Props) {
         </p>
       </div>
 
-      <div className="mt-10 grid h-20 place-items-center" aria-live="polite">
+      {/* La largada: el número y el aro que se cierra a su alrededor, un segundo cada uno. */}
+      <div className="relative mt-10 grid size-28 place-items-center" aria-live="polite">
         {cuenta !== null && cuenta > 0 && (
-          <span
-            key={cuenta}
-            data-cuenta={cuenta}
-            className="animate-once-cuenta font-display text-6xl font-semibold tabular text-primary-ink"
-          >
-            {cuenta}
-          </span>
+          <>
+            <svg
+              key={`aro-${cuenta}`}
+              viewBox="0 0 100 100"
+              aria-hidden="true"
+              focusable="false"
+              className="absolute inset-0 size-full -rotate-90"
+            >
+              <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" strokeWidth="3" className="text-border" />
+              <circle
+                pathLength="1"
+                cx="50"
+                cy="50"
+                r="46"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray="1"
+                className="animate-once-aro text-primary-ink"
+              />
+            </svg>
+            <span
+              key={cuenta}
+              data-cuenta={cuenta}
+              className="animate-once-largada font-display text-6xl font-semibold tabular text-primary-ink"
+            >
+              {cuenta}
+            </span>
+          </>
         )}
       </div>
     </div>

@@ -702,6 +702,10 @@ model TitularDelReto {
   player   Player      @relation(fields: [playerId], references: [id])
   playerId String      @map("player_id") @db.Uuid
 
+  /// El id del proveedor, que es la identidad que usa el juego: el índice del buscador viaja al
+  /// navegador y un UUID por ficha lo haría seis veces más pesado.
+  providerRef String? @map("provider_ref")
+
   /// 'fila:columna' desde el arco propio, como las numera el proveedor.
   grid   String
   /// G | D | M | F, cuando el proveedor lo dice.

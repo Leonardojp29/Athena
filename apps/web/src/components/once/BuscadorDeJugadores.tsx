@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FutbolistaBuscado } from '../../lib/api';
-import { buscarFutbolistas } from '../../lib/adivina';
+import { buscarEnIndice, buscarFutbolistas, fotoDe } from '../../lib/adivina';
+import { Icono } from './Icono';
 
 /* El mismo compás que el buscador del sitio: lo justo para no pedir en cada tecla. */
 const ESPERA_MS = 120;
 
-const sinAcentos = (texto: string): string =>
-  texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-/** El mismo criterio grueso del servidor: que el nombre contenga lo escrito, sin tildes. */
-const calza = (nombre: string, consulta: string): boolean =>
-  sinAcentos(nombre).includes(sinAcentos(consulta));
 
 interface Props {
   bloqueado: boolean;
@@ -27,13 +22,23 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
   const enVuelo = useRef<AbortController | null>(null);
   /* Borrar una letra tiene que ser gratis: lo ya resuelto no se vuelve a pedir. */
   const memoria = useRef(new Map<string, FutbolistaBuscado[]>());
-  /* La última respuesta del servidor, para adelantar mientras llega la siguiente. */
-  const anterior = useRef<{ consulta: string; resultados: FutbolistaBuscado[] } | null>(null);
 
   useEffect(() => {
     const limpia = consulta.trim();
     if (limpia.length === 0) {
       setResultados([]);
+      return;
+    }
+
+    /*
+     * Primero el índice que el navegador ya tiene: son milisegundos y cubre a los conocidos, que son
+     * justamente los que aparecen en un once memorable. Solo si no encuentra nada se sale a la red,
+     * que contra una base en otra región cuesta casi un segundo.
+     */
+    const locales = buscarEnIndice(limpia);
+    if (locales.length > 0) {
+      setResultados(locales);
+      setResaltado(0);
       return;
     }
 
@@ -44,23 +49,6 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
       return;
     }
 
-    /*
-     * Lo que ya se tiene se muestra de inmediato mientras el servidor contesta.
-     *
-     * Cada consulta cuesta la ida y vuelta a una base que está fuera de región, y esperarla en
-     * blanco hace sentir lento a un buscador que no lo es. Al seguir escribiendo, lo que respondió
-     * la palabra más corta ya contiene casi siempre lo que vale, así que se filtra acá y la lista
-     * no parpadea: cuando llega la respuesta buena, reemplaza.
-     */
-    const adelanto = anterior.current;
-    if (adelanto && limpia.toLowerCase().startsWith(adelanto.consulta)) {
-      const filtrados = adelanto.resultados.filter((f) => calza(f.nombre, limpia));
-      if (filtrados.length > 0) {
-        setResultados(filtrados);
-        setResaltado(0);
-      }
-    }
-
     const temporizador = window.setTimeout(() => {
       enVuelo.current?.abort();
       const control = new AbortController();
@@ -68,7 +56,6 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
       void buscarFutbolistas(limpia, control.signal)
         .then((encontrados) => {
           memoria.current.set(limpia.toLowerCase(), encontrados);
-          anterior.current = { consulta: limpia.toLowerCase(), resultados: encontrados };
           setResultados(encontrados);
           setResaltado(0);
         })
@@ -111,9 +98,9 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
   };
 
   const TONO = {
-    acierto: 'text-win-ink',
-    repetido: 'text-card-yellow-ink',
-    fallo: 'text-ink-muted',
+    acierto: 'border-win/40 bg-win/12 text-win-ink',
+    repetido: 'border-card-yellow/50 bg-card-yellow/15 text-card-yellow-ink',
+    fallo: 'border-card-red/40 bg-card-red/10 text-ink-muted',
   } as const;
 
   return (
@@ -146,12 +133,25 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
         />
       </div>
 
-      <p
-        aria-live="polite"
-        className={`mt-1.5 h-4 text-xs ${aviso ? TONO[aviso.tono] : 'text-ink-muted'}`}
-      >
-        {aviso?.texto ?? ''}
-      </p>
+      {/*
+        El alto está reservado siempre, así que aparecer o desaparecer no mueve nada de abajo, y la
+        animación es solo del aviso: el campo de texto nunca se re-monta y no se pierde una tecla.
+      */}
+      <div className="mt-1.5 h-7">
+        {aviso && (
+          <p
+            key={`${aviso.tono}-${aviso.texto}`}
+            aria-live="polite"
+            className={`animate-once-aviso flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${TONO[aviso.tono]}`}
+          >
+            <Icono
+              nombre={aviso.tono === 'acierto' ? 'check' : aviso.tono === 'repetido' ? 'info' : 'cerrar'}
+              size={14}
+            />
+            {aviso.texto}
+          </p>
+        )}
+      </div>
 
       {resultados.length > 0 && (
         <ul
@@ -160,7 +160,7 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
           className="mt-1 overflow-hidden rounded-lg border border-border bg-surface"
         >
           {resultados.map((futbolista, indice) => (
-            <li key={futbolista.id} role="presentation">
+            <li key={futbolista.ref} role="presentation">
               <button
                 type="button"
                 role="option"
@@ -172,20 +172,14 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
                   indice === resaltado ? 'bg-primary/12' : 'hover:bg-canvas-subtle',
                 ].join(' ')}
               >
-                {futbolista.fotoUrl ? (
-                  <img
-                    src={futbolista.fotoUrl}
-                    alt=""
-                    width="28"
-                    height="28"
-                    loading="lazy"
-                    className="size-7 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="grid size-7 shrink-0 place-items-center rounded-full bg-canvas-subtle text-2xs font-semibold text-ink-muted">
-                    {futbolista.nombre.slice(0, 1)}
-                  </span>
-                )}
+                <img
+                  src={fotoDe(futbolista.ref)}
+                  alt=""
+                  width="28"
+                  height="28"
+                  loading="lazy"
+                  className="size-7 shrink-0 rounded-full bg-canvas-subtle object-cover"
+                />
                 <span className="truncate text-sm">{futbolista.nombre}</span>
               </button>
             </li>

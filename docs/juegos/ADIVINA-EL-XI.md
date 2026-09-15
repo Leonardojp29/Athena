@@ -72,7 +72,14 @@ Tres cosas lo hacen rápido, y las tres se midieron:
 3. **El adelanto en el cliente.** Mientras el servidor contesta, se filtra lo que ya respondió la
    palabra más corta, así la lista no queda en blanco.
 
-De punta a punta: **7,35 s antes, 0,8 s en frío y 1 ms repetida**.
+Y sobre todo **el índice local**: doce mil futbolistas —los más conocidos, más los once de cada reto
+sin falta— viajan al navegador como pares `[ref, nombre]`. Son 131 KB comprimidos, se bajan durante
+la presentación del partido y el navegador los guarda un día, así que la segunda partida no los
+vuelve a pedir. Buscar deja de salir a la red: **de 7,35 s a 8–17 ms**.
+
+De ahí sale que la identidad dentro del juego sea el `provider_ref` y no el UUID de Athena: treinta
+y seis caracteres contra seis son trescientos KB de diferencia sobre doce mil fichas. La foto
+tampoco viaja, se arma con el mismo id.
 
 **El orden importa tanto como la velocidad.** Con el puntaje de la búsqueda del sitio, escribir
 "messi" devolvía *Messias* primero, y "ramos" cuatro homónimos antes que Sergio Ramos. Acá el

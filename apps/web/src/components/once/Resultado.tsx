@@ -1,6 +1,6 @@
 import type { Resumen } from '@athena/adivina-el-xi';
 import type { RetoParaJugar, TitularRevelado } from '../../lib/api';
-import { relojDe } from '../../lib/adivina';
+import { fotoDe, relojDe } from '../../lib/adivina';
 
 interface Props {
   reto: RetoParaJugar;
@@ -44,9 +44,9 @@ export function Resultado({ reto, resumen, solucion, acertados, onSiguiente, onV
       </h2>
       <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
         {solucion.map((titular) => {
-          const acertado = acertados.has(titular.playerId);
+          const acertado = acertados.has(titular.ref);
           return (
-            <li key={titular.playerId}>
+            <li key={titular.ref}>
               <a
                 href={`/jugadores/${titular.slug}`}
                 className={[
@@ -56,18 +56,14 @@ export function Resultado({ reto, resumen, solucion, acertados, onSiguiente, onV
                     : 'border-border hover:border-border-strong',
                 ].join(' ')}
               >
-                {titular.fotoUrl ? (
-                  <img
-                    src={titular.fotoUrl}
-                    alt=""
-                    width="30"
-                    height="30"
-                    loading="lazy"
-                    className={`size-[30px] shrink-0 rounded-full object-cover ${acertado ? '' : 'grayscale'}`}
-                  />
-                ) : (
-                  <span className="size-[30px] shrink-0 rounded-full bg-canvas-subtle" />
-                )}
+                <img
+                  src={titular.fotoUrl ?? fotoDe(titular.ref)}
+                  alt=""
+                  width="30"
+                  height="30"
+                  loading="lazy"
+                  className={`size-[30px] shrink-0 rounded-full bg-canvas-subtle object-cover ${acertado ? '' : 'grayscale'}`}
+                />
                 <span className={`truncate text-sm ${acertado ? 'text-ink' : 'text-ink-muted'}`}>
                   {titular.nombre}
                 </span>

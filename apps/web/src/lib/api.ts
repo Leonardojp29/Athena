@@ -866,7 +866,7 @@ export const POSITION_LABEL: Record<string, string> = {
  * navegador, que es lo mínimo que se le debe a un juego de adivinar.
  */
 export interface CasilleroDelReto {
-  playerId: string;
+  ref: string;
   /** 'fila:columna' desde el arco propio. */
   grid: string;
   puesto: string | null;
@@ -894,7 +894,7 @@ export interface RetoParaJugar {
 }
 
 export interface TitularRevelado {
-  playerId: string;
+  ref: string;
   nombre: string;
   slug: string;
   fotoUrl: string | null;
@@ -902,7 +902,12 @@ export interface TitularRevelado {
 }
 
 export interface FutbolistaBuscado {
-  id: string;
+  /** El id del proveedor: la identidad del juego, y de ahí sale la foto sin cargarla en la respuesta. */
+  ref: string;
   nombre: string;
-  fotoUrl: string | null;
+}
+
+/** Pares `[ref, nombre]` y nada más: es lo que hace que el índice quepa en el navegador. */
+export interface IndiceDeFutbolistas {
+  jugadores: Array<[string, string]>;
 }

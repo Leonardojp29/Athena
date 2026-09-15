@@ -14,6 +14,8 @@ const POLITICAS = {
   clubesDelJuego: { navegador: 3600, borde: 86400, obsoleto: 172800 },
   /* Los apellidos que escribe una persona jugando son los mismos que escribe la de al lado. */
   buscadorDelJuego: { navegador: 300, borde: 300, obsoleto: 600 },
+  /* El índice del buscador pesa y cambia poco: quien juega dos veces seguidas no lo baja de nuevo. */
+  indiceDelJuego: { navegador: 86400, borde: 86400, obsoleto: 172800 },
   /* El once de un partido de 2019 no va a cambiar; si cambia, lo corrige la importación. */
   solucionDelJuego: { navegador: 3600, borde: 86400, obsoleto: 172800 },
   home: { navegador: 0, borde: 30, obsoleto: 60 },

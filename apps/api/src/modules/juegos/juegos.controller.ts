@@ -2,6 +2,7 @@ import { Controller, DefaultValuePipe, Get, Header, NotFoundException, Param, Qu
 import {
   RetosDelOnceService,
   type FutbolistaBuscado,
+  type IndiceDeFutbolistas,
   type RetoParaJugar,
   type TitularRevelado,
 } from './retos-del-once.service.js';
@@ -49,6 +50,16 @@ export class JuegosController {
     if (limpia.length === 0) return { resultados: [] };
     /* El servicio ya recuerda en memoria; pasar por `vistas_cache` agregaría dos viajes a la base. */
     return { resultados: await this.retos.buscar(limpia, Number(limit) || 8) };
+  }
+
+  /*
+   * El índice del buscador. Cambia cuando cambia el catálogo, así que el navegador y el borde lo
+   * pueden guardar un día: se baja una vez y todas las partidas siguientes buscan sin salir a la red.
+   */
+  @Get('indice')
+  @Header('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=172800')
+  async indice(): Promise<IndiceDeFutbolistas> {
+    return this.retos.indice();
   }
 
   @Get('reto/:clave/solucion')

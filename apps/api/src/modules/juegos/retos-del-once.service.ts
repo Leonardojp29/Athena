@@ -8,7 +8,8 @@ import { PrismaService } from '../../shared/prisma.service.js';
  * navegador. Los nombres llegan por `solucion`, cuando la partida termina o se pide una pista.
  */
 export interface CasilleroDelReto {
-  playerId: string;
+  /** El id del proveedor: es la identidad del juego, la misma que trae el índice del buscador. */
+  ref: string;
   grid: string;
   puesto: string | null;
 }
@@ -35,7 +36,7 @@ export interface RetoParaJugar {
 }
 
 export interface TitularRevelado {
-  playerId: string;
+  ref: string;
   nombre: string;
   slug: string;
   fotoUrl: string | null;
@@ -43,10 +44,22 @@ export interface TitularRevelado {
 }
 
 export interface FutbolistaBuscado {
-  id: string;
+  ref: string;
   nombre: string;
-  fotoUrl: string | null;
 }
+
+/** El índice que baja al navegador: pares `[ref, nombre]` y nada más, para que pese lo mínimo. */
+export interface IndiceDeFutbolistas {
+  jugadores: Array<[string, string]>;
+}
+
+/*
+ * Cuántas fichas lleva el índice.
+ *
+ * Doce mil son 241 KB crudos y cubren 336 de los 355 titulares del catálogo; los que faltan entran
+ * igual porque se agregan aparte. El resto son señuelos, que es lo que hace que buscar no delate.
+ */
+const TOPE_DEL_INDICE = 12_000;
 
 /* El catálogo no cambia durante una partida, así que lo recordado vale toda la sesión. */
 const TTL_BUSQUEDA_S = 900;
@@ -65,6 +78,8 @@ export class RetosDelOnceService {
    */
   private readonly busquedas = new Memoria<FutbolistaBuscado[]>(500);
   private readonly soluciones = new Memoria<TitularRevelado[]>(80);
+  /* El índice no vence dentro de la vida del proceso: lo que cambia es el catálogo, no la gente. */
+  private indiceEnMemoria: IndiceDeFutbolistas | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -109,7 +124,7 @@ export class RetosDelOnceService {
       where: { clave },
       include: {
         objetivo: { select: { slug: true } },
-        titulares: { select: { playerId: true, grid: true, puesto: true } },
+        titulares: { select: { providerRef: true, grid: true, puesto: true } },
       },
     });
     if (!reto || reto.titulares.length === 0) return null;
@@ -132,11 +147,9 @@ export class RetosDelOnceService {
       golesRival: reto.golesRival,
       nota: reto.nota,
       formacion: reto.formacion,
-      casilleros: reto.titulares.map((t) => ({
-        playerId: t.playerId,
-        grid: t.grid,
-        puesto: t.puesto,
-      })),
+      casilleros: reto.titulares.flatMap((t) =>
+        t.providerRef === null ? [] : [{ ref: t.providerRef, grid: t.grid, puesto: t.puesto }],
+      ),
     };
   }
 
@@ -155,7 +168,7 @@ export class RetosDelOnceService {
       select: {
         titulares: {
           select: {
-            playerId: true,
+            providerRef: true,
             grid: true,
             player: { select: { name: true, slug: true, photoUrl: true } },
           },
@@ -164,13 +177,51 @@ export class RetosDelOnceService {
     });
     if (!reto) return null;
 
-    return reto.titulares.map((t) => ({
-      playerId: t.playerId,
-      nombre: t.player.name,
-      slug: t.player.slug,
-      fotoUrl: t.player.photoUrl,
-      grid: t.grid,
-    }));
+    return reto.titulares.flatMap((t) =>
+      t.providerRef === null
+        ? []
+        : [
+            {
+              ref: t.providerRef,
+              nombre: t.player.name,
+              slug: t.player.slug,
+              fotoUrl: t.player.photoUrl,
+              grid: t.grid,
+            },
+          ],
+    );
+  }
+
+  /**
+   * El índice que el navegador se lleva para buscar sin salir a la red.
+   *
+   * Son los futbolistas más conocidos —por palmarés y minutos— y, sin falta, los once de cada reto:
+   * si alguno faltara, ese reto sería injugable sin conexión al servidor. Cambia cuando cambia el
+   * catálogo, así que el navegador puede guardarlo un día entero.
+   */
+  async indice(): Promise<IndiceDeFutbolistas> {
+    const recordado = this.indiceEnMemoria;
+    if (recordado) return recordado;
+
+    const filas = await this.prisma.$queryRaw<Array<{ ref: string; nombre: string }>>`
+      SELECT r.provider_ref AS ref, p.name AS nombre
+      FROM players p
+      JOIN external_references r
+        ON r.entity_type = 'player' AND r.entity_id = p.id AND r.provider = 'api-football'
+      WHERE p.id IN (
+        /* El paréntesis no es adorno: Postgres no acepta ORDER BY ... LIMIT suelto antes de un UNION. */
+        SELECT id FROM (
+          SELECT id FROM players ORDER BY relevancia DESC LIMIT ${TOPE_DEL_INDICE}
+        ) conocidos
+        UNION
+        SELECT player_id FROM titulares_del_reto
+      )
+      /* Ordenado por fama: el cliente usa la posición como desempate y así no viaja un número más. */
+      ORDER BY p.relevancia DESC`;
+
+    const armado = { jugadores: filas.map((f): [string, string] => [f.ref, f.nombre]) };
+    this.indiceEnMemoria = armado;
+    return armado;
   }
 
   /**
@@ -192,13 +243,14 @@ export class RetosDelOnceService {
     if (recordados) return recordados;
 
     const soloPrefijo = limpia.length < LARGO_MINIMO_DIFUSO;
-    const filas = await this.prisma.$queryRawUnsafe<
-      Array<{ id: string; nombre: string; fotoUrl: string | null }>
-    >(
+    const filas = await this.prisma.$queryRawUnsafe<Array<{ ref: string; nombre: string }>>(
       `
       WITH c AS (SELECT immutable_unaccent(lower($1::text)) AS q)
-      SELECT p.id::text, p.name AS nombre, p.photo_url AS "fotoUrl"
-      FROM players p, c
+      SELECT r.provider_ref AS ref, p.name AS nombre
+      FROM players p
+      JOIN external_references r
+        ON r.entity_type = 'player' AND r.entity_id = p.id AND r.provider = 'api-football',
+      c
       WHERE ${soloPrefijo ? PREFIJO : DIFUSO}
       ORDER BY ${PUNTAJE} DESC, p.name ASC
       LIMIT $2`,

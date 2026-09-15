@@ -16,6 +16,7 @@ import type { FutbolistaBuscado, RetoParaJugar, TitularRevelado } from '../../li
 import { apellidoDe, pedirSolucion, relojDe } from '../../lib/adivina';
 import { BuscadorDeJugadores } from './BuscadorDeJugadores';
 import { CanchaDelReto } from './CanchaDelReto';
+import { Icono } from './Icono';
 import { Resultado } from './Resultado';
 
 /* Bajo este umbral la barra late y el reloj se pone rojo: el color no puede ser el único aviso. */
@@ -103,13 +104,13 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
 
   const quedan = restante(partida, ahora);
   const apremia = quedan !== null && quedan <= APREMIO_MS;
-  const acertados = useMemo(() => new Set(partida.aciertos.map((a) => a.id)), [partida.aciertos]);
+  const acertados = useMemo(() => new Set(partida.aciertos.map((a) => a.ref)), [partida.aciertos]);
 
   const revelados = useMemo(() => {
-    const mapa = new Map<string, { nombre: string; fotoUrl: string | null }>();
+    const mapa = new Map<string, { nombre: string; ref: string }>();
     if (!fin || !solucion) return mapa;
     for (const t of solucion) {
-      if (!acertados.has(t.playerId)) mapa.set(t.grid, { nombre: t.nombre, fotoUrl: t.fotoUrl });
+      if (!acertados.has(t.ref)) mapa.set(t.grid, { nombre: t.nombre, ref: t.ref });
     }
     return mapa;
   }, [fin, solucion, acertados]);
@@ -131,107 +132,134 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
   const faltan = reto.casilleros.length - partida.aciertos.length;
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-3 px-4 py-4">
+    <div className="mx-auto w-full max-w-6xl px-4 py-4">
       <header className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="flex min-w-0 items-center gap-3">
           {reto.objetivoEscudoUrl && (
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-chalk p-1 ring-1 ring-border">
-              <img src={reto.objetivoEscudoUrl} alt="" width="28" height="28" className="size-full object-contain" />
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-chalk p-1 ring-1 ring-border sm:size-12">
+              <img src={reto.objetivoEscudoUrl} alt="" width="40" height="40" className="size-full object-contain" />
             </span>
           )}
           <div className="min-w-0">
-            <p className="truncate font-display text-sm font-semibold uppercase tracking-label text-ink">
+            <p className="truncate font-display text-lg font-semibold uppercase leading-tight tracking-label text-ink sm:text-xl">
               {reto.objetivoNombre}
             </p>
-            <p className="truncate text-2xs text-ink-muted">
-              {reto.deLocal ? '' : 'de visita a '}
-              {reto.rivalNombre} · {reto.golesObjetivo}-{reto.golesRival} · {reto.temporada}
+            <p className="truncate text-xs text-ink-muted sm:text-sm">
+              {reto.deLocal ? 'contra ' : 'de visita a '}
+              <span className="font-medium text-ink">{reto.rivalNombre}</span>
+              <span className="tabular"> · {reto.golesObjetivo}-{reto.golesRival}</span> ·{' '}
+              {reto.competencia} {reto.temporada}
+              {reto.fase ? ` · ${reto.fase}` : ''}
             </p>
           </div>
         </div>
 
-        <p className="shrink-0 font-display text-xl font-semibold tabular text-ink">
+        <p className="shrink-0 font-display text-2xl font-semibold tabular text-ink">
           {partida.aciertos.length}
           <span className="text-ink-muted">/{reto.casilleros.length}</span>
         </p>
       </header>
 
-      {quedan !== null && <BarraDeTiempo quedan={quedan} apremia={apremia} />}
-
-      <CanchaDelReto
-        casilleros={reto.casilleros}
-        formacion={reto.formacion}
-        aciertos={partida.aciertos}
-        pistas={partida.pistas}
-        revelados={revelados}
-        eligiendoPista={eligiendoPista}
-        onElegirCasilla={(grid) => void alPedirPista(grid)}
-      />
-
-      {/* El buscador debajo de la cancha, con la pista al costado: el pulgar los alcanza a los dos. */}
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <BuscadorDeJugadores bloqueado={fin} aviso={aviso} onElegir={alElegir} />
+      {quedan !== null && (
+        <div className="mt-3">
+          <BarraDeTiempo quedan={quedan} apremia={apremia} />
         </div>
-        <button
-          type="button"
-          data-pista
-          aria-pressed={eligiendoPista}
-          onClick={() => {
-            /*
-             * La solución se empieza a pedir acá y no cuando se elige la casilla: el viaje se
-             * solapa con el segundo que tarda el jugador en decidir, y la letra aparece al toque.
-             */
-            if (!eligiendoPista) void asegurarSolucion().catch(() => undefined);
-            setEligiendoPista((v) => !v);
-          }}
-          className={[
-            'shrink-0 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors duration-200',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ink',
-            eligiendoPista
-              ? 'border-card-yellow bg-card-yellow/20 text-ink'
-              : 'border-border-strong text-ink-muted hover:border-primary-ink hover:text-ink',
-          ].join(' ')}
-        >
-          {eligiendoPista ? 'Elige casilla' : 'Pista'}
-        </button>
-      </div>
+      )}
 
-      <p className="text-2xs leading-relaxed text-ink-muted">
-        Te faltan <span className="font-display text-sm font-semibold tabular text-ink">{faltan}</span>{' '}
-        · Escribe el nombre que recuerdes: apellido, nombre completo, con o sin tildes. Enter elige el
-        resaltado.
-      </p>
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <CanchaDelReto
+          casilleros={reto.casilleros}
+          formacion={reto.formacion}
+          aciertos={partida.aciertos}
+          pistas={partida.pistas}
+          revelados={revelados}
+          eligiendoPista={eligiendoPista}
+          onElegirCasilla={(grid) => void alPedirPista(grid)}
+        />
 
-      {!conTiempo &&
-        (confirmandoRendirse ? (
-          <div className="flex gap-2">
+        {/*
+          El buscador a la derecha en escritorio y debajo en teléfono. Fijo al desplazar, porque la
+          lista de resultados abre hacia abajo y a pantalla completa quedaba cortada contra el borde.
+        */}
+        <aside className="lg:sticky lg:top-20">
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <BuscadorDeJugadores bloqueado={fin} aviso={aviso} onElegir={alElegir} />
+            </div>
             <button
               type="button"
-              data-rendirse-confirmar
-              onClick={() => setPartida((actual) => rendirse(actual, Date.now()))}
-              className="flex-1 rounded-lg border border-card-red bg-card-red/15 px-3 py-2 text-sm font-medium text-ink"
+              data-pista
+              aria-pressed={eligiendoPista}
+              onClick={() => {
+                /*
+                 * La solución se empieza a pedir acá y no cuando se elige la casilla: el viaje se
+                 * solapa con el segundo que tarda el jugador en decidir, y la letra aparece al toque.
+                 */
+                if (!eligiendoPista) void asegurarSolucion().catch(() => undefined);
+                setEligiendoPista((v) => !v);
+              }}
+              className={[
+                'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-medium',
+                'transition-colors duration-200',
+                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ink',
+                eligiendoPista
+                  ? 'border-card-yellow bg-card-yellow/20 text-ink'
+                  : 'border-border-strong text-ink-muted hover:border-primary-ink hover:text-ink',
+              ].join(' ')}
             >
-              Sí, rendirme
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmandoRendirse(false)}
-              className="flex-1 rounded-lg border border-border-strong px-3 py-2 text-sm text-ink-muted"
-            >
-              Seguir jugando
+              <span className={eligiendoPista ? 'text-card-yellow-ink' : 'text-card-yellow-ink'}>
+                <Icono nombre="destello" size={16} />
+              </span>
+              {eligiendoPista ? 'Elige casilla' : 'Pista'}
             </button>
           </div>
-        ) : (
-          <button
-            type="button"
-            data-rendirse
-            onClick={() => setConfirmandoRendirse(true)}
-            className="self-start text-2xs uppercase tracking-label text-ink-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
-          >
-            Terminar partida
-          </button>
-        ))}
+
+          <p className="mt-2 text-2xs leading-relaxed text-ink-muted">
+            Te faltan <span className="font-display text-sm font-semibold tabular text-ink">{faltan}</span>{' '}
+            · Escribe el nombre que recuerdes: apellido, nombre completo, con o sin tildes. Enter
+            elige el resaltado.
+          </p>
+
+          {!conTiempo &&
+            (confirmandoRendirse ? (
+              <div className="mt-3 rounded-lg border border-border bg-canvas-subtle p-3">
+                <p className="text-sm">¿Terminamos la partida? Se revela el once completo.</p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    data-rendirse-confirmar
+                    onClick={() => setPartida((actual) => rendirse(actual, Date.now()))}
+                    className="flex-1 rounded-md border border-card-red bg-card-red/15 px-3 py-2 text-sm font-medium transition-colors hover:bg-card-red/25"
+                  >
+                    Sí, terminar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmandoRendirse(false)}
+                    className="flex-1 rounded-md border border-border-strong px-3 py-2 text-sm transition-colors hover:bg-surface"
+                  >
+                    Seguir jugando
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                data-rendirse
+                onClick={() => setConfirmandoRendirse(true)}
+                className={[
+                  'mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border',
+                  'px-3 py-2 text-sm font-medium text-ink-muted transition-colors duration-200',
+                  'hover:border-card-red hover:bg-card-red/10 hover:text-ink',
+                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ink',
+                ].join(' ')}
+              >
+                <Icono nombre="cerrar" size={15} />
+                Terminar partida
+              </button>
+            ))}
+        </aside>
+      </div>
     </div>
   );
 }

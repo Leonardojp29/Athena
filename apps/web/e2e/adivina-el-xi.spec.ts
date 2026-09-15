@@ -43,12 +43,12 @@ test.describe('Adivina el XI', () => {
 
     expect(reto.casilleros).toHaveLength(11);
     for (const casillero of reto.casilleros) {
-      expect(Object.keys(casillero).sort()).toEqual(['grid', 'playerId', 'puesto']);
+      expect(Object.keys(casillero).sort()).toEqual(['grid', 'puesto', 'ref']);
     }
   });
 
   /* El buscador no puede devolver posición, club ni nacionalidad: cada uno sería una pista regalada. */
-  test('el buscador solo devuelve cara y nombre', async ({ page }) => {
+  test('el buscador solo devuelve nombre e identidad', async ({ page }) => {
     const respuesta = await page.request.get(`${RUTA}/jugadores.json?q=cueva`);
     const { resultados } = (await respuesta.json()) as {
       resultados: Array<Record<string, unknown>>;
@@ -56,8 +56,37 @@ test.describe('Adivina el XI', () => {
 
     expect(resultados.length).toBeGreaterThan(0);
     for (const futbolista of resultados) {
-      expect(Object.keys(futbolista).sort()).toEqual(['fotoUrl', 'id', 'nombre']);
+      expect(Object.keys(futbolista).sort()).toEqual(['nombre', 'ref']);
     }
+  });
+
+  /*
+   * El índice es lo que hace que buscar cueste milisegundos en vez del segundo que tarda la ida y
+   * vuelta a la base. Que venga ordenado por fama es parte del contrato: el cliente usa la posición
+   * como desempate, así que sin orden "ramos" deja de traer a Sergio Ramos.
+   */
+  test('el índice llega completo y ordenado por fama', async ({ page }) => {
+    const respuesta = await page.request.get(`${RUTA}/indice.json`);
+    const { jugadores } = (await respuesta.json()) as { jugadores: Array<[string, string]> };
+
+    expect(jugadores.length).toBeGreaterThan(10_000);
+    expect(jugadores[0]?.[1]).toBeTruthy();
+
+    const primerCentenar = jugadores.slice(0, 100).map(([, nombre]) => nombre);
+    expect(primerCentenar).toContain('Lionel Messi');
+  });
+
+  test('el buscador responde sin salir a la red', async ({ page }) => {
+    await jugar(page);
+    /* El índice baja durante la presentación; para cuando se juega, ya está en memoria. */
+    await page.waitForTimeout(1500);
+
+    const arranque = Date.now();
+    await page.locator('#once-buscador').fill('messi');
+    await expect(page.locator('#once-resultados li').first()).toBeVisible();
+    expect(Date.now() - arranque).toBeLessThan(400);
+
+    await expect(page.locator('#once-resultados li').first()).toContainText('Lionel Messi');
   });
 
   test('se puede jugar con el teclado, y un intento equivocado no resuelve nada', async ({ page }) => {

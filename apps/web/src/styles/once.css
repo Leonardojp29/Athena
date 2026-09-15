@@ -70,3 +70,81 @@
 [data-cancha-once] [data-resuelto] {
   animation-delay: 40ms;
 }
+
+/*
+ * El acierto: un anillo verde se abre desde la ficha y se desvanece.
+ *
+ * Es una capa aparte y con `pointer-events: none`, así que no toca al campo de texto: quien está
+ * escribiendo el nombre siguiente no pierde ni una tecla. Solo anima `transform` y `opacity`.
+ */
+@keyframes once-anillo {
+  from {
+    opacity: 0.85;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+.animate-once-anillo {
+  animation: once-anillo var(--a-motion-drama) var(--a-ease-out-expo) forwards;
+}
+
+/* El aviso de acierto o error entra desde abajo y se queda; no desplaza nada porque tiene alto fijo. */
+@keyframes once-aviso {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-once-aviso {
+  animation: once-aviso var(--a-motion-base) var(--a-ease) backwards;
+}
+
+/*
+ * La cuenta de salida: cada número aparece grande, se asienta y se apaga, con el aro cerrándose
+ * alrededor como una luz de largada. Un segundo por número, que es el tiempo que uno tarda en
+ * prepararse de verdad.
+ */
+@keyframes once-largada {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+.animate-once-largada {
+  animation: once-largada 1000ms var(--a-ease-out-expo) both;
+}
+
+@keyframes once-aro {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-once-aro {
+  animation: once-aro 1000ms linear both;
+}

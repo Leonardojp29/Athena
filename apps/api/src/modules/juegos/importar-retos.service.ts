@@ -101,7 +101,7 @@ export class ImportarRetosService {
       const playerId = j.playerRef === null ? undefined : porRef.get(j.playerRef);
       const grid = j.playerRef === null ? undefined : disposicion.casillas.get(j.playerRef);
       if (!playerId || !grid) return [];
-      return [{ playerId, grid, puesto: j.position, dorsal: j.number }];
+      return [{ playerId, providerRef: j.playerRef, grid, puesto: j.position, dorsal: j.number }];
     });
     /* Un once al que le falta alguien no es el once: antes que un reto imposible, ninguno. */
     if (titulares.length < 11) return null;
@@ -211,7 +211,13 @@ export class ImportarRetosService {
       golesRival: number;
       formacion: string;
       aMano: boolean;
-      titulares: Array<{ playerId: string; grid: string; puesto: string | null; dorsal: number | null }>;
+      titulares: Array<{
+        playerId: string;
+        providerRef: string | null;
+        grid: string;
+        puesto: string | null;
+        dorsal: number | null;
+      }>;
     },
   ): Promise<void> {
     const objetivoTeamId = await this.refs.resolve(this.provider.name, 'team', datos.objetivoRef);

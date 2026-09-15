@@ -1,6 +1,6 @@
 import { layout } from '@athena/domain';
 import type { Acierto, Casillero } from '@athena/adivina-el-xi';
-import { apellidoDe } from '../../lib/adivina';
+import { apellidoDe, fotoDe } from '../../lib/adivina';
 import { MarcasDeCancha } from './MarcasDeCancha';
 
 /* Los puestos del proveedor, ya en español, para rotular la casilla sin delatar quién la ocupó. */
@@ -16,7 +16,7 @@ interface Props {
   formacion: string;
   aciertos: Acierto[];
   pistas: Record<string, string>;
-  revelados: Map<string, { nombre: string; fotoUrl: string | null }>;
+  revelados: Map<string, { nombre: string; ref: string }>;
   /** Al pedir una pista, el casillero deja de ser decorado y se vuelve elegible. */
   eligiendoPista: boolean;
   onElegirCasilla: (grid: string) => void;
@@ -49,7 +49,7 @@ export function CanchaDelReto({
       /* El alto manda y el ancho lo sigue: así la cancha y sus controles entran en una pantalla. */
       className={[
         'relative mx-auto aspect-[680/1000] overflow-hidden rounded-lg border border-board-edge',
-        'h-[min(58dvh,30rem)] w-auto max-w-full',
+        'h-[min(68dvh,36rem)] w-auto max-w-full',
       ].join(' ')}
     >
       <svg
@@ -96,7 +96,7 @@ export function CanchaDelReto({
               {acierto || revelado ? (
                 <Iman
                   nombre={(acierto ?? revelado)?.nombre ?? ''}
-                  fotoUrl={(acierto ?? revelado)?.fotoUrl ?? null}
+                  ref_={(acierto ?? revelado)?.ref ?? ''}
                   revelado={!acierto}
                 />
               ) : (
@@ -111,7 +111,7 @@ export function CanchaDelReto({
 }
 
 /* Quien se acertó cae como un imán sobre el tablero; quien se reveló al final llega apagado. */
-function Iman({ nombre, fotoUrl, revelado }: { nombre: string; fotoUrl: string | null; revelado: boolean }) {
+function Iman({ nombre, ref_, revelado }: { nombre: string; ref_: string; revelado: boolean }) {
   return (
     <>
       <span
@@ -121,13 +121,20 @@ function Iman({ nombre, fotoUrl, revelado }: { nombre: string; fotoUrl: string |
           revelado ? 'border-chalk/35 grayscale' : 'border-win',
         ].join(' ')}
       >
-        {fotoUrl ? (
-          <img src={fotoUrl} alt="" width="44" height="44" loading="lazy" className="size-full rounded-full object-cover" />
-        ) : (
-          <span className="font-display text-sm font-semibold text-chalk">
-            {apellidoDe(nombre).slice(0, 2).toUpperCase()}
-          </span>
+        {!revelado && (
+          <span
+            aria-hidden="true"
+            className="animate-once-anillo pointer-events-none absolute -inset-1 rounded-full border-2 border-win"
+          />
         )}
+        <img
+          src={fotoDe(ref_)}
+          alt=""
+          width="44"
+          height="44"
+          loading="lazy"
+          className="size-full rounded-full object-cover"
+        />
       </span>
       <span
         className={[

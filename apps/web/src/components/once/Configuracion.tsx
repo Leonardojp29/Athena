@@ -13,6 +13,8 @@ interface Props {
   onDificultad: (valor: DificultadElegida) => void;
   onTiempo: (valor: boolean) => void;
   onJugar: () => void;
+  /** Lo que la ruleta señala mientras gira; null cuando no hay sorteo en curso. */
+  girando: { catalogo: Catalogo | null; dificultad: DificultadElegida | null } | null;
 }
 
 /* La bandera del país sale del proveedor, igual que en el resto del sitio. */
@@ -87,6 +89,7 @@ export function Configuracion({
   onDificultad,
   onTiempo,
   onJugar,
+  girando,
 }: Props) {
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
@@ -104,7 +107,8 @@ export function Configuracion({
           {CATALOGOS.map((opcion) => (
             <Opcion
               key={opcion.valor}
-              elegida={catalogo === opcion.valor}
+              elegida={girando ? false : catalogo === opcion.valor}
+              sorteada={girando?.catalogo === opcion.valor}
               onClick={() => onCatalogo(opcion.valor)}
               {...opcion}
             />
@@ -115,7 +119,8 @@ export function Configuracion({
           {DIFICULTADES.map((opcion) => (
             <Opcion
               key={opcion.valor}
-              elegida={dificultad === opcion.valor}
+              elegida={girando ? false : dificultad === opcion.valor}
+              sorteada={girando?.dificultad === opcion.valor}
               onClick={() => onDificultad(opcion.valor)}
               {...opcion}
             />
@@ -159,7 +164,7 @@ export function Configuracion({
           'focus-visible:outline-primary-ink disabled:opacity-60 disabled:hover:translate-y-0',
         ].join(' ')}
       >
-        {cargando ? 'Buscando partido…' : 'Jugar'}
+        {girando ? 'Sorteando…' : cargando ? 'Buscando partido…' : 'Jugar'}
       </button>
     </div>
   );
@@ -185,12 +190,14 @@ function Paso({ numero, titulo, children }: { numero: number; titulo: string; ch
  */
 function Opcion({
   elegida,
+  sorteada = false,
   nombre,
   linea,
   marca,
   onClick,
 }: {
   elegida: boolean;
+  sorteada?: boolean;
   nombre: string;
   linea: string;
   marca: Marca;
@@ -203,11 +210,14 @@ function Opcion({
       onClick={onClick}
       className={[
         'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left',
-        'transition-[background-color,border-color] duration-200',
+        /* Rápido al girar la ruleta y con el compás normal el resto del tiempo. */
+        sorteada ? 'transition-none' : 'transition-[background-color,border-color] duration-200',
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ink',
-        elegida
-          ? 'border-2 border-primary-ink bg-primary/10'
-          : 'border-border hover:border-border-strong hover:bg-canvas-subtle',
+        sorteada
+          ? 'border-2 border-card-yellow bg-card-yellow/20'
+          : elegida
+            ? 'border-2 border-primary-ink bg-primary/10'
+            : 'border-border hover:border-border-strong hover:bg-canvas-subtle',
       ].join(' ')}
     >
       <Marca marca={marca} />

@@ -12,16 +12,17 @@ export type Dificultad = 'facil' | 'normal' | 'dificil';
 export type DificultadElegida = Dificultad | 'aleatorio';
 
 /**
- * Lo que dura una partida contra reloj: dos minutos, sea cual sea la dificultad.
+ * Lo que dura una partida contra reloj: tres minutos, sea cual sea la dificultad.
  *
  * Antes cada dificultad tenía el suyo y hacía que los tiempos no se pudieran comparar: terminar un
  * XI difícil en 4:10 no decía nada frente a uno fácil en 1:50. Con el mismo reloj para todas, lo
  * que cambia es el once y no la regla.
  */
-export const DURACION_MS = 2 * 60_000;
+export const DURACION_MS = 3 * 60_000;
 
 export interface Casillero {
-  playerId: string;
+  /** El id del proveedor: la identidad del juego, la misma del índice del buscador. */
+  ref: string;
   /** 'fila:columna' desde el arco propio. */
   grid: string;
   puesto: string | null;
@@ -40,11 +41,10 @@ export interface Opciones {
   arrancaEn: number;
 }
 
-/** Lo que el buscador devuelve y el jugador elige. */
+/** Lo que el buscador devuelve y el jugador elige. La foto se deriva del ref y no viaja. */
 export interface Eleccion {
-  id: string;
+  ref: string;
   nombre: string;
-  fotoUrl: string | null;
 }
 
 export interface Acierto extends Eleccion {
@@ -100,11 +100,11 @@ export function restante(partida: Partida, ahora: number): number | null {
 export function intentar(partida: Partida, eleccion: Eleccion): Veredicto {
   if (terminada(partida)) return { tipo: 'cerrada', partida };
 
-  if (partida.aciertos.some((a) => a.id === eleccion.id)) {
+  if (partida.aciertos.some((a) => a.ref === eleccion.ref)) {
     return { tipo: 'repetido', partida };
   }
 
-  const casillero = partida.reto.casilleros.find((c) => c.playerId === eleccion.id);
+  const casillero = partida.reto.casilleros.find((c) => c.ref === eleccion.ref);
   if (!casillero) {
     return { tipo: 'fallo', partida: { ...partida, fallos: partida.fallos + 1 } };
   }

@@ -19,7 +19,7 @@ const RETO: Reto = {
   clave: 'int-dificil-12',
   formacion: '4-2-3-1',
   casilleros: Array.from({ length: 11 }, (_, i) => ({
-    playerId: `j${i}`,
+    ref: `j${i}`,
     grid: `${Math.floor(i / 4) + 1}:${(i % 4) + 1}`,
     puesto: null,
   })),
@@ -29,7 +29,7 @@ const ARRANQUE = 1_000_000;
 const armar = (conTiempo = true): Partida =>
   empezar(RETO, { conTiempo, dificultad: 'normal', arrancaEn: ARRANQUE });
 
-const elegir = (id: string) => ({ id, nombre: id.toUpperCase(), fotoUrl: null });
+const elegir = (ref: string) => ({ ref, nombre: ref.toUpperCase() });
 
 describe('intentar', () => {
   it('un titular se acomoda en su casilla', () => {
