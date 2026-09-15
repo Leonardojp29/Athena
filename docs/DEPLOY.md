@@ -141,13 +141,17 @@ olvida y sin él el build falla.
    - **Framework Preset**: Other. Los comandos ya vienen de `apps/api/vercel.json`.
 3. **Environment Variables → Import .env** y pegar `apps/api/.env` entero. Después ajustar:
 
-   | Variable | Valor en Vercel |
+   | Variable | Qué hacer con ella |
    |---|---|
-   | `PORT` | **borrarla**: la pone la plataforma |
-   | `WEB_ORIGIN` | la URL de la web, sin barra final. Todavía no existe; se vuelve en el paso 4.3 |
-   | `CRON_SECRET` | el mismo que irá en el cron (sección 6) |
+   | `PORT` | **borrarla.** Es la única que se borra: el puerto lo pone la plataforma |
+   | `WEB_ORIGIN` | **dejarla y corregirla**: la URL de la web, sin barra final. Todavía no existe, así que se vuelve en el paso 4.3 |
+   | `CRON_SECRET` | **dejarla tal cual.** Es la misma que irá en el cron (sección 6) |
 
    `NODE_ENV=production` no hace falta: Vercel ya lo define.
+
+   > Borrar `CRON_SECRET` deja el API entero respondiendo **503** en `/v1/internal/*` y el latido
+   > nunca corre. Borrar `WEB_ORIGIN` deja al API sin cabeceras CORS, y con eso se caen el buscador,
+   > la pastilla de «en vivo» del encabezado y el marcador de la página de partido.
 4. **Deploy**, y comprobar:
 
    ```bash
