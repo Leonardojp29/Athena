@@ -2,7 +2,7 @@
 import EventIcon from '../EventIcon.astro';
 import PlayerName from '../player/PlayerName.astro';
 import type { MatchEventView, MatchPlayerStats, TeamLineup, TeamSummary } from '../../lib/api';
-import { coloresDeClub, temaEquipo } from '../../lib/color';
+import { colorEquipo, coloresDeClub, temaEquipo } from '../../lib/color';
 import { claseDeNota } from '../../lib/nota';
 
 /*
@@ -45,6 +45,32 @@ const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
  */
 const ALTO_MAXIMO_DE_FILA = 4;
 
+/*
+ * Los lavados del rayado. Bajos a propósito: sobre ellos van la foto, el nombre y la nota, y un
+ * fondo más fuerte les come el contraste sin agregar información.
+ */
+const LAVADO_PAR = 0.05;
+const LAVADO_IMPAR = 0.11;
+const LAVADO_AL_PASAR = 0.2;
+
+function paletaDeBanco(team: TeamSummary) {
+  const [primario, secundario] = coloresDeClub(team.slug, team.primaryColor, team.secondaryColor);
+  const color = colorEquipo(primario);
+  const tema = temaEquipo(primario, secundario);
+  if (!color || !tema) return null;
+
+  return {
+    /* Plano y no degradado: la cabecera es una etiqueta, no una portada. */
+    fondo: color.base,
+    tinta: tema.tinta,
+    tintaSuave: tema.tintaSuave,
+    linea: tema.linea,
+    par: color.suave(LAVADO_PAR),
+    impar: color.suave(LAVADO_IMPAR),
+    alPasar: color.suave(LAVADO_AL_PASAR),
+  };
+}
+
 const lados = [homeTeam, awayTeam]
   .map((team) => ({ team, lineup: lineups.find((l) => l.teamId === team.id) }))
   .filter((e): e is { team: TeamSummary; lineup: TeamLineup } => e.lineup !== undefined)
@@ -52,12 +78,15 @@ const lados = [homeTeam, awayTeam]
     team,
     lineup,
     /*
-     * La cabecera del banco con los colores del club, que es lo que hace que de un vistazo se sepa
-     * cuál es cuál sin leer el nombre. `coloresDeClub` descarta los que no dicen nada —blanco, negro
-     * y gris son un tercio de los equipos con dato— y `temaEquipo` elige la tinta por luminancia,
-     * así un crema como el de Universitario no se lleva texto blanco encima.
+     * El banco con los colores del club, que es lo que hace que de un vistazo se sepa cuál es cuál
+     * sin leer el nombre: la cabecera con el color plano y las filas alternando dos lavados del
+     * mismo, como el rayado de una tabla.
+     *
+     * `coloresDeClub` descarta los que no dicen nada —blanco, negro y gris son un tercio de los
+     * equipos con dato— y `temaEquipo` elige la tinta por luminancia, así un crema como el de
+     * Universitario no se lleva texto blanco encima.
      */
-    tema: temaEquipo(...coloresDeClub(team.slug, team.primaryColor, team.secondaryColor)),
+    paleta: paletaDeBanco(team),
     banco: [...lineup.substitutes]
       .map((jugador) => {
         const stats = jugador.playerId ? (notas.get(jugador.playerId) ?? null) : null;
@@ -88,19 +117,17 @@ const lados = [homeTeam, awayTeam]
 {
   lados.length > 0 && (
     <div class="grid items-stretch gap-3 sm:grid-cols-2">
-      {lados.map(({ team, lineup, banco, tema }) => (
+      {lados.map(({ team, lineup, banco, paleta }) => (
         /* Anfitrión de la ficha: el popup se dibuja sobre el banco del equipo al que se le hizo clic. */
         <section
           data-ficha-anfitrion
           class="relative flex flex-col overflow-hidden rounded-lg border border-border bg-surface"
         >
-          {/* La franja de identidad, primario a secundario: los dos colores del club en un hilo. */}
-          {tema && <span class="block h-1" style={`background:${tema.franja}`} aria-hidden="true" />}
           <header
             class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2"
             style={
-              tema
-                ? `background:${tema.fondo};color:${tema.tinta};border-color:${tema.linea}`
+              paleta
+                ? `background:${paleta.fondo};color:${paleta.tinta};border-color:${paleta.linea}`
                 : undefined
             }
           >
@@ -108,23 +135,30 @@ const lados = [homeTeam, awayTeam]
             <h3 class="truncate text-2xs font-semibold uppercase tracking-label">El banco</h3>
             {lineup.coachName && (
               <span
-                class:list={['truncate text-2xs', !tema && 'text-ink-muted']}
-                style={tema ? `color:${tema.tintaSuave}` : undefined}
+                class:list={['truncate text-2xs', !paleta && 'text-ink-muted']}
+                style={paleta ? `color:${paleta.tintaSuave}` : undefined}
               >
                 DT {lineup.coachName}
               </span>
             )}
             <span
-              class:list={['ml-auto shrink-0 text-2xs', !tema && 'text-ink-muted']}
-              style={tema ? `color:${tema.tintaSuave}` : undefined}
+              class:list={['ml-auto shrink-0 text-2xs', !paleta && 'text-ink-muted']}
+              style={paleta ? `color:${paleta.tintaSuave}` : undefined}
             >
               {`${banco.filter((b) => b.entrada).length} de ${banco.length} entraron`}
             </span>
           </header>
 
           <ul
+            data-banco
             class="grid flex-1 gap-0 px-1.5 py-1 [grid-auto-rows:minmax(0,1fr)]"
-            style={`max-height:${banco.length * ALTO_MAXIMO_DE_FILA}rem`}
+            style={[
+              `max-height:${banco.length * ALTO_MAXIMO_DE_FILA}rem`,
+              paleta &&
+                `--fila-par:${paleta.par};--fila-impar:${paleta.impar};--fila-al-pasar:${paleta.alPasar}`,
+            ]
+              .filter(Boolean)
+              .join(';')}
           >
             {banco.map(({ jugador, entrada, nota, ficha }) => (
               <li>
@@ -180,3 +214,25 @@ const lados = [homeTeam, awayTeam]
     </div>
   )
 }
+
+<style>
+  /*
+   * El rayado con el color del club. Va en CSS y no en cada fila porque el color sale de una
+   * variable y `nth-child` ya sabe alternar: quince atributos de estilo repetidos por banco pesaban
+   * más que estas cuatro reglas.
+   *
+   * El fondo va en el `li` y el realce al pasar en el botón, que es quien recibe el puntero. Sin
+   * color de club no se define ninguna variable y manda el `hover` de siempre.
+   */
+  [data-banco] li:nth-child(odd) {
+    background: var(--fila-impar, transparent);
+  }
+
+  [data-banco] li:nth-child(even) {
+    background: var(--fila-par, transparent);
+  }
+
+  [data-banco] button:enabled:hover {
+    background: var(--fila-al-pasar, var(--color-canvas-subtle));
+  }
+</style>
