@@ -8,27 +8,27 @@ Generado el 2026-09-15. Un reto en cualquier estado que no sea
 | int-facil-1 | facil | Argentina 3-3 Francia | Copa Mundial de la FIFA 2022 | **ok** | 979139 | 2022-12-18 | 4-3-3 | 11/11 | 0 |
 | int-facil-2 | facil | España 1-0 Argentina | Copa Mundial de la FIFA 2026 | **ok** | 1591866 | 2026-07-19 | 4-2-3-1 | 11/11 | 0 |
 | int-facil-3 | facil | Francia 4-2 Croacia | Copa Mundial de la FIFA 2018 | **ok** | 135776 | 2018-07-15 | 4-4-2 | 11/11 | 1 |
-| int-facil-4 | facil | España 1-0 Países Bajos | Copa Mundial de la FIFA 2010 | **sin formación** | 208391 | 2010-07-11 | — | 11/11 | 0 |
+| int-facil-4 | facil | España 1-0 Países Bajos | Copa Mundial de la FIFA 2010 | **ok (a mano)** | 208391 | 2010-07-11 | 4-2-3-1 | 11/11 | 7 |
 | int-facil-5 | facil | Brasil 4-1 Corea del Sur | Copa Mundial de la FIFA 2022 | **ok** | 977705 | 2022-12-05 | 4-2-3-1 | 11/11 | 0 |
-| int-facil-6 | facil | Alemania 1-0 Argentina | Copa Mundial de la FIFA 2014 | **sin formación** | 208320 | 2014-07-13 | — | 11/11 | 0 |
-| int-facil-7 | facil | Barcelona 3-1 Juventus | UEFA Champions League 2015 | **sin formación** | 355171 | 2015-06-06 | — | 11/11 | 0 |
+| int-facil-6 | facil | Alemania 1-0 Argentina | Copa Mundial de la FIFA 2014 | **ok (a mano)** | 208320 | 2014-07-13 | 4-3-3 | 11/11 | 5 |
+| int-facil-7 | facil | Barcelona 3-1 Juventus | UEFA Champions League 2015 | **ok (a mano)** | 355171 | 2015-06-06 | 4-3-3 | 11/11 | 2 |
 | int-facil-8 | facil | Barcelona 6-1 PSG | UEFA Champions League 2017 | **ok** | 152855 | 2017-03-08 | 3-1-4-2 | 11/11 | 2 |
-| int-facil-9 | facil | Barcelona 5-0 Real Madrid | LaLiga 2010 | **sin formación** | 205353 | 2010-11-29 | — | 11/11 | 0 |
+| int-facil-9 | facil | Barcelona 5-0 Real Madrid | LaLiga 2010 | **ok (a mano)** | 205353 | 2010-11-29 | 4-3-3 | 11/11 | 6 |
 | int-facil-10 | facil | Real Madrid 4-1 Juventus | UEFA Champions League 2017 | **ok** | 152839 | 2017-06-03 | 4-3-1-2 | 11/11 | 0 |
-| int-facil-11 | facil | Real Madrid 3-1 Liverpool | UEFA Champions League 2018 | **sin formación** | 152620 | 2018-05-26 | — | 11/11 | 0 |
+| int-facil-11 | facil | Real Madrid 3-1 Liverpool | UEFA Champions League 2018 | **ok (a mano)** | 152620 | 2018-05-26 | 4-3-1-2 | 11/11 | 0 |
 | int-facil-12 | facil | Borussia Dortmund 0-2 Real Madrid | UEFA Champions League 2024 | **ok** | 1199389 | 2024-06-01 | 4-3-1-2 | 11/11 | 0 |
 | int-facil-13 | facil | Bayern Múnich 1-0 PSG | UEFA Champions League 2020 | **ok** | 591151 | 2020-08-23 | 4-2-3-1 | 11/11 | 0 |
 | int-facil-14 | facil | PSG 5-0 Inter | UEFA Champions League 2025 | **ok** | 1374812 | 2025-05-31 | 4-3-3 | 11/11 | 0 |
 | int-facil-15 | facil | Francia 4-3 Argentina | Copa Mundial de la FIFA 2018 | **ok** | 135761 | 2018-06-30 | 4-2-3-1 | 11/11 | 1 |
-| int-normal-1 | normal | Brasil 1-7 Alemania | Copa Mundial de la FIFA 2014 | **sin formación** | 208317 | 2014-07-08 | — | 11/11 | 0 |
+| int-normal-1 | normal | Brasil 1-7 Alemania | Copa Mundial de la FIFA 2014 | **ok (a mano)** | 208317 | 2014-07-08 | 4-3-3 | 11/11 | 5 |
 | int-normal-2 | normal | Inglaterra 1-2 Argentina | Copa Mundial de la FIFA 2026 | **ok** | 1586077 | 2026-07-15 | 4-1-4-1 | 11/11 | 0 |
 | int-normal-3 | normal | Bélgica 2-1 Brasil | Copa Mundial de la FIFA 2018 | **ok** | 135770 | 2018-07-06 | 4-3-3 | 11/11 | 4 |
 | int-normal-4 | normal | Argentina 1-0 Brasil | Copa América 2021 | **ok** | 723369 | 2021-07-11 | 4-3-3 | 11/11 | 0 |
 | int-normal-5 | normal | Brasil 1-1 Croacia | Copa Mundial de la FIFA 2022 | **ok** | 978072 | 2022-12-09 | 4-2-3-1 | 11/11 | 0 |
 | int-normal-6 | normal | Barcelona 4-3 Real Madrid | LaLiga 2025 | **ok** | 1208801 | 2025-05-11 | 4-2-3-1 | 11/11 | 0 |
 | int-normal-7 | normal | Real Madrid 4-1 Barcelona | Supercopa de España 2024 | **ok** | 1159314 | 2024-01-14 | 4-3-1-2 | 11/11 | 0 |
-| int-normal-8 | normal | Bayern Múnich 1-1 Chelsea | UEFA Champions League 2012 | **sin formación** | 355812 | 2012-05-19 | — | 11/11 | 0 |
-| int-normal-9 | normal | Real Madrid 4-1 Atlético de Madrid | UEFA Champions League 2014 | **sin formación** | 355386 | 2014-05-24 | — | 11/11 | 0 |
+| int-normal-8 | normal | Bayern Múnich 1-1 Chelsea | UEFA Champions League 2012 | **ok (a mano)** | 355812 | 2012-05-19 | 4-2-3-1 | 11/11 | 8 |
+| int-normal-9 | normal | Real Madrid 4-1 Atlético de Madrid | UEFA Champions League 2014 | **ok (a mano)** | 355386 | 2014-05-24 | 4-3-3 | 11/11 | 3 |
 | int-normal-10 | normal | Manchester City 0-1 Chelsea | UEFA Champions League 2021 | **ok** | 701961 | 2021-05-29 | 3-4-2-1 | 11/11 | 0 |
 | int-normal-11 | normal | Manchester City 1-0 Inter | UEFA Champions League 2023 | **ok** | 1027909 | 2023-06-10 | 3-2-4-1 | 11/11 | 0 |
 | int-normal-12 | normal | Barcelona 4-1 Bayern Múnich | UEFA Champions League 2024 | **ok** | 1299032 | 2024-10-23 | 4-2-3-1 | 11/11 | 0 |
@@ -40,7 +40,7 @@ Generado el 2026-09-15. Un reto en cualquier estado que no sea
 | int-dificil-3 | dificil | Real Madrid 2-3 Shakhtar Donetsk | UEFA Champions League 2020 | **ok** | 639933 | 2020-10-21 | 4-3-3 | 11/11 | 0 |
 | int-dificil-4 | dificil | Real Madrid 1-2 Sheriff Tiraspol | UEFA Champions League 2021 | **ok** | 787583 | 2021-09-28 | 4-3-3 | 11/11 | 0 |
 | int-dificil-5 | dificil | Manchester City 2-1 Real Madrid | UEFA Champions League 2020 | **ok** | 292864 | 2020-02-26 | 4-3-3 | 11/11 | 0 |
-| int-dificil-6 | dificil | Manchester United 1-2 Sevilla | UEFA Champions League 2018 | **sin formación** | 152646 | 2018-03-13 | — | 11/11 | 0 |
+| int-dificil-6 | dificil | Manchester United 1-2 Sevilla | UEFA Champions League 2018 | **ok (a mano)** | 152646 | 2018-03-13 | 4-2-3-1 | 11/11 | 2 |
 | int-dificil-7 | dificil | PSG 1-3 Manchester United | UEFA Champions League 2019 | **ok** | 65916 | 2019-03-06 | 4-4-2 | 11/11 | 0 |
 | int-dificil-8 | dificil | Barcelona 2-8 Bayern Múnich | UEFA Champions League 2020 | **ok** | 585042 | 2020-08-14 | 4-2-3-1 | 11/11 | 0 |
 | int-dificil-9 | dificil | Manchester City 1-3 Lyon | UEFA Champions League 2020 | **ok** | 584118 | 2020-08-15 | 3-1-4-2 | 11/11 | 0 |

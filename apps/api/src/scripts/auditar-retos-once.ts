@@ -17,11 +17,11 @@ class AuditoriaModule {}
 
 const ETIQUETA: Record<EstadoDelReto, string> = {
   ok: 'ok',
+  'ok-manual': 'ok (a mano)',
   'sin-partido': 'sin partido',
   'sin-alineacion': 'sin alineación',
-  'sin-formacion': 'sin formación',
+  'sin-disposicion': 'sin disposición',
   'xi-incompleto': 'XI incompleto',
-  'no-dibujable': 'no dibujable',
 };
 
 /* Relativo al archivo y no al directorio de trabajo: el script se corre desde `apps/api`. */

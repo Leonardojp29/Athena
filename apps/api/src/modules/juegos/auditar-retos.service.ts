@@ -8,7 +8,8 @@ import {
 } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
-import { RETOS_DECLARADOS, type RetoDeclarado } from './retos-once.config.js';
+import { casillasManuales } from './casillas-manuales.js';
+import { DISPOSICIONES_MANUALES, RETOS_DECLARADOS, type RetoDeclarado } from './retos-once.config.js';
 
 /** El ref del equipo cuyo XI hay que adivinar, sin depender de quién figure como local. */
 export const equipoObjetivo = (reto: RetoDeclarado): string =>
@@ -16,11 +17,11 @@ export const equipoObjetivo = (reto: RetoDeclarado): string =>
 
 export type EstadoDelReto =
   | 'ok'
+  | 'ok-manual'
   | 'sin-partido'
   | 'sin-alineacion'
-  | 'sin-formacion'
-  | 'xi-incompleto'
-  | 'no-dibujable';
+  | 'sin-disposicion'
+  | 'xi-incompleto';
 
 export interface Veredicto {
   reto: RetoDeclarado;
@@ -94,13 +95,21 @@ export class AuditarRetosService {
     };
 
     if (alineacion.startXi.length < 11) return { ...detalle, estado: 'xi-incompleto' };
-    /* Sin formación y sin casillas no hay nada con qué dibujar la cancha, y no se inventa. */
-    if (alineacion.formation === null && conCasilla < 11) return { ...detalle, estado: 'sin-formacion' };
-    if (layout(alineacion.startXi, { formation: alineacion.formation }) === null) {
-      return { ...detalle, estado: 'no-dibujable' };
+
+    const futbolistas = await this.contarFutbolistas(alineacion);
+
+    /* Primero lo que publica el proveedor: si alcanza para dibujar, manda su disposición. */
+    if (layout(alineacion.startXi, { formation: alineacion.formation }) !== null) {
+      return { ...detalle, estado: 'ok', ...futbolistas };
     }
 
-    return { ...detalle, estado: 'ok', ...(await this.contarFutbolistas(alineacion)) };
+    /* Y si no, la disposición escrita a mano, que solo vale sobre los once que el proveedor confirma. */
+    const manual = DISPOSICIONES_MANUALES[reto.clave];
+    if (manual && casillasManuales(manual) !== null && cubreElOnce(manual.jugadores, alineacion)) {
+      return { ...detalle, formacion: manual.formacion, estado: 'ok-manual', ...futbolistas };
+    }
+
+    return { ...detalle, estado: 'sin-disposicion' };
   }
 
   async alineacionDelObjetivo(
@@ -149,4 +158,15 @@ export class AuditarRetosService {
     });
     return { yaEnAthena: filas.length, porCrear: alineacion.startXi.length - filas.length };
   }
+}
+
+/**
+ * La disposición a mano tiene que hablar exactamente de los once que confirma el proveedor.
+ *
+ * Si el proveedor corrige una alineación y la lista escrita a mano queda vieja, esto lo detecta en
+ * la auditoría en vez de dibujar a un futbolista que no jugó.
+ */
+function cubreElOnce(jugadores: readonly string[], alineacion: ProviderLineup): boolean {
+  const delProveedor = new Set(alineacion.startXi.map((j) => j.playerRef));
+  return jugadores.length === delProveedor.size && jugadores.every((ref) => delProveedor.has(ref));
 }

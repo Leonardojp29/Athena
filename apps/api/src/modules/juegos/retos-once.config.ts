@@ -180,3 +180,42 @@ export const RETOS_DECLARADOS: readonly RetoDeclarado[] = [
   { clave: 'per-dificil-6', catalogo: 'peruano', dificultad: 'dificil', competenciaRef: LIBERTADORES, temporada: 2022, localRef: SPORTING_CRISTAL, visitaRef: FLAMENGO, marcador: [0, 2], objetivo: 'local', competencia: 'Copa Libertadores', fase: 'Fase de grupos', anio: 2022, localNombre: 'Sporting Cristal', visitaNombre: 'Flamengo', nota: null },
   { clave: 'per-dificil-7', catalogo: 'peruano', dificultad: 'dificil', competenciaRef: SUDAMERICANA, temporada: 2025, localRef: ATLETICO_MINEIRO, visitaRef: CIENCIANO, marcador: [1, 1], objetivo: 'visita', competencia: 'Copa Sudamericana', fase: 'Fase de grupos', anio: 2025, localNombre: 'Atlético Mineiro', visitaNombre: 'Cienciano', nota: null },
 ];
+
+export interface DisposicionManual {
+  formacion: string;
+  /**
+   * Los once por línea y de izquierda a derecha mirando hacia el arco rival, por id del proveedor.
+   * De ahí salen las casillas `fila:columna`: la fila 1 es el arquero y la columna 1 es la banda
+   * izquierda del equipo, que es como las numera el proveedor cuando sí las publica.
+   */
+  jugadores: readonly string[];
+}
+
+/**
+ * La disposición escrita a mano, para los partidos en los que el proveedor confirma los once pero
+ * no publica ni formación ni casillas —todos internacionales de 2018 para atrás, y de forma
+ * irregular: el Barcelona 6-1 PSG de 2017 sí las trae—.
+ *
+ * Es el segundo escalón y nunca el primero: si el proveedor publica una disposición completa,
+ * manda la suya. Esto solo llena el hueco, y el XI sigue siendo el del fixture real.
+ */
+export const DISPOSICIONES_MANUALES: Readonly<Record<string, DisposicionManual>> = {
+  /* España — Mundial 2010, final: Casillas · Capdevila · Puyol · Piqué · Sergio Ramos · Xabi Alonso · Sergio Busquets · Andrés Iniesta · Xavi · Pedro · David Villa */
+  'int-facil-4': { formacion: '4-2-3-1', jugadores: ['367', '105653', '116880', '136', '738', '90657', '144', '33243', '42041', '2299', '33257'] },
+  /* Alemania — Mundial 2014, final: M. Neuer · B. Höwedes · M. Hummels · J. Boateng · P. Lahm · T. Kroos · B. Schweinsteiger · C. Kramer · M. Özil · M. Klose · T. Müller */
+  'int-facil-6': { formacion: '4-3-3', jugadores: ['497', '469', '501', '499', '90656', '752', '50914', '25637', '1458', '115068', '522'] },
+  /* Barcelona — Champions 2015, final: M. ter Stegen · Jordi Alba · J. Mascherano · Piqué · Dani Alves · Iniesta · Busquets · I. Rakitić · Neymar · L. Suárez · L. Messi */
+  'int-facil-7': { formacion: '4-3-3', jugadores: ['127', '128', '13073', '136', '256', '33243', '144', '149', '276', '157', '154'] },
+  /* Barcelona — LaLiga 2010: Valdés · E. Abidal · Puyol · Piqué · Dani Alves · Iniesta · Busquets · Xavi · David Villa · L. Messi · Pedro */
+  'int-facil-9': { formacion: '4-3-3', jugadores: ['90515', '113678', '116880', '136', '256', '33243', '144', '42041', '33257', '154', '2299'] },
+  /* Real Madrid — Champions 2018, final: K. Navas · Marcelo · Sergio Ramos · R. Varane · Daniel Carvajal · T. Kroos · Casemiro · L. Modrić · Isco · Cristiano Ronaldo · K. Benzema */
+  'int-facil-11': { formacion: '4-3-1-2', jugadores: ['731', '743', '738', '742', '733', '752', '747', '754', '745', '874', '759'] },
+  /* Alemania — Mundial 2014, semifinal: M. Neuer · B. Höwedes · M. Hummels · J. Boateng · P. Lahm · T. Kroos · B. Schweinsteiger · S. Khedira · M. Özil · M. Klose · T. Müller */
+  'int-normal-1': { formacion: '4-3-3', jugadores: ['497', '469', '501', '499', '90656', '752', '50914', '868', '1458', '115068', '522'] },
+  /* Chelsea — Champions 2012, final: P. Cech · A. Cole · David Luiz · G. Cahill · José Bosingwa · J. Obi Mikel · F. Lampard · R. Bertrand · Mata · S. Kalou · D. Drogba */
+  'int-normal-8': { formacion: '4-2-3-1', jugadores: ['1436', '19203', '2283', '2281', '114806', '19243', '105426', '18936', '901', '25352', '102731'] },
+  /* Real Madrid — Champions 2014, final: Casillas · Fábio Coentrão · Sergio Ramos · R. Varane · Daniel Carvajal · Á. di María · S. Khedira · L. Modrić · Cristiano Ronaldo · K. Benzema · G. Bale */
+  'int-normal-9': { formacion: '4-3-3', jugadores: ['367', '41176', '738', '742', '733', '266', '868', '754', '874', '759', '758'] },
+  /* Manchester United — Champions 2018, octavos vuelta: David de Gea · A. Young · E. Bailly · C. Smalling · A. Valencia · N. Matić · M. Fellaini · M. Rashford · A. Sánchez · J. Lingard · R. Lukaku */
+  'int-dificil-6': { formacion: '4-2-3-1', jugadores: ['882', '894', '885', '892', '893', '902', '12753', '909', '910', '900', '907'] },
+};
