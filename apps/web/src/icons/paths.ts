@@ -121,6 +121,25 @@ const REGISTRO = {
   corazon: {
     body: '<path d="M12 20s-7.5-4.6-7.5-9.6A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 7.5 3C19.5 15.4 12 20 12 20z"/>',
   },
+  // El dado: lo que decide el azar. Cinco puntos rellenos, que a 20px es lo que se distingue.
+  dado: {
+    body:
+      '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/>' +
+      '<circle cx="8.2" cy="8.2" r="1.15" fill="currentColor" stroke="none"/>' +
+      '<circle cx="15.8" cy="8.2" r="1.15" fill="currentColor" stroke="none"/>' +
+      '<circle cx="12" cy="12" r="1.15" fill="currentColor" stroke="none"/>' +
+      '<circle cx="8.2" cy="15.8" r="1.15" fill="currentColor" stroke="none"/>' +
+      '<circle cx="15.8" cy="15.8" r="1.15" fill="currentColor" stroke="none"/>',
+  },
+  /*
+   * El reloj tachado: jugar sin cuenta regresiva.
+   *
+   * La barra cruza el reloj entero en lugar de llevar un círculo de prohibido aparte: a 20px dos
+   * circunferencias concéntricas se convierten en una mancha, y una sola diagonal se lee siempre.
+   */
+  'reloj-libre': {
+    body: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l2.4 1.5"/><path d="M4.8 19.2 19.2 4.8"/>',
+  },
   // El dinero: el billete de los contratos
   dinero: {
     body: '<rect x="3.5" y="6.5" width="17" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 10v4M17.5 10v4"/>',

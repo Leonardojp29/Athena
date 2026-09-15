@@ -1,0 +1,66 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdivinaElXI from '../../components/once/AdivinaElXI';
+import { api } from '../../lib/api';
+import { cachear, sinCache } from '../../lib/cache';
+import '../../styles/once.css';
+
+/*
+ * El juego a pantalla limpia, como Mi Leyenda: `chrome="minimal"` quita la banda de partidos y el
+ * pie, que acá compiten con la cancha. El header queda —el juego vive dentro de Athena— y con él la
+ * salida.
+ *
+ * El HTML es igual para todos, así que se guarda en el borde; la partida entera vive en el
+ * navegador. Se pide un reto de prueba solo para no abrir la puerta de un juego sin catálogo: si el
+ * API no responde, el 503 con `no-store` evita que el borde grabe la página de disculpa.
+ */
+let hayRetos = false;
+try {
+  const prueba = await api<{ clave: string }>('/juegos/once/reto?catalogo=peruano&dificultad=facil');
+  hayRetos = typeof prueba.clave === 'string';
+} catch {
+  hayRetos = false;
+}
+
+if (hayRetos) {
+  cachear(Astro.response, 'juego');
+} else {
+  Astro.response.status = 503;
+  sinCache(Astro.response);
+}
+---
+
+<Base
+  title="Adivina el XI — Athena"
+  description="Te damos el partido: Real Madrid 1-4 Ajax, la final del 2022, el clásico que no se olvida. Vos tenés que acordarte de los once que salieron a la cancha."
+  chrome="minimal"
+  width="bleed"
+  liveBar={false}
+>
+  <!--
+    El juego vive sobre el lienzo del sitio, en claro o en oscuro como el resto. Lo único que trae su
+    propio material es la cancha, que es verde acá y en la página de cualquier partido.
+  -->
+  <div class="min-h-[calc(100dvh-8rem)]">
+    {
+      hayRetos ? (
+        <AdivinaElXI client:load />
+      ) : (
+        <div class="mx-auto max-w-md px-4 py-16 text-center">
+          <h1 class="font-display text-2xl font-semibold uppercase tracking-label">
+            Adivina el XI
+          </h1>
+          <p class="mt-2 text-sm text-ink-muted">
+            No pudimos cargar los retos. Intenta de nuevo en un momento.
+          </p>
+          <a
+            href="/juegos"
+            class="mt-4 inline-block rounded-md border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-canvas-subtle"
+          >
+            Volver a Juegos
+          </a>
+        </div>
+      )
+    }
+  </div>
+</Base>

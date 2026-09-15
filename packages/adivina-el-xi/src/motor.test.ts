@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DURACION_MS,
   catalogoDelSorteo,
+  dificultadDelSorteo,
   empezar,
   intentar,
   pedirPista,
@@ -92,8 +93,8 @@ describe('pedirPista', () => {
 describe('el reloj', () => {
   it('cierra la partida cuando se acaba y no antes', () => {
     const partida = armar();
-    const casi = tictac(partida, ARRANQUE + DURACION_MS.normal - 1);
-    const justo = tictac(partida, ARRANQUE + DURACION_MS.normal);
+    const casi = tictac(partida, ARRANQUE + DURACION_MS - 1);
+    const justo = tictac(partida, ARRANQUE + DURACION_MS);
 
     expect(terminada(casi)).toBe(false);
     expect(justo.desenlace).toBe('sin-tiempo');
@@ -129,5 +130,22 @@ describe('catalogoDelSorteo', () => {
   it('elegido un catálogo, no se cambia', () => {
     expect(catalogoDelSorteo('peruano', 0.1)).toBe('peruano');
     expect(catalogoDelSorteo('internacional', 0.9)).toBe('internacional');
+  });
+});
+
+describe('dificultadDelSorteo', () => {
+  it('con aleatorio reparte entre las tres', () => {
+    expect(dificultadDelSorteo('aleatorio', 0.1)).toBe('facil');
+    expect(dificultadDelSorteo('aleatorio', 0.5)).toBe('normal');
+    expect(dificultadDelSorteo('aleatorio', 0.9)).toBe('dificil');
+  });
+
+  /* El 1 exacto de un azar mal redondeado no puede salirse del arreglo. */
+  it('no se pasa del final', () => {
+    expect(dificultadDelSorteo('aleatorio', 1)).toBe('dificil');
+  });
+
+  it('elegida una, no se cambia', () => {
+    expect(dificultadDelSorteo('facil', 0.99)).toBe('facil');
   });
 });

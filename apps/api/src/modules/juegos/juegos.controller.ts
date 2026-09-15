@@ -1,5 +1,4 @@
 import { Controller, DefaultValuePipe, Get, Header, NotFoundException, Param, Query } from '@nestjs/common';
-import { ViewCacheService } from '../../shared/view-cache.service.js';
 import {
   RetosDelOnceService,
   type FutbolistaBuscado,
@@ -12,15 +11,9 @@ const DIFICULTADES = new Set(['facil', 'normal', 'dificil']);
 /* Lo que el cliente manda como "ya jugados". Más que eso no cabe en una sesión razonable. */
 const TOPE_DE_EXCLUIDOS = 40;
 
-/** Un día: el once de un partido de 2019 no va a cambiar, y si cambia lo corrige la importación. */
-const TTL_SOLUCION = 86_400;
-
 @Controller('juegos/once')
 export class JuegosController {
-  constructor(
-    private readonly retos: RetosDelOnceService,
-    private readonly cache: ViewCacheService,
-  ) {}
+  constructor(private readonly retos: RetosDelOnceService) {}
 
   /*
    * Sin caché: cada partida quiere un reto distinto, y cachear el sorteo sería servir el mismo a
@@ -54,19 +47,14 @@ export class JuegosController {
   ): Promise<{ resultados: FutbolistaBuscado[] }> {
     const limpia = q.trim().slice(0, 60);
     if (limpia.length === 0) return { resultados: [] };
-    return {
-      resultados: await this.cache.wrap(`once:buscar:${limpia.toLowerCase()}`, 300, () =>
-        this.retos.buscar(limpia, Number(limit) || 8),
-      ),
-    };
+    /* El servicio ya recuerda en memoria; pasar por `vistas_cache` agregaría dos viajes a la base. */
+    return { resultados: await this.retos.buscar(limpia, Number(limit) || 8) };
   }
 
   @Get('reto/:clave/solucion')
   @Header('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=172800')
   async solucion(@Param('clave') clave: string): Promise<{ titulares: TitularRevelado[] }> {
-    const titulares = await this.cache.wrap(`once:solucion:${clave}`, TTL_SOLUCION, () =>
-      this.retos.solucion(clave),
-    );
+    const titulares = await this.retos.solucion(clave);
     if (!titulares) throw new NotFoundException('ese reto no existe');
     return { titulares };
   }

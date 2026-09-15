@@ -857,3 +857,52 @@ export const POSITION_LABEL: Record<string, string> = {
   midfielder: 'Mediocampista',
   attacker: 'Delantero',
 };
+
+/* ── Adivina el XI ─────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Un casillero de la cancha. **No trae el nombre a propósito**: el cliente compara ids, que ya
+ * conoce porque se los dio el buscador. Así la respuesta del reto no está en las herramientas del
+ * navegador, que es lo mínimo que se le debe a un juego de adivinar.
+ */
+export interface CasilleroDelReto {
+  playerId: string;
+  /** 'fila:columna' desde el arco propio. */
+  grid: string;
+  puesto: string | null;
+}
+
+export interface RetoParaJugar {
+  clave: string;
+  catalogo: string;
+  dificultad: string;
+  competencia: string;
+  competenciaLogoUrl: string | null;
+  temporada: string;
+  fase: string | null;
+  objetivoNombre: string;
+  objetivoEscudoUrl: string | null;
+  objetivoSlug: string | null;
+  rivalNombre: string;
+  rivalEscudoUrl: string | null;
+  deLocal: boolean;
+  golesObjetivo: number;
+  golesRival: number;
+  nota: string | null;
+  formacion: string;
+  casilleros: CasilleroDelReto[];
+}
+
+export interface TitularRevelado {
+  playerId: string;
+  nombre: string;
+  slug: string;
+  fotoUrl: string | null;
+  grid: string;
+}
+
+export interface FutbolistaBuscado {
+  id: string;
+  nombre: string;
+  fotoUrl: string | null;
+}

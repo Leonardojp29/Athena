@@ -12,6 +12,10 @@ const POLITICAS = {
   juego: { navegador: 300, borde: 86400, obsoleto: 172800 },
   /* El catálogo de clubes pesa 133 KB: quien vuelve a su carrera en la misma hora no lo baja de nuevo. */
   clubesDelJuego: { navegador: 3600, borde: 86400, obsoleto: 172800 },
+  /* Los apellidos que escribe una persona jugando son los mismos que escribe la de al lado. */
+  buscadorDelJuego: { navegador: 300, borde: 300, obsoleto: 600 },
+  /* El once de un partido de 2019 no va a cambiar; si cambia, lo corrige la importación. */
+  solucionDelJuego: { navegador: 3600, borde: 86400, obsoleto: 172800 },
   home: { navegador: 0, borde: 30, obsoleto: 60 },
   dia: { navegador: 0, borde: 60, obsoleto: 300 },
   catalogo: { navegador: 60, borde: 3600, obsoleto: 7200 },

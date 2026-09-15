@@ -18,6 +18,7 @@ function armar(palmares: ProviderTrophy[], resuelve: string | null = JUGADOR) {
       ),
     },
     player: { update: () => (hechas.push('marcar'), null) },
+    $executeRaw: () => (hechas.push('pesar'), null),
   } as unknown as PrismaService;
   const refs = { resolve: () => Promise.resolve(resuelve) } as unknown as ExternalReferenceService;
   const provider = { name: 'api-football', getTrophies: () => Promise.resolve(palmares) } as never;
@@ -37,7 +38,7 @@ describe('SyncTrophiesUseCase', () => {
   it('reemplaza el palmarés entero en una sola transacción', async () => {
     const { uso, hechas, leer } = armar([titulo('Liga 1', '2024'), titulo('Copa', null)]);
     expect(await uso.execute('1')).toBe(2);
-    expect(hechas).toEqual(['borrar', 'crear', 'marcar']);
+    expect(hechas).toEqual(['borrar', 'crear', 'marcar', 'pesar']);
     expect(leer()).toHaveLength(2);
     expect(leer()[0]).toMatchObject({ playerId: JUGADOR, competencia: 'Liga 1', temporada: '2024' });
   });

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Memoria } from '../../shared/memoria.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 
 /**
@@ -47,12 +48,24 @@ export interface FutbolistaBuscado {
   fotoUrl: string | null;
 }
 
+/* El catálogo no cambia durante una partida, así que lo recordado vale toda la sesión. */
+const TTL_BUSQUEDA_S = 900;
+const TTL_SOLUCION_S = 3600;
+
 /* Menos de tres letras no tiene trigramas: ahí solo sirve el prefijo. Igual que en la búsqueda del sitio. */
 const LARGO_MINIMO_DIFUSO = 3;
 const TOPE_DE_RESULTADOS = 8;
 
 @Injectable()
 export class RetosDelOnceService {
+  /*
+   * En memoria del proceso y no en `vistas_cache`: la caché de Postgres cuesta una lectura y una
+   * escritura, y contra una base que está fuera de región eso son dos viajes de casi un segundo
+   * cada uno para responder un tecleo. Acá el catálogo no cambia durante la partida.
+   */
+  private readonly busquedas = new Memoria<FutbolistaBuscado[]>(500);
+  private readonly soluciones = new Memoria<TitularRevelado[]>(80);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async cuantos(catalogo: string, dificultad: string): Promise<number> {
@@ -129,6 +142,14 @@ export class RetosDelOnceService {
 
   /** El once con nombre y cara. Se pide al terminar la partida o al pedir la primera pista. */
   async solucion(clave: string): Promise<TitularRevelado[] | null> {
+    const recordada = this.soluciones.get(clave);
+    if (recordada) return recordada;
+    const traida = await this.consultarSolucion(clave);
+    if (traida) this.soluciones.set(clave, traida, TTL_SOLUCION_S);
+    return traida;
+  }
+
+  private async consultarSolucion(clave: string): Promise<TitularRevelado[] | null> {
     const reto = await this.prisma.retoDelOnce.findUnique({
       where: { clave },
       select: {
@@ -166,6 +187,10 @@ export class RetosDelOnceService {
     const limpia = consulta.trim();
     if (limpia.length === 0) return [];
 
+    const llave = `${limpia.toLowerCase()}|${tope}`;
+    const recordados = this.busquedas.get(llave);
+    if (recordados) return recordados;
+
     const soloPrefijo = limpia.length < LARGO_MINIMO_DIFUSO;
     const filas = await this.prisma.$queryRawUnsafe<
       Array<{ id: string; nombre: string; fotoUrl: string | null }>
@@ -180,15 +205,42 @@ export class RetosDelOnceService {
       limpia,
       Math.min(tope, 15),
     );
+    this.busquedas.set(llave, filas, TTL_BUSQUEDA_S);
     return filas;
   }
 }
 
 const NOMBRE = 'immutable_unaccent(lower(p.name))';
-const COMPLETO = "immutable_unaccent(lower(coalesce(p.full_name, '')))";
+/*
+ * Sin `coalesce`, y no es un descuido: el índice está creado sobre `immutable_unaccent(lower(
+ * full_name))` y envolverlo en coalesce lo vuelve otra expresión, así que Postgres dejaba de
+ * usarlo y barría los 46.444 futbolistas en 1,2 s. Con `full_name` nulo la comparación da NULL,
+ * que en el OR se comporta como falso, que es justo lo que hace falta.
+ */
+const COMPLETO = 'immutable_unaccent(lower(p.full_name))';
 
 const PREFIJO = `${NOMBRE} LIKE c.q || '%' OR ${COMPLETO} LIKE c.q || '%'`;
 const DIFUSO = `${PREFIJO} OR ${NOMBRE} % c.q OR ${NOMBRE} LIKE '%' || c.q || '%' OR ${COMPLETO} LIKE '%' || c.q || '%'`;
+
+/*
+ * Cuánto pesa el futbolista, comprimido a lo sumo medio punto.
+ *
+ * Es el desempate entre homónimos: con solo el parecido de texto, "ramos" devolvía cuatro
+ * "D. Ramos" antes que Sergio Ramos. El techo importa tanto como la señal — sin él, un futbolista
+ * muy conocido ganaría escribiendo el apellido de otro. El divisor está puesto para que casi nadie
+ * llegue al techo: con uno más chico, Sergio Ramos y Adrián Ramos empataban arriba y volvía a
+ * decidir el parecido de texto, que es justo lo que había que corregir.
+ */
+const RELEVANCIA = 'least(p.relevancia / 9000.0, 0.5)';
+
+/*
+ * Un castigo pequeño al nombre abreviado.
+ *
+ * "L. Martinez" se parece más a "martinez" que "Lisandro Martínez" —tiene menos letras de sobra—,
+ * así que el parecido de texto solo premia a las fichas peor escritas. Y a quien busca le sirve
+ * menos: una inicial no le dice de cuál de los cuatro Martínez se trata.
+ */
+const ABREVIADO = `CASE WHEN p.name ~ '(^|\\s)\\w\\.(\\s|$)' THEN -0.25 ELSE 0 END`;
 
 /** La última palabra del nombre, que es como se llama a un futbolista: "Lionel Messi" → "messi". */
 const APELLIDO = `immutable_unaccent(lower(regexp_replace(p.name, '^.*\\s', '')))`;
@@ -203,11 +255,13 @@ const APELLIDO = `immutable_unaccent(lower(regexp_replace(p.name, '^.*\\s', ''))
  * Se calcula sobre lo que el WHERE ya filtró con sus índices, que son un puñado de filas.
  */
 const PUNTAJE = `
-  greatest(similarity(${NOMBRE}, c.q), similarity(${COMPLETO}, c.q))
+  greatest(similarity(${NOMBRE}, c.q), similarity(coalesce(${COMPLETO}, ''), c.q))
   + CASE WHEN ${APELLIDO} = c.q THEN 1.2
          WHEN ${APELLIDO} LIKE c.q || '%' THEN 0.7
          WHEN ${NOMBRE} LIKE c.q || '%' THEN 0.6
          WHEN ${COMPLETO} LIKE c.q || '%' THEN 0.45
          WHEN ${NOMBRE} LIKE '% ' || c.q || '%' THEN 0.3
          WHEN ${COMPLETO} LIKE '% ' || c.q || '%' THEN 0.2
-         ELSE 0 END`;
+         ELSE 0 END
+  + ${RELEVANCIA}
+  + ${ABREVIADO}`;

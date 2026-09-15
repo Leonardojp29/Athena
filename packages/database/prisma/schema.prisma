@@ -175,6 +175,10 @@ model Player {
   matchStatistics  MatchPlayerStatistics[]
   seasonStatistics PlayerSeasonStatistics[]
   squadMemberships SquadMembership[]
+  /// Cuánto pesa en la memoria del hincha: títulos sobre todo, minutos como desempate.
+  /// Es lo que hace que "ramos" traiga a Sergio Ramos y no a seis homónimos.
+  relevancia Int @default(0)
+
   trofeos          PlayerTrophy[]
   fichajes         Transfer[]
   titularEnRetos   TitularDelReto[]

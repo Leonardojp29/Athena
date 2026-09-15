@@ -1,0 +1,72 @@
+/*
+ * Lo propio de Adivina el XI. Vive acá y no en la hoja del sitio porque una cuenta regresiva de
+ * pantalla completa no tiene por qué pesar en la página de un partido.
+ *
+ * Todas las duraciones cuelgan de los tokens de movimiento, así `prefers-reduced-motion` las
+ * colapsa en un solo lugar. Ninguna anima `width` ni usa curvas con rebote.
+ */
+
+/* La ficha del partido entra como se levanta la vista de un cuaderno. */
+@keyframes once-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-once-entra {
+  animation: once-entra var(--a-motion-drama) var(--a-ease-out-expo) backwards;
+}
+
+/* Cada número de la cuenta nace grande y se va apagando; el siguiente lo reemplaza. */
+@keyframes once-cuenta {
+  from {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+.animate-once-cuenta {
+  animation: once-cuenta 700ms var(--a-ease) both;
+}
+
+/*
+ * El "no" del buscador: dos vaivenes cortos y se acabó. Sin rebote y sin tocar el color del campo,
+ * porque el aviso escrito debajo ya dice lo que pasó.
+ */
+@keyframes once-niega {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-once-niega {
+  animation: once-niega var(--a-motion-base) var(--a-ease);
+}
+
+/*
+ * Los imanes del once no caen todos juntos: entran escalonados por fila, como los pone un técnico.
+ * Es el mismo gesto que la cancha del partido y cuesta una variable.
+ */
+[data-cancha-once] [data-resuelto] {
+  animation-delay: 40ms;
+}

@@ -6,15 +6,19 @@
  * responsabilidad, que es pintar.
  */
 
-export type Catalogo = 'internacional' | 'peruano' | 'mixto';
+export type Catalogo = 'internacional' | 'peruano' | 'mixto' | 'aleatorio';
 export type Dificultad = 'facil' | 'normal' | 'dificil';
+/** Lo que el jugador elige; `aleatorio` deja que el juego decida en cada partida. */
+export type DificultadElegida = Dificultad | 'aleatorio';
 
-/** Lo que dura cada dificultad cuando se juega contra reloj. */
-export const DURACION_MS: Readonly<Record<Dificultad, number>> = {
-  facil: 2 * 60_000,
-  normal: 3.5 * 60_000,
-  dificil: 5 * 60_000,
-};
+/**
+ * Lo que dura una partida contra reloj: dos minutos, sea cual sea la dificultad.
+ *
+ * Antes cada dificultad tenía el suyo y hacía que los tiempos no se pudieran comparar: terminar un
+ * XI difícil en 4:10 no decía nada frente a uno fácil en 1:50. Con el mismo reloj para todas, lo
+ * que cambia es el once y no la regla.
+ */
+export const DURACION_MS = 2 * 60_000;
 
 export interface Casillero {
   playerId: string;
@@ -83,7 +87,7 @@ export const terminada = (partida: Partida): boolean => partida.desenlace !== nu
 /** Cuánto queda, en milisegundos. Null cuando se juega sin reloj. */
 export function restante(partida: Partida, ahora: number): number | null {
   if (!partida.opciones.conTiempo) return null;
-  const limite = partida.opciones.arrancaEn + DURACION_MS[partida.opciones.dificultad];
+  const limite = partida.opciones.arrancaEn + DURACION_MS;
   return Math.max(0, limite - (partida.terminadaEn ?? ahora));
 }
 
@@ -175,6 +179,15 @@ export function resumen(partida: Partida, ahora: number): Resumen {
  * un producto peruano.
  */
 export function catalogoDelSorteo(elegido: Catalogo, alAzar: number): 'internacional' | 'peruano' {
-  if (elegido !== 'mixto') return elegido;
+  if (elegido === 'internacional' || elegido === 'peruano') return elegido;
   return alAzar < 0.5 ? 'internacional' : 'peruano';
+}
+
+/** Las tres dificultades, en el orden en que se muestran. */
+export const DIFICULTADES: readonly Dificultad[] = ['facil', 'normal', 'dificil'];
+
+/** Con `aleatorio` la dificultad cambia en cada partida, que es la gracia de elegirlo. */
+export function dificultadDelSorteo(elegida: DificultadElegida, alAzar: number): Dificultad {
+  if (elegida !== 'aleatorio') return elegida;
+  return DIFICULTADES[Math.min(Math.floor(alAzar * DIFICULTADES.length), 2)] as Dificultad;
 }

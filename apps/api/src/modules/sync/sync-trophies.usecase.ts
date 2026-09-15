@@ -51,10 +51,19 @@ export class SyncTrophiesUseCase {
           puesto: t.puesto,
         })),
       }),
+      /*
+       * La relevancia cuelga del palmarés —es lo que hace que buscar "ramos" traiga a Sergio
+       * Ramos—, así que se recalcula acá y no envejece esperando una migración.
+       */
       this.prisma.player.update({
         where: { id: playerId },
         data: { palmaresRevisadoEn: new Date() },
       }),
+      this.prisma.$executeRaw`
+        UPDATE players SET relevancia = ${palmares.length} * 100 + least((
+          SELECT coalesce(sum(coalesce(minutes_played, 0)), 0)
+          FROM player_season_statistics WHERE player_id = ${playerId}::uuid), 3000) / 10
+        WHERE id = ${playerId}::uuid`,
     ]);
 
     return palmares.length;
