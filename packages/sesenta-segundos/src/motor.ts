@@ -26,6 +26,8 @@ export const PANICO_MS = 3_000;
 export interface Opcion {
   texto: string;
   esCorrecta: boolean;
+  /** La foto del futbolista, el escudo del club o la bandera. Nula en marcadores y verdadero/falso. */
+  imagen: string | null;
 }
 
 export interface Pregunta {

@@ -39,11 +39,30 @@ export function Opciones({ opciones, aLoAncho, estadoDe, onElegir }: Props) {
             disabled={estado !== 'abierta'}
             onClick={() => onElegir(opcion.texto)}
             style={{ '--turno': i } as React.CSSProperties}
-            className={`animate-sesenta-opcion rounded-xl border px-4 font-medium transition-[transform,border-color,background-color,opacity] duration-150 disabled:cursor-default ${MARCO[estado]} ${
-              aLoAncho ? 'py-6 text-center font-display text-2xl uppercase tracking-label' : 'py-3.5 text-left'
+            className={`animate-sesenta-opcion group flex items-center gap-3 rounded-xl border font-medium transition-[transform,border-color,background-color,opacity] duration-150 disabled:cursor-default ${MARCO[estado]} ${
+              aLoAncho
+                ? 'justify-center px-4 py-6 font-display text-2xl uppercase tracking-label'
+                : 'px-3 py-2.5 text-left'
             }`}
           >
-            {opcion.texto}
+            {/*
+              La cara de la opción: la foto del futbolista, el escudo del club o la bandera del
+              país. La caja existe aunque la imagen no cargue, para que las cuatro midan igual y el
+              hueco no diga nada. Decorativa: el nombre está al lado.
+            */}
+            {opcion.imagen && (
+              <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-lg bg-canvas-subtle sm:size-12">
+                <img
+                  src={opcion.imagen}
+                  alt=""
+                  aria-hidden="true"
+                  width="48"
+                  height="48"
+                  className="size-full object-contain transition-transform duration-200 group-enabled:group-hover:scale-105"
+                />
+              </span>
+            )}
+            <span className={opcion.imagen ? 'min-w-0 flex-1' : undefined}>{opcion.texto}</span>
           </button>
         );
       })}

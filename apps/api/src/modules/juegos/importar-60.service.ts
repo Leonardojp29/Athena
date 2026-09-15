@@ -100,10 +100,12 @@ export class Importar60Service {
       });
       await tx.opcionDe60.deleteMany({ where: { preguntaId: guardada.id } });
       await tx.opcionDe60.createMany({
-        data: pregunta.opciones.map((texto) => ({
+        data: pregunta.opciones.map((texto, i) => ({
           preguntaId: guardada.id,
           texto,
           esCorrecta: texto === pregunta.correcta,
+          /* Nulo para las cuatro cuando una sola falla: la auditoría ya lo decidió. */
+          imagen: v.imagenes?.[i] ?? null,
         })),
       });
     });

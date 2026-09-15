@@ -10,7 +10,12 @@ import type {
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { calzaNombre } from './nombres.js';
-import { PREGUNTAS_DE_60, type PreguntaDeclarada } from './preguntas-60.config.js';
+import {
+  emblemaDelEquipo,
+  equipoDeLaOpcion,
+  PREGUNTAS_DE_60,
+  type PreguntaDeclarada,
+} from './preguntas-60.config.js';
 
 export type EstadoDeLaPregunta =
   | 'ok'
@@ -28,10 +33,25 @@ export interface Veredicto {
   nota: string | null;
   /** El ref del futbolista de la foto, en las preguntas que la llevan. */
   fotoRef: string | null;
+  /** Una imagen por opción, en el orden del catálogo. Nulo cuando no se pudo armar el juego entero. */
+  imagenes: string[] | null;
+  porQueSinImagenes: string | null;
 }
+
+/* Lo que devuelve cada comprobación: si la pregunta es cierta. Las caras se resuelven aparte. */
+type Comprobacion = Omit<Veredicto, 'imagenes' | 'porQueSinImagenes'>;
 
 /** Los tipos de evento que cuentan como gol. El autogol no se le atribuye al que lo mete. */
 const GOLES = new Set(['goal', 'penalty_goal']);
+
+/*
+ * La silueta gris que el proveedor sirve para todo futbolista sin retrato.
+ *
+ * Medido: la comparten cuatro de cada veinte fichas tomadas al azar. No alcanza con exigir que las
+ * cuatro imágenes de una pregunta sean distintas —una sola silueta entre tres caras de verdad ya
+ * señala la respuesta con el dedo—, así que se la reconoce por su huella y se la rechaza.
+ */
+const SILUETA_GENERICA = '36b77a4cbb148a934845ea569155cd023083fd77';
 
 /**
  * Comprueba las 50 preguntas de 60 Segundos contra el proveedor, sin escribir nada.
@@ -49,6 +69,7 @@ export class Auditar60Service {
   private readonly eventos = new Map<string, ProviderMatchEvent[]>();
   private readonly alineaciones = new Map<string, ProviderLineup[]>();
   private readonly huellas = new Map<string, string>();
+  private readonly fichas = new Map<string, { ref: string; nombre: string } | null>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -65,35 +86,81 @@ export class Auditar60Service {
   }
 
   async revisar(pregunta: PreguntaDeclarada): Promise<Veredicto> {
-    const vacio = { pregunta, fixtureRef: null, nota: null, fotoRef: null };
+    const vacio = {
+      pregunta,
+      fixtureRef: null,
+      nota: null,
+      fotoRef: null,
+    };
+    let base: Comprobacion;
     try {
       const v = pregunta.validacion;
-      if (v.tipo === 'editorial') return { ...vacio, estado: 'ok-a-mano', nota: v.motivo };
-      if (v.tipo === 'foto') return this.revisarFoto(pregunta, v.jugador);
-      if (v.tipo === 'trayectoria') return this.revisarTrayectoria(pregunta, v.jugador, v.clubesRef);
-      if (v.tipo === 'campeon') return this.revisarCampeon(pregunta, v);
-      return this.revisarPartido(pregunta, v);
+      if (v.tipo === 'editorial') base = { ...vacio, estado: 'ok-a-mano', nota: v.motivo };
+      else if (v.tipo === 'foto') base = await this.revisarFoto(pregunta, v.jugador);
+      else if (v.tipo === 'trayectoria')
+        base = await this.revisarTrayectoria(pregunta, v.jugador, v.clubesRef);
+      else if (v.tipo === 'campeon') base = await this.revisarCampeon(pregunta, v);
+      else base = await this.revisarPartido(pregunta, v);
     } catch (error) {
-      return { ...vacio, estado: 'sin-datos', nota: (error as Error).message.slice(0, 120) };
+      base = { ...vacio, estado: 'sin-datos', nota: (error as Error).message.slice(0, 120) };
     }
+
+    const caras = await this.carasDeLasOpciones(pregunta);
+    return { ...base, imagenes: caras.imagenes, porQueSinImagenes: caras.porQue };
+  }
+
+  /**
+   * Una cara por opción: la foto del futbolista, el escudo del club o la bandera del país.
+   *
+   * **O las llevan todas o no las lleva ninguna.** Una pregunta con tres retratos y un cuadro vacío
+   * señala la respuesta con el dedo, así que en cuanto una falla se devuelven todas a texto. Por lo
+   * mismo se exige que las fotos sean distintas entre sí: el proveedor sirve la misma silueta gris
+   * para los futbolistas sin retrato, y dos opciones idénticas son otra pista regalada.
+   */
+  private async carasDeLasOpciones(
+    pregunta: PreguntaDeclarada,
+  ): Promise<{ imagenes: string[] | null; porQue: string | null }> {
+    if (!pregunta.opcionesDe) return { imagenes: null, porQue: null };
+
+    if (pregunta.opcionesDe === 'equipo') {
+      const refs = pregunta.opciones.map((o) => equipoDeLaOpcion(o));
+      const sinNombre = pregunta.opciones.filter((_, i) => refs[i] === null);
+      if (sinNombre.length > 0) {
+        return { imagenes: null, porQue: `sin id de equipo: ${sinNombre.join(', ')}` };
+      }
+      return { imagenes: refs.map((ref) => emblemaDelEquipo(ref as string)), porQue: null };
+    }
+
+    const fichas = await Promise.all(pregunta.opciones.map((o) => this.enAthena(o)));
+    const faltan = pregunta.opciones.filter((_, i) => fichas[i] === null);
+    if (faltan.length > 0) return { imagenes: null, porQue: `no están en Athena: ${faltan.join(', ')}` };
+
+    const huellas = await Promise.all(fichas.map((f) => this.huellaDeFoto((f as { ref: string }).ref)));
+    const sinFoto = pregunta.opciones.filter(
+      (_, i) => huellas[i] === null || huellas[i] === SILUETA_GENERICA,
+    );
+    if (sinFoto.length > 0) return { imagenes: null, porQue: `sin foto propia: ${sinFoto.join(', ')}` };
+    if (new Set(huellas).size !== huellas.length) {
+      return { imagenes: null, porQue: 'dos opciones comparten la misma imagen' };
+    }
+
+    return {
+      imagenes: fichas.map((f) => fotoDelFutbolista((f as { ref: string }).ref)),
+      porQue: null,
+    };
   }
 
   /* ── El futbolista de la foto ──────────────────────────────────────────────────────────── */
 
-  private async revisarFoto(pregunta: PreguntaDeclarada, jugador: string): Promise<Veredicto> {
+  private async revisarFoto(pregunta: PreguntaDeclarada, jugador: string): Promise<Comprobacion> {
     const base = { pregunta, fixtureRef: null, fotoRef: null as string | null };
     const hallado = await this.enAthena(jugador);
     if (!hallado) return { ...base, estado: 'sin-foto', nota: `${jugador} no está en Athena` };
 
     const huella = await this.huellaDeFoto(hallado.ref);
-    if (!huella) {
-      return { ...base, estado: 'sin-foto', nota: `${hallado.nombre} no tiene foto` };
+    if (!huella || huella === SILUETA_GENERICA) {
+      return { ...base, estado: 'sin-foto', nota: `${hallado.nombre} no tiene foto propia` };
     }
-    /*
-     * La silueta genérica del proveedor es la misma imagen para todos: se detecta comparando el
-     * contenido y no el tamaño. Acá solo hay una pregunta con foto, así que basta con que exista;
-     * si alguna vez hay varias, el hash repetido las delata.
-     */
     return { ...base, estado: 'ok', fotoRef: hallado.ref, nota: hallado.nombre };
   }
 
@@ -103,7 +170,7 @@ export class Auditar60Service {
     pregunta: PreguntaDeclarada,
     jugador: string,
     clubesRef: readonly string[],
-  ): Promise<Veredicto> {
+  ): Promise<Comprobacion> {
     const base = { pregunta, fixtureRef: null, fotoRef: null };
     const hallado = await this.enAthena(jugador);
     if (!hallado) return { ...base, estado: 'sin-datos', nota: `${jugador} no está en Athena` };
@@ -140,7 +207,7 @@ export class Auditar60Service {
   private async revisarCampeon(
     pregunta: PreguntaDeclarada,
     v: Extract<PreguntaDeclarada['validacion'], { tipo: 'campeon' }>,
-  ): Promise<Veredicto> {
+  ): Promise<Comprobacion> {
     const base = { pregunta, fotoRef: null };
     const partidos = await this.partidosDe(v.competenciaRef, v.temporada);
     if (partidos.length === 0) {
@@ -191,7 +258,7 @@ export class Auditar60Service {
   private async revisarPartido(
     pregunta: PreguntaDeclarada,
     v: Extract<PreguntaDeclarada['validacion'], { tipo: 'partido' }>,
-  ): Promise<Veredicto> {
+  ): Promise<Comprobacion> {
     const base = { pregunta, fotoRef: null };
     const partido = await this.localizar(v);
     if (!partido) {
@@ -220,7 +287,7 @@ export class Auditar60Service {
     pregunta: PreguntaDeclarada,
     v: Extract<PreguntaDeclarada['validacion'], { tipo: 'partido' }>,
     fixtureRef: string,
-  ): Promise<Veredicto> {
+  ): Promise<Comprobacion> {
     const base = { pregunta, fixtureRef, fotoRef: null };
     const eventos = await this.eventosDe(fixtureRef);
     const penales = eventos.filter((e) => e.kind === 'missed_penalty');
@@ -275,7 +342,7 @@ export class Auditar60Service {
     pregunta: PreguntaDeclarada,
     v: Extract<PreguntaDeclarada['validacion'], { tipo: 'partido' }>,
     fixtureRef: string,
-  ): Promise<Veredicto> {
+  ): Promise<Comprobacion> {
     const base = { pregunta, fixtureRef, fotoRef: null };
     const lineups = await this.lineupsDe(fixtureRef);
     /* Por `teamRef` y no por «el local»: mirar el local traía la alineación del rival. */
@@ -310,7 +377,7 @@ export class Auditar60Service {
     pregunta: PreguntaDeclarada,
     v: Extract<PreguntaDeclarada['validacion'], { tipo: 'partido' }>,
     fixtureRef: string,
-  ): Promise<Veredicto> {
+  ): Promise<Comprobacion> {
     const base = { pregunta, fixtureRef, fotoRef: null };
     const notas = await this.provider.getMatchPlayerStatistics(fixtureRef);
     const capitanes = notas.filter((n) => n.captain && n.teamRef === (v.equipoRef ?? v.localRef));
@@ -390,17 +457,40 @@ export class Auditar60Service {
     return pedidos.map((ref) => ({ ref, nombre: porRef.get(ref) ?? ref }));
   }
 
+  /**
+   * El futbolista de un nombre suelto, dentro de las cuarenta y seis mil fichas de Athena.
+   *
+   * Se exige que **cada palabra** del nombre pedido aparezca en la ficha, y se resuelve en la
+   * consulta en vez de traer candidatos y filtrarlos acá. Es la diferencia entre encontrar a
+   * Fernando Torres y no encontrarlo: de «Torres» hay ciento dos fichas y la suya es la número
+   * noventa y seis por fama, así que cualquier tope razonable de candidatos la dejaba fuera.
+   *
+   * Pedir todas las palabras es lo que separa «Dani Carvajal» —que Athena guarda como «Daniel
+   * Carvajal»— de «Ronaldo Nazário», que si se buscara solo por apellido caería en Bruno Nazário.
+   * Para ponerle cara a una opción, una cara equivocada es mucho peor que ninguna.
+   */
   private async enAthena(nombre: string): Promise<{ ref: string; nombre: string } | null> {
-    const filas = await this.prisma.$queryRaw<Array<{ ref: string; name: string }>>`
-      SELECT r.provider_ref AS ref, p.name
-      FROM players p
-      JOIN external_references r
-        ON r.entity_type = 'player' AND r.entity_id = p.id AND r.provider = 'api-football'
-      WHERE immutable_unaccent(lower(p.name)) LIKE immutable_unaccent(lower(${'%' + nombre + '%'}))
-         OR immutable_unaccent(lower(coalesce(p.full_name, ''))) LIKE immutable_unaccent(lower(${'%' + nombre + '%'}))
-      ORDER BY p.relevancia DESC LIMIT 1`;
+    const recordado = this.fichas.get(nombre);
+    if (recordado !== undefined) return recordado;
+
+    const palabras = sinTildes(nombre).split(/\s+/).filter(Boolean);
+    const donde = palabras
+      .map((_, i) => `immutable_unaccent(lower(p.name || ' ' || coalesce(p.full_name, ''))) LIKE $${i + 1}`)
+      .join(' AND ');
+    const filas = await this.prisma.$queryRawUnsafe<Array<{ ref: string; name: string }>>(
+      `SELECT r.provider_ref AS ref, p.name
+       FROM players p
+       JOIN external_references r
+         ON r.entity_type = 'player' AND r.entity_id = p.id AND r.provider = 'api-football'
+       WHERE ${donde}
+       ORDER BY p.relevancia DESC LIMIT 1`,
+      ...palabras.map((x) => `%${x}%`),
+    );
+
     const fila = filas[0];
-    return fila ? { ref: fila.ref, nombre: fila.name } : null;
+    const ficha = fila ? { ref: fila.ref, nombre: fila.name } : null;
+    this.fichas.set(nombre, ficha);
+    return ficha;
   }
 
   /** La huella de la foto: el proveedor sirve la misma silueta para todos los que no tienen retrato. */
@@ -423,3 +513,10 @@ export class Auditar60Service {
     }
   }
 }
+
+/** La foto la sirve el proveedor por id: no hace falta guardarla ni pedirla. */
+const fotoDelFutbolista = (ref: string): string =>
+  `https://media.api-sports.io/football/players/${ref}.png`;
+
+const sinTildes = (texto: string): string =>
+  texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

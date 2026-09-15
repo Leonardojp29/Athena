@@ -49,13 +49,17 @@ async function main(): Promise<void> {
   for (const v of veredictos) {
     console.log(
       `${v.pregunta.clave} ${ETIQUETA[v.estado].padEnd(13)} ${(v.fixtureRef ?? '—').padEnd(10)} ` +
-        `${v.pregunta.tipo.padEnd(16)} ${v.nota ?? ''}`,
+        `${v.pregunta.tipo.padEnd(16)} ${v.imagenes ? 'con cara' : v.pregunta.opcionesDe ? 'SIN CARA' : '—'.padEnd(8)} ${v.nota ?? ''}`,
     );
   }
 
   const porEstado = new Map<EstadoDeLaPregunta, number>();
   for (const v of veredictos) porEstado.set(v.estado, (porEstado.get(v.estado) ?? 0) + 1);
   console.log('\n' + [...porEstado].map(([e, n]) => `${ETIQUETA[e]}: ${n}`).join(' · '));
+
+  const sinCara = veredictos.filter((v) => v.pregunta.opcionesDe && !v.imagenes);
+  console.log(`opciones con cara: ${veredictos.filter((v) => v.imagenes).length} de ${veredictos.length}`);
+  for (const v of sinCara) console.log(`  ${v.pregunta.clave} sin cara: ${v.porQueSinImagenes}`);
 
   await escribirInforme(veredictos);
   console.log('informe en', INFORME);
@@ -74,7 +78,8 @@ async function escribirInforme(veredictos: Veredicto[]): Promise<void> {
 
   const fila = (v: Veredicto): string =>
     `| ${v.pregunta.clave} | ${v.pregunta.tipo} | ${v.pregunta.dificultad} | ` +
-    `**${SEMAFORO[v.estado]}** | ${v.fixtureRef ?? '—'} | ${v.nota ?? ''} |`;
+    `**${SEMAFORO[v.estado]}** | ${v.fixtureRef ?? '—'} | ` +
+    `${v.imagenes ? 'con cara' : v.pregunta.opcionesDe ? `sin cara · ${v.porQueSinImagenes}` : 'texto'} | ${v.nota ?? ''} |`;
 
   const cuerpo = [
     '# 60 Segundos — auditoría de las preguntas contra API-Football',
@@ -85,8 +90,8 @@ async function escribirInforme(veredictos: Veredicto[]): Promise<void> {
     'puede comprobar —el Balón de Oro, los acumulados históricos— y la respalda el editor. Lo que',
     'sale **INCORRECTA** se reporta y queda bloqueado: no se sustituye por cuenta propia.',
     '',
-    '| pregunta | tipo | dificultad | estado | fixture | qué dice el proveedor |',
-    '|---|---|---|---|---|---|',
+    '| pregunta | tipo | dificultad | estado | fixture | opciones | qué dice el proveedor |',
+    '|---|---|---|---|---|---|---|',
     ...veredictos.map(fila),
     '',
   ].join('\n');

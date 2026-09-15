@@ -5,6 +5,8 @@ import { PrismaService } from '../../shared/prisma.service.js';
 export interface OpcionDeLaPregunta {
   texto: string;
   esCorrecta: boolean;
+  /** La foto, el escudo o la bandera. Nula cuando la pregunta va a texto pelado. */
+  imagen: string | null;
 }
 
 /**
@@ -69,7 +71,7 @@ export class PreguntasDel60Service {
         contexto: true,
         emblemas: true,
         fotoRef: true,
-        opciones: { select: { texto: true, esCorrecta: true } },
+        opciones: { select: { texto: true, esCorrecta: true, imagen: true } },
       },
     });
 

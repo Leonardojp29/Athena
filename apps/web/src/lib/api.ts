@@ -912,6 +912,7 @@ export interface RetoParaJugar {
 export interface OpcionDeLaPregunta {
   texto: string;
   esCorrecta: boolean;
+  imagen: string | null;
 }
 
 export interface PreguntaParaJugar {

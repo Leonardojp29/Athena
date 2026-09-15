@@ -62,6 +62,36 @@ Q046), los máximos goleadores históricos (Q005, Q006, Q050), la Libertadores 2
   16 / 2**.
 - El contenido peruano son 12 de 50, **24 %**, justo por debajo del 25-30 % que pide el encargo.
 
+## Las caras
+
+**Cada opción lleva su cara**: la foto del futbolista, el escudo del club o la bandera del país.
+Con cuatro nombres escritos, cincuenta preguntas se ven iguales por más que el enunciado cambie;
+con la cara, «¿quién ganó la Champions 2024?» se contesta reconociendo un escudo, que es como se lee
+el fútbol.
+
+Dos reglas, y las dos son para que la imagen no delate la respuesta:
+
+1. **O las llevan las cuatro opciones o no las lleva ninguna.** Tres retratos y un cuadro vacío
+   señalan la respuesta con el dedo.
+2. **La silueta gris del proveedor no cuenta.** Es la misma imagen para todo futbolista sin retrato
+   —la comparten cuatro de cada veinte fichas tomadas al azar— y se la reconoce por su huella. Una
+   silueta entre tres caras de verdad es tan delatora como un hueco.
+
+**37 de las 50 tienen cara.** Las trece restantes son ocho que no pueden tenerla —marcadores,
+verdadero/falso y los técnicos de Q032— y cinco que la perdieron por las reglas de arriba:
+
+| Pregunta | Por qué |
+|---|---|
+| Q005, Q050 | Ronaldo Nazário y Gerd Müller no están en Athena |
+| Q035 | Johnnier Montaño y Claudio Velázquez no están en Athena |
+| Q029, Q040 | Ronaldinho y Fernando Torres tienen la silueta genérica |
+
+El nombre de la opción se resuelve **exigiendo que cada palabra aparezca en la ficha**. Buscar el
+nombre entero fallaba con «Dani Carvajal», que Athena guarda como «Daniel Carvajal», y con «Didier
+Drogba», que es «Didier Yves Drogba Tébily»; quedarse con el apellido era peor, porque «Ronaldo
+Nazário» caía en Bruno Nazário. Los equipos no se buscan por texto en absoluto: el catálogo escribe
+«Bayern Múnich» y el proveedor «Bayern München», así que el id va fijado en un mapa.
+
 ## La escena, que es de donde sale la variedad
 
 Con la misma pregunta de cuatro botones, cada tipo trae su propio material y Athena ya lo tiene: el
@@ -102,6 +132,7 @@ pegados** en los cuarenta y nueve.
 | `apps/web/src/components/sesenta/SesentaSegundos.tsx` | La puerta: el reloj y el encadenado |
 | `apps/web/src/components/sesenta/Partida.tsx` | Reloj, puntaje, racha, multiplicador y pregunta |
 | `apps/web/src/components/sesenta/Escena.tsx` | Lo que se ve arriba del enunciado, según el tipo |
+| `apps/web/src/components/sesenta/Opciones.tsx` | Las cuatro respuestas, con su cara |
 | `apps/web/src/lib/sesenta.ts` | El pedido de preguntas y el récord en `localStorage` |
 | `apps/web/src/lib/sonido.ts` | Los momentos de sonido, nombrados y todavía en silencio |
 

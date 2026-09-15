@@ -63,6 +63,13 @@ export interface PreguntaDeclarada {
   /** Escudos, banderas o logos que acompañan al enunciado, por id fijado. */
   equiposRef?: readonly string[];
   competenciaRef?: string;
+  /**
+   * Qué son las opciones, cuando son algo con cara.
+   *
+   * `equipo` las resuelve por el mapa de nombres de abajo; `jugador` contra las fichas de Athena.
+   * Un marcador o un verdadero/falso no lo lleva: no hay nada que mostrar.
+   */
+  opcionesDe?: 'equipo' | 'jugador';
   validacion: Validacion;
 }
 
@@ -80,10 +87,12 @@ const ARGENTINA = '26';
 const AUSTRALIA = '20';
 const BRASIL = '6';
 const CHILE = '2383';
+const BELGICA = '1';
 const CROACIA = '3';
 const DINAMARCA = '21';
 const ESPANA = '9';
 const FRANCIA = '2';
+const MARRUECOS = '31';
 const NUEVA_ZELANDA = '4673';
 const PAISES_BAJOS = '1118';
 const PERU = '30';
@@ -109,11 +118,13 @@ export const BANDERAS: Record<string, string> = {
 
 /* ── Clubes ───────────────────────────────────────────────────────────────────────────────── */
 const AJAX = '194';
+const AYACUCHO = '2542';
 const ALIANZA_LIMA = '2553';
 const ARSENAL = '42';
 const ATLETICO_MADRID = '530';
 const BARCELONA = '529';
 const BAYERN = '157';
+const BOCA = '451';
 const CHELSEA = '49';
 const DORTMUND = '165';
 const ESTUDIANTES = '450';
@@ -121,17 +132,67 @@ const FLAMENGO = '127';
 const INTER = '505';
 const JUVENTUS = '496';
 const LIVERPOOL = '40';
+const MELGAR = '2554';
 const MAN_CITY = '50';
 const MONACO = '91';
+const PALMEIRAS = '121';
 const PSG = '85';
 const REAL_MADRID = '541';
+const RIVER = '435';
 const SANTOS = '128';
 const SPORTING_CRISTAL = '2546';
+const TOTTENHAM = '47';
 const UNIVERSITARIO = '2540';
+
+/*
+ * El nombre de la opción al id del equipo.
+ *
+ * Va acá y no pregunta por nombre a la base porque el catálogo escribe «Bayern Múnich» y el
+ * proveedor «Bayern München», «PSG» y «Paris Saint Germain»: buscar por texto acertaría a veces,
+ * que es la peor de las opciones. Lo que falte en este mapa lo dice la auditoría.
+ */
+const EQUIPO_POR_NOMBRE: Record<string, string> = {
+  Ajax: AJAX,
+  Alemania: ALEMANIA,
+  'Alianza Lima': ALIANZA_LIMA,
+  Argentina: ARGENTINA,
+  Arsenal: ARSENAL,
+  'Atlético de Madrid': ATLETICO_MADRID,
+  'Ayacucho FC': AYACUCHO,
+  Barcelona: BARCELONA,
+  'Bayern Múnich': BAYERN,
+  Bélgica: BELGICA,
+  'Boca Juniors': BOCA,
+  'Borussia Dortmund': DORTMUND,
+  Brasil: BRASIL,
+  Chelsea: CHELSEA,
+  Croacia: CROACIA,
+  España: ESPANA,
+  Flamengo: FLAMENGO,
+  Francia: FRANCIA,
+  Inter: INTER,
+  Juventus: JUVENTUS,
+  Liverpool: LIVERPOOL,
+  'Manchester City': MAN_CITY,
+  Marruecos: MARRUECOS,
+  Melgar: MELGAR,
+  'Países Bajos': PAISES_BAJOS,
+  PSG: PSG,
+  Palmeiras: PALMEIRAS,
+  'Real Madrid': REAL_MADRID,
+  'River Plate': RIVER,
+  'Sporting Cristal': SPORTING_CRISTAL,
+  Tottenham: TOTTENHAM,
+  Universitario: UNIVERSITARIO,
+};
+
+/** El id del equipo que nombra una opción, o nulo si el catálogo lo escribe de otra forma. */
+export const equipoDeLaOpcion = (texto: string): string | null => EQUIPO_POR_NOMBRE[texto] ?? null;
 
 export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   {
     clave: 'Q001',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'facil',
     enunciado: '¿Quién marcó el gol que le dio el Mundial 2014 a Alemania?',
@@ -144,6 +205,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q002',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'facil',
     enunciado: '¿Quién marcó el primer gol de Perú ante Australia en Rusia 2018?',
@@ -156,6 +218,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q003',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Champions League 2019/20?',
@@ -167,6 +230,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q004',
+    opcionesDe: 'jugador',
     tipo: 'opcion-multiple',
     dificultad: 'facil',
     enunciado: '¿Quién ganó el Balón de Oro en 2018?',
@@ -177,6 +241,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q005',
+    opcionesDe: 'jugador',
     tipo: 'comparacion',
     dificultad: 'normal',
     enunciado: '¿Quién fue el máximo goleador del Mundial 2002?',
@@ -188,6 +253,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q006',
+    opcionesDe: 'jugador',
     tipo: 'opcion-multiple',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Bota de Oro del Mundial 2022?',
@@ -199,6 +265,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q007',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'facil',
     enunciado: '¿Quién marcó el único gol de la final Argentina vs Brasil de la Copa América 2021?',
@@ -211,6 +278,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q008',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Copa Libertadores 2019?',
@@ -222,6 +290,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q009',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién fue campeón de la Liga 1 peruana en 2023?',
@@ -233,6 +302,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q010',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién fue campeón de la Liga 1 peruana en 2021?',
@@ -244,6 +314,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q011',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'normal',
     enunciado: '¿Quién fue campeón de la Liga 1 peruana en 2020?',
@@ -255,6 +326,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q012',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Qué selección ganó el Mundial 2018?',
@@ -266,6 +338,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q013',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Qué selección ganó el Mundial 2010?',
@@ -277,6 +350,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q014',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Qué selección ganó el Mundial 2014?',
@@ -288,6 +362,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q015',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Qué selección ganó el Mundial 2022?',
@@ -299,6 +374,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q016',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Champions League 2014/15?',
@@ -310,6 +386,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q017',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Champions League 2016/17?',
@@ -321,6 +398,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q018',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'normal',
     enunciado: '¿Quién ganó la Champions League 2018/19?',
@@ -332,6 +410,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q019',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'normal',
     enunciado: '¿Quién ganó la Champions League 2020/21?',
@@ -343,6 +422,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q020',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Champions League 2022/23?',
@@ -354,6 +434,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q021',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'facil',
     enunciado: '¿Quién ganó la Champions League 2023/24?',
@@ -365,6 +446,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q022',
+    opcionesDe: 'equipo',
     tipo: 'campeon',
     dificultad: 'normal',
     enunciado: '¿Quién ganó la Champions League 2024/25?',
@@ -424,6 +506,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q027',
+    opcionesDe: 'jugador',
     tipo: 'trayectoria',
     dificultad: 'facil',
     enunciado: '¿Cuál de estos jugadores pasó por Liverpool y Barcelona?',
@@ -435,6 +518,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q028',
+    opcionesDe: 'jugador',
     tipo: 'trayectoria',
     dificultad: 'normal',
     enunciado: '¿Cuál de estos jugadores jugó oficialmente para Arsenal y Barcelona?',
@@ -446,6 +530,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q029',
+    opcionesDe: 'jugador',
     tipo: 'trayectoria',
     dificultad: 'facil',
     enunciado: '¿Quién tuvo esta ruta de clubes: Santos → Barcelona → PSG?',
@@ -457,6 +542,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q030',
+    opcionesDe: 'jugador',
     tipo: 'trayectoria',
     dificultad: 'facil',
     enunciado: '¿Qué estrella pasó de Mónaco al PSG?',
@@ -468,6 +554,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q031',
+    opcionesDe: 'jugador',
     tipo: 'opcion-multiple',
     dificultad: 'facil',
     enunciado: '¿Quién fue capitán de Perú ante Australia en el Mundial 2018?',
@@ -492,6 +579,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q033',
+    opcionesDe: 'jugador',
     tipo: 'quien-es',
     dificultad: 'facil',
     enunciado: '¿Quién es este arquero peruano?',
@@ -502,6 +590,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q034',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'normal',
     enunciado: '¿Quién abrió el marcador para Universitario en la final de vuelta de Liga 1 2023 en Matute?',
@@ -514,6 +603,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q035',
+    opcionesDe: 'jugador',
     tipo: 'opcion-multiple',
     dificultad: 'normal',
     enunciado: '¿Qué jugador de Alianza Lima marcó un hat-trick ante Estudiantes en la Libertadores 2010?',
@@ -526,6 +616,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q036',
+    opcionesDe: 'jugador',
     tipo: 'opcion-multiple',
     dificultad: 'facil',
     enunciado: '¿Quién falló un penal para Perú ante Dinamarca en el Mundial 2018?',
@@ -538,6 +629,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q037',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'normal',
     enunciado: '¿Cuál de estos jugadores marcó en el Perú 3-0 Chile de la Copa América 2019?',
@@ -550,6 +642,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q038',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'facil',
     enunciado: '¿Quién marcó el segundo gol de Argentina en la final del Mundial 2022?',
@@ -562,6 +655,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q039',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'facil',
     enunciado: '¿Quién marcó el gol del Manchester City en la final de Champions 2023?',
@@ -574,6 +668,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q040',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'normal',
     enunciado: '¿Quién marcó el empate del Chelsea ante Bayern en la final de Champions 2012?',
@@ -586,6 +681,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q041',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'facil',
     enunciado: '¿Quién marcó el 1-1 del Real Madrid en la final de Champions 2014?',
@@ -598,6 +694,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q042',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'normal',
     enunciado: '¿Quién marcó el primer gol del Real Madrid en la final de Champions 2017?',
@@ -622,6 +719,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q044',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'normal',
     enunciado: '¿Quién marcó el primer gol del Real Madrid en la final de Champions 2024?',
@@ -634,6 +732,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q045',
+    opcionesDe: 'jugador',
     tipo: 'quien-marco',
     dificultad: 'normal',
     enunciado: '¿Qué jugador del PSG marcó dos goles en la final de Champions 2025 contra Inter?',
@@ -667,6 +766,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q048',
+    opcionesDe: 'jugador',
     tipo: 'titularidad',
     dificultad: 'dificil',
     enunciado: '¿Cuál de estos jugadores del Barcelona NO fue titular en la final de Champions 2015?',
@@ -679,6 +779,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q049',
+    opcionesDe: 'jugador',
     tipo: 'titularidad',
     dificultad: 'dificil',
     enunciado: '¿Cuál de estos jugadores del Real Madrid NO fue titular en la final de Champions 2018?',
@@ -691,6 +792,7 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
   },
   {
     clave: 'Q050',
+    opcionesDe: 'jugador',
     tipo: 'comparacion',
     dificultad: 'normal',
     enunciado: '¿Cuál de estos jugadores marcó más goles en Copas del Mundo?',

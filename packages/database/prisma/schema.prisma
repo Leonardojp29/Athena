@@ -781,6 +781,8 @@ model OpcionDe60 {
   preguntaId BigInt       @map("pregunta_id")
   texto      String
   esCorrecta Boolean      @map("es_correcta")
+  /// La foto del futbolista, el escudo del club o la bandera del país. O la llevan todas o ninguna.
+  imagen     String?
 
   @@index([preguntaId], map: "opciones_de_60_pregunta")
   @@map("opciones_de_60")
