@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  esDeLaTanda,
   goleadoresDelPartido,
   minutoDeJugada,
   motivoDeTarjeta,
   relatoDelPartido,
   revisionDeVar,
+  tandaDePenales,
   type EventoDeRelato,
   type PartidoDeRelato,
 } from './relato.js';
@@ -215,5 +217,77 @@ describe('goleadoresDelPartido', () => {
       events: [evento('yellow_card', 30, LOCAL), evento('missed_penalty', 60, VISITA)],
     });
     expect([local.length, visita.length]).toEqual([0, 0]);
+  });
+});
+
+/*
+ * La tanda de penales. El proveedor la manda como eventos normales con minutos que siguen al
+ * alargue, así que sin separarla el 3-3 de Peterborough contra Barnsley se leía 10-9 en la
+ * cabecera, con doce goleadores y el marcador corriente apagado porque la suma no cuadraba.
+ */
+describe('tanda de penales', () => {
+  const dePenal = (minuto: number, equipo: { id: string }, entro = true) =>
+    evento(entro ? 'penalty_goal' : 'missed_penalty', minuto, equipo, {
+      detail: { label: 'Penalty', comments: 'Penalty Shootout' },
+    });
+
+  /* Tres a tres en los noventa y siete a seis en la tanda, como terminó de verdad. */
+  const gol = (minuto: number, equipo: { id: string }, quien: string) =>
+    evento('goal', minuto, equipo, { player: { id: quien, name: quien } });
+
+  const conTanda = () =>
+    partido(
+      [
+        gol(19, LOCAL, 'Leonard'),
+        gol(27, LOCAL, 'Ormerod'),
+        gol(40, VISITA, 'Cleary'),
+        gol(74, VISITA, 'Kelly'),
+        gol(88, LOCAL, 'Conn-Clarke'),
+        gol(91, VISITA, 'Connell'),
+        dePenal(91, VISITA),
+        dePenal(92, LOCAL),
+        dePenal(93, VISITA),
+        dePenal(94, LOCAL),
+        dePenal(100, VISITA, false),
+        dePenal(100, LOCAL),
+      ],
+      [3, 3],
+    );
+
+  it('cuenta solo los penales convertidos de cada lado', () => {
+    expect(tandaDePenales(conTanda())).toEqual({ local: 3, visita: 2 });
+  });
+
+  it('no hay tanda en un partido normal', () => {
+    expect(tandaDePenales(partido([evento('goal', 10, LOCAL)], [1, 0]))).toBeNull();
+  });
+
+  it('los penales de la tanda no suman al marcador ni son goleadores', () => {
+    const match = conTanda();
+    const { local, visita } = goleadoresDelPartido(match);
+    expect(local.length + visita.length).toBe(6);
+    expect([...local, ...visita].flatMap((g) => g.goles).length).toBe(6);
+  });
+
+  /* Si sumaran, la cuenta daría 6-5 contra un 3-3 oficial y el marcador corriente se apagaría. */
+  it('el marcador corriente sigue cuadrando con el resultado oficial', () => {
+    const ultimoGol = jugadas(relatoDelPartido(conTanda()))
+      .filter((j) => j.marcador !== null)
+      .at(-1);
+    expect(ultimoGol?.marcador).toEqual({ local: 3, visita: 3 });
+  });
+
+  it('la tanda abre su propia banda y no cae en el alargue', () => {
+    const titulos = bandas(relatoDelPartido(conTanda())).map((b) => b.titulo);
+    expect(titulos).toContain('Penales');
+    expect(titulos.filter((t) => t === 'Alargue').length).toBe(1);
+  });
+
+  it('un penal normal del partido no se confunde con uno de la tanda', () => {
+    const normal = evento('penalty_goal', 55, LOCAL, {
+      detail: { label: 'Penalty', comments: null },
+    });
+    expect(esDeLaTanda(normal)).toBe(false);
+    expect(tandaDePenales(partido([normal], [1, 0]))).toBeNull();
   });
 });

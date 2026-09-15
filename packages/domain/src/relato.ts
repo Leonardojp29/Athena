@@ -28,7 +28,23 @@ export interface PartidoDeRelato {
   events: EventoDeRelato[];
 }
 
-export type Tramo = 'previo' | 'primero' | 'segundo' | 'alargue';
+export type Tramo = 'previo' | 'primero' | 'segundo' | 'alargue' | 'penales';
+
+/*
+ * La tanda no es parte del partido: define quién pasa, no cómo quedó.
+ *
+ * El proveedor la manda como eventos normales con minutos inventados que siguen al alargue —91, 92,
+ * 93…—, así que sin esta marca los penales entran al marcador como goles: un 3-3 que se lee 10-9,
+ * los doce ejecutores listados como goleadores en la cabecera, y el marcador corriente del relato
+ * apagado porque la suma deja de cuadrar con el resultado oficial.
+ *
+ * La única señal fiable es el comentario, que el proveedor escribe igual en todas las competencias.
+ */
+const COMENTARIO_DE_TANDA = 'penalty shootout';
+
+export function esDeLaTanda(evento: EventoDeRelato): boolean {
+  return evento.detail?.comments?.trim().toLowerCase() === COMENTARIO_DE_TANDA;
+}
 
 export interface Marcador {
   local: number;
@@ -64,9 +80,12 @@ const TITULO: Record<Tramo, string> = {
   primero: 'Primer tiempo',
   segundo: 'Entretiempo',
   alargue: 'Alargue',
+  penales: 'Penales',
 };
 
 function tramoDe(evento: EventoDeRelato): Tramo {
+  /* Antes que el minuto: el proveedor numera la tanda como si fuera la continuación del alargue. */
+  if (esDeLaTanda(evento)) return 'penales';
   if (evento.minute < 0) return 'previo';
   if (evento.minute > 90) return 'alargue';
   return evento.minute > 45 ? 'segundo' : 'primero';
@@ -98,7 +117,7 @@ export function relatoDelPartido<E extends EventoDeRelato>(
   const conMarcador: Array<Marcador | null> = [];
   for (const evento of eventos) {
     const local = evento.team.id === match.homeTeam.id;
-    if (SUMA_PROPIA.has(evento.kind) || evento.kind === 'own_goal') {
+    if (!esDeLaTanda(evento) && (SUMA_PROPIA.has(evento.kind) || evento.kind === 'own_goal')) {
       /*
        * El autogol NO se voltea: el proveedor ya lo manda con el equipo al que le contó. Medido
        * sobre los 285 partidos con autogol de la base, la suma reconstruye el marcador oficial en
@@ -187,6 +206,29 @@ function cierreDelRelato(match: Omit<PartidoDeRelato, 'events'>, suma: Marcador 
       ? { local: match.homeScore, visita: match.awayScore }
       : suma;
   return { clase: 'banda', titulo: 'Final', marcador: oficial };
+}
+
+/**
+ * Cómo terminó la tanda, contando los penales convertidos de cada lado.
+ *
+ * Se cuenta y no se lee de un campo porque el proveedor no publica el resultado de la tanda: manda
+ * los remates uno por uno, los que entraron como `penalty_goal` y los errados como `missed_penalty`.
+ * Devuelve null cuando no hubo tanda, que es lo normal.
+ */
+export function tandaDePenales(match: {
+  homeTeam: { id: string };
+  events: EventoDeRelato[];
+}): Marcador | null {
+  const tanda = match.events.filter(esDeLaTanda);
+  if (tanda.length === 0) return null;
+
+  const marcador: Marcador = { local: 0, visita: 0 };
+  for (const evento of tanda) {
+    if (evento.kind !== 'penalty_goal') continue;
+    if (evento.team.id === match.homeTeam.id) marcador.local++;
+    else marcador.visita++;
+  }
+  return marcador;
 }
 
 /** El minuto como se escribe: "45+2", y un guion para los negativos que a veces manda el proveedor. */
@@ -279,6 +321,8 @@ export function goleadoresDelPartido<E extends EventoDeRelato>(match: {
 
   for (const evento of match.events) {
     if (!SUMA_PROPIA.has(evento.kind) && evento.kind !== 'own_goal') continue;
+    /* Los doce de la tanda no son goleadores del partido: llenaban la cabecera y tapaban a los tres que sí lo son. */
+    if (esDeLaTanda(evento)) continue;
 
     const enContra = evento.kind === 'own_goal';
     const lado = evento.team.id === match.homeTeam.id ? lados.local : lados.visita;

@@ -5,7 +5,7 @@ import MinutoAMinuto from './match/MinutoAMinuto';
 import type { MarcadorDePartido, Marcadores, MatchEventView, MatchView } from '../lib/api';
 import { API_URL } from '../lib/entorno';
 import { formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
-import { goleadoresDelPartido, type Goleador } from '../lib/relato';
+import { goleadoresDelPartido, tandaDePenales, type Goleador } from '../lib/relato';
 
 /*
  * El marcador de la cabecera y el minuto a minuto. Es un solo componente y una sola consulta: dos
@@ -115,6 +115,12 @@ function Scoreboard({ match }: { match: MatchView }) {
   const live = isLive(match.status);
   const hasScore = match.homeScore !== null && match.awayScore !== null;
   const goles = goleadoresDelPartido(match);
+  /*
+   * La tanda va dentro de la pastilla y no en un renglón propio: la banda mide siempre lo mismo para
+   * que la página no salte al cambiar de partido dentro de una competencia, y una línea condicional
+   * rompería eso justo en los partidos de copa.
+   */
+  const tanda = tandaDePenales(match);
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 py-3 sm:gap-10 sm:py-3.5">
@@ -157,6 +163,11 @@ function Scoreboard({ match }: { match: MatchView }) {
               ? minutoEnVivo(match.status, match.elapsedMinutes, match.statusDetail)
               : statusLabel(match.status)}
           </span>
+          {tanda && !live && (
+            <span className="tabular">
+              · Penales {tanda.local}-{tanda.visita}
+            </span>
+          )}
         </span>
       </div>
 
