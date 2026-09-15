@@ -6,7 +6,12 @@ import { ExternalReferenceService } from '../sync/external-reference.service.js'
 import { PlayerResolverService } from '../sync/player-resolver.service.js';
 import { AuditarImpostorService, type Veredicto } from './auditar-impostor.service.js';
 import { calzaNombre } from './nombres.js';
-import { RETOS_DEL_IMPOSTOR, type RetoDelImpostorDeclarado } from './retos-impostor.config.js';
+import {
+  emblemaDelEquipo,
+  equipoDelReto,
+  RETOS_DEL_IMPOSTOR,
+  type RetoDelImpostorDeclarado,
+} from './retos-impostor.config.js';
 
 /** Los estados con los que un reto puede entrar al catálogo. El resto queda bloqueado. */
 const ENTRAN = new Set(['ok', 'ok-con-reparo', 'ok-a-mano']);
@@ -98,6 +103,7 @@ export class ImportarImpostorService {
         reveal: v.reto.reveal,
         validadoAMano: v.estado === 'ok-a-mano',
         contexto: contextoDe(v.reto),
+        emblemaUrl: emblemaDelEquipo(equipoDelReto(v.reto)),
       };
       const guardado = await tx.retoDelImpostor.upsert({
         where: { clave: v.reto.clave },

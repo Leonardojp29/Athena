@@ -14,7 +14,13 @@ juego entero: no se trata de saber más, sino de no equivocarse nunca.
 sale cada decisión:
 
 - **Las cartas llevan rostro y apellido y nada más.** Ni club, ni puesto, ni país: cualquiera de
-  esos datos resolvería la ronda sin pensar.
+  esos datos resolvería la ronda sin pensar. El apellido respeta las partículas —«Di María», no
+  «María»— y, cuando dos cartas lo repiten, las dos pasan al nombre completo: en la Argentina de
+  2021 hay dos Martínez y dos cartas iguales obligan a mirar la foto para saber cuál es cuál.
+- **El enunciado va con el emblema del equipo que nombra**: escudo si es club, bandera si es
+  selección. La distinción no la puede dar el proveedor, que devuelve la bandera de Argentina pero
+  el sello de la FPF para Perú, así que el código de bandera va fijado en el catálogo junto al id
+  del equipo.
 - **`esImpostor` viaja con la ronda.** Al contrario que en [Adivina el XI](ADIVINA-EL-XI.md), donde
   esconder la respuesta es el juego, acá esconderla costaría un viaje a la red justo en el instante
   de fallar. El récord se guarda en el navegador de quien juega, así que hacer trampa solo se la
@@ -91,7 +97,7 @@ puede no quedar ninguna limpia, y ahí se acepta el choque antes que servir una 
 | `apps/web/src/components/impostor/ElImpostor.tsx` | La puerta: el reloj y el encadenado de tandas |
 | `apps/web/src/components/impostor/Ronda.tsx` | Enunciado, reloj, racha y las seis cartas |
 | `apps/web/src/components/impostor/CartaDeJugador.tsx` | La carta: rostro y apellido, nada más |
-| `apps/web/src/lib/impostor.ts` | El pedido de tanda y el récord en `localStorage` |
+| `apps/web/src/lib/impostor.ts` | El pedido de tanda, los rótulos y el récord en `localStorage` |
 
 ## Lo que se guarda, y lo que no
 

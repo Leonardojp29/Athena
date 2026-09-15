@@ -34,7 +34,7 @@ export type Validacion =
       objetivo: 'local' | 'visita';
     }
   | { tipo: 'plantel'; equipoRef: string; temporada: number; competenciaRef?: string }
-  | { tipo: 'editorial'; motivo: string };
+  | { tipo: 'editorial'; equipoRef: string; motivo: string };
 
 export interface RetoDelImpostorDeclarado {
   clave: string;
@@ -76,6 +76,35 @@ const PERU = '30';
 const PORTUGAL = '27';
 const SUIZA = '15';
 const URUGUAY = '7';
+
+/*
+ * El emblema que acompaña al enunciado, cuando habla de una selección.
+ *
+ * El proveedor es inconsistente ahí: para Argentina devuelve la bandera y para Perú el sello de la
+ * FPF, así que `teams/{ref}.png` no sirve para lo mismo en los dos casos. El código de bandera va
+ * fijado acá por la misma razón que los ids de equipo, y quien no está en esta lista es un club.
+ */
+const BANDERAS: Record<string, string> = {
+  [ALEMANIA]: 'de',
+  [ARGENTINA]: 'ar',
+  [AUSTRALIA]: 'au',
+  [BELGICA]: 'be',
+  [BRASIL]: 'br',
+  [CHILE]: 'cl',
+  [COLOMBIA]: 'co',
+  [COREA_DEL_SUR]: 'kr',
+  [CROACIA]: 'hr',
+  [ESPANA]: 'es',
+  [FRANCIA]: 'fr',
+  [GHANA]: 'gh',
+  [INGLATERRA]: 'gb-eng',
+  [ITALIA]: 'it',
+  [PAISES_BAJOS]: 'nl',
+  [PERU]: 'pe',
+  [PORTUGAL]: 'pt',
+  [SUIZA]: 'ch',
+  [URUGUAY]: 'uy',
+};
 
 const AJAX = '194';
 const ALIANZA_LIMA = '2553';
@@ -419,7 +448,7 @@ export const RETOS_DEL_IMPOSTOR: readonly RetoDelImpostorDeclarado[] = [
     reveal: 'Thiago formaba parte del Barcelona, pero no fue titular en aquella final.',
     correctos: ['Messi', 'David Villa', 'Pedro', 'Xavi', 'Iniesta'],
     impostor: 'Thiago Alcântara',
-    validacion: { tipo: 'editorial', motivo: 'La final de 2011 es la temporada 2010 y la Champions del proveedor arranca en 2011.' },
+    validacion: { tipo: 'editorial', equipoRef: BARCELONA, motivo: 'La final de 2011 es la temporada 2010 y la Champions del proveedor arranca en 2011.' },
   },
   {
     clave: 'IMP-033',
@@ -605,3 +634,18 @@ export const RETOS_DEL_IMPOSTOR: readonly RetoDelImpostorDeclarado[] = [
     validacion: { tipo: 'plantel', equipoRef: BARCELONA, temporada: 2007 },
   },
 ];
+
+/** El equipo del que habla el enunciado. Todo reto nombra uno, y está fijado por id. */
+export function equipoDelReto(reto: RetoDelImpostorDeclarado): string {
+  const v = reto.validacion;
+  if (v.tipo === 'once') return v.objetivo === 'local' ? v.localRef : v.visitaRef;
+  return v.equipoRef;
+}
+
+/** Bandera si es selección, escudo si es club. La distinción la pide el enunciado, no el proveedor. */
+export function emblemaDelEquipo(equipoRef: string): string {
+  const bandera = BANDERAS[equipoRef];
+  return bandera
+    ? `https://media.api-sports.io/flags/${bandera}.svg`
+    : `https://media.api-sports.io/football/teams/${equipoRef}.png`;
+}

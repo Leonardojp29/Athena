@@ -41,9 +41,16 @@ const TTL_POR_DEFECTO_MS = 30_000;
 const TOPE_DE_ESPERA_MS = Number(import.meta.env.PUBLIC_API_TIMEOUT_MS ?? 20_000);
 const MAX_ENTRADAS = 300;
 
-/** Lee el s-maxage que el propio API declara; si no dice nada, 30 segundos. */
+/**
+ * Lee el s-maxage que el propio API declara; si no dice nada, 30 segundos.
+ *
+ * `no-store` devuelve cero, y eso importa: los sorteos de los juegos viajan con esa cabecera
+ * justamente porque cada partida quiere algo distinto. Sin entenderla, media docena de personas
+ * entrando en la misma media hora recibían las mismas rondas en el mismo orden.
+ */
 function ttlDe(res: Response): number {
   const header = res.headers.get('cache-control') ?? '';
+  if (/no-store|no-cache/.test(header)) return 0;
   const match = /s-maxage=(\d+)/.exec(header);
   return match?.[1] ? Number(match[1]) * 1000 : TTL_POR_DEFECTO_MS;
 }
@@ -57,7 +64,14 @@ export async function api<T>(path: string): Promise<T> {
   const entrada: Entrada = {
     vence: ahora + TTL_POR_DEFECTO_MS,
     promesa: pedir<T>(path, (res) => {
-      entrada.vence = Date.now() + ttlDe(res);
+      const ttl = ttlDe(res);
+      entrada.vence = Date.now() + ttl;
+      /*
+       * Lo que no se guarda se suelta apenas llega. Los pedidos que entren mientras esta respuesta
+       * está en vuelo siguen compartiéndola —eso no es cachear, es no pedir dos veces lo mismo a la
+       * vez—, pero el siguiente sale a la red de nuevo.
+       */
+      if (ttl === 0 && cache.get(path) === entrada) cache.delete(path);
     }),
   };
   /* Una petición que falla no se queda cacheada: el próximo render vuelve a intentar. */
@@ -907,6 +921,7 @@ export interface RondaDelImpostor {
   categoria: string;
   enunciado: string;
   reveal: string;
+  emblemaUrl: string | null;
   opciones: OpcionDeRonda[];
 }
 

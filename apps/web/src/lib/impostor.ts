@@ -112,5 +112,50 @@ export async function pedirTanda(vistas: string[]): Promise<RondaDelImpostor[]> 
 export const fotoDe = (ref: string): string =>
   `https://media.api-sports.io/football/players/${ref}.png`;
 
-/** "Lionel Messi" → "Messi", para la carta, donde el apellido es lo que se reconoce. */
-export const apellidoDe = (nombre: string): string => nombre.trim().split(/\s+/).pop() ?? nombre;
+/*
+ * Las partículas que van pegadas al apellido. Sin esto, «Ángel Di María» quedaba en «MARÍA» y
+ * «Rodrigo De Paul» en «PAUL», que no son el apellido de nadie.
+ */
+const PARTICULAS = new Set([
+  'de', 'del', 'della', 'di', 'da', 'das', 'dos', 'du', 'la', 'le', 'los', 'van', 'von', 'der',
+  'den', 'ter', 'mac', 'mc', "o'", 'saint', 'san', 'bin', 'ibn', 'al', 'el',
+]);
+
+/** "Lionel Messi" → "Messi"; "Ángel Di María" → "Di María". Lo que un hincha diría. */
+export function apellidoDe(nombre: string): string {
+  const palabras = nombre.trim().split(/\s+/);
+  if (palabras.length < 2) return nombre;
+
+  /*
+   * Se camina hacia atrás mientras lo anterior sea partícula. Llegar hasta el principio es válido
+   * —«Di María» a secas es todo apellido—: solo se retrocede sobre partículas, y nadie se llama
+   * únicamente así.
+   */
+  let desde = palabras.length - 1;
+  while (desde > 0 && PARTICULAS.has((palabras[desde - 1] ?? '').toLowerCase())) desde -= 1;
+  return palabras.slice(desde).join(' ');
+}
+
+/**
+ * El rótulo de cada carta dentro de su ronda.
+ *
+ * El apellido solo alcanza mientras no se repita: en la Argentina de 2021 hay dos Martínez, y dos
+ * cartas que dicen lo mismo obligan a mirar la foto para saber cuál es cuál. Cuando eso pasa, las
+ * dos pasan al nombre completo; las demás se quedan cortas.
+ */
+export function rotulosDeLaRonda(
+  opciones: ReadonlyArray<{ ref: string; nombre: string }>,
+): Record<string, string> {
+  const cuantos = new Map<string, number>();
+  for (const o of opciones) {
+    const apellido = apellidoDe(o.nombre);
+    cuantos.set(apellido, (cuantos.get(apellido) ?? 0) + 1);
+  }
+
+  const rotulos: Record<string, string> = {};
+  for (const o of opciones) {
+    const apellido = apellidoDe(o.nombre);
+    rotulos[o.ref] = (cuantos.get(apellido) ?? 0) > 1 ? o.nombre : apellido;
+  }
+  return rotulos;
+}

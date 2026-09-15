@@ -1,4 +1,5 @@
 import { DURACION_MS, type DesenlaceDeRonda, type Ronda as RondaDelMotor } from '@athena/el-impostor';
+import { rotulosDeLaRonda } from '../../lib/impostor';
 import { CartaDeJugador, type EstadoDeCarta } from './CartaDeJugador';
 
 interface Props {
@@ -32,6 +33,7 @@ export function Ronda({
 }: Props) {
   const segundos = Math.ceil(restanteMs / 1000);
   const fraccion = Math.max(0, Math.min(1, restanteMs / DURACION_MS));
+  const rotulos = rotulosDeLaRonda(ronda.opciones);
 
   return (
     <div data-ronda={ronda.clave} className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center px-4 py-4 sm:py-6">
@@ -72,9 +74,30 @@ export function Ronda({
         </span>
       </div>
 
-      <h1 className="mt-6 text-balance text-center font-display text-xl font-semibold leading-snug sm:text-2xl">
-        {ronda.enunciado}
-      </h1>
+      {/*
+        El emblema del equipo que nombra el enunciado: escudo si es club, bandera si es selección.
+        Ubica de un vistazo y ahorra leer el nombre, que en una ronda contra reloj es tiempo que se
+        gasta en lo que no es el juego. Decorativo —el enunciado ya lo dice—, así que va sin alt.
+      */}
+      <div className="mt-6 flex items-center justify-center gap-3 sm:gap-4">
+        {ronda.emblemaUrl && (
+          <img
+            src={ronda.emblemaUrl}
+            alt=""
+            aria-hidden="true"
+            width="48"
+            height="48"
+            className="h-10 w-12 shrink-0 object-contain sm:h-12 sm:w-14"
+          />
+        )}
+        {/*
+          Ancho tope y sin `text-balance`: equilibrar las líneas deja la caja más ancha que el texto
+          y el emblema quedaba flotando lejos del enunciado en lugar de al costado.
+        */}
+        <h1 className="max-w-xl text-center font-display text-xl font-semibold leading-snug sm:text-2xl">
+          {ronda.enunciado}
+        </h1>
+      </div>
       <p className="mt-1 text-center text-2xs uppercase tracking-label text-ink-muted">
         Hay uno que se coló
       </p>
@@ -84,6 +107,7 @@ export function Ronda({
           <CartaDeJugador
             key={opcion.ref}
             opcion={opcion}
+            rotulo={rotulos[opcion.ref] ?? opcion.nombre}
             turno={i}
             estado={estadoDe(opcion.ref, opcion.esImpostor, elegido, desenlace)}
             onElegir={() => onElegir(opcion.ref)}

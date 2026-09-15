@@ -734,6 +734,8 @@ model RetoDelImpostor {
   validadoAMano Boolean @default(false) @map("validado_a_mano")
   /// La escena: el partido, o el club y la temporada. Dos retos de la misma no salen pegados.
   contexto      String  @default("")
+  /// El escudo del club o la bandera de la selección que nombra el enunciado.
+  emblemaUrl    String? @map("emblema_url")
 
   opciones      OpcionDelImpostor[]
   actualizadoEn DateTime            @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)

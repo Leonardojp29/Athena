@@ -4,7 +4,6 @@ import { cachear } from '../../lib/cache';
 import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
 import TuCarrera from '../../components/juego/TuCarrera';
-import TuRacha from '../../components/juego/TuRacha';
 import '../../styles/leyenda.css';
 
 /*
@@ -69,7 +68,6 @@ const JUEGOS: Juego[] = [
 
     <!-- Lo tuyo: la carrera abierta. Sale del navegador, así que se hidrata. -->
     <TuCarrera client:load />
-    <TuRacha client:load />
 
     <ul class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {

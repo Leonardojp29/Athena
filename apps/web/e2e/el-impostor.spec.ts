@@ -83,6 +83,21 @@ test.describe('El Impostor', () => {
     expect(new Set(claves).size).toBe(claves.length);
   });
 
+  /*
+   * La web memoriza las respuestas del API por treinta segundos para no repetir viajes a Supabase.
+   * El sorteo viaja con `no-store` justamente para quedar fuera de eso: sin respetarlo, todo el que
+   * entrara en la misma media hora jugaba las mismas diez rondas en el mismo orden.
+   */
+  test('dos tandas seguidas no son la misma', async ({ page }) => {
+    const claves = async (): Promise<string> => {
+      const r = await page.request.get(`${RUTA}/tanda.json`);
+      const cuerpo = (await r.json()) as { rondas: Array<{ clave: string }> };
+      return cuerpo.rondas.map((x) => x.clave).join(',');
+    };
+
+    expect(await claves()).not.toBe(await claves());
+  });
+
   test('acertar encadena la ronda siguiente y sube la racha', async ({ page }) => {
     const servidas = await jugar(page);
 
@@ -121,7 +136,7 @@ test.describe('El Impostor', () => {
     await expect(page.locator('[data-desenlace="sin-tiempo"]')).toBeVisible({ timeout: 15_000 });
   });
 
-  test('el récord queda guardado y se ve en el catálogo', async ({ page }) => {
+  test('el récord queda guardado y se ve al volver', async ({ page }) => {
     const servidas = await jugar(page);
 
     const impostor = await impostorDe(page, servidas);
@@ -132,8 +147,10 @@ test.describe('El Impostor', () => {
     await page.getByRole('button', { name: 'Dejar acá' }).click();
     await expect(page.locator('[data-racha-final="1"]')).toBeVisible({ timeout: 15_000 });
 
-    await page.goto('/juegos');
-    await expect(page.getByRole('link', { name: /Tu mejor racha/i })).toBeVisible();
+    /* Y sigue ahí al volver a entrar, que es lo único que hace que la racha valga algo. */
+    await page.goto(RUTA);
+    await expect(page.getByText('Mejor racha')).toBeVisible();
+    await expect(page.locator('[data-inicio]')).toContainText('1');
   });
 
   test('se puede jugar entero con el teclado', async ({ page }) => {

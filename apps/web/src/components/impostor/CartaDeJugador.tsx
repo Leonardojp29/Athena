@@ -1,5 +1,5 @@
 import type { Opcion } from '@athena/el-impostor';
-import { apellidoDe, fotoDe } from '../../lib/impostor';
+import { fotoDe } from '../../lib/impostor';
 
 /**
  * Estado visual de la carta.
@@ -11,6 +11,8 @@ export type EstadoDeCarta = 'jugando' | 'acertada' | 'errada' | 'revelada' | 'ap
 
 interface Props {
   opcion: Opcion;
+  /** Ya resuelto por la ronda: el apellido, o el nombre completo si otra carta lo repite. */
+  rotulo: string;
   /** Su lugar en el reparto: escalona la entrada sin una clase por posición. */
   turno: number;
   estado: EstadoDeCarta;
@@ -26,7 +28,7 @@ const MARCO: Record<EstadoDeCarta, string> = {
   apagada: 'border-border bg-surface',
 };
 
-export function CartaDeJugador({ opcion, turno, estado, onElegir }: Props) {
+export function CartaDeJugador({ opcion, rotulo, turno, estado, onElegir }: Props) {
   const resuelta = estado !== 'jugando';
 
   return (
@@ -62,7 +64,7 @@ export function CartaDeJugador({ opcion, turno, estado, onElegir }: Props) {
         cartas siguen midiendo lo mismo.
       */}
       <span className="line-clamp-2 min-h-[2.4em] w-full text-center font-display text-sm font-semibold uppercase leading-tight tracking-label sm:min-h-0 sm:truncate sm:text-lg">
-        {apellidoDe(opcion.nombre)}
+        {rotulo}
       </span>
     </button>
   );

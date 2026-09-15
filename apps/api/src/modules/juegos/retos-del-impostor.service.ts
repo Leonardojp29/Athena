@@ -22,6 +22,8 @@ export interface RondaDelImpostor {
   categoria: string;
   enunciado: string;
   reveal: string;
+  /** El escudo o la bandera del equipo que nombra el enunciado. */
+  emblemaUrl: string | null;
   opciones: OpcionDeRonda[];
 }
 
@@ -83,6 +85,7 @@ export class RetosDelImpostorService {
         enunciado: true,
         reveal: true,
         contexto: true,
+        emblemaUrl: true,
         opciones: {
           select: { providerRef: true, esImpostor: true, player: { select: { name: true } } },
         },
@@ -101,6 +104,7 @@ export class RetosDelImpostorService {
         enunciado: r.enunciado,
         reveal: r.reveal,
         contexto: r.contexto,
+        emblemaUrl: r.emblemaUrl,
         opciones: r.opciones.map((o) => ({
           ref: o.providerRef,
           nombre: o.player.name,

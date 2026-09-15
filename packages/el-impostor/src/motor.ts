@@ -30,6 +30,8 @@ export interface Ronda {
   enunciado: string;
   /** Por qué el impostor no pertenecía. Se muestra al resolver, sin salir a la red. */
   reveal: string;
+  /** El escudo del club o la bandera de la selección que nombra el enunciado. */
+  emblemaUrl: string | null;
   opciones: Opcion[];
 }
 
