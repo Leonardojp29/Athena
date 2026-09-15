@@ -109,6 +109,9 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
         Busca un futbolista
       </label>
       <div className="relative">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted">
+          <Icono nombre="buscar" size={18} />
+        </span>
         <input
           ref={campo}
           id="once-buscador"
@@ -124,10 +127,9 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
           aria-controls="once-resultados"
           aria-autocomplete="list"
           className={[
-            'w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-base text-ink',
-            'placeholder:text-ink-muted focus-visible:border-primary-ink focus-visible:outline-2',
-            'focus-visible:outline-offset-1 focus-visible:outline-primary-ink disabled:opacity-50',
-            'transition-[border-color] duration-200',
+            'w-full rounded-lg border-2 border-border bg-canvas py-3 pl-10 pr-3 text-base text-ink',
+            'placeholder:text-ink-muted focus-visible:border-primary-ink focus-visible:outline-none',
+            'disabled:opacity-50 transition-[border-color] duration-200',
             aviso?.tono === 'fallo' ? 'animate-once-niega' : '',
           ].join(' ')}
         />
@@ -137,12 +139,12 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
         El alto está reservado siempre, así que aparecer o desaparecer no mueve nada de abajo, y la
         animación es solo del aviso: el campo de texto nunca se re-monta y no se pierde una tecla.
       */}
-      <div className="mt-1.5 h-7">
+      <div className="mt-1 h-6">
         {aviso && (
           <p
             key={`${aviso.tono}-${aviso.texto}`}
             aria-live="polite"
-            className={`animate-once-aviso flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${TONO[aviso.tono]}`}
+            className={`animate-once-aviso flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs ${TONO[aviso.tono]}`}
           >
             <Icono
               nombre={aviso.tono === 'acierto' ? 'check' : aviso.tono === 'repetido' ? 'info' : 'cerrar'}
@@ -157,7 +159,7 @@ export function BuscadorDeJugadores({ bloqueado, aviso, onElegir }: Props) {
         <ul
           id="once-resultados"
           role="listbox"
-          className="mt-1 overflow-hidden rounded-lg border border-border bg-surface"
+          className="mt-1 overflow-hidden rounded-lg border border-border bg-canvas"
         >
           {resultados.map((futbolista, indice) => (
             <li key={futbolista.ref} role="presentation">

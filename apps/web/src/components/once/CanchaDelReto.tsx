@@ -58,7 +58,8 @@ export function CanchaDelReto({
       /* El alto manda y el ancho lo sigue: así la cancha y sus controles entran en una pantalla. */
       className={[
         'relative mx-auto aspect-[680/1000] overflow-hidden rounded-lg border border-board-edge',
-        'h-[min(80dvh,46rem)] w-auto max-w-full',
+        /* En teléfono la cancha cede alto para que el buscador entre en la misma pantalla. */
+        'h-[min(48dvh,26rem)] w-auto max-w-full sm:h-[min(56dvh,30rem)] lg:h-[min(70dvh,38rem)]',
       ].join(' ')}
     >
       <svg

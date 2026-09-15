@@ -166,7 +166,7 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
         </div>
       )}
 
-      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="mt-4 flex flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center lg:gap-6">
         <CanchaDelReto
           casilleros={reto.casilleros}
           formacion={reto.formacion}
@@ -181,11 +181,19 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
           El buscador a la derecha en escritorio y debajo en teléfono. Fijo al desplazar, porque la
           lista de resultados abre hacia abajo y a pantalla completa quedaba cortada contra el borde.
         */}
-        <aside className="lg:sticky lg:top-20">
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <BuscadorDeJugadores bloqueado={fin} aviso={aviso} onElegir={alElegir} />
-            </div>
+        <aside className="w-full max-w-[24rem] lg:sticky lg:top-20 lg:w-[23rem] lg:max-w-none">
+          {/*
+            El buscador es la única herramienta de la partida, así que se presenta como un panel con
+            su pregunta arriba en lugar de un campo suelto: se ve de entrada qué hay que hacer.
+          */}
+          <div className="rounded-xl border border-border bg-surface p-3">
+            <p className="mb-2 font-display text-xs font-semibold uppercase tracking-label text-ink-muted">
+              ¿Quién jugó?
+            </p>
+            <BuscadorDeJugadores bloqueado={fin} aviso={aviso} onElegir={alElegir} />
+          </div>
+
+          <div className="mt-2 flex items-center gap-2">
             <button
               type="button"
               data-pista
@@ -199,7 +207,7 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
                 setEligiendoPista((v) => !v);
               }}
               className={[
-                'flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-medium',
+                'flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium',
                 'transition-colors duration-200',
                 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-ink',
                 eligiendoPista
@@ -207,17 +215,20 @@ export function Partida({ reto, dificultad, conTiempo, cargandoSiguiente, onSigu
                   : 'border-border-strong text-ink-muted hover:border-primary-ink hover:text-ink',
               ].join(' ')}
             >
-              <span className={eligiendoPista ? 'text-card-yellow-ink' : 'text-card-yellow-ink'}>
+              <span className="text-card-yellow-ink">
                 <Icono nombre="destello" size={16} />
               </span>
-              {eligiendoPista ? 'Elige casilla' : 'Pista'}
+              {eligiendoPista ? 'Elige una casilla' : 'Pedir pista'}
             </button>
+
+            <p className="shrink-0 rounded-lg border border-border px-3 py-2 text-2xs uppercase tracking-label text-ink-muted">
+              Faltan <span className="font-display text-sm font-semibold tabular text-ink">{faltan}</span>
+            </p>
           </div>
 
           <p className="mt-2 text-2xs leading-relaxed text-ink-muted">
-            Te faltan <span className="font-display text-sm font-semibold tabular text-ink">{faltan}</span>{' '}
-            · Escribe el nombre que recuerdes: apellido, nombre completo, con o sin tildes. Enter
-            elige el resaltado.
+            Escribe el nombre que recuerdes: apellido, nombre completo, con o sin tildes. Enter elige
+            el resaltado.
           </p>
 
           {!conTiempo &&
