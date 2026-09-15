@@ -25,7 +25,16 @@ import {
 } from './regions.js';
 
 const teamSummary = {
-  select: { id: true, name: true, shortName: true, slug: true, logoUrl: true },
+  select: {
+    id: true,
+    name: true,
+    shortName: true,
+    slug: true,
+    logoUrl: true,
+    /* Dos columnas más en la misma consulta: es lo que permite pintar el banco de cada equipo. */
+    primaryColor: true,
+    secondaryColor: true,
+  },
 };
 
 /*

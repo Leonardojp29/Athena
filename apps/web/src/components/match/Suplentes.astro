@@ -2,6 +2,7 @@
 import EventIcon from '../EventIcon.astro';
 import PlayerName from '../player/PlayerName.astro';
 import type { MatchEventView, MatchPlayerStats, TeamLineup, TeamSummary } from '../../lib/api';
+import { coloresDeClub, temaEquipo } from '../../lib/color';
 import { claseDeNota } from '../../lib/nota';
 
 /*
@@ -50,6 +51,13 @@ const lados = [homeTeam, awayTeam]
   .map(({ team, lineup }) => ({
     team,
     lineup,
+    /*
+     * La cabecera del banco con los colores del club, que es lo que hace que de un vistazo se sepa
+     * cuál es cuál sin leer el nombre. `coloresDeClub` descarta los que no dicen nada —blanco, negro
+     * y gris son un tercio de los equipos con dato— y `temaEquipo` elige la tinta por luminancia,
+     * así un crema como el de Universitario no se lleva texto blanco encima.
+     */
+    tema: temaEquipo(...coloresDeClub(team.slug, team.primaryColor, team.secondaryColor)),
     banco: [...lineup.substitutes]
       .map((jugador) => {
         const stats = jugador.playerId ? (notas.get(jugador.playerId) ?? null) : null;
@@ -80,16 +88,36 @@ const lados = [homeTeam, awayTeam]
 {
   lados.length > 0 && (
     <div class="grid items-stretch gap-3 sm:grid-cols-2">
-      {lados.map(({ team, lineup, banco }) => (
+      {lados.map(({ team, lineup, banco, tema }) => (
         /* Anfitrión de la ficha: el popup se dibuja sobre el banco del equipo al que se le hizo clic. */
-        <section data-ficha-anfitrion class="relative flex flex-col rounded-lg border border-border bg-surface">
-          <header class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2">
+        <section
+          data-ficha-anfitrion
+          class="relative flex flex-col overflow-hidden rounded-lg border border-border bg-surface"
+        >
+          {/* La franja de identidad, primario a secundario: los dos colores del club en un hilo. */}
+          {tema && <span class="block h-1" style={`background:${tema.franja}`} aria-hidden="true" />}
+          <header
+            class="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-3 py-2"
+            style={
+              tema
+                ? `background:${tema.fondo};color:${tema.tinta};border-color:${tema.linea}`
+                : undefined
+            }
+          >
             {team.logoUrl && <img src={team.logoUrl} alt="" width="16" height="16" loading="lazy" />}
             <h3 class="truncate text-2xs font-semibold uppercase tracking-label">El banco</h3>
             {lineup.coachName && (
-              <span class="truncate text-2xs text-ink-muted">DT {lineup.coachName}</span>
+              <span
+                class:list={['truncate text-2xs', !tema && 'text-ink-muted']}
+                style={tema ? `color:${tema.tintaSuave}` : undefined}
+              >
+                DT {lineup.coachName}
+              </span>
             )}
-            <span class="ml-auto shrink-0 text-2xs text-ink-muted">
+            <span
+              class:list={['ml-auto shrink-0 text-2xs', !tema && 'text-ink-muted']}
+              style={tema ? `color:${tema.tintaSuave}` : undefined}
+            >
               {`${banco.filter((b) => b.entrada).length} de ${banco.length} entraron`}
             </span>
           </header>

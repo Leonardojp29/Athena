@@ -98,6 +98,9 @@ export interface TeamSummary {
   shortName: string | null;
   slug: string;
   logoUrl: string | null;
+  /** Hex sin almohadilla, como los publica el proveedor. Se usan con `coloresDeClub`, nunca crudos. */
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 }
 
 export interface MatchCard {

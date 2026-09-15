@@ -95,6 +95,34 @@ const enLaCancha = (mitad: 'local' | 'visita', y: number) => (mitad === 'local' 
       >
         <Pitch />
 
+        <!--
+          El escudo de cada equipo marcado sobre el campo que defiende, como el césped cortado de un
+          estadio: dice de quién es cada mitad sin disputarle la lectura a las fichas. Va debajo de
+          ellas, no recibe el puntero y no se anuncia, porque el nombre del equipo ya está arriba.
+
+          Las posiciones siguen a las de `PlayerToken`: en horizontal el local se queda con la
+          izquierda; en vertical, que es como se ve en el teléfono, con la mitad de abajo.
+        -->
+        <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+          {[
+            { equipo: homeTeam, mitad: 'left-1/2 top-3/4 sm:left-1/4 sm:top-1/2' },
+            { equipo: awayTeam, mitad: 'left-1/2 top-1/4 sm:left-3/4 sm:top-1/2' },
+          ].map(
+            ({ equipo, mitad }) =>
+              equipo.logoUrl && (
+                <img
+                  src={equipo.logoUrl}
+                  alt=""
+                  loading="lazy"
+                  class:list={[
+                    'absolute w-[40%] -translate-x-1/2 -translate-y-1/2 opacity-[0.14] sm:w-[21%]',
+                    mitad,
+                  ]}
+                />
+              ),
+          )}
+        </div>
+
         <div class="absolute inset-0">
           {[
             { placed: xiLocal, team: homeTeam, mitad: 'local' as const },
