@@ -58,4 +58,8 @@ export class KvService {
       RETURNING clave`;
     return filas.length > 0;
   }
+
+  async liberar(clave: string): Promise<void> {
+    await this.prisma.$executeRaw`UPDATE kv SET vence_en = now() WHERE clave = ${clave}`;
+  }
 }

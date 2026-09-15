@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import EventIcon from './EventIcon';
 import MinutoAMinuto from './match/MinutoAMinuto';
-import type { MatchEventView, MatchView } from '../lib/api';
+import type { MarcadorDePartido, Marcadores, MatchEventView, MatchView } from '../lib/api';
 import { formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
 import { goleadoresDelPartido, type Goleador } from '../lib/relato';
 
@@ -178,13 +178,32 @@ function Render({ match, part }: { match: MatchView; part: Props['part'] }) {
   return part === 'hero' ? <Scoreboard match={match} /> : <MinutoAMinuto match={match} />;
 }
 
+const CADA_MARCADOR_MS = 15_000;
+const CADA_VISTA_COMPLETA_MS = 60_000;
+
+function useMarcadorEnVivo(matchId: string, activo: boolean): MarcadorDePartido | null {
+  const { data } = useQuery({
+    queryKey: ['marcadores'],
+    queryFn: async (): Promise<Marcadores> => {
+      const res = await fetch('/marcadores.json');
+      if (!res.ok) throw new Error(`marcadores fetch ${res.status}`);
+      return res.json();
+    },
+    enabled: activo,
+    refetchInterval: activo ? CADA_MARCADOR_MS : false,
+    refetchOnWindowFocus: activo,
+  });
+
+  return data?.partidos.find((p) => p.id === matchId) ?? null;
+}
+
 function LiveMatch({ initial, part }: { initial: MatchView; part: Props['part'] }) {
   /*
-   * Solo el hero mantiene el temporizador. El minuto a minuto es otra isla del mismo bundle,
-   * así que comparte este QueryClient y se vuelve a pintar cuando la caché cambia: dos
-   * intervalos serían dos llamadas al API cada veinte segundos por lector.
+   * Solo el hero mantiene los temporizadores. El minuto a minuto es otra isla del mismo bundle,
+   * así que comparte este QueryClient y se vuelve a pintar cuando la caché cambia.
    */
   const poll = part === 'hero';
+  const cliente = useQueryClient();
 
   const { data } = useQuery({
     queryKey: ['match', initial.id],
@@ -199,14 +218,33 @@ function LiveMatch({ initial, part }: { initial: MatchView; part: Props['part'] 
     refetchInterval: poll
       ? (query) => {
           const status = query.state.data?.status ?? initial.status;
-          return isLive(status) || status === 'scheduled' ? 20_000 : false;
+          return isLive(status) || status === 'scheduled' ? CADA_VISTA_COMPLETA_MS : false;
         }
       : false,
     refetchOnWindowFocus: poll,
     refetchOnMount: poll,
   });
 
-  return <Render match={data ?? initial} part={part} />;
+  const marcador = useMarcadorEnVivo(initial.id, poll);
+
+  /* Un cambio en el marcador liviano es la señal de que los goles y las notas ya cambiaron. */
+  useEffect(() => {
+    if (marcador) void cliente.invalidateQueries({ queryKey: ['match', initial.id] });
+  }, [cliente, initial.id, marcador?.actualizadoEn]);
+
+  const completa = data ?? initial;
+  const match: MatchView = marcador
+    ? {
+        ...completa,
+        status: marcador.status,
+        statusDetail: marcador.statusDetail,
+        elapsedMinutes: marcador.elapsedMinutes,
+        homeScore: marcador.homeScore,
+        awayScore: marcador.awayScore,
+      }
+    : completa;
+
+  return <Render match={match} part={part} />;
 }
 
 /*

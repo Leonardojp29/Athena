@@ -128,7 +128,7 @@ export class CerrarPartidosUseCase {
      * las otras tres escrituras compitiendo por el pooler esa transacción caduca antes de cerrarse.
      */
     const eventos =
-      detalle.events && !estado.eventosCompleto
+      detalle.events && !estado.eventosCompleto && faseDe(partido.status) === 'cierre'
         ? await this.eventos.replace(this.provider.name, matchId, detalle.events)
         : null;
     const alineaciones =

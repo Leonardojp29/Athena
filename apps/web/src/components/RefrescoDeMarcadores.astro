@@ -1,65 +1,45 @@
 ---
 /*
- * Los marcadores del día, al minuto, sin recargar la página.
+ * Los marcadores al día sin recargar. Pide `/marcadores.json`, que son dos kilobytes con lo único
+ * que cambia mientras se juega, y parchea las filas que ya están en la página.
  *
- * Las páginas las dibuja el servidor enteras y no costaban un solo kilobyte, pero eso significaba
- * que un partido en juego se quedaba clavado en el minuto en que abriste la pestaña: el reloj no
- * avanzaba y un gol no aparecía hasta recargar. En una página cuya primera línea es "qué se juega
- * hoy", eso es un dato viejo disfrazado de dato.
- *
- * Vive en cuatro lugares —la home, el calendario, la competencia y el equipo—, que son los que
- * listan partidos que pueden estar en juego. La página del partido tiene el suyo, que además rehace la cancha.
- *
- * Recibe **los días que la página muestra**, no "hoy". La home no lista un día: lista una ventana
- * de seis horas atrás a veinticuatro adelante, que en Lima toca hasta tres fechas. Pidiendo solo la
- * de hoy, ocho de sus treinta y cinco filas quedaban fuera del parche y se congelaban en el
- * marcador con el que se dibujó la página, sin manera de enterarse.
- *
- * En vez de recargar como hace la página de partido —acá se perdería el scroll del catálogo y el
- * árbol abierto—, se pide la lista del día y se parchean tres cosas por fila: el marcador, el estado
- * y el color de vivo. Es la misma consulta que ya sirve la home, cacheada sesenta segundos, así que
- * un lector cuesta una lectura de Redis por minuto.
- *
- * Solo se dibuja cuando hay algo en juego, así que una página sin fútbol en curso sigue costando 0 KB.
+ * Nunca envuelve al encabezado de la página de partido: ese marcador lo pinta React y un parche
+ * externo se perdería en el siguiente render.
  */
 interface Props {
-  /** Los días que muestra la página, en ISO. Cada uno es una consulta ya cacheada en el API. */
-  dias: string[];
   segundos?: number;
 }
 
-const { dias, segundos = 30 } = Astro.props;
-/* Sin repetir y en orden, que es como se ven en la página y como se piden. */
-const pedidos = [...new Set(dias)].sort();
+const { segundos = 15 } = Astro.props;
 ---
 
-<span data-refresco-marcadores={pedidos.join(',')} data-cada={segundos} hidden></span>
+<span data-refresco-marcadores data-cada={segundos} hidden></span>
 
 <script>
   import { isLive, minutoEnVivo, statusLabel } from '../lib/format';
 
-  interface FilaViva {
+  interface Marcador {
     id: string;
     status: string;
+    statusDetail: string | null;
+    elapsedMinutes: number | null;
     homeScore: number | null;
     awayScore: number | null;
-    elapsedMinutes: number | null;
-    statusDetail: string | null;
   }
 
-  /** La vista del día llega agrupada por competencia; acá solo interesan los partidos. */
-  interface DiaDePartidos {
-    sections: Array<{ matches: FilaViva[] }>;
+  interface Marcadores {
+    generadoEn: string;
+    live: number;
+    partidos: Marcador[];
   }
 
   const marca = document.querySelector<HTMLElement>('[data-refresco-marcadores]');
   if (marca) {
-    const dias = (marca.dataset.refrescoMarcadores as string).split(',').filter(Boolean);
-    const cada = Math.max(15, Number(marca.dataset.cada ?? '30')) * 1000;
-    const API = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+    const cada = Math.max(5, Number(marca.dataset.cada ?? '15')) * 1000;
+    let ultimoGenerado = '';
+    let temporizador: number | undefined;
 
-    /* El marcador de la fila y el de la tira de arriba se escriben distinto: "1 – 0" y "1–0". */
-    const pintarMarcador = (nodo: HTMLElement, m: FilaViva): void => {
+    const escribirMarcador = (nodo: HTMLElement, m: Marcador): void => {
       if (m.homeScore === null || m.awayScore === null) return;
       const separador = nodo.textContent?.includes(' – ') ? ' – ' : '–';
       nodo.textContent = `${m.homeScore}${separador}${m.awayScore}`;
@@ -67,76 +47,75 @@ const pedidos = [...new Set(dias)].sort();
       nodo.classList.toggle('text-live-ink', isLive(m.status));
     };
 
-    const aplicar = (partidos: FilaViva[]): void => {
-      const porId = new Map(partidos.map((m) => [m.id, m]));
+    const escribirEstado = (nodo: HTMLElement, m: Marcador, vivo: boolean): void => {
+      nodo.textContent = vivo
+        ? minutoEnVivo(m.status, m.elapsedMinutes, m.statusDetail)
+        : m.status === 'finished'
+          ? 'Final'
+          : statusLabel(m.status);
+      nodo.classList.toggle('hidden', !vivo && nodo.dataset.soloEnVivo !== undefined);
+      nodo.classList.toggle('text-live-ink', vivo);
+      nodo.classList.toggle('font-medium', vivo);
+      nodo.classList.toggle('text-ink-muted', !vivo);
+    };
+
+    const escribirPastilla = (live: number): void => {
+      const pastilla = document.querySelector<HTMLElement>('[data-contador-vivo]');
+      const texto = pastilla?.querySelector<HTMLElement>('[data-contador-vivo-texto]');
+      if (!pastilla || !texto) return;
+      texto.textContent = `${live} en vivo`;
+      pastilla.hidden = live === 0;
+    };
+
+    const aplicar = (datos: Marcadores): void => {
+      const porId = new Map(datos.partidos.map((m) => [m.id, m]));
       for (const fila of document.querySelectorAll<HTMLElement>('[data-partido]')) {
         const m = porId.get(fila.dataset.partido as string);
         if (!m) continue;
+        const vivo = isLive(m.status);
 
         const marcador = fila.querySelector<HTMLElement>('[data-marcador]');
-        if (marcador) pintarMarcador(marcador, m);
+        if (marcador) escribirMarcador(marcador, m);
 
-        /*
-         * La banda de "ahora" escribe un gol de cada lado, al lado de su equipo, en vez de "1 – 0"
-         * de una pieza. Son las tarjetas donde el marcador más importa, así que también se parchean.
-         */
         for (const lado of fila.querySelectorAll<HTMLElement>('[data-marcador-lado]')) {
           const goles = lado.dataset.marcadorLado === '0' ? m.homeScore : m.awayScore;
           if (goles !== null) lado.textContent = String(goles);
         }
 
         const estado = fila.querySelector<HTMLElement>('[data-estado]');
-        /*
-         * Un partido que sigue sin empezar no se toca: en la parrilla esa esquina lleva su horario
-         * exacto —o nada, cuando cae en la hora en punto—, y escribirle "Programado" encima sería
-         * cambiar un dato por una palabra que no dice nada.
-         */
-        if (estado && m.status !== 'scheduled') {
-          const vivo = isLive(m.status);
-          estado.textContent = vivo
-            ? minutoEnVivo(m.status, m.elapsedMinutes, m.statusDetail)
-            : m.status === 'finished'
-              ? 'Final'
-              : statusLabel(m.status);
-          /* En la tira de arriba el minuto solo existe si el partido está en juego. */
-          estado.classList.toggle('hidden', !vivo && estado.dataset.soloEnVivo !== undefined);
-          estado.classList.toggle('text-live-ink', vivo);
-          estado.classList.toggle('font-medium', vivo);
-          estado.classList.toggle('text-ink-muted', !vivo);
-        }
-      }
-    };
+        if (estado && m.status !== 'scheduled') escribirEstado(estado, m, vivo);
 
-    let temporizador: number | undefined;
+        fila.toggleAttribute('data-en-vivo', vivo);
+      }
+      escribirPastilla(datos.live);
+    };
 
     const pedir = async (): Promise<void> => {
       try {
-        /* Los días van juntos: el API los sirve cacheados y un día de más no cuesta una consulta. */
-        const respuestas = await Promise.all(
-          dias.map((dia) =>
-            fetch(`${API}/v1/views/matches?fecha=${dia}`)
-              .then((res) => (res.ok ? (res.json() as Promise<DiaDePartidos>) : null))
-              .catch(() => null),
-          ),
-        );
-        const partidos = respuestas.flatMap((d) => d?.sections.flatMap((s) => s.matches) ?? []);
-        if (partidos.length > 0) aplicar(partidos);
+        const res = await fetch('/marcadores.json');
+        if (res.ok) {
+          const datos = (await res.json()) as Marcadores;
+          /* El borde puede servir una respuesta más vieja que la que ya se pintó. */
+          if (datos.generadoEn > ultimoGenerado) {
+            ultimoGenerado = datos.generadoEn;
+            aplicar(datos);
+          }
+        }
       } catch {
-        /* Un fallo de red no puede romper la página: en el próximo tic se vuelve a intentar. */
+        /* Un fallo de red se reintenta en el próximo tic. */
       }
       programar();
     };
 
     function programar(): void {
       clearTimeout(temporizador);
-      /* Con la pestaña de fondo no se pide nada: nadie está mirando y la cuota es de todos. */
       temporizador = window.setTimeout(
         () => (document.visibilityState === 'visible' ? void pedir() : programar()),
         cada,
       );
     }
 
-    programar();
+    void pedir();
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') void pedir();
     });

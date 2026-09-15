@@ -53,6 +53,13 @@ export class InternalController {
     return this.queue.tick(40_000);
   }
 
+  @Post('marcador')
+  @HttpCode(200)
+  async marcador(@Headers('x-cron-secreto') secreto: string | undefined) {
+    this.autorizar(secreto);
+    return this.queue.latirMarcador();
+  }
+
   @Post('daily')
   @HttpCode(200)
   async daily(@Headers('x-cron-secreto') secreto: string | undefined) {
@@ -83,15 +90,19 @@ export class InternalController {
   async salud(@Headers('x-cron-secreto') secreto: string | undefined) {
     this.autorizar(secreto);
     const [marcas, cola, cuota, cierre] = await Promise.all([
-      this.kv.leer(['tick:ultimo', 'cola:pausa']),
+      this.kv.leer(['tick:ultimo', 'marcador:ultimo', 'cola:pausa']),
       this.cola.resumen(),
       this.presupuesto.snapshot(),
       this.matchSync.resumen(),
     ]);
-    const ultimoTick = marcas.get('tick:ultimo');
+    const haceSegundos = (clave: string): number | null => {
+      const cuando = marcas.get(clave);
+      return cuando ? Math.round((Date.now() - cuando) / 1000) : null;
+    };
 
     return {
-      ultimoTickHaceSeg: ultimoTick ? Math.round((Date.now() - ultimoTick) / 1000) : null,
+      ultimoTickHaceSeg: haceSegundos('tick:ultimo'),
+      ultimoMarcadorHaceSeg: haceSegundos('marcador:ultimo'),
       colaPausada: marcas.has('cola:pausa'),
       cola,
       cuota,

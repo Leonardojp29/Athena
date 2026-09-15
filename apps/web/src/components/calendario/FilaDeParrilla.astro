@@ -78,7 +78,7 @@ const TINTA: Record<Realce['motivo'], string> = {
 
   <span class="grid min-w-0 gap-1">
     {
-      lados.map(({ equipo, goles, gana: gano }) => (
+      lados.map(({ equipo, goles, gana: gano }, i) => (
         <span class="flex min-w-0 items-center gap-2">
           {equipo.logoUrl ? (
             <img src={equipo.logoUrl} alt="" width="20" height="20" loading="lazy" class="shrink-0" />
@@ -96,6 +96,7 @@ const TINTA: Record<Realce['motivo'], string> = {
           </a>
           {hayMarcador && (
             <span
+              data-marcador-lado={i}
               class:list={[
                 'shrink-0 font-display tabular text-base leading-none',
                 gano ? 'font-semibold text-ink' : 'text-ink-muted',

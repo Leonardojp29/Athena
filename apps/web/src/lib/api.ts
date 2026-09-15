@@ -907,6 +907,22 @@ export interface RetoParaJugar {
   casilleros: CasilleroDelReto[];
 }
 
+export interface MarcadorDePartido {
+  id: string;
+  status: string;
+  statusDetail: string | null;
+  elapsedMinutes: number | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  actualizadoEn: string;
+}
+
+export interface Marcadores {
+  generadoEn: string;
+  live: number;
+  partidos: MarcadorDePartido[];
+}
+
 /* ── 60 Segundos ───────────────────────────────────────────────────────────────────────────── */
 
 export interface OpcionDeLaPregunta {

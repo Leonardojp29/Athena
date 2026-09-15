@@ -51,8 +51,7 @@ const { team, standings, recent, upcoming, squad, scorers, mercado } = view;
 /* Con un partido suyo en juego, el marcador de esta página se mantiene solo. Sin eso, 0 KB. */
 const hayEnVivo = [...recent, ...upcoming].some((m) => isLive(m.status));
 cachear(Astro.response, hayEnVivo ? 'partidoEnJuego' : 'equipo');
-/* Los días de lo que se muestra: últimos y próximos no caben en una sola fecha. */
-const diasEnPantalla = [...new Set([...recent, ...upcoming].map((m) => fechaEnLima(m.kickoffUtc)))];
+
 const similar = await pedidoSimilar;
 
 const pais = paisEnEspanol(team.country);
@@ -414,5 +413,5 @@ const jsonLd = [
     </div>
   </Container>
   </div>
-  {hayEnVivo && <RefrescoDeMarcadores dias={diasEnPantalla} />}
+  {hayEnVivo && <RefrescoDeMarcadores />}
 </Base>

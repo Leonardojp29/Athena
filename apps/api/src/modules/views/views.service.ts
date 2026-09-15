@@ -10,6 +10,7 @@ import {
   torneoDeTrofeo,
 } from '@athena/domain';
 import type { Prisma } from '@athena/database';
+import { Memoria } from '../../shared/memoria.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 import {
   CONFEDERATION_LABEL,
@@ -169,9 +170,69 @@ const movimientoDeMercado = {
 } as const;
 const DAY_MS = 86_400_000;
 
+const SEGUNDOS_DE_MARCADORES = 5;
+
+export interface MarcadorDePartido {
+  id: string;
+  status: string;
+  statusDetail: string | null;
+  elapsedMinutes: number | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  actualizadoEn: string;
+}
+
+export interface Marcadores {
+  generadoEn: string;
+  live: number;
+  partidos: MarcadorDePartido[];
+}
+
+interface FilaDeMarcador {
+  id: string;
+  status: string;
+  status_detail: string | null;
+  elapsed_minutes: number | null;
+  home_score: number | null;
+  away_score: number | null;
+  updated_at: Date;
+}
+
 @Injectable()
 export class ViewsService {
+  private readonly marcadoresRecientes = new Memoria<Marcadores>(1);
+
   constructor(private readonly prisma: PrismaService) {}
+
+  async marcadores(): Promise<Marcadores> {
+    const recordados = this.marcadoresRecientes.get('marcadores');
+    if (recordados) return recordados;
+
+    const filas = await this.prisma.$queryRaw<FilaDeMarcador[]>`
+      SELECT id, status, status_detail, elapsed_minutes, home_score, away_score, updated_at
+      FROM matches
+      WHERE status IN ('in_play', 'paused')
+         OR (status = 'finished'
+             AND kickoff_utc > now() - interval '4 hours'
+             AND updated_at > now() - interval '15 minutes')
+      ORDER BY kickoff_utc`;
+
+    const vista: Marcadores = {
+      generadoEn: new Date().toISOString(),
+      live: filas.filter((f) => f.status === 'in_play' || f.status === 'paused').length,
+      partidos: filas.map((f) => ({
+        id: f.id,
+        status: f.status,
+        statusDetail: f.status_detail,
+        elapsedMinutes: f.elapsed_minutes,
+        homeScore: f.home_score,
+        awayScore: f.away_score,
+        actualizadoEn: f.updated_at.toISOString(),
+      })),
+    };
+    this.marcadoresRecientes.set('marcadores', vista, SEGUNDOS_DE_MARCADORES);
+    return vista;
+  }
 
   /**
    * El catálogo entero, ya ordenado continente → país → torneos, en dos ramas.

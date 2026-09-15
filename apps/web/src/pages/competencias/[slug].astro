@@ -106,10 +106,7 @@ const esCopa = competition.format !== 'league';
 /* Con algo en juego, los marcadores de esta página se mantienen solos. Sin eso, 0 KB. */
 const hayEnVivo = porRonda.some((r) => r.partidos.some((m) => isLive(m.status)));
 cachear(Astro.response, hayEnVivo ? 'partidoEnJuego' : 'competencia');
-/* Una fecha del torneo se reparte en varios días: el refresco pide todos los que se ven. */
-const diasEnPantalla = [
-  ...new Set(porRonda.flatMap((r) => r.partidos.map((m) => fechaEnLima(m.kickoffUtc)))),
-];
+
 
 /*
  * El equipo abierto tiene que jugar este torneo: con un enlace a un club que no está, su página es
@@ -595,5 +592,5 @@ const jsonLd = [
 
   <!-- La ficha del jugador: la abren la cancha y la tabla de rendimiento del partido abierto. -->
   {partido && <PlayerSheet />}
-  {hayEnVivo && <RefrescoDeMarcadores dias={diasEnPantalla} />}
+  {hayEnVivo && <RefrescoDeMarcadores />}
 </Base>

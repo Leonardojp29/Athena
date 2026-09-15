@@ -160,12 +160,13 @@ const todos = home.sections.flatMap((s) => s.matches);
  * momento en que se abrió la pestaña, que en una página de "qué se juega hoy" es un dato viejo
  * disfrazado de dato. Sin partidos en vivo no se manda ni un byte de JavaScript.
  */
-const hayEnVivo = todos.some((m) => isLive(m.status));
-/*
- * Los días que la página muestra, no "hoy": la ventana va de seis horas atrás a veinticuatro
- * adelante y en Lima eso toca hasta tres fechas. El refresco pide las que hay.
- */
-const diasEnPantalla = [...new Set(todos.map((m) => fechaEnLima(m.kickoffUtc)))];
+const DOS_HORAS_MS = 2 * 3600_000;
+const hayQueSeguirDeCerca = todos.some(
+  (m) =>
+    isLive(m.status) ||
+    (m.status === 'scheduled' &&
+      new Date(m.kickoffUtc).getTime() - Date.now() < DOS_HORAS_MS),
+);
 
 cachear(Astro.response, 'home');
 ---
@@ -331,7 +332,7 @@ cachear(Astro.response, 'home');
   {(vistaLiga?.once || (vistaEquipo?.lineups.length ?? 0) > 0) && <PlayerSheet />}
 
   <!-- Y el reloj de los marcadores, solo si hay algo en juego. -->
-  {hayEnVivo && <RefrescoDeMarcadores dias={diasEnPantalla} />}
+  {hayQueSeguirDeCerca && <RefrescoDeMarcadores />}
 </Base>
 <script>
   /*

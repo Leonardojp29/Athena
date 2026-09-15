@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { FootballDataProvider, ProviderMatch, ProviderRef } from '@athena/domain';
+import { Memoria } from '../../shared/memoria.js';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
+import { bulkUpdate } from './bulk-upsert.js';
 import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { MatchEventWriter } from './match-event.writer.js';
@@ -35,9 +37,12 @@ const VENTANA_OLVIDADOS_MS = 14 * 24 * 3600_000;
 /* Techo por corrida: un request por cada veinte, así el peor caso son diez llamadas. */
 const MAX_OLVIDADOS = 200;
 
+const TTL_DE_TEMPORADAS_S = 600;
+
 @Injectable()
 export class SyncFixturesUseCase {
   private readonly logger = new Logger(SyncFixturesUseCase.name);
+  private readonly temporadaPorTorneo = new Memoria<string | null>(2000);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -50,30 +55,24 @@ export class SyncFixturesUseCase {
 
   async execute(competitionRef: string, seasonYear: number): Promise<number> {
     const fixtures = await this.provider.getMatches(competitionRef, seasonYear);
-    return this.upsertMany(fixtures);
+    const { escritos } = await this.upsertMany(fixtures, { observadoEn: new Date() });
+    return escritos;
   }
 
   async syncLive(): Promise<number> {
     const live = await this.provider.getLiveMatches();
+    const observadoEn = new Date();
     // live=all trae todas las ligas del mundo: las no cubiertas se descartan sin warning
-    const count = await this.upsertMany(
+    const { escritos, idPorRef } = await this.upsertMany(
       live.map((l) => l.match),
-      { quiet: true },
+      { quiet: true, observadoEn },
     );
 
-    const withEvents = live.filter((l) => l.events.length > 0);
-    if (withEvents.length > 0) {
-      const ids = await this.refs.resolveMany(
-        this.provider.name,
-        'match',
-        withEvents.map((l) => l.match.providerRef),
-      );
-      for (const item of withEvents) {
-        const id = ids.get(item.match.providerRef);
-        if (id) await this.eventWriter.replace(this.provider.name, id, item.events);
-      }
+    for (const item of live.filter((l) => l.events.length > 0)) {
+      const id = idPorRef.get(item.match.providerRef);
+      if (id) await this.eventWriter.replace(this.provider.name, id, item.events);
     }
-    return count;
+    return escritos;
   }
 
   /**
@@ -129,150 +128,265 @@ export class SyncFixturesUseCase {
     if (refs.length === 0) return 0;
 
     const reales = await this.provider.getMatchesByRefs(refs.map((r) => r.providerRef));
-    const escritos = await this.upsertMany(reales, { quiet: true });
+    const { escritos } = await this.upsertMany(reales, { quiet: true, observadoEn: new Date() });
     this.logger.log(`Reconciliados ${escritos}/${colgados.length} partidos con estado viejo`);
     return escritos;
   }
 
   private async upsertMany(
     fixtures: ProviderRef<ProviderMatch>[],
-    opts: { quiet?: boolean } = {},
-  ): Promise<number> {
-    if (fixtures.length === 0) return 0;
+    opts: { quiet?: boolean; observadoEn?: Date } = {},
+  ): Promise<{ escritos: number; idPorRef: Map<string, string> }> {
+    const idPorRef = new Map<string, string>();
+    if (fixtures.length === 0) return { escritos: 0, idPorRef };
 
+    const observadoEn = opts.observadoEn ?? new Date();
     const teamRefs = [
       ...new Set(fixtures.flatMap((f) => [f.data.homeTeamRef, f.data.awayTeamRef])),
     ];
-    const teams = await this.refs.resolveMany(this.provider.name, 'team', teamRefs);
-    const matchIds = await this.refs.resolveMany(
-      this.provider.name,
-      'match',
-      fixtures.map((f) => f.providerRef),
-    );
-    const seasons = await this.resolveSeasons(fixtures);
+    const [teams, conocidos] = await Promise.all([
+      this.refs.resolveMany(this.provider.name, 'team', teamRefs),
+      this.refs.resolveMany(
+        this.provider.name,
+        'match',
+        fixtures.map((f) => f.providerRef),
+      ),
+    ]);
+    const seasons = await this.temporadasDe(fixtures, teams);
 
     const resolvable = fixtures.filter((f) => {
       const ok =
-        seasons.has(`${f.data.competitionRef}:${f.data.seasonYear}`) &&
+        seasons.has(llaveDeTemporada(f)) &&
         teams.has(f.data.homeTeamRef) &&
         teams.has(f.data.awayTeamRef);
       if (!ok && !opts.quiet)
         this.logger.warn(`Skipping fixture ${f.providerRef}: unresolved season/team refs`);
       return ok;
     });
+    if (resolvable.length === 0) return { escritos: 0, idPorRef: conocidos };
 
     // después del filtro: live=all trae el mundo entero y crearíamos sus estadios cada minuto
     const venueIds = await this.venues.resolveMany(resolvable.map((f) => f.data.venue));
 
-    const toFields = ({ data }: ProviderRef<ProviderMatch>) => ({
-      seasonId: seasons.get(`${data.competitionRef}:${data.seasonYear}`) as string,
-      round: data.round,
-      homeTeamId: teams.get(data.homeTeamRef) as string,
-      awayTeamId: teams.get(data.awayTeamRef) as string,
-      kickoffUtc: new Date(data.kickoffUtc),
-      status: data.status,
-      statusDetail: data.statusDetail,
-      elapsedMinutes: data.elapsedMinutes,
-      homeScore: data.homeScore,
-      awayScore: data.awayScore,
-      venueId: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
-    });
+    const columnas = (fixture: ProviderRef<ProviderMatch>) => {
+      const { data } = fixture;
+      return {
+        season_id: seasons.get(llaveDeTemporada(fixture)) as string,
+        round: data.round,
+        home_team_id: teams.get(data.homeTeamRef) as string,
+        away_team_id: teams.get(data.awayTeamRef) as string,
+        kickoff_utc: new Date(data.kickoffUtc),
+        status: data.status,
+        status_detail: data.statusDetail,
+        elapsed_minutes: data.elapsedMinutes,
+        home_score: data.homeScore,
+        away_score: data.awayScore,
+        venue_id: data.venue ? (venueIds.get(data.venue.providerRef) ?? null) : null,
+      };
+    };
 
-    const fresh = resolvable.filter((f) => !matchIds.has(f.providerRef));
-    if (fresh.length > 0) {
-      /*
-       * Partido y referencia nacen juntos o no nace ninguno. Sin transacción, una función
-       * degollada entre los dos pasos deja partidos sin referencia: invisibles para el sync
-       * —que resuelve por providerRef— pero visibles en las vistas, y el siguiente sync los
-       * crea otra vez. Mismo patrón ya probado en PlayerResolver sobre el pooler.
-       */
-      await this.prisma.$transaction(async (tx) => {
-        const created = await tx.match.createManyAndReturn({
-          data: fresh.map(toFields),
-          select: { id: true },
-        });
-        await tx.externalReference.createMany({
-          data: created.map((match, i) => ({
-            provider: this.provider.name,
-            entityType: 'match',
-            providerRef: fresh[i]?.providerRef as string,
-            entityId: match.id,
-          })),
-        });
-      });
-    }
+    for (const [ref, id] of conocidos) idPorRef.set(ref, id);
+    const nuevos = resolvable.filter((f) => !conocidos.has(f.providerRef));
+    const existentes = resolvable.filter((f) => conocidos.has(f.providerRef));
 
-    const existing = resolvable.filter((f) => matchIds.has(f.providerRef));
-    let updated = 0;
-    if (existing.length > 0) {
-      const current = await this.prisma.match.findMany({
-        where: { id: { in: existing.map((f) => matchIds.get(f.providerRef) as string) } },
-        select: {
-          id: true,
-          status: true,
-          homeScore: true,
-          awayScore: true,
-          elapsedMinutes: true,
-          statusDetail: true,
-          kickoffUtc: true,
-        },
-      });
-      const currentById = new Map(current.map((m) => [m.id, m]));
-
-      for (const fixture of existing) {
-        const id = matchIds.get(fixture.providerRef) as string;
-        const prev = currentById.get(id);
-        const fields = toFields(fixture);
-        const changed =
-          !prev ||
-          prev.status !== fields.status ||
-          prev.statusDetail !== fields.statusDetail ||
-          prev.homeScore !== fields.homeScore ||
-          prev.awayScore !== fields.awayScore ||
-          prev.elapsedMinutes !== fields.elapsedMinutes ||
-          prev.kickoffUtc.getTime() !== fields.kickoffUtc.getTime();
-        if (!changed) continue;
-
-        await this.prisma.match.update({ where: { id }, data: fields });
-        updated++;
-        if (prev && prev.status !== 'finished' && fields.status === 'finished') {
-          await this.events.publish('MATCH_FINISHED', 'match', id, {
-            homeScore: fields.homeScore,
-            awayScore: fields.awayScore,
-            providerRef: fixture.providerRef,
-          });
-        }
-      }
-    }
+    for (const [ref, id] of await this.crear(nuevos, columnas)) idPorRef.set(ref, id);
+    const actualizados = await this.actualizar(existentes, conocidos, columnas, observadoEn);
 
     this.logger.log(
-      `Fixtures: ${fresh.length} created, ${updated} updated, ${fixtures.length - resolvable.length} skipped`,
+      `Fixtures: ${nuevos.length} created, ${actualizados} updated, ${fixtures.length - resolvable.length} skipped`,
     );
-    return resolvable.length;
+    return { escritos: resolvable.length, idPorRef };
   }
 
-  private async resolveSeasons(
-    fixtures: ProviderRef<ProviderMatch>[],
+  private async crear(
+    nuevos: ProviderRef<ProviderMatch>[],
+    columnas: (f: ProviderRef<ProviderMatch>) => Record<string, unknown>,
   ): Promise<Map<string, string>> {
-    const pairs = [
-      ...new Set(fixtures.map((f) => `${f.data.competitionRef}:${f.data.seasonYear}`)),
-    ];
-    const result = new Map<string, string>();
-    for (const pair of pairs) {
-      const [competitionRef, year] = pair.split(':');
-      if (!competitionRef || !year) continue;
-      const competitionId = await this.refs.resolve(
-        this.provider.name,
-        'competition',
-        competitionRef,
-      );
-      if (!competitionId) continue;
-      const season = await this.prisma.season.findUnique({
-        where: { competitionId_year: { competitionId, year: Number(year) } },
+    const creados = new Map<string, string>();
+    if (nuevos.length === 0) return creados;
+
+    /*
+     * Partido y referencia nacen juntos o no nace ninguno: sin transacción, una función degollada
+     * entre los dos pasos deja partidos invisibles para el sync y duplicados en el siguiente.
+     */
+    await this.prisma.$transaction(async (tx) => {
+      const filas = await tx.match.createManyAndReturn({
+        data: nuevos.map((f) => aPrisma(columnas(f))),
         select: { id: true },
       });
-      if (season) result.set(pair, season.id);
-    }
-    return result;
+      await tx.externalReference.createMany({
+        data: filas.map((match, i) => {
+          const providerRef = nuevos[i]?.providerRef as string;
+          creados.set(providerRef, match.id);
+          return {
+            provider: this.provider.name,
+            entityType: 'match',
+            providerRef,
+            entityId: match.id,
+          };
+        }),
+      });
+    });
+    return creados;
   }
+
+  private async actualizar(
+    existentes: ProviderRef<ProviderMatch>[],
+    conocidos: Map<string, string>,
+    columnas: (f: ProviderRef<ProviderMatch>) => Record<string, unknown>,
+    observadoEn: Date,
+  ): Promise<number> {
+    if (existentes.length === 0) return 0;
+
+    const previos = await this.prisma.match.findMany({
+      where: { id: { in: existentes.map((f) => conocidos.get(f.providerRef) as string) } },
+      select: {
+        id: true,
+        status: true,
+        homeScore: true,
+        awayScore: true,
+        elapsedMinutes: true,
+        statusDetail: true,
+        kickoffUtc: true,
+      },
+    });
+    const previoPorId = new Map(previos.map((m) => [m.id, m]));
+
+    const cambiados = existentes
+      .map((fixture) => ({
+        fixture,
+        id: conocidos.get(fixture.providerRef) as string,
+        campos: columnas(fixture),
+      }))
+      .filter(({ id, campos }) => difiere(previoPorId.get(id), campos));
+    if (cambiados.length === 0) return 0;
+
+    const terminan = cambiados.filter(
+      ({ id, campos }) =>
+        campos.status === 'finished' && previoPorId.get(id)?.status !== 'finished',
+    );
+    const siguen = cambiados.filter((c) => !terminan.includes(c));
+
+    if (siguen.length > 0) {
+      await bulkUpdate(this.prisma, {
+        table: 'matches',
+        columns: COLUMNAS_DE_PARTIDO,
+        rows: siguen.map(({ id, campos }) => ({ id, ...campos })),
+        noPisarLoEscritoDespuesDe: observadoEn,
+      });
+    }
+
+    for (const { id, fixture, campos } of terminan) {
+      await this.prisma.match.update({ where: { id }, data: aPrisma(campos) });
+      await this.events.publish('MATCH_FINISHED', 'match', id, {
+        homeScore: campos.home_score as number | null,
+        awayScore: campos.away_score as number | null,
+        providerRef: fixture.providerRef,
+      });
+    }
+
+    return cambiados.length;
+  }
+
+  private async temporadasDe(
+    fixtures: ProviderRef<ProviderMatch>[],
+    teams: Map<string, string>,
+  ): Promise<Map<string, string>> {
+    const conEquipos = fixtures.filter(
+      (f) => teams.has(f.data.homeTeamRef) && teams.has(f.data.awayTeamRef),
+    );
+    const llaves = [...new Set(conEquipos.map(llaveDeTemporada))];
+
+    const resueltas = new Map<string, string>();
+    const pendientes: string[] = [];
+    for (const llave of llaves) {
+      const recordada = this.temporadaPorTorneo.get(llave);
+      if (recordada === undefined) pendientes.push(llave);
+      else if (recordada !== null) resueltas.set(llave, recordada);
+    }
+    if (pendientes.length === 0) return resueltas;
+
+    const competitions = await this.refs.resolveMany(
+      this.provider.name,
+      'competition',
+      [...new Set(pendientes.map((llave) => llave.split(':')[0] as string))],
+    );
+    const buscadas = pendientes.flatMap((llave) => {
+      const [competitionRef, year] = llave.split(':') as [string, string];
+      const competitionId = competitions.get(competitionRef);
+      return competitionId ? [{ llave, competitionId, year: Number(year) }] : [];
+    });
+
+    const filas =
+      buscadas.length === 0
+        ? []
+        : await this.prisma.season.findMany({
+            where: { OR: buscadas.map(({ competitionId, year }) => ({ competitionId, year })) },
+            select: { id: true, competitionId: true, year: true },
+          });
+    const idPorTorneo = new Map(filas.map((s) => [`${s.competitionId}:${s.year}`, s.id]));
+
+    for (const llave of pendientes) {
+      const buscada = buscadas.find((b) => b.llave === llave);
+      const id = buscada ? idPorTorneo.get(`${buscada.competitionId}:${buscada.year}`) : undefined;
+      this.temporadaPorTorneo.set(llave, id ?? null, TTL_DE_TEMPORADAS_S);
+      if (id) resueltas.set(llave, id);
+    }
+    return resueltas;
+  }
+}
+
+const COLUMNAS_DE_PARTIDO = [
+  { name: 'id', cast: '::uuid' },
+  { name: 'season_id', cast: '::uuid' },
+  { name: 'round', cast: '::text' },
+  { name: 'home_team_id', cast: '::uuid' },
+  { name: 'away_team_id', cast: '::uuid' },
+  { name: 'kickoff_utc', cast: '::timestamptz' },
+  { name: 'status', cast: '::text' },
+  { name: 'status_detail', cast: '::text' },
+  { name: 'elapsed_minutes', cast: '::int' },
+  { name: 'home_score', cast: '::int' },
+  { name: 'away_score', cast: '::int' },
+  { name: 'venue_id', cast: '::uuid' },
+];
+
+const llaveDeTemporada = (f: ProviderRef<ProviderMatch>): string =>
+  `${f.data.competitionRef}:${f.data.seasonYear}`;
+
+interface PartidoPrevio {
+  status: string;
+  statusDetail: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  elapsedMinutes: number | null;
+  kickoffUtc: Date;
+}
+
+function difiere(previo: PartidoPrevio | undefined, campos: Record<string, unknown>): boolean {
+  if (!previo) return true;
+  return (
+    previo.status !== campos.status ||
+    previo.statusDetail !== campos.status_detail ||
+    previo.homeScore !== campos.home_score ||
+    previo.awayScore !== campos.away_score ||
+    previo.elapsedMinutes !== campos.elapsed_minutes ||
+    previo.kickoffUtc.getTime() !== (campos.kickoff_utc as Date).getTime()
+  );
+}
+
+function aPrisma(campos: Record<string, unknown>) {
+  return {
+    seasonId: campos.season_id as string,
+    round: campos.round as string | null,
+    homeTeamId: campos.home_team_id as string,
+    awayTeamId: campos.away_team_id as string,
+    kickoffUtc: campos.kickoff_utc as Date,
+    status: campos.status as string,
+    statusDetail: campos.status_detail as string | null,
+    elapsedMinutes: campos.elapsed_minutes as number | null,
+    homeScore: campos.home_score as number | null,
+    awayScore: campos.away_score as number | null,
+    venueId: campos.venue_id as string | null,
+  };
 }

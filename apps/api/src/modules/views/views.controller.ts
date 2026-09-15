@@ -55,6 +55,13 @@ export class ViewsController {
     return this.cache.wrap('en-vivo', TTL.enVivo, () => this.views.enVivo());
   }
 
+  /* Lo único que se pide cada quince segundos: dos kilobytes contra los ciento sesenta del día. */
+  @Get('marcadores')
+  @Header('Cache-Control', 'public, s-maxage=5')
+  marcadores() {
+    return this.views.marcadores();
+  }
+
   @Get('competitions')
   @Header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=7200')
   competitions() {

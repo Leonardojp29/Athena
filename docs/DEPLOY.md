@@ -126,36 +126,21 @@ marcadores no avanzan.
 1. En [supabase.com/dashboard](https://supabase.com/dashboard), abrir el
    proyecto → **Database → Extensions** → buscar y habilitar **pg_cron** y
    **pg_net** (schema `extensions` está bien).
-2. Ir a **SQL Editor** y ejecutar. **Antes de correrlo, reemplazar los dos
-   marcadores**: `TU-API.vercel.app` por la URL real del paso 2 y
-   `TU_CRON_SECRET` por el secreto del paso 0 — pegado tal cual, el cron llama
-   a una URL que no existe y queda registrando 404 en silencio:
+2. Ir a **SQL Editor** y ejecutar `infra/supabase/cron.sql`, **reemplazando antes**
+   `TU-API.vercel.app` por la URL real del paso 2 y `TU_CRON_SECRET` por el
+   mismo valor que quedó en `CRON_SECRET` de Vercel. Pegado sin reemplazar, el
+   cron llama a una URL que no existe y queda registrando 404 en silencio; con
+   el secreto distinto al de Vercel, registra 401.
 
-   ```sql
-   -- El tic del vivo: cada minuto.
-   select cron.schedule(
-     'athena-tick',
-     '* * * * *',
-     $$
-     select net.http_post(
-       url     := 'https://TU-API.vercel.app/v1/internal/tick',
-       headers := '{"x-cron-secreto": "TU_CRON_SECRET"}'::jsonb
-     )
-     $$
-   );
+   El archivo crea cuatro trabajos y se puede volver a correr cuando cambie la
+   URL o el secreto:
 
-   -- El refresco diario: 05:00 hora de Lima = 10:00 UTC.
-   select cron.schedule(
-     'athena-daily',
-     '0 10 * * *',
-     $$
-     select net.http_post(
-       url     := 'https://TU-API.vercel.app/v1/internal/daily',
-       headers := '{"x-cron-secreto": "TU_CRON_SECRET"}'::jsonb
-     )
-     $$
-   );
-   ```
+   | Trabajo | Cada | Para qué |
+   |---|---|---|
+   | `athena-marcador` | 15 s | marcador, minuto y goles |
+   | `athena-tick` | 1 min | alineaciones, estadísticas, cierre y cola |
+   | `athena-daily` | 05:00 Lima | refresco del catálogo |
+   | `athena-purga-cron` | diario | borra el historial de pg_cron y pg_net |
 
 3. Comprobar que corre:
 

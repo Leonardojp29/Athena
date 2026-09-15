@@ -18,6 +18,9 @@ const MINUTE_KEY = 'presupuesto:apifootball:minuto';
 const PERSISTIR_CADA_MS = 5_000;
 const CONFIAR_EN_MEMORIA_MS = 10_000;
 
+/** El minuto se recupera solo; el día, no. */
+export const PAUSA_POR_CUOTA_S = { minute: 60, day: 3600 } as const;
+
 export class ApiBudgetExhaustedError extends Error {
   constructor(
     readonly scope: 'day' | 'minute',

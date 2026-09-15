@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ApiBudgetExhaustedError } from '../../shared/api-budget.service.js';
+import { ApiBudgetExhaustedError, PAUSA_POR_CUOTA_S } from '../../shared/api-budget.service.js';
 import { KvService } from '../../shared/kv.service.js';
 import { ViewCacheService } from '../../shared/view-cache.service.js';
 import {
@@ -18,12 +18,14 @@ import { ANTIGUEDAD_MAXIMA_MS } from '../sync/cierre-politica.js';
 import { MatchSyncService } from '../sync/match-sync.service.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
+import { SyncMarcadorUseCase } from '../sync/sync-marcador.usecase.js';
 import { SyncMatchDetailUseCase } from '../sync/sync-match-detail.usecase.js';
 import { SyncMatchEventsUseCase } from '../sync/sync-match-events.usecase.js';
 import { SyncMatchPlayersUseCase } from '../sync/sync-match-players.usecase.js';
 import { SyncSquadUseCase } from '../sync/sync-squad.usecase.js';
 import { SyncStandingsUseCase } from '../sync/sync-standings.usecase.js';
 import { SyncTeamsUseCase } from '../sync/sync-teams.usecase.js';
+import type { ResultadoDelLatido } from '../sync/sync-marcador.usecase.js';
 import { ColaDeTareas, ErrorNoReintentable, type Tarea } from './cola-de-tareas.service.js';
 import { SyncScheduleService } from './sync-schedule.service.js';
 
@@ -34,9 +36,6 @@ const TABLA_REINTENTO_MS = 12 * 60_000;
 
 /* Cuántos lotes de cierre entran en un tic: cada lote es un pedido y veinte partidos de escrituras. */
 const LOTES_DE_CIERRE_POR_TIC = 3;
-/* Con la cuota agotada no se insiste: el minuto se recupera solo, el día no. */
-const PAUSA_POR_CUOTA_S = { minute: 60, day: 3600 } as const;
-
 /*
  * La franja del tic que nadie más puede tocar, para que la cola siempre avance.
  *
@@ -45,6 +44,10 @@ const PAUSA_POR_CUOTA_S = { minute: 60, day: 3600 } as const;
  * llegó a setenta mil tareas vencidas creciendo sola, sin que nada fallara ni quedara registrado.
  */
 const RESERVA_DE_DRENADO_MS = 25_000;
+
+const CANDADO_DEL_MARCADOR_S = 10;
+const MARCADOR_ABANDONADO_MS = 90_000;
+const SIN_LATIDO: ResultadoDelLatido = { pedidos: 0, vistos: 0, cambiados: 0, cerrados: 0 };
 
 /*
  * Cuántas tareas por lote.
@@ -85,6 +88,7 @@ export class SyncQueueService {
     private readonly syncCompetition: SyncCompetitionUseCase,
     private readonly syncTeams: SyncTeamsUseCase,
     private readonly syncFixtures: SyncFixturesUseCase,
+    private readonly syncMarcador: SyncMarcadorUseCase,
     private readonly syncStandings: SyncStandingsUseCase,
     private readonly syncMatchEvents: SyncMatchEventsUseCase,
     private readonly syncMatchDetail: SyncMatchDetailUseCase,
@@ -145,6 +149,32 @@ export class SyncQueueService {
       msTotal: Date.now() - arranque,
     });
     return { vivos, tareas: hechas };
+  }
+
+  async latirMarcador(): Promise<ResultadoDelLatido> {
+    if (!(await this.kv.marcar('marcador:candado', CANDADO_DEL_MARCADOR_S))) return SIN_LATIDO;
+    try {
+      if (await this.pausada()) return SIN_LATIDO;
+      const arranque = Date.now();
+      const resultado = await this.syncMarcador.latir();
+      await this.kv.fijar('marcador:ultimo', Date.now(), 24 * 3600);
+      logJson('info', 'marcador_latido', { ...resultado, ms: Date.now() - arranque });
+      return resultado;
+    } catch (error) {
+      if (error instanceof ApiBudgetExhaustedError) {
+        await this.pausar(error);
+        return SIN_LATIDO;
+      }
+      throw error;
+    } finally {
+      await this.kv.liberar('marcador:candado');
+    }
+  }
+
+  private async elMarcadorEstaAbandonado(): Promise<boolean> {
+    const marcas = await this.kv.leer(['marcador:ultimo']);
+    const ultimo = marcas.get('marcador:ultimo');
+    return ultimo === undefined || Date.now() - ultimo > MARCADOR_ABANDONADO_MS;
   }
 
   /**
@@ -321,7 +351,10 @@ export class SyncQueueService {
     });
     const msCandidatos = Date.now() - t0;
 
-    const vivos = candidates === 0 ? 0 : await this.syncFixtures.syncLive();
+    const vivos =
+      candidates === 0 || !(await this.elMarcadorEstaAbandonado())
+        ? 0
+        : await this.syncFixtures.syncLive();
     const msVivo = Date.now() - t0;
 
     /*

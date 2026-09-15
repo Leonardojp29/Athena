@@ -10,6 +10,7 @@ import { PlayerResolverService } from './player-resolver.service.js';
 import { RecalcularColoresUseCase } from './recalcular-colores.usecase.js';
 import { SyncCompetitionUseCase } from './sync-competition.usecase.js';
 import { SyncFixturesUseCase } from './sync-fixtures.usecase.js';
+import { SyncMarcadorUseCase } from './sync-marcador.usecase.js';
 import { SyncMatchDetailUseCase } from './sync-match-detail.usecase.js';
 import { SyncMatchEventsUseCase } from './sync-match-events.usecase.js';
 import { SyncMatchPlayersUseCase } from './sync-match-players.usecase.js';
@@ -36,6 +37,7 @@ import { VenueService } from './venue.service.js';
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
     SyncFixturesUseCase,
+    SyncMarcadorUseCase,
     SyncStandingsUseCase,
     SyncMatchEventsUseCase,
     SyncMatchDetailUseCase,
@@ -55,6 +57,7 @@ import { VenueService } from './venue.service.js';
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
     SyncFixturesUseCase,
+    SyncMarcadorUseCase,
     SyncStandingsUseCase,
     SyncMatchEventsUseCase,
     SyncMatchDetailUseCase,

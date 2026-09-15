@@ -15,6 +15,7 @@ initObservability('worker');
  * para las dos formas de correr, que es lo que garantiza que lo probado acá sea lo desplegado allá.
  */
 const CADA_MS = 60_000;
+const LATIDO_DEL_MARCADOR_MS = 15_000;
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule);
@@ -45,9 +46,25 @@ async function bootstrap(): Promise<void> {
     }
   };
 
+  let latiendo = false;
+  const unLatido = async (): Promise<void> => {
+    if (latiendo) return;
+    latiendo = true;
+    try {
+      await queue.latirMarcador();
+    } catch (error) {
+      logJson('error', 'latido_fallido', { error: String(error).slice(0, 200) });
+      reportError(error);
+    } finally {
+      latiendo = false;
+    }
+  };
+
   logJson('info', 'worker_started');
   void unTic();
+  void unLatido();
   setInterval(() => void unTic(), CADA_MS);
+  setInterval(() => void unLatido(), LATIDO_DEL_MARCADOR_MS);
 }
 
 // Un worker que muere en silencio deja el sync detenido sin que nadie se entere.

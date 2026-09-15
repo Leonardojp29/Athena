@@ -87,6 +87,17 @@ export class ViewCacheService {
       .$executeRaw`DELETE FROM vistas_cache WHERE clave = ${clave}`.catch(() => undefined);
   }
 
+  /** A diferencia de `borrar`, espera: en serverless la instancia se congela al responder. */
+  async borrarVarias(claves: string[]): Promise<void> {
+    if (claves.length === 0) return;
+    for (const clave of claves) this.memoria.delete(`view:${clave}`);
+    try {
+      await this.prisma.$executeRaw`DELETE FROM vistas_cache WHERE clave = ANY(${claves})`;
+    } catch (error) {
+      reportError(error, { claves: claves.length });
+    }
+  }
+
   /** Las vistas que ya nadie va a servir. Corre con el refresco diario. */
   async podar(): Promise<number> {
     return this.prisma.$executeRaw`DELETE FROM vistas_cache WHERE vence_en < now()`;
