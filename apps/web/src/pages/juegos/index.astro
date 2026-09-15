@@ -3,19 +3,23 @@ import Base from '../../layouts/Base.astro';
 import { cachear } from '../../lib/cache';
 import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
-import TuCarrera from '../../components/juego/TuCarrera';
-import '../../styles/leyenda.css';
+import Hueco from '../../components/anuncios/Hueco.astro';
+import '../../styles/juegos.css';
 
 /*
  * El catálogo de juegos. Es una vitrina, no un folleto.
  *
- * La versión anterior era un párrafo de presentación, una tarjeta gigante con tres pasos numerados y
- * cuatro números grandes: mucho texto para decir "hay un juego". Acá caben cuatro o seis juegos en
- * una sola mirada, todos del mismo tamaño, cada uno con su nombre, una línea y su estado. Lo que
- * cuenta de qué se trata es el propio juego, no esta página.
+ * Cuatro tarjetas grandes y nada más: ni banda de progreso, ni módulos sueltos, ni un párrafo de
+ * presentación. Lo que cuenta de qué se trata es el propio juego, y una vitrina con cuatro piezas
+ * no necesita que le expliquen qué es una vitrina.
+ *
+ * Eran cuatro columnas de tarjetas chicas en una página que sobraba de alto: la mitad inferior
+ * quedaba en blanco y ninguna tarjeta se veía como algo en lo que entrar. Ahora son dos columnas y
+ * cada una ocupa lo que merece.
  *
  * Va por el servidor como el resto del sitio: el header cuenta los partidos en vivo y el middleware
- * comprime leyendo la cabecera del pedido, y ninguna de las dos cosas existe en una página prerendida.
+ * comprime leyendo la cabecera del pedido, y ninguna de las dos cosas existe en una página
+ * prerendida. Sin islas: los juegos hidratan dentro de su propia ruta, no acá.
  */
 
 cachear(Astro.response, 'dia');
@@ -50,76 +54,119 @@ const JUEGOS: Juego[] = [
     href: '/juegos/el-impostor',
     etiqueta: '20 s por ronda',
   },
-  { nombre: 'El desafío del día', linea: 'Un reto nuevo cada mañana, el mismo para todo el mundo.', icono: 'estrella' },
+  {
+    nombre: 'El desafío del día',
+    linea: 'Un reto nuevo cada mañana, el mismo para todo el mundo.',
+    icono: 'estrella',
+  },
 ];
 ---
 
 <Base
   title="Juegos — Athena"
-  description="Juegos de fútbol dentro de Athena. Crea un futbolista, vive su carrera y quédate con la carta de toda tu vida."
+  description="Juegos de fútbol dentro de Athena. Crea un futbolista, adivina el once o encuentra al impostor, siempre con datos reales."
   width="bleed"
   liveBar={false}
 >
-  <Container width="wide" class="py-6 sm:py-8">
-    <header class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
-      <h1 class="font-display text-3xl font-semibold uppercase leading-none tracking-label">Juegos</h1>
-      <p class="text-sm text-ink-muted">Con los datos reales de Athena.</p>
-    </header>
+  <Container width="content" class="py-8 sm:py-10">
+    <!--
+      Los anuncios van en los dos márgenes y solo desde 1800 px, donde sobra ancho de verdad: por
+      debajo de eso aparecerían robándole sitio a las tarjetas en lugar de ocupando el hueco.
+    -->
+    <div class="grid items-start gap-8 3xl:grid-cols-[19rem_minmax(0,1fr)_19rem]">
+      <div class="hidden 3xl:sticky 3xl:top-20 3xl:block">
+        <Hueco medida="riel" ubicacion="juegos-izquierda" />
+      </div>
 
-    <!-- Lo tuyo: la carrera abierta. Sale del navegador, así que se hidrata. -->
-    <TuCarrera client:load />
+      <div class="min-w-0">
+        <header class="pb-7">
+          <p class="text-2xs font-medium uppercase tracking-label text-primary-ink">
+            Con los datos reales de Athena
+          </p>
+          <h1
+            class="mt-2 font-display text-5xl font-semibold uppercase leading-none tracking-label sm:text-6xl"
+          >
+            Juegos
+          </h1>
+        </header>
 
-    <ul class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {
-        JUEGOS.map((juego) => {
-          const Envoltura = juego.href ? 'a' : 'div';
-          return (
-            <li>
-              <Envoltura
-                href={juego.href}
-                aria-disabled={juego.href ? undefined : 'true'}
-                class:list={[
-                  'group flex h-full flex-col gap-3 rounded-xl border p-4 transition-[colors,transform,box-shadow] duration-200',
-                  juego.href
-                    ? 'cursor-pointer border-border bg-surface hover:-translate-y-0.5 hover:border-primary-ink hover:shadow-magnet'
-                    : 'border-dashed border-border',
-                ]}
-              >
-                <span
-                  class:list={[
-                    'grid size-10 place-items-center rounded-lg transition-transform duration-300',
-                    juego.href
-                      ? 'bg-primary text-primary-contrast group-hover:scale-105'
-                      : 'bg-canvas-subtle text-ink-muted',
-                  ]}
-                >
-                  <Icon name={juego.icono} size={20} />
-                </span>
+        <ul class="grid gap-4 sm:grid-cols-2 sm:gap-5">
+          {
+            JUEGOS.map((juego, i) => {
+              const Envoltura = juego.href ? 'a' : 'div';
+              return (
+                <li class="animate-juego-entra" style={`--turno:${i}`}>
+                  <Envoltura
+                    href={juego.href}
+                    aria-disabled={juego.href ? undefined : 'true'}
+                    class:list={[
+                      'group relative flex h-full min-h-[15rem] flex-col overflow-hidden rounded-2xl border p-6 transition-[border-color,transform] duration-300 sm:min-h-[17rem] sm:p-7',
+                      juego.href
+                        ? 'cursor-pointer border-border bg-surface hover:-translate-y-1 hover:border-primary-ink'
+                        : 'border-dashed border-border bg-transparent',
+                    ]}
+                  >
+                    {/*
+                      El icono otra vez, enorme y casi invisible detrás: le da carácter a la tarjeta
+                      sin agregar nada que haya que leer. Decorativo y sin eventos.
+                    */}
+                    {juego.href && (
+                      <span
+                        aria-hidden="true"
+                        class="pointer-events-none absolute -bottom-10 -right-8 text-primary-ink/[0.06] transition-transform duration-500 group-hover:-translate-y-2 group-hover:scale-105"
+                      >
+                        <Icon name={juego.icono} size={170} />
+                      </span>
+                    )}
 
-                <span class="min-w-0">
-                  <span class="block font-display text-xl font-semibold uppercase leading-tight tracking-label">
-                    {juego.nombre}
-                  </span>
-                  <span class="mt-1 block text-sm leading-snug text-ink-muted">{juego.linea}</span>
-                </span>
+                    <span
+                      class:list={[
+                        'relative grid size-14 place-items-center rounded-xl transition-transform duration-300',
+                        juego.href
+                          ? 'bg-primary text-primary-contrast group-hover:scale-105'
+                          : 'bg-canvas-subtle text-ink-muted',
+                      ]}
+                    >
+                      <Icon name={juego.icono} size={26} />
+                    </span>
 
-                <span class="mt-auto flex items-center gap-1.5 pt-1 text-2xs font-medium uppercase tracking-label">
-                  {
-                    juego.href ? (
-                      <>
-                        <span class="text-primary-ink">Jugar</span>
-                        <span class="text-ink-muted">· {juego.etiqueta}</span>
-                      </>
-                    ) : (
-                      <span class="text-ink-muted">Pronto</span>
-                    )
-                  }
-                </span>
-              </Envoltura>
-            </li>
-          );
-        })
-      }
-    </ul>
+                    <span class="relative mt-5 block min-w-0">
+                      <span class="block font-display text-2xl font-semibold uppercase leading-tight tracking-label sm:text-3xl">
+                        {juego.nombre}
+                      </span>
+                      <span class="mt-2 block max-w-[34ch] text-pretty text-sm leading-relaxed text-ink-muted">
+                        {juego.linea}
+                      </span>
+                    </span>
+
+                    <span class="relative mt-auto flex items-center gap-2 pt-6 text-2xs font-medium uppercase tracking-label">
+                      {juego.href ? (
+                        <>
+                          <span class="flex items-center gap-1.5 text-primary-ink">
+                            Jugar
+                            <Icon
+                              name="chevron-derecha"
+                              size={14}
+                              class="transition-transform duration-300 group-hover:translate-x-1"
+                            />
+                          </span>
+                          <span class="text-ink-muted">· {juego.etiqueta}</span>
+                        </>
+                      ) : (
+                        <span class="text-ink-muted">Pronto</span>
+                      )}
+                    </span>
+                  </Envoltura>
+                </li>
+              );
+            })
+          }
+        </ul>
+      </div>
+
+      <div class="hidden 3xl:sticky 3xl:top-20 3xl:block">
+        <Hueco medida="riel" ubicacion="juegos-derecha" />
+      </div>
+    </div>
   </Container>
 </Base>

@@ -10,6 +10,11 @@
  * Vive en cuatro lugares —la home, el calendario, la competencia y el equipo—, que son los que
  * listan partidos que pueden estar en juego. La página del partido tiene el suyo, que además rehace la cancha.
  *
+ * Recibe **los días que la página muestra**, no "hoy". La home no lista un día: lista una ventana
+ * de seis horas atrás a veinticuatro adelante, que en Lima toca hasta tres fechas. Pidiendo solo la
+ * de hoy, ocho de sus treinta y cinco filas quedaban fuera del parche y se congelaban en el
+ * marcador con el que se dibujó la página, sin manera de enterarse.
+ *
  * En vez de recargar como hace la página de partido —acá se perdería el scroll del catálogo y el
  * árbol abierto—, se pide la lista del día y se parchean tres cosas por fila: el marcador, el estado
  * y el color de vivo. Es la misma consulta que ya sirve la home, cacheada sesenta segundos, así que
@@ -18,15 +23,17 @@
  * Solo se dibuja cuando hay algo en juego, así que una página sin fútbol en curso sigue costando 0 KB.
  */
 interface Props {
-  /** El día que muestra la página, en ISO. Sin esto se pediría siempre el de hoy. */
-  dia: string;
+  /** Los días que muestra la página, en ISO. Cada uno es una consulta ya cacheada en el API. */
+  dias: string[];
   segundos?: number;
 }
 
-const { dia, segundos = 30 } = Astro.props;
+const { dias, segundos = 30 } = Astro.props;
+/* Sin repetir y en orden, que es como se ven en la página y como se piden. */
+const pedidos = [...new Set(dias)].sort();
 ---
 
-<span data-refresco-marcadores={dia} data-cada={segundos} hidden></span>
+<span data-refresco-marcadores={pedidos.join(',')} data-cada={segundos} hidden></span>
 
 <script>
   import { isLive, minutoEnVivo, statusLabel } from '../lib/format';
@@ -47,7 +54,7 @@ const { dia, segundos = 30 } = Astro.props;
 
   const marca = document.querySelector<HTMLElement>('[data-refresco-marcadores]');
   if (marca) {
-    const dia = marca.dataset.refrescoMarcadores as string;
+    const dias = (marca.dataset.refrescoMarcadores as string).split(',').filter(Boolean);
     const cada = Math.max(15, Number(marca.dataset.cada ?? '30')) * 1000;
     const API = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
 
@@ -104,11 +111,16 @@ const { dia, segundos = 30 } = Astro.props;
 
     const pedir = async (): Promise<void> => {
       try {
-        const res = await fetch(`${API}/v1/views/matches?fecha=${dia}`);
-        if (res.ok) {
-          const datos = (await res.json()) as DiaDePartidos;
-          aplicar(datos.sections.flatMap((s) => s.matches));
-        }
+        /* Los días van juntos: el API los sirve cacheados y un día de más no cuesta una consulta. */
+        const respuestas = await Promise.all(
+          dias.map((dia) =>
+            fetch(`${API}/v1/views/matches?fecha=${dia}`)
+              .then((res) => (res.ok ? (res.json() as Promise<DiaDePartidos>) : null))
+              .catch(() => null),
+          ),
+        );
+        const partidos = respuestas.flatMap((d) => d?.sections.flatMap((s) => s.matches) ?? []);
+        if (partidos.length > 0) aplicar(partidos);
       } catch {
         /* Un fallo de red no puede romper la página: en el próximo tic se vuelve a intentar. */
       }

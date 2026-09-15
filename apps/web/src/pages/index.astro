@@ -23,6 +23,7 @@ import {
   type TeamView,
   type TopPerformers,
 } from '../lib/api';
+import { fechaEnLima } from '../lib/calendario';
 import { isLive } from '../lib/format';
 import { getHomeView } from '../lib/live';
 import RefrescoDeMarcadores from '../components/RefrescoDeMarcadores.astro';
@@ -160,7 +161,11 @@ const todos = home.sections.flatMap((s) => s.matches);
  * disfrazado de dato. Sin partidos en vivo no se manda ni un byte de JavaScript.
  */
 const hayEnVivo = todos.some((m) => isLive(m.status));
-const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+/*
+ * Los días que la página muestra, no "hoy": la ventana va de seis horas atrás a veinticuatro
+ * adelante y en Lima eso toca hasta tres fechas. El refresco pide las que hay.
+ */
+const diasEnPantalla = [...new Set(todos.map((m) => fechaEnLima(m.kickoffUtc)))];
 
 cachear(Astro.response, 'home');
 ---
@@ -326,7 +331,7 @@ cachear(Astro.response, 'home');
   {(vistaLiga?.once || (vistaEquipo?.lineups.length ?? 0) > 0) && <PlayerSheet />}
 
   <!-- Y el reloj de los marcadores, solo si hay algo en juego. -->
-  {hayEnVivo && <RefrescoDeMarcadores dia={hoyEnLima} />}
+  {hayEnVivo && <RefrescoDeMarcadores dias={diasEnPantalla} />}
 </Base>
 <script>
   /*

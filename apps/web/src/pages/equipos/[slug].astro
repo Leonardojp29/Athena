@@ -1,6 +1,7 @@
 ---
 import EscudoTorneo from '../../components/EscudoTorneo.astro';
 import RefrescoDeMarcadores from '../../components/RefrescoDeMarcadores.astro';
+import { fechaEnLima } from '../../lib/calendario';
 import { isLive } from '../../lib/format';
 import Base from '../../layouts/Base.astro';
 import { cachear } from '../../lib/cache';
@@ -50,7 +51,8 @@ const { team, standings, recent, upcoming, squad, scorers, mercado } = view;
 /* Con un partido suyo en juego, el marcador de esta página se mantiene solo. Sin eso, 0 KB. */
 const hayEnVivo = [...recent, ...upcoming].some((m) => isLive(m.status));
 cachear(Astro.response, hayEnVivo ? 'partidoEnJuego' : 'equipo');
-const hoyEnLima = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
+/* Los días de lo que se muestra: últimos y próximos no caben en una sola fecha. */
+const diasEnPantalla = [...new Set([...recent, ...upcoming].map((m) => fechaEnLima(m.kickoffUtc)))];
 const similar = await pedidoSimilar;
 
 const pais = paisEnEspanol(team.country);
@@ -412,5 +414,5 @@ const jsonLd = [
     </div>
   </Container>
   </div>
-  {hayEnVivo && <RefrescoDeMarcadores dia={hoyEnLima} />}
+  {hayEnVivo && <RefrescoDeMarcadores dias={diasEnPantalla} />}
 </Base>

@@ -297,14 +297,15 @@ export class SyncQueueService {
   // Solo llama al API si la base indica que puede haber fútbol en juego: costo cero fuera de partidos.
   private async liveTick(): Promise<number> {
     /*
-     * La reconciliación va primero y sin condición: un partido que nadie cerró no depende de que
-     * haya fútbol en cancha ahora mismo. Antes vivía después del corte por candidatos, así que con
-     * el worker caído toda una semana los partidos de esos días se quedaban invisibles hasta que
-     * volviera a haber algo en juego. Cuesta cero requests cuando no hay ninguno.
+     * El marcador va primero, y esto es lo único que el orden decide.
+     *
+     * Antes el feed en vivo salía último, detrás de la reconciliación y del barrido de alineaciones:
+     * medido sobre doscientos tics, eso son unos treinta y siete segundos de espera antes de pedir
+     * el dato más perecedero que tiene la web. Con el tic entero pasándose del minuto, un gol podía
+     * tardar dos o tres minutos en aparecer en la home mientras el resto del tic hacía cosas que
+     * pueden esperar. Una alineación que llega medio minuto tarde no la nota nadie; un gol, sí.
      */
     const t0 = Date.now();
-    await this.syncFixtures.reconcileStale();
-    const msReconcilio = Date.now() - t0;
 
     const now = new Date();
     const soon = new Date(now.getTime() + 30 * 60 * 1000);
@@ -319,19 +320,24 @@ export class SyncQueueService {
       },
     });
     const msCandidatos = Date.now() - t0;
-    /* Va antes del corte: su propia consulta decide, y con la ventana más ancha que el feed en vivo. */
-    await this.seguirLosEnCurso();
-    const msEnCurso = Date.now() - t0;
-    if (candidates === 0) {
-      logJson('info', 'live_tick', { msReconcilio, msCandidatos, msEnCurso, candidates });
-      return 0;
-    }
 
-    const vivos = await this.syncFixtures.syncLive();
+    const vivos = candidates === 0 ? 0 : await this.syncFixtures.syncLive();
+    const msVivo = Date.now() - t0;
+
+    /*
+     * Y lo que puede esperar, después. La reconciliación sigue yendo sin condición: un partido que
+     * nadie cerró no depende de que haya fútbol en cancha ahora mismo, y con el worker caído una
+     * semana los de esos días se quedaban invisibles hasta que volviera a haber algo en juego.
+     */
+    await this.syncFixtures.reconcileStale();
+    const msReconcilio = Date.now() - t0;
+    /* Su propia consulta decide, con la ventana más ancha que el feed en vivo. */
+    await this.seguirLosEnCurso();
+
     logJson('info', 'live_tick', {
-      msReconcilio,
       msCandidatos,
-      msEnCurso,
+      msVivo,
+      msReconcilio,
       msTotal: Date.now() - t0,
       candidates,
     });

@@ -9,9 +9,11 @@ import { nombreTorneo } from '../../lib/paises';
  * Una tarjeta del índice: un grupo de torneos con su cabecera.
  *
  * Sirve para los tres grupos que tiene el catálogo —el país, las copas de la confederación y las
- * selecciones— porque los tres se leen igual: un título con su emblema y la lista de torneos. Antes
- * el índice solo dibujaba los países, así que la Libertadores y la Champions no aparecían en ninguna
- * parte de `/competencias` aunque estuvieran contadas en el total.
+ * selecciones— porque los tres se leen igual: un título con su emblema y la lista de torneos.
+ *
+ * La cabecera es una banda con el emblema grande. Antes era una línea de veintidós píxeles donde la
+ * bandera valía lo mismo que el contador, y en una grilla de doce tarjetas eso deja doce cajas que
+ * hay que leer para distinguir. Con el emblema a treinta y seis, el país se reconoce sin leer.
  */
 interface Props {
   titulo: string;
@@ -25,42 +27,54 @@ interface Props {
 const { titulo, flagUrl = null, code = null, logoUrl = null, competitions } = Astro.props;
 ---
 
-<section class="rounded-lg border border-border bg-surface">
-  <div class="flex items-center gap-2 border-b border-border px-3 py-2.5">
-    {
-      logoUrl ? (
-        <EscudoTorneo url={logoUrl} size={22} />
-      ) : (
-        <CountryFlag url={flagUrl} code={code} name={titulo} size={22} />
-      )
-    }
-    <h3 class="truncate text-sm font-semibold">{titulo}</h3>
-    <span class="ml-auto tabular text-2xs text-ink-muted">{competitions.length}</span>
-  </div>
+<section
+  class="group/tarjeta flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-border-strong"
+>
+  <header class="flex items-center gap-3 border-b border-border bg-canvas-subtle/60 px-4 py-3">
+    <span class="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-surface ring-1 ring-border">
+      {
+        logoUrl ? (
+          <EscudoTorneo url={logoUrl} size={24} />
+        ) : (
+          <CountryFlag url={flagUrl} code={code} name={titulo} size={24} />
+        )
+      }
+    </span>
+    <h3 class="min-w-0 flex-1 truncate font-display text-base font-semibold uppercase leading-tight tracking-label">
+      {titulo}
+    </h3>
+    <span
+      class="shrink-0 rounded-full bg-ink/[0.06] px-2 py-0.5 tabular text-2xs font-medium text-ink-muted"
+    >
+      {competitions.length}
+    </span>
+  </header>
 
-  <ul class="grid gap-0.5 p-1.5">
+  <ul class="grid flex-1 content-start gap-0.5 p-2">
     {
       competitions.map((competition) => (
         <li>
           <a
             href={`/competencias/${competition.slug}`}
-            class="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-canvas-subtle"
+            class="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-canvas-subtle"
           >
-            <span class="flex size-7 shrink-0 items-center justify-center rounded bg-canvas-subtle">
+            <span class="grid size-8 shrink-0 place-items-center rounded-md bg-canvas-subtle transition-transform duration-200 group-hover:scale-105">
               {competition.logoUrl ? (
-                <EscudoTorneo url={competition.logoUrl} size={18} />
+                <EscudoTorneo url={competition.logoUrl} size={20} />
               ) : (
-                <Icon name="estadio" size={14} class="text-ink-muted" />
+                <Icon name="estadio" size={15} class="text-ink-muted" />
               )}
             </span>
-            <span class="min-w-0 flex-1 truncate text-sm">{nombreTorneo(competition.name)}</span>
+            <span class="min-w-0 flex-1 truncate text-sm font-medium">
+              {nombreTorneo(competition.name)}
+            </span>
             {competition.format === 'cup' && (
-              <span class="shrink-0 text-2xs text-ink-muted">copa</span>
+              <span class="shrink-0 text-2xs uppercase tracking-label text-ink-muted">copa</span>
             )}
             <Icon
               name="chevron-derecha"
-              size={14}
-              class="shrink-0 text-ink-muted transition-transform group-hover:translate-x-0.5"
+              size={15}
+              class="shrink-0 text-ink-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-primary-ink"
             />
           </a>
         </li>

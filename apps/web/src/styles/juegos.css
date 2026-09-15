@@ -1,0 +1,22 @@
+/*
+ * Lo propio del catálogo de juegos: las tarjetas entran escalonadas, como se reparte un mazo.
+ *
+ * El escalón lo pone cada una en `--turno`, así no hace falta una clase por posición. La duración
+ * cuelga de los tokens de movimiento, de modo que `prefers-reduced-motion` la colapsa en un solo
+ * lugar, y solo se animan `opacity` y `transform`.
+ */
+@keyframes juego-entra {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-juego-entra {
+  animation: juego-entra var(--a-motion-drama) var(--a-ease-out-expo) backwards;
+  animation-delay: calc(var(--turno, 0) * 70ms);
+}
