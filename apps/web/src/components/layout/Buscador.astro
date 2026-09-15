@@ -1,4 +1,5 @@
 ---
+import { API_URL } from '../../lib/entorno';
 import Icon from '../Icon.astro';
 
 /*
@@ -13,7 +14,7 @@ import Icon from '../Icon.astro';
  * navegador. Vanilla y sin isla —las páginas de entidad se quedan en 0 KB de JavaScript—, que es la
  * misma decisión que ya tomó la ficha del jugador.
  */
-const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+const apiUrl = API_URL;
 ---
 
 <dialog

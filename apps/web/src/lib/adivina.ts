@@ -1,3 +1,4 @@
+import { fotoDeFutbolista } from './entorno';
 import type { FutbolistaBuscado, IndiceDeFutbolistas, RetoParaJugar, TitularRevelado } from './api';
 import type { Catalogo, Dificultad, DificultadElegida } from '@athena/adivina-el-xi';
 
@@ -87,8 +88,7 @@ export async function buscarFutbolistas(
 }
 
 /** La foto no viaja en ninguna respuesta: el proveedor la sirve por id y con eso alcanza. */
-export const fotoDe = (ref: string): string =>
-  `https://media.api-sports.io/football/players/${ref}.png`;
+export const fotoDe = fotoDeFutbolista;
 
 /* ── El índice local ───────────────────────────────────────────────────────────────────────── */
 

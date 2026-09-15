@@ -1,3 +1,4 @@
+import { fotoDeFutbolista } from '../../shared/entorno.js';
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type {
@@ -499,7 +500,7 @@ export class Auditar60Service {
     if (recordada !== undefined) return recordada === '' ? null : recordada;
 
     try {
-      const res = await fetch(`https://media.api-sports.io/football/players/${ref}.png`);
+      const res = await fetch(fotoDeFutbolista(ref));
       if (!res.ok) {
         this.huellas.set(ref, '');
         return null;
@@ -516,7 +517,7 @@ export class Auditar60Service {
 
 /** La foto la sirve el proveedor por id: no hace falta guardarla ni pedirla. */
 const fotoDelFutbolista = (ref: string): string =>
-  `https://media.api-sports.io/football/players/${ref}.png`;
+  fotoDeFutbolista(ref);
 
 const sinTildes = (texto: string): string =>
   texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

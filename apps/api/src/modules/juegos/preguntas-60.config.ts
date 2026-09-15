@@ -1,3 +1,4 @@
+import { banderaDePais, escudoDeEquipo } from '../../shared/entorno.js';
 /**
  * El catálogo de 60 Segundos, como código.
  *
@@ -807,13 +808,10 @@ export const PREGUNTAS_DE_60: readonly PreguntaDeclarada[] = [
 /** Bandera si es selección, escudo si es club. La distinción no la puede dar el proveedor. */
 export function emblemaDelEquipo(equipoRef: string): string {
   const bandera = BANDERAS[equipoRef];
-  return bandera
-    ? `https://media.api-sports.io/flags/${bandera}.svg`
-    : `https://media.api-sports.io/football/teams/${equipoRef}.png`;
+  return bandera ? banderaDePais(bandera) : escudoDeEquipo(equipoRef);
 }
 
-export const logoDeCompetencia = (ref: string): string =>
-  `https://media.api-sports.io/football/leagues/${ref}.png`;
+export { logoDeCompetencia } from '../../shared/entorno.js';
 
 /**
  * La escena de la pregunta, para que dos de lo mismo no salgan pegadas.

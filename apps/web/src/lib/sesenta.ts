@@ -1,3 +1,4 @@
+import { fotoDeFutbolista } from './entorno';
 import type { PreguntaParaJugar } from './api';
 import type { Pregunta } from '@athena/sesenta-segundos';
 
@@ -94,8 +95,7 @@ export async function pedirPreguntas(): Promise<Pregunta[]> {
 }
 
 /** La foto no viaja en la respuesta: el proveedor la sirve por id y con eso alcanza. */
-export const fotoDe = (ref: string): string =>
-  `https://media.api-sports.io/football/players/${ref}.png`;
+export const fotoDe = fotoDeFutbolista;
 
 /** El reloj con décimas: `60.0 → 59.9`. Es el protagonista del juego. */
 export const relojDe = (ms: number): string => (Math.ceil(ms / 100) / 10).toFixed(1);

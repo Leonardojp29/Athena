@@ -1,4 +1,5 @@
 ---
+import { API_URL } from '../../lib/entorno';
 import Buscador from './Buscador.astro';
 import Container from './Container.astro';
 import Icon from '../Icon.astro';
@@ -10,7 +11,7 @@ interface Props {
 }
 
 const { contador = true } = Astro.props;
-const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+const apiUrl = API_URL;
 ---
 
 <!--

@@ -1,3 +1,4 @@
+import { fotoDeFutbolista } from '../../shared/entorno.js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { FootballDataProvider } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
@@ -164,7 +165,7 @@ export class ImportarImpostorService {
           nationality: null,
           heightCm: null,
           position: null,
-          photoUrl: `https://media.api-sports.io/football/players/${ref}.png`,
+          photoUrl: fotoDeFutbolista(ref),
         },
       };
     });

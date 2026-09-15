@@ -1,4 +1,5 @@
 ---
+import { MEDIA_URL } from '../lib/entorno';
 import '../styles/global.css';
 import Container from '../components/layout/Container.astro';
 import LiveBar from '../components/layout/LiveBar.astro';
@@ -82,7 +83,7 @@ const datosEstructurados =
     <link rel="preload" href="/fonts/oswald-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/archivo-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <!-- De acá sale el escudo o la foto más grande de casi toda página: el saludo va adelantado. -->
-    <link rel="preconnect" href="https://media.api-sports.io" crossorigin />
+    <link rel="preconnect" href={MEDIA_URL} crossorigin />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />

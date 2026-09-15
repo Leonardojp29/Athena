@@ -1,3 +1,4 @@
+import { fotoDeFutbolista } from '../../shared/entorno.js';
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { FootballDataProvider, ProviderMatch, ProviderRef } from '@athena/domain';
@@ -253,7 +254,7 @@ export class AuditarImpostorService {
     const recordada = this.huellas.get(ref);
     if (recordada !== undefined) return recordada === '' ? null : recordada;
     try {
-      const res = await fetch(`https://media.api-sports.io/football/players/${ref}.png`);
+      const res = await fetch(fotoDeFutbolista(ref));
       if (!res.ok) {
         this.huellas.set(ref, '');
         return null;

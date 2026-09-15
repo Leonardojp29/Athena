@@ -1,3 +1,4 @@
+import { banderaDePais } from '../../lib/entorno';
 import type { Catalogo, DificultadElegida } from '@athena/adivina-el-xi';
 import { DURACION_MS } from '@athena/adivina-el-xi';
 import { relojDe } from '../../lib/adivina';
@@ -18,7 +19,7 @@ interface Props {
 }
 
 /* La bandera del país sale del proveedor, igual que en el resto del sitio. */
-const BANDERA_PERU = 'https://media.api-sports.io/flags/pe.svg';
+const BANDERA_PERU = banderaDePais('pe');
 
 /*
  * Cada opción lleva su tinta del sistema, nunca un hex: el icono sigue heredando `currentColor` y

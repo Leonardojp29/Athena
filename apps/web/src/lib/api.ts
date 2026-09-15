@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001';
+import { API_URL } from './entorno';
 
 export class ApiError extends Error {
   constructor(

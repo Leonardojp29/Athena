@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tan
 import EventIcon from './EventIcon';
 import MinutoAMinuto from './match/MinutoAMinuto';
 import type { MarcadorDePartido, Marcadores, MatchEventView, MatchView } from '../lib/api';
+import { API_URL } from '../lib/entorno';
 import { formatKickoff, isLive, minutoEnVivo, statusLabel } from '../lib/format';
 import { goleadoresDelPartido, type Goleador } from '../lib/relato';
 
@@ -209,7 +210,7 @@ function LiveMatch({ initial, part }: { initial: MatchView; part: Props['part'] 
     queryKey: ['match', initial.id],
     queryFn: async (): Promise<MatchView> => {
       const res = await fetch(
-        `${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3001'}/v1/views/match/${initial.id}`,
+        `${API_URL}/v1/views/match/${initial.id}`,
       );
       if (!res.ok) throw new Error(`match fetch ${res.status}`);
       return res.json();

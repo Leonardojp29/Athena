@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { AllExceptionsFilter } from './shared/all-exceptions.filter.js';
 import { DuracionInterceptor } from './shared/duracion.interceptor.js';
+import { origenesPermitidos } from './shared/entorno.js';
 
 /**
  * El API armado y configurado, sin escuchar todavía.
@@ -17,25 +18,7 @@ import { DuracionInterceptor } from './shared/duracion.interceptor.js';
 export async function crearApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('v1');
-  /*
-   * Los orígenes permitidos, en lista. Era un string único y en desarrollo eso alcanza para romper
-   * todo: quien entra por `127.0.0.1:4321` no es el mismo origen que `localhost:4321`, y los fetch
-   * que el navegador le hace al API quedaban bloqueados.
-   *
-   * Los de local van siempre, además de lo que diga `WEB_ORIGIN`: apuntarlo a un despliegue viejo
-   * dejaba el desarrollo sin CORS y el síntoma —una pastilla que no aparece— no señalaba la causa.
-   */
-  const LOCALES = ['http://localhost:4321', 'http://127.0.0.1:4321'];
-  const origenes = [
-    ...new Set([
-      ...LOCALES,
-      ...(process.env.WEB_ORIGIN ?? '')
-        .split(',')
-        .map((o) => o.trim())
-        .filter(Boolean),
-    ]),
-  ];
-  app.enableCors({ origin: origenes });
+  app.enableCors({ origin: origenesPermitidos() });
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new DuracionInterceptor());
 

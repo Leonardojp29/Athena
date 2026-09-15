@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { API_FOOTBALL_BASE_URL } from '../../../shared/entorno.js';
 import { ApiBudgetService } from '../../../shared/api-budget.service.js';
 import type { ApiFootballEnvelope } from './api-football.types.js';
 
@@ -25,7 +26,7 @@ const ESPERA_REINTENTO_MS = 5_000;
 @Injectable()
 export class ApiFootballClient {
   private readonly logger = new Logger(ApiFootballClient.name);
-  private readonly baseUrl = 'https://v3.football.api-sports.io';
+  private readonly baseUrl = API_FOOTBALL_BASE_URL;
   /** Marcas de tiempo de las peticiones del último minuto. */
   private readonly ventana: number[] = [];
 

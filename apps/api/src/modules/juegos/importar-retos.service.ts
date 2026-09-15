@@ -7,6 +7,7 @@ import { PlayerResolverService } from '../sync/player-resolver.service.js';
 import { AuditarRetosService, equipoObjetivo } from './auditar-retos.service.js';
 import { casillasManuales } from './casillas-manuales.js';
 import { DISPOSICIONES_MANUALES, RETOS_DECLARADOS, type RetoDeclarado } from './retos-once.config.js';
+import { escudoDeEquipo, fotoDeFutbolista, logoDeCompetencia } from '../../shared/entorno.js';
 
 /**
  * Las competencias cuya temporada cruza dos años, para escribirla como la lee el hincha.
@@ -15,12 +16,6 @@ import { DISPOSICIONES_MANUALES, RETOS_DECLARADOS, type RetoDeclarado } from './
  * partidos en los dos años, y la 2018 del Mundial es "2018" a secas aunque se juegue en un solo mes.
  */
 const TEMPORADA_A_CABALLO = new Set(['2', '140', '556']);
-
-/** Los escudos y logos del proveedor salen del id; no cuestan un pedido. */
-const escudoDeEquipo = (ref: string): string =>
-  `https://media.api-sports.io/football/teams/${ref}.png`;
-const logoDeCompetencia = (ref: string): string =>
-  `https://media.api-sports.io/football/leagues/${ref}.png`;
 
 const temporadaMostrada = (reto: RetoDeclarado): string =>
   TEMPORADA_A_CABALLO.has(reto.competenciaRef)
@@ -190,7 +185,7 @@ export class ImportarRetosService {
           nationality: null,
           heightCm: null,
           position: null,
-          photoUrl: `https://media.api-sports.io/football/players/${ref}.png`,
+          photoUrl: fotoDeFutbolista(ref),
         },
       };
     });

@@ -1,3 +1,4 @@
+import { banderaDePais, escudoDeEquipo } from '../../shared/entorno.js';
 /**
  * Los 50 retos de El Impostor, transcritos de `retos.md`.
  *
@@ -645,7 +646,5 @@ export function equipoDelReto(reto: RetoDelImpostorDeclarado): string {
 /** Bandera si es selección, escudo si es club. La distinción la pide el enunciado, no el proveedor. */
 export function emblemaDelEquipo(equipoRef: string): string {
   const bandera = BANDERAS[equipoRef];
-  return bandera
-    ? `https://media.api-sports.io/flags/${bandera}.svg`
-    : `https://media.api-sports.io/football/teams/${equipoRef}.png`;
+  return bandera ? banderaDePais(bandera) : escudoDeEquipo(equipoRef);
 }

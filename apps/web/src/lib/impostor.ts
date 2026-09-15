@@ -1,3 +1,4 @@
+import { fotoDeFutbolista } from './entorno';
 import type { RondaDelImpostor } from './api';
 
 const CLAVE = 'athena:impostor';
@@ -109,8 +110,7 @@ export async function pedirTanda(vistas: string[]): Promise<RondaDelImpostor[]> 
 }
 
 /** La foto no viaja en la respuesta: el proveedor la sirve por id y con eso alcanza. */
-export const fotoDe = (ref: string): string =>
-  `https://media.api-sports.io/football/players/${ref}.png`;
+export const fotoDe = fotoDeFutbolista;
 
 /*
  * Las partículas que van pegadas al apellido. Sin esto, «Ángel Di María» quedaba en «MARÍA» y
