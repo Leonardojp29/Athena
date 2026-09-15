@@ -174,6 +174,18 @@ olvida y sin él el build falla.
 
    Si `PUBLIC_SITE_URL` falta, el build se rompe a propósito: salir a producción con los canónicos
    apuntando a localhost no falla en ningún lado y desindexa el sitio entero.
+
+   > **Las dos van con Type `Config`, nunca `Secret`.** Vercel ofrece los dos tipos al crear una
+   > variable. Una `PUBLIC_*` marcada como `Secret` no llega al código que corre en el navegador, y
+   > el sitio queda con la URL del API vacía: el buscador, la pastilla de en vivo y el marcador de
+   > la página de partido dejan de funcionar, sin ningún error visible en el build. Peor todavía,
+   > un `Secret` es de solo escritura y **no se puede editar ni convertir a `Config`**: hay que
+   > borrarlo y crearlo de nuevo. Ninguna de las dos es un secreto; las dos viajan al navegador por
+   > diseño.
+
+   `PUBLIC_SITE_URL` no la podés saber antes de crear el proyecto, porque Vercel le agrega un
+   sufijo al nombre. Se pone cualquier valor válido para el primer deploy, se mira la URL real que
+   quedó y se corrige. Si no se corrige, los canónicos apuntan a otro sitio y Google desindexa.
 4. **Deploy** y abrir la URL.
 
 ### 4.3 Cerrar el círculo
@@ -424,6 +436,9 @@ Además:
 | 500 con `PrismaClientInitializationError` | `DATABASE_URL` debe ser la del pooler (6543 con `?pgbouncer=true`). La directa agota conexiones |
 | Todas las llamadas al API dan 404 | `PUBLIC_API_URL` con `/v1` o con barra final. El código agrega `/v1` solo |
 | El build de la web falla con "Falta PUBLIC_SITE_URL" | Es a propósito. Definirla antes de construir |
+| El buscador y el marcador no funcionan, y no hay error | En Vercel, alguna `PUBLIC_*` quedó con Type `Secret`. Borrarla y crearla como `Config`, y redeployar |
+| No me deja editar una variable en Vercel | Es de tipo `Secret`, que es de solo escritura. Se borra y se crea de nuevo |
+| Los canónicos apuntan a otro dominio | `PUBLIC_SITE_URL` quedó con el valor de relleno del primer deploy. Corregirla y **reconstruir** |
 | El primer pedido tarda mucho | Arranque en frío de la función serverless. Los siguientes son normales. En un servidor propio no pasa |
 | El build falla en Vercel | Casi siempre es el **Root Directory** sin configurar en `apps/api` o `apps/web` |
 | pm2 no levantó nada tras reiniciar | Faltó `pm2 save` después del último `pm2 start` |
