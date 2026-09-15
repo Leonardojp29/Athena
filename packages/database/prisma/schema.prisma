@@ -176,6 +176,9 @@ model Player {
   trofeos          PlayerTrophy[]
   fichajes         Transfer[]
 
+  /* Cuándo se le preguntó el palmarés al proveedor, que no es lo mismo que tener títulos. */
+  palmaresRevisadoEn DateTime? @map("palmares_revisado_en") @db.Timestamptz(3)
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

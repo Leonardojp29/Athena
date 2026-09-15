@@ -35,7 +35,10 @@ export class SyncTrophiesUseCase {
      * que el jugador haya dejado de ganarlos. Vaciar una ficha por un hueco del feed es peor que
      * dejarla como estaba.
      */
-    if (palmares.length === 0) return 0;
+    if (palmares.length === 0) {
+      await this.marcarRevisado(playerId);
+      return 0;
+    }
 
     await this.prisma.$transaction([
       this.prisma.playerTrophy.deleteMany({ where: { playerId } }),
@@ -48,8 +51,25 @@ export class SyncTrophiesUseCase {
           puesto: t.puesto,
         })),
       }),
+      this.prisma.player.update({
+        where: { id: playerId },
+        data: { palmaresRevisadoEn: new Date() },
+      }),
     ]);
 
     return palmares.length;
+  }
+
+  /**
+   * Deja dicho que a este futbolista ya se le preguntó.
+   *
+   * Sin la marca, quien no tiene títulos es indistinguible de quien todavía no se revisó, y el
+   * relleno vuelve a gastar un pedido por cada uno en cada corrida.
+   */
+  private async marcarRevisado(playerId: string): Promise<void> {
+    await this.prisma.player.update({
+      where: { id: playerId },
+      data: { palmaresRevisadoEn: new Date() },
+    });
   }
 }

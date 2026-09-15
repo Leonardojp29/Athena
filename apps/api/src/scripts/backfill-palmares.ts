@@ -44,6 +44,10 @@ async function main(): Promise<void> {
    */
   const enParalelo = Math.min(Math.max(Number(process.env.PARALELO ?? 8), 1), 16);
 
+  /*
+   * Pendiente es "no se le preguntó", no "no tiene títulos": son cosas distintas y confundirlas
+   * hacía que cada corrida volviera a gastar un pedido por cada futbolista sin palmarés.
+   */
   const candidatos = await prisma.$queryRaw<Array<{ ref: string; id: string }>>`
     SELECT r.provider_ref AS ref, p.id
     FROM players p
@@ -51,7 +55,7 @@ async function main(): Promise<void> {
       ON r.entity_type = 'player' AND r.entity_id = p.id AND r.provider = 'api-football'
     JOIN player_season_statistics s ON s.player_id = p.id
     GROUP BY r.provider_ref, p.id
-    HAVING ${rehacer} OR NOT EXISTS (SELECT 1 FROM player_trophies t WHERE t.player_id = p.id)
+    HAVING ${rehacer} OR bool_and(p.palmares_revisado_en IS NULL)
     ORDER BY sum(coalesce(s.minutes_played, 0)) DESC
     LIMIT ${limite}
   `;

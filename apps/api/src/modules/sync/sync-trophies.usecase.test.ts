@@ -17,6 +17,7 @@ function armar(palmares: ProviderTrophy[], resuelve: string | null = JUGADOR) {
         hechas.push('crear'), (creadas = data), null
       ),
     },
+    player: { update: () => (hechas.push('marcar'), null) },
   } as unknown as PrismaService;
   const refs = { resolve: () => Promise.resolve(resuelve) } as unknown as ExternalReferenceService;
   const provider = { name: 'api-football', getTrophies: () => Promise.resolve(palmares) } as never;
@@ -36,7 +37,7 @@ describe('SyncTrophiesUseCase', () => {
   it('reemplaza el palmarés entero en una sola transacción', async () => {
     const { uso, hechas, leer } = armar([titulo('Liga 1', '2024'), titulo('Copa', null)]);
     expect(await uso.execute('1')).toBe(2);
-    expect(hechas).toEqual(['borrar', 'crear']);
+    expect(hechas).toEqual(['borrar', 'crear', 'marcar']);
     expect(leer()).toHaveLength(2);
     expect(leer()[0]).toMatchObject({ playerId: JUGADOR, competencia: 'Liga 1', temporada: '2024' });
   });
@@ -55,7 +56,17 @@ describe('SyncTrophiesUseCase', () => {
   it('no borra lo que ya había cuando el proveedor no manda nada', async () => {
     const { uso, hechas } = armar([]);
     expect(await uso.execute('1')).toBe(0);
-    expect(hechas).toEqual([]);
+    expect(hechas).not.toContain('borrar');
+  });
+
+  /*
+   * Sin la marca, quien no tiene títulos es indistinguible de quien todavía no se revisó, y el
+   * relleno vuelve a gastar un pedido por cada uno en cada corrida.
+   */
+  it('deja constancia de la revisión aunque no haya un solo título', async () => {
+    const { uso, hechas } = armar([]);
+    await uso.execute('1');
+    expect(hechas).toEqual(['marcar']);
   });
 
   it('no escribe si el jugador no está en Athena', async () => {
