@@ -4,6 +4,7 @@ import { cachear } from '../../lib/cache';
 import Container from '../../components/layout/Container.astro';
 import Icon from '../../components/Icon.astro';
 import TuCarrera from '../../components/juego/TuCarrera';
+import TuRacha from '../../components/juego/TuRacha';
 import '../../styles/leyenda.css';
 
 /*
@@ -23,7 +24,7 @@ cachear(Astro.response, 'dia');
 interface Juego {
   nombre: string;
   linea: string;
-  icono: 'juego' | 'formacion' | 'pelota' | 'estrella';
+  icono: 'juego' | 'formacion' | 'usuario' | 'estrella';
   href?: string;
   etiqueta?: string;
 }
@@ -43,7 +44,13 @@ const JUEGOS: Juego[] = [
     href: '/juegos/adivina-el-xi',
     etiqueta: '2-5 min',
   },
-  { nombre: 'Duelo de datos', linea: 'Dos jugadores, una pregunta: quién la tiene más alta.', icono: 'pelota' },
+  {
+    nombre: 'El Impostor',
+    linea: 'Seis futbolistas, uno se coló. Diez segundos para encontrarlo.',
+    icono: 'usuario',
+    href: '/juegos/el-impostor',
+    etiqueta: '10 s por ronda',
+  },
   { nombre: 'El desafío del día', linea: 'Un reto nuevo cada mañana, el mismo para todo el mundo.', icono: 'estrella' },
 ];
 ---
@@ -62,6 +69,7 @@ const JUEGOS: Juego[] = [
 
     <!-- Lo tuyo: la carrera abierta. Sale del navegador, así que se hidrata. -->
     <TuCarrera client:load />
+    <TuRacha client:load />
 
     <ul class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {

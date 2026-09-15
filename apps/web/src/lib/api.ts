@@ -893,6 +893,23 @@ export interface RetoParaJugar {
   casilleros: CasilleroDelReto[];
 }
 
+/* ── El Impostor ───────────────────────────────────────────────────────────────────────────── */
+
+export interface OpcionDeRonda {
+  ref: string;
+  nombre: string;
+  esImpostor: boolean;
+}
+
+export interface RondaDelImpostor {
+  clave: string;
+  dificultad: string;
+  categoria: string;
+  enunciado: string;
+  reveal: string;
+  opciones: OpcionDeRonda[];
+}
+
 export interface TitularRevelado {
   ref: string;
   nombre: string;

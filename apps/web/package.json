@@ -18,6 +18,7 @@
     "@astrojs/react": "^4.2.0",
     "@astrojs/vercel": "^8.2.11",
     "@athena/adivina-el-xi": "workspace:*",
+    "@athena/el-impostor": "workspace:*",
     "@athena/calculadora": "workspace:*",
     "@athena/domain": "workspace:*",
     "@athena/leyenda": "workspace:*",

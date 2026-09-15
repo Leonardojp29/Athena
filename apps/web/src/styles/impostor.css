@@ -1,0 +1,200 @@
+/*
+ * Lo propio de El Impostor. Vive acá y no en la hoja del sitio: una largada a pantalla completa y
+ * seis cartas que se revelan no tienen por qué pesar en la página de un partido.
+ *
+ * Todas las duraciones cuelgan de los tokens de movimiento, así `prefers-reduced-motion` las
+ * colapsa en un solo lugar. Ninguna anima `width` ni usa curvas con rebote.
+ */
+
+/*
+ * Astro envuelve la isla en un elemento propio, que se mete entre el bloque del juego y sus piezas:
+ * sin esto, el `flex-1` de adentro no tiene contra qué medirse y todo queda pegado al header con
+ * media pantalla vacía debajo. `display: contents` lo saca del reparto sin tocar la hidratación.
+ */
+[data-juego-impostor] > astro-island {
+  display: contents;
+}
+
+/*
+ * Las seis cartas no caen juntas: entran escalonadas, de a cuarenta milisegundos, como se reparte
+ * un mazo. El escalón lo pone cada carta en `--turno` y no hay una clase por posición.
+ */
+@keyframes impostor-reparte {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-impostor-reparte {
+  animation: impostor-reparte var(--a-motion-slow) var(--a-ease-out-expo) backwards;
+  animation-delay: calc(var(--turno, 0) * 40ms);
+}
+
+/*
+ * La cuenta de salida: cada número nace grande, se asienta y se apaga mientras el aro se cierra
+ * alrededor. Un segundo por número, que es lo que uno tarda en acomodarse de verdad.
+ */
+@keyframes impostor-largada {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+.animate-impostor-largada {
+  animation: impostor-largada 1000ms var(--a-ease-out-expo) both;
+}
+
+@keyframes impostor-aro {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-impostor-aro {
+  animation: impostor-aro 1000ms linear both;
+}
+
+/*
+ * El acierto: un anillo se abre desde la carta y se desvanece.
+ *
+ * Capa aparte y con `pointer-events: none`, así el clic siguiente no se le queda enganchado. Solo
+ * anima `transform` y `opacity`.
+ */
+@keyframes impostor-anillo {
+  from {
+    opacity: 0.8;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+.animate-impostor-anillo {
+  animation: impostor-anillo var(--a-motion-drama) var(--a-ease-out-expo) forwards;
+}
+
+/* El fallo: dos vaivenes cortos sobre la carta equivocada y se acabó. Sin rebote. */
+@keyframes impostor-niega {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.animate-impostor-niega {
+  animation: impostor-niega var(--a-motion-base) var(--a-ease);
+}
+
+/* La racha salta un escalón cuando sube: el número crece y vuelve, sin mover lo que tiene al lado. */
+@keyframes impostor-sube {
+  from {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.28);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-impostor-sube {
+  animation: impostor-sube var(--a-motion-slow) var(--a-ease-magnet);
+}
+
+/* El récord: la cifra crece una vez y se queda, con el aro dorado detrás abriéndose. */
+@keyframes impostor-record {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-impostor-record {
+  animation: impostor-record var(--a-motion-cine) var(--a-ease-out-expo) both;
+}
+
+/* El desenlace entra de una pieza, como se levanta la vista de un cuaderno. */
+@keyframes impostor-entra {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-impostor-entra {
+  animation: impostor-entra var(--a-motion-drama) var(--a-ease-out-expo) backwards;
+}
+
+/*
+ * El reloj se vacía con `scaleX` y no animando `width`: lo segundo reordena la caja sesenta veces
+ * por segundo. El ancho lo pone React en cada cuadro; la transición corta lo deja parejo.
+ */
+[data-reloj-barra] {
+  transform-origin: left center;
+  transition: transform 100ms linear;
+}
+
+/* Cuando apremia, el reloj late. Sobre `opacity`, que es lo único que no cuesta un reflow. */
+@keyframes impostor-apremio {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.animate-impostor-apremio {
+  animation: impostor-apremio 600ms var(--a-ease) infinite;
+}
+
+/* Al resolverse la ronda, las cartas que no son la respuesta se apagan y dejan ver la que importa. */
+[data-carta][data-apagada='true'] {
+  opacity: 0.32;
+  filter: grayscale(1);
+  transition:
+    opacity var(--a-motion-slow) var(--a-ease),
+    filter var(--a-motion-slow) var(--a-ease);
+}

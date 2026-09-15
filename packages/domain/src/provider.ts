@@ -301,6 +301,26 @@ export interface FootballDataProvider {
   getMatchPlayerStatistics(matchRef: string): Promise<ProviderMatchPlayerStats[]>;
   getSeasonPlayers(competitionRef: string, seasonYear: number): Promise<ProviderSeasonPlayer[]>;
   /**
+   * Busca futbolistas por nombre en el catálogo del proveedor.
+   *
+   * Es el último recurso cuando alguien no está ni en Athena ni en la lista donde se lo esperaba:
+   * un retirado, o quien se perdió el partido por lesión y por eso no figura en el acta.
+   */
+  searchPlayers(texto: string): Promise<ProviderRef<ProviderPlayer>[]>;
+  /**
+   * El plantel de un club o selección en una temporada, opcionalmente acotado a un torneo.
+   *
+   * Es lo único que responde "¿estuvo ahí ese año?" sobre temporadas pasadas: `getSquad` devuelve la
+   * plantilla de hoy y `squad_memberships` es una foto del presente. Con `competitionRef` la
+   * pregunta se afina a un torneo, que es lo que separa "jugó por Perú en 2018" de "estuvo en el
+   * Mundial de 2018".
+   */
+  getTeamSeasonPlayers(
+    teamRef: string,
+    seasonYear: number,
+    competitionRef?: string,
+  ): Promise<ProviderRef<ProviderPlayer>[]>;
+  /**
    * La ficha de futbolistas sueltos.
    *
    * Es el único camino para quien ya no está en ninguna plantilla: un retirado no aparece en

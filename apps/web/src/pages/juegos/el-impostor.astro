@@ -1,0 +1,61 @@
+---
+import Base from '../../layouts/Base.astro';
+import ElImpostor from '../../components/impostor/ElImpostor';
+import { api } from '../../lib/api';
+import { cachear, sinCache } from '../../lib/cache';
+import '../../styles/impostor.css';
+
+/*
+ * El juego a pantalla limpia, como Adivina el XI: `chrome="minimal"` quita la banda de partidos y el
+ * pie, que acá compiten con las diez segundos de la ronda. El header queda —el juego vive dentro de
+ * Athena— y con él la salida.
+ *
+ * El HTML es igual para todos, así que se guarda en el borde; la partida entera vive en el
+ * navegador. Se pide una tanda de prueba solo para no abrir la puerta de un juego sin catálogo: si
+ * el API no responde, el 503 con `no-store` evita que el borde grabe la página de disculpa.
+ */
+let hayRetos = false;
+try {
+  const prueba = await api<{ rondas: unknown[] }>('/juegos/impostor/tanda');
+  hayRetos = prueba.rondas.length > 0;
+} catch {
+  hayRetos = false;
+}
+
+if (hayRetos) {
+  cachear(Astro.response, 'juego');
+} else {
+  Astro.response.status = 503;
+  sinCache(Astro.response);
+}
+---
+
+<Base
+  title="El Impostor — Athena"
+  description="Seis futbolistas, cinco cumplen la condición y uno se coló. Tienes diez segundos para encontrarlo, y un error termina la racha."
+  chrome="minimal"
+  width="bleed"
+  liveBar={false}
+>
+  <!-- El header mide 4rem; lo que queda es del juego, y la isla lo reparte con `flex-1`. -->
+  <div data-juego-impostor class="flex min-h-[calc(100dvh-4rem)] flex-col">
+    {
+      hayRetos ? (
+        <ElImpostor client:load />
+      ) : (
+        <div class="mx-auto max-w-md px-4 py-16 text-center">
+          <h1 class="font-display text-2xl font-semibold uppercase tracking-label">El Impostor</h1>
+          <p class="mt-2 text-sm text-ink-muted">
+            No pudimos cargar los retos. Intenta de nuevo en un momento.
+          </p>
+          <a
+            href="/juegos"
+            class="mt-4 inline-block rounded-md border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-canvas-subtle"
+          >
+            Volver a Juegos
+          </a>
+        </div>
+      )
+    }
+  </div>
+</Base>

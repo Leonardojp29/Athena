@@ -56,6 +56,7 @@ const VISTAS: Array<[string, string]> = [
   ['el catálogo de juegos', '/juegos'],
   ['la creación de Mi Leyenda', '/juegos/mi-leyenda'],
   ['la configuración de Adivina el XI', '/juegos/adivina-el-xi'],
+  ['el inicio de El Impostor', '/juegos/el-impostor'],
 ];
 
 test.describe('accesibilidad', () => {

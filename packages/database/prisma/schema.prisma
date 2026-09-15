@@ -182,6 +182,7 @@ model Player {
   trofeos          PlayerTrophy[]
   fichajes         Transfer[]
   titularEnRetos   TitularDelReto[]
+  opcionEnImpostor OpcionDelImpostor[]
 
   /**
    * Cuándo se le preguntó el palmarés al proveedor, que no es lo mismo que tener títulos.
@@ -715,4 +716,44 @@ model TitularDelReto {
   /// El mismo futbolista no puede ocupar dos casillas del mismo once.
   @@unique([retoId, playerId], map: "titular_unico")
   @@map("titulares_del_reto")
+}
+
+/// Un reto de El Impostor: seis futbolistas, cinco cumplen la condición y uno se coló.
+model RetoDelImpostor {
+  id    BigInt @id @default(autoincrement())
+  /// La misma clave del catálogo en código: 'IMP-001'.
+  clave String @unique
+  /// facil | normal | dificil
+  dificultad String
+  /// peruano | selecciones | clubes | trayectorias
+  categoria  String
+  enunciado  String
+  /// Por qué el impostor no pertenecía. Viaja con la ronda: al fallar hay que mostrarlo en el acto.
+  reveal     String
+  /// Verdadero cuando el proveedor no cubre la temporada y la verdad la respalda el editor.
+  validadoAMano Boolean @default(false) @map("validado_a_mano")
+  /// La escena: el partido, o el club y la temporada. Dos retos de la misma no salen pegados.
+  contexto      String  @default("")
+
+  opciones      OpcionDelImpostor[]
+  actualizadoEn DateTime            @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@map("retos_del_impostor")
+}
+
+/// Una de las seis cartas de un reto.
+model OpcionDelImpostor {
+  id       BigInt          @id @default(autoincrement())
+  reto     RetoDelImpostor @relation(fields: [retoId], references: [id], onDelete: Cascade)
+  retoId   BigInt          @map("reto_id")
+  player   Player          @relation(fields: [playerId], references: [id])
+  playerId String          @map("player_id") @db.Uuid
+  /// El id del proveedor: la identidad que compara el navegador y de donde sale la foto.
+  providerRef String  @map("provider_ref")
+  esImpostor  Boolean @map("es_impostor")
+
+  /// El mismo futbolista no puede aparecer dos veces entre las seis cartas.
+  @@unique([retoId, playerId], map: "opcion_unica")
+  @@index([retoId])
+  @@map("opciones_del_impostor")
 }

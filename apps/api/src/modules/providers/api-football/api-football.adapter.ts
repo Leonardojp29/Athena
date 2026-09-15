@@ -81,6 +81,37 @@ export class ApiFootballAdapter implements FootballDataProvider {
     return rows[0] ? mapSquad(rows[0]) : [];
   }
 
+  async searchPlayers(texto: string): Promise<ProviderRef<ProviderPlayer>[]> {
+    const rows = await this.client.get<ApiFootballPlayerProfile>('/players/profiles', {
+      search: texto,
+    });
+    return rows.map(mapPlayerProfile);
+  }
+
+  async getTeamSeasonPlayers(
+    teamRef: string,
+    seasonYear: number,
+    competitionRef?: string,
+  ): Promise<ProviderRef<ProviderPlayer>[]> {
+    const rows = await this.client.getAllPages<ApiFootballSeasonPlayer>('/players', {
+      team: teamRef,
+      season: seasonYear,
+      ...(competitionRef ? { league: competitionRef } : {}),
+    });
+    return rows.map((raw) => ({
+      providerRef: String(raw.player.id),
+      data: {
+        name: raw.player.name,
+        fullName: [raw.player.firstname, raw.player.lastname].filter(Boolean).join(' ') || null,
+        birthDate: raw.player.birth?.date ?? null,
+        nationality: raw.player.nationality,
+        heightCm: null,
+        position: null,
+        photoUrl: raw.player.photo,
+      },
+    }));
+  }
+
   /**
    * `/players/profiles` acepta un solo jugador por pedido, así que se piden en serie. Es un camino
    * de relleno —futbolistas retirados que ya no están en ninguna plantilla— y no de operación.
