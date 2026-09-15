@@ -907,6 +907,24 @@ export interface RetoParaJugar {
   casilleros: CasilleroDelReto[];
 }
 
+/* ── 60 Segundos ───────────────────────────────────────────────────────────────────────────── */
+
+export interface OpcionDeLaPregunta {
+  texto: string;
+  esCorrecta: boolean;
+}
+
+export interface PreguntaParaJugar {
+  clave: string;
+  tipo: string;
+  dificultad: string;
+  enunciado: string;
+  explicacion: string;
+  emblemas: string[];
+  fotoRef: string | null;
+  opciones: OpcionDeLaPregunta[];
+}
+
 /* ── El Impostor ───────────────────────────────────────────────────────────────────────────── */
 
 export interface OpcionDeRonda {

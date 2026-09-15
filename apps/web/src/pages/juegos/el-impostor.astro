@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ElImpostor from '../../components/impostor/ElImpostor';
+import SalidaDelJuego from '../../components/juego/SalidaDelJuego.astro';
 import { api } from '../../lib/api';
 import { cachear, sinCache } from '../../lib/cache';
 import '../../styles/impostor.css';
@@ -8,7 +9,7 @@ import '../../styles/impostor.css';
 /*
  * El juego a pantalla limpia, como Adivina el XI: `chrome="minimal"` quita la banda de partidos y el
  * pie, que acá compiten con el reloj de la ronda. El header queda —el juego vive dentro de
- * Athena— y con él la salida.
+ * Athena— y la salida al catálogo es propia, siempre visible.
  *
  * El HTML es igual para todos, así que se guarda en el borde; la partida entera vive en el
  * navegador. Se pide una tanda de prueba solo para no abrir la puerta de un juego sin catálogo: si
@@ -38,7 +39,9 @@ if (hayRetos) {
   liveBar={false}
 >
   <!-- El header mide 4rem; lo que queda es del juego, y la isla lo reparte con `flex-1`. -->
-  <div data-juego-impostor class="flex min-h-[calc(100dvh-4rem)] flex-col">
+  <SalidaDelJuego />
+
+  <div data-juego-impostor class="flex min-h-[calc(100dvh-8rem)] flex-col">
     {
       hayRetos ? (
         <ElImpostor client:load />

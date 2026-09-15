@@ -79,12 +79,6 @@ export function Desenlace({ racha, marcas, record, desenlace, ultimaRonda, carga
           {cargando ? 'Repartiendo…' : 'Otra vez'}
         </button>
 
-        <a
-          href="/juegos"
-          className="mt-4 inline-block text-2xs font-medium uppercase tracking-label text-ink-muted transition-colors hover:text-ink"
-        >
-          Volver a Juegos
-        </a>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ const RUTAS = [
   '/juegos',
   '/juegos/adivina-el-xi',
   '/juegos/el-impostor',
+  '/juegos/60-segundos',
 ];
 
 test.describe('shell del sitio', () => {

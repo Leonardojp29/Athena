@@ -19,6 +19,7 @@ const PAGINAS: Entrada[] = [
   { ruta: '/juegos/mi-leyenda' },
   { ruta: '/juegos/adivina-el-xi' },
   { ruta: '/juegos/el-impostor' },
+  { ruta: '/juegos/60-segundos' },
 ];
 
 export const GET: APIRoute = async ({ params, site }) => {

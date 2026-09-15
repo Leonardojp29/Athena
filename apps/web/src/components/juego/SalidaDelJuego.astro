@@ -1,0 +1,34 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * La puerta de vuelta al catálogo, dentro de un juego.
+ *
+ * Hasta acá los tres juegos delegaban la salida en la pastilla «Juegos» del header, pero esa
+ * pastilla se pinta con `aria-current="page"` en cualquier `/juegos/*`: dice «estás acá», no «salí
+ * por acá». El resultado era que desde una partida no había forma de volver —el único enlace
+ * escrito vivía en la rama de error 503, que no se dibuja nunca si el juego carga—.
+ *
+ * Vive en la ruta y no dentro de la isla: se escribe una vez por juego en lugar de una por
+ * pantalla, no se puede desincronizar cuando la isla cambia de etapa, y cuesta cero kilobytes.
+ */
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<div class:list={['sticky top-0 z-20 flex px-4 pt-3 sm:px-6', className]}>
+  <a
+    href="/juegos"
+    class="group flex items-center gap-1.5 rounded-lg border border-border bg-surface/90 px-2.5 py-1.5 text-2xs font-medium uppercase tracking-label text-ink-muted backdrop-blur transition-colors duration-200 hover:border-border-strong hover:text-ink"
+  >
+    <Icon
+      name="flecha-izquierda"
+      size={14}
+      class="transition-transform duration-200 group-hover:-translate-x-0.5"
+    />
+    Volver a juegos
+  </a>
+</div>

@@ -1,0 +1,175 @@
+/*
+ * Lo propio de 60 Segundos. Vive acá y no en la hoja del sitio: un reloj de décimas y un contador
+ * de puntos que salta no tienen por qué pesar en la página de un partido.
+ *
+ * Todas las duraciones cuelgan de los tokens de movimiento, así `prefers-reduced-motion` las
+ * colapsa en un solo lugar. Ninguna anima `width` ni usa curvas con rebote, y ninguna es larga: el
+ * juego entero dura un minuto y una animación de medio segundo es un dos por ciento de la partida.
+ */
+
+/* Astro envuelve la isla en un elemento propio; sin esto el `flex-1` de adentro no mide contra nada. */
+[data-juego-sesenta] > astro-island {
+  display: contents;
+}
+
+/* La pregunta entra desde abajo, rápido: es lo único que cambia entre ronda y ronda. */
+@keyframes sesenta-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-sesenta-entra {
+  animation: sesenta-entra var(--a-motion-base) var(--a-ease-out-expo) backwards;
+}
+
+/* Las opciones se reparten escalonadas, de a treinta milisegundos. El escalón lo pone `--turno`. */
+.animate-sesenta-opcion {
+  animation: sesenta-entra var(--a-motion-base) var(--a-ease-out-expo) backwards;
+  animation-delay: calc(var(--turno, 0) * 30ms);
+}
+
+/* La cuenta de salida: el número nace grande, se asienta y se apaga con el aro cerrándose. */
+@keyframes sesenta-largada {
+  from {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+
+.animate-sesenta-largada {
+  animation: sesenta-largada 1000ms var(--a-ease-out-expo) both;
+}
+
+@keyframes sesenta-aro {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-sesenta-aro {
+  animation: sesenta-aro 1000ms linear both;
+}
+
+/*
+ * El `+200` que sube y se desvanece. Va en una capa aparte y sin eventos: el dedo ya está buscando
+ * la opción de la pregunta siguiente y no puede chocar con esto.
+ */
+@keyframes sesenta-suma {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+.animate-sesenta-suma {
+  animation: sesenta-suma var(--a-motion-drama) var(--a-ease-out-expo) forwards;
+}
+
+/* El puntaje y la racha saltan un escalón al subir, sin mover lo que tienen al lado. */
+@keyframes sesenta-sube {
+  from {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.22);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+.animate-sesenta-sube {
+  animation: sesenta-sube var(--a-motion-slow) var(--a-ease-magnet);
+}
+
+/*
+ * El reloj se vacía con `scaleX` y no animando `width`: lo segundo reordena la caja diez veces por
+ * segundo. El ancho lo pone React en cada cuadro; la transición corta lo deja parejo.
+ */
+[data-reloj-barra] {
+  transform-origin: left center;
+  transition: transform 100ms linear;
+}
+
+/* En los últimos segundos late. Sobre `opacity`, que es lo único que no cuesta un reflow. */
+@keyframes sesenta-apremio {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-sesenta-apremio {
+  animation: sesenta-apremio 500ms var(--a-ease) infinite;
+}
+
+/* ¡TIEMPO!: la pantalla se toma un momento antes de dar el resultado. */
+@keyframes sesenta-tiempo {
+  from {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-sesenta-tiempo {
+  animation: sesenta-tiempo var(--a-motion-drama) var(--a-ease-out-expo) both;
+}
+
+/* El récord: la cifra crece una vez y se queda. */
+@keyframes sesenta-record {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-sesenta-record {
+  animation: sesenta-record var(--a-motion-cine) var(--a-ease-out-expo) both;
+}

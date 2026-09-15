@@ -35,7 +35,9 @@
     "sync:cobertura": "node --env-file-if-exists=../../.env dist/scripts/sync-cobertura.js",
     "sync:tablas": "node --env-file-if-exists=../../.env dist/scripts/sync-tablas.js",
     "sync:plantillas": "node --env-file-if-exists=../../.env dist/scripts/sync-plantillas.js",
-    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js"
+    "slugs:renombrar": "node --env-file-if-exists=../../.env dist/scripts/renombrar-slugs.js",
+    "auditar:60": "node --env-file-if-exists=../../.env dist/scripts/auditar-preguntas-60.js",
+    "importar:60": "node --env-file-if-exists=../../.env dist/scripts/importar-preguntas-60.js"
   },
   "dependencies": {
     "@athena/database": "workspace:*",

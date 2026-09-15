@@ -183,6 +183,7 @@ model Player {
   fichajes         Transfer[]
   titularEnRetos   TitularDelReto[]
   opcionEnImpostor OpcionDelImpostor[]
+  fotoEnPreguntas  PreguntaDe60[]
 
   /**
    * Cuándo se le preguntó el palmarés al proveedor, que no es lo mismo que tener títulos.
@@ -741,6 +742,48 @@ model RetoDelImpostor {
   actualizadoEn DateTime            @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
 
   @@map("retos_del_impostor")
+}
+
+/// Una pregunta de 60 Segundos.
+model PreguntaDe60 {
+  id          BigInt @id @default(autoincrement())
+  /// La misma clave del catálogo en código: 'Q001'.
+  clave       String @unique
+  /// campeon | quien-marco | resultado | trayectoria | quien-es | verdadero-falso | …
+  tipo        String
+  /// facil | normal | dificil
+  dificultad  String
+  enunciado   String
+  /// Por qué esa es la respuesta. Solo se muestra al repasar los errores, nunca en los 60 segundos.
+  explicacion String
+  /// La escena: dos preguntas de lo mismo no salen pegadas.
+  contexto    String @default("")
+  /// Verdadero cuando el proveedor no cubre el dato y la verdad la respalda el editor.
+  validadoAMano Boolean @default(false) @map("validado_a_mano")
+
+  /// Solo en `quien-es`: el futbolista cuya foto ES la pregunta.
+  player   Player? @relation(fields: [playerId], references: [id])
+  playerId String? @map("player_id") @db.Uuid
+  fotoRef  String? @map("foto_ref")
+  /// Escudos, banderas o logos que acompañan al enunciado.
+  emblemas String[]
+
+  opciones      OpcionDe60[]
+  actualizadoEn DateTime     @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  @@map("preguntas_de_60")
+}
+
+/// Una de las respuestas posibles.
+model OpcionDe60 {
+  id         BigInt       @id @default(autoincrement())
+  pregunta   PreguntaDe60 @relation(fields: [preguntaId], references: [id], onDelete: Cascade)
+  preguntaId BigInt       @map("pregunta_id")
+  texto      String
+  esCorrecta Boolean      @map("es_correcta")
+
+  @@index([preguntaId], map: "opciones_de_60_pregunta")
+  @@map("opciones_de_60")
 }
 
 /// Una de las seis cartas de un reto.

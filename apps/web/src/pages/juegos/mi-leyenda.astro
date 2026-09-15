@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import MiLeyenda from '../../components/juego/MiLeyenda';
+import SalidaDelJuego from '../../components/juego/SalidaDelJuego.astro';
 import { api } from '../../lib/api';
 import { cachear, sinCache } from '../../lib/cache';
 import { aligerar } from '../../lib/mundo';
@@ -39,6 +40,8 @@ const anio = new Date().getFullYear();
   width="bleed"
   liveBar={false}
 >
+  <SalidaDelJuego />
+
   {
     hayMundo && mundo ? (
       <MiLeyenda client:load mundo={aligerar(mundo)} anio={anio} />

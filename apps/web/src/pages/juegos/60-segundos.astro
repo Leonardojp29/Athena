@@ -1,0 +1,57 @@
+---
+import Base from '../../layouts/Base.astro';
+import SesentaSegundos from '../../components/sesenta/SesentaSegundos';
+import SalidaDelJuego from '../../components/juego/SalidaDelJuego.astro';
+import { api } from '../../lib/api';
+import { cachear, sinCache } from '../../lib/cache';
+import '../../styles/sesenta.css';
+
+/*
+ * El juego a pantalla limpia, como los otros tres: `chrome="minimal"` quita la banda de partidos y
+ * el pie, que acá compiten con un reloj que corre. El header queda —el juego vive dentro de
+ * Athena— y la salida al catálogo es propia, siempre visible.
+ *
+ * El HTML es igual para todos, así que se guarda en el borde; la partida entera vive en el
+ * navegador. Se piden las preguntas solo para no abrir la puerta de un juego sin catálogo: si el
+ * API no responde, el 503 con `no-store` evita que el borde grabe la página de disculpa.
+ */
+let hayPreguntas = false;
+try {
+  const prueba = await api<{ preguntas: unknown[] }>('/juegos/60-segundos/preguntas');
+  hayPreguntas = prueba.preguntas.length > 0;
+} catch {
+  hayPreguntas = false;
+}
+
+if (hayPreguntas) {
+  cachear(Astro.response, 'juego');
+} else {
+  Astro.response.status = 503;
+  sinCache(Astro.response);
+}
+---
+
+<Base
+  title="60 Segundos — Athena"
+  description="Un minuto exacto y todas las preguntas de fútbol que puedas responder. Acertar encadena el multiplicador; fallar solo te cuesta la racha."
+  chrome="minimal"
+  width="bleed"
+  liveBar={false}
+>
+  <SalidaDelJuego />
+
+  <div data-juego-sesenta class="flex min-h-[calc(100dvh-8rem)] flex-col">
+    {
+      hayPreguntas ? (
+        <SesentaSegundos client:load />
+      ) : (
+        <div class="mx-auto max-w-md px-4 py-16 text-center">
+          <h1 class="font-display text-2xl font-semibold uppercase tracking-label">60 Segundos</h1>
+          <p class="mt-2 text-sm text-ink-muted">
+            No pudimos cargar las preguntas. Intenta de nuevo en un momento.
+          </p>
+        </div>
+      )
+    }
+  </div>
+</Base>

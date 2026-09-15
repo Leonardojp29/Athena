@@ -27,7 +27,7 @@ cachear(Astro.response, 'dia');
 interface Juego {
   nombre: string;
   linea: string;
-  icono: 'juego' | 'formacion' | 'usuario' | 'estrella';
+  icono: 'juego' | 'formacion' | 'usuario' | 'reloj';
   href?: string;
   etiqueta?: string;
 }
@@ -55,9 +55,11 @@ const JUEGOS: Juego[] = [
     etiqueta: '20 s por ronda',
   },
   {
-    nombre: 'El desafío del día',
-    linea: 'Un reto nuevo cada mañana, el mismo para todo el mundo.',
-    icono: 'estrella',
+    nombre: '60 Segundos',
+    linea: 'Un minuto y todas las preguntas que puedas responder.',
+    icono: 'reloj',
+    href: '/juegos/60-segundos',
+    etiqueta: '60 s',
   },
 ];
 ---

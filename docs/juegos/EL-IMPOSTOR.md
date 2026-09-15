@@ -98,6 +98,7 @@ puede no quedar ninguna limpia, y ahí se acepta el choque antes que servir una 
 | `apps/web/src/components/impostor/Ronda.tsx` | Enunciado, reloj, racha y las seis cartas |
 | `apps/web/src/components/impostor/CartaDeJugador.tsx` | La carta: rostro y apellido, nada más |
 | `apps/web/src/lib/impostor.ts` | El pedido de tanda, los rótulos y el récord en `localStorage` |
+| `apps/web/src/components/juego/SalidaDelJuego.astro` | La vuelta al catálogo, compartida por los cuatro juegos |
 
 ## Lo que se guarda, y lo que no
 
