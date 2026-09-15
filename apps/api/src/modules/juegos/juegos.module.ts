@@ -4,10 +4,13 @@ import { SharedModule } from '../../shared/shared.module.js';
 import { SyncModule } from '../sync/sync.module.js';
 import { AuditarRetosService } from './auditar-retos.service.js';
 import { ImportarRetosService } from './importar-retos.service.js';
+import { JuegosController } from './juegos.controller.js';
+import { RetosDelOnceService } from './retos-del-once.service.js';
 
 @Module({
   imports: [SharedModule, ApiFootballModule, SyncModule],
-  providers: [AuditarRetosService, ImportarRetosService],
-  exports: [AuditarRetosService, ImportarRetosService],
+  controllers: [JuegosController],
+  providers: [AuditarRetosService, ImportarRetosService, RetosDelOnceService],
+  exports: [AuditarRetosService, ImportarRetosService, RetosDelOnceService],
 })
 export class JuegosModule {}
