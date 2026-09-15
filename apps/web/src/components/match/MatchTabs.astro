@@ -1,7 +1,11 @@
 ---
 /*
- * Pestañas con enlaces reales. Un panel por URL cuesta 0 KB, es indexable y se comparte;
- * lo mismo con JavaScript costaría un bundle y rompería el botón de atrás.
+ * Pestañas con enlaces reales. Un panel por URL es indexable, se comparte y funciona sin
+ * JavaScript; lo mismo con un componente hidratado costaría un bundle y rompería el botón de atrás.
+ *
+ * Cuando la página trae los cuatro paneles en el HTML, el clic los intercambia en el momento y solo
+ * actualiza la URL. Quién está activa se dice con `aria-current` y el estilo lo sigue desde el CSS,
+ * así el script no tiene que saber ninguna clase.
  *
  * El enlace lo arma quien llama: la página del partido cuelga la vista de `?vista=`, pero dentro de
  * una competencia el partido ya ocupa la consulta y hay que sumar `&vista=`. Componer la URL acá
@@ -47,13 +51,9 @@ const { tabs, active, enlace } = Astro.props;
       ) : (
         <a
           href={enlace(tab.id)}
+          data-vista-tab={tab.id}
           aria-current={tab.id === active ? 'page' : undefined}
-          class:list={[
-            'shrink-0 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors',
-            tab.id === active
-              ? 'border-primary-ink font-medium text-ink'
-              : 'border-transparent text-ink-muted hover:border-border-strong hover:text-ink',
-          ]}
+          class="shrink-0 border-b-2 border-transparent px-3 py-2.5 text-sm whitespace-nowrap text-ink-muted transition-colors hover:border-border-strong hover:text-ink aria-[current=page]:border-primary-ink aria-[current=page]:font-medium aria-[current=page]:text-ink"
         >
           {tab.label}
         </a>

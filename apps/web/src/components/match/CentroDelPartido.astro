@@ -67,175 +67,228 @@ const TABS: Tab[] = [
 const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedida : 'resumen';
 ---
 
-<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-  <MatchTabs tabs={TABS} active={vista} enlace={enlaceDeVista} />
-  {live && <RefrescoEnVivo />}
-</div>
-
 <!--
-  Las alineaciones ocupan el ancho entero: la cancha a la izquierda con el tamaño que ella define,
-  los dos bancos a su derecha y el riel debajo. Encerrarla en una columna de 1fr con el riel al
-  costado la dejaba flotando en el medio con un hueco muerto a cada lado.
+  Las pestañas y sus paneles viven bajo el mismo elemento para que el script no tenga que buscar
+  por toda la página: dentro del cuadro de una copa puede haber más de un partido en pantalla.
 -->
-<div
-  class:list={[
-    'mt-4 grid items-start gap-4',
-    vista === 'alineaciones' ? '' : 'lg:grid-cols-[minmax(0,1fr)_20rem]',
-  ]}
->
-  <div class="grid min-w-0 gap-4">
-    {
-      vista === 'resumen' && (
-        <>
-          {/*
-            Dos mitades: las cifras del partido a la izquierda y el relato a la derecha. Antes
-            eran dos pestañas —una con el minuto a minuto estirado a mil quinientos píxeles y la
-            otra con las barras apretadas en veintidós rem— y las dos juntas entran en una
-            pantalla.
+<div data-centro-del-partido data-vista={vista} class="group">
+  <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+    <MatchTabs tabs={TABS} active={vista} enlace={enlaceDeVista} />
+    {live && <RefrescoEnVivo />}
+  </div>
 
-            Sin estadísticas el relato se queda con la fila entera. Antes la grilla seguía en dos
-            columnas con un solo hijo: media pantalla vacía al lado de un relato comprimido a
-            24rem con desplazamiento propio.
-          */}
-          <div
-            class:list={['grid gap-4', hayEstadisticas && '2xl:grid-cols-2']}
-            data-resumen={hayEstadisticas ? 'con-estadisticas' : 'solo-relato'}
-          >
-            {hayEstadisticas && (
-              <MatchStatistics
-                statistics={match.statistics}
-                homeTeam={match.homeTeam}
-                awayTeam={match.awayTeam}
-                grande
-              />
-            )}
-            <!--
-              Con estadísticas la tarjeta mide lo que mide la de al lado: el relato va en una caja
-              absoluta para que su largo no estire la fila, y desplaza por dentro. Solo, fluye a su
-              altura y el eje de minutos se lee al centro.
-            -->
-            <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
-              <!-- Los escudos a los costados son la leyenda del eje: qué lado es cuál. -->
-              <div class="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
-                <span class="flex min-w-0 items-center gap-2">
-                  {match.homeTeam.logoUrl && (
-                    <img loading="lazy" src={match.homeTeam.logoUrl} alt="" width="18" height="18" />
-                  )}
-                  <span class="truncate text-sm font-medium">
-                    {match.homeTeam.shortName ?? match.homeTeam.name}
-                  </span>
-                </span>
-                <h2 class="shrink-0 font-display text-base font-semibold uppercase">
-                  Minuto a minuto
-                </h2>
-                <span class="flex min-w-0 items-center justify-end gap-2">
-                  <span class="truncate text-sm font-medium">
-                    {match.awayTeam.shortName ?? match.awayTeam.name}
-                  </span>
-                  {match.awayTeam.logoUrl && (
-                    <img loading="lazy" src={match.awayTeam.logoUrl} alt="" width="18" height="18" />
-                  )}
-                </span>
-              </div>
-              {estadisticasEnCamino && (
-                <p class="mb-3 text-xs text-ink-muted">
-                  Las estadísticas de este partido se cargan solas en unos minutos.
-                </p>
-              )}
-              <div
-                class:list={['relative min-h-0 flex-1', hayEstadisticas && '2xl:min-h-[24rem]']}
-              >
-                <div
-                  class:list={[
-                    'barra-fina',
-                    hayEstadisticas && '2xl:absolute 2xl:inset-0 2xl:overflow-y-auto 2xl:pr-1',
-                  ]}
-                >
-                  {live ? (
-                    <MatchCenter client:load initial={match} live part="timeline" />
-                  ) : (
-                    <MatchCenter initial={match} live={false} part="timeline" />
-                  )}
-                </div>
-              </div>
-            </section>
-          </div>
+  <!--
+    Las alineaciones ocupan el ancho entero: la cancha a la izquierda con el tamaño que ella define,
+    los dos bancos a su derecha y el riel debajo. Encerrarla en una columna de 1fr con el riel al
+    costado la dejaba flotando en el medio con un hueco muerto a cada lado.
+  -->
+  <div class="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] group-data-[vista=alineaciones]:lg:grid-cols-1">
+    <div class="grid min-w-0 gap-4">
+      <div data-vista-panel="resumen" class="grid min-w-0 gap-4" hidden={vista !== 'resumen'}>
+        {/*
+          Dos mitades: las cifras del partido a la izquierda y el relato a la derecha. Antes
+          eran dos pestañas —una con el minuto a minuto estirado a mil quinientos píxeles y la
+          otra con las barras apretadas en veintidós rem— y las dos juntas entran en una
+          pantalla.
 
-          {/*
-            El rendimiento individual, a todo el ancho: cada tabla necesita 30rem y en la
-            pestaña de estadísticas recibía 396px a 1600, con ochenta píxeles de scroll lateral.
-          */}
-          {match.playerStatistics.length > 0 && (
-            <section>
-              <h2 class="mb-2 border-l-[3px] border-primary pl-3 font-display text-lg font-semibold uppercase tracking-tight">
-                Rendimiento individual
+          Sin estadísticas el relato se queda con la fila entera. Antes la grilla seguía en dos
+          columnas con un solo hijo: media pantalla vacía al lado de un relato comprimido a
+          24rem con desplazamiento propio.
+        */}
+        <div
+          class:list={['grid gap-4', hayEstadisticas && '2xl:grid-cols-2']}
+          data-resumen={hayEstadisticas ? 'con-estadisticas' : 'solo-relato'}
+        >
+          {hayEstadisticas && (
+            <MatchStatistics
+              statistics={match.statistics}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+              grande
+            />
+          )}
+          <!--
+            Con estadísticas la tarjeta mide lo que mide la de al lado: el relato va en una caja
+            absoluta para que su largo no estire la fila, y desplaza por dentro. Solo, fluye a su
+            altura y el eje de minutos se lee al centro.
+          -->
+          <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
+            <!-- Los escudos a los costados son la leyenda del eje: qué lado es cuál. -->
+            <div class="mb-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+              <span class="flex min-w-0 items-center gap-2">
+                {match.homeTeam.logoUrl && (
+                  <img loading="lazy" src={match.homeTeam.logoUrl} alt="" width="18" height="18" />
+                )}
+                <span class="truncate text-sm font-medium">
+                  {match.homeTeam.shortName ?? match.homeTeam.name}
+                </span>
+              </span>
+              <h2 class="shrink-0 font-display text-base font-semibold uppercase">
+                Minuto a minuto
               </h2>
-              <PlayerStatsTable
+              <span class="flex min-w-0 items-center justify-end gap-2">
+                <span class="truncate text-sm font-medium">
+                  {match.awayTeam.shortName ?? match.awayTeam.name}
+                </span>
+                {match.awayTeam.logoUrl && (
+                  <img loading="lazy" src={match.awayTeam.logoUrl} alt="" width="18" height="18" />
+                )}
+              </span>
+            </div>
+            {estadisticasEnCamino && (
+              <p class="mb-3 text-xs text-ink-muted">
+                Las estadísticas de este partido se cargan solas en unos minutos.
+              </p>
+            )}
+            <div
+              class:list={['relative min-h-0 flex-1', hayEstadisticas && '2xl:min-h-[24rem]']}
+            >
+              <div
+                class:list={[
+                  'barra-fina',
+                  hayEstadisticas && '2xl:absolute 2xl:inset-0 2xl:overflow-y-auto 2xl:pr-1',
+                ]}
+              >
+                {live ? (
+                  <MatchCenter client:load initial={match} live part="timeline" />
+                ) : (
+                  <MatchCenter initial={match} live={false} part="timeline" />
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/*
+          El rendimiento individual, a todo el ancho: cada tabla necesita 30rem y en la
+          pestaña de estadísticas recibía 396px a 1600, con ochenta píxeles de scroll lateral.
+        */}
+        {match.playerStatistics.length > 0 && (
+          <section>
+            <h2 class="mb-2 border-l-[3px] border-primary pl-3 font-display text-lg font-semibold uppercase tracking-tight">
+              Rendimiento individual
+            </h2>
+            <PlayerStatsTable
+              playerStatistics={match.playerStatistics}
+              homeTeam={match.homeTeam}
+              awayTeam={match.awayTeam}
+            />
+          </section>
+        )}
+      </div>
+
+      {
+        hayAlineaciones && (
+          <div
+            data-vista-panel="alineaciones"
+            class="grid min-w-0 gap-4"
+            hidden={vista !== 'alineaciones'}
+          >
+            <div class="grid items-stretch gap-4 2xl:grid-cols-[auto_minmax(0,1fr)]">
+              <PitchLineups
+                lineups={match.lineups}
                 playerStatistics={match.playerStatistics}
                 homeTeam={match.homeTeam}
                 awayTeam={match.awayTeam}
+                cambios={cambios}
               />
-            </section>
-          )}
-        </>
-      )
-    }
-
-    {
-      vista === 'alineaciones' && (
-        <>
-          <div class="grid items-stretch gap-4 2xl:grid-cols-[auto_minmax(0,1fr)]">
-            <PitchLineups
-              lineups={match.lineups}
-              playerStatistics={match.playerStatistics}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-              cambios={cambios}
-            />
-            <Suplentes
-              lineups={match.lineups}
-              homeTeam={match.homeTeam}
-              awayTeam={match.awayTeam}
-              cambios={cambios}
-              playerStatistics={match.playerStatistics}
-            />
+              <Suplentes
+                lineups={match.lineups}
+                homeTeam={match.homeTeam}
+                awayTeam={match.awayTeam}
+                cambios={cambios}
+                playerStatistics={match.playerStatistics}
+              />
+            </div>
+            <RielDelPartido match={match} enlaceDeVista={enlaceDeVista} disposicion="fila" />
           </div>
-          <RielDelPartido
-            match={match}
-            vista={vista}
-            enlaceDeVista={enlaceDeVista}
-            disposicion="fila"
-          />
-        </>
-      )
-    }
+        )
+      }
 
-    {
-      vista === 'analisis' && (
-        <>
-          {match.insight && <InsightCard insight={match.insight} />}
-          {!match.insight && match.preview && <PreviewCard preview={match.preview} />}
-        </>
-      )
-    }
+      {
+        analisis && (
+          <div
+            data-vista-panel="analisis"
+            class="grid min-w-0 gap-4"
+            hidden={vista !== 'analisis'}
+          >
+            {match.insight && <InsightCard insight={match.insight} />}
+            {!match.insight && match.preview && <PreviewCard preview={match.preview} />}
+          </div>
+        )
+      }
 
-    {
-      vista === 'historial' && (
+      <div data-vista-panel="historial" class="grid min-w-0 gap-4" hidden={vista !== 'historial'}>
         <HistorialCompleto
           historial={match.historial}
           homeTeam={match.homeTeam}
           awayTeam={match.awayTeam}
         />
-      )
-    }
-  </div>
+      </div>
+    </div>
 
-  <!-- El riel: el análisis es la tesis del producto, no puede vivir al final de la página. -->
-  {vista !== 'alineaciones' && (
-  <aside class="grid gap-3 lg:sticky lg:top-20">
-    <RielDelPartido match={match} vista={vista} enlaceDeVista={enlaceDeVista} />
-    <!-- Solo cuando es de verdad un costado: apilada, esta columna cae en medio del contenido. -->
-    <Hueco medida="bloque" ubicacion="partido-riel" class="max-lg:hidden" />
-  </aside>
-  )}
+    <!--
+      El riel: el análisis es la tesis del producto, no puede vivir al final de la página. En
+      alineaciones desaparece porque la cancha se queda con el ancho entero y el riel se repite
+      debajo, en fila.
+    -->
+    <aside class="grid gap-3 group-data-[vista=alineaciones]:hidden lg:sticky lg:top-20">
+      <RielDelPartido match={match} enlaceDeVista={enlaceDeVista} />
+      <!-- Solo cuando es de verdad un costado: apilada, esta columna cae en medio del contenido. -->
+      <Hueco medida="bloque" ubicacion="partido-riel" class="max-lg:hidden" />
+    </aside>
+  </div>
 </div>
+
+<style>
+  /*
+   * `hidden` tiene que ganarle al `display: grid` del panel. Sin esto los cuatro se ven a la vez:
+   * la clase de utilidad pisa el `display: none` que el atributo trae del navegador.
+   */
+  [data-vista-panel][hidden] {
+    display: none;
+  }
+</style>
+
+<script>
+  /*
+   * El cambio de pestaña sin recargar. Los cuatro paneles ya están en el HTML, así que el clic solo
+   * intercambia cuál se ve y deja la URL al día para que el enlace siga siendo compartible.
+   *
+   * Antes cada pestaña era una navegación completa: la página quedaba en blanco casi un segundo
+   * mientras el servidor rearmaba el partido entero y el navegador rehidrataba las islas.
+   *
+   * Sin JavaScript los enlaces navegan como siempre y el servidor sirve el panel pedido.
+   */
+  const centro = document.querySelector<HTMLElement>('[data-centro-del-partido]');
+  if (centro) {
+    const paneles = [...centro.querySelectorAll<HTMLElement>('[data-vista-panel]')];
+    const pestanas = [...document.querySelectorAll<HTMLAnchorElement>('[data-vista-tab]')];
+
+    const mostrar = (vista: string): boolean => {
+      const destino = paneles.find((p) => p.dataset.vistaPanel === vista);
+      if (!destino) return false;
+      for (const panel of paneles) panel.hidden = panel !== destino;
+      for (const pestana of pestanas) {
+        if (pestana.dataset.vistaTab === vista) pestana.setAttribute('aria-current', 'page');
+        else pestana.removeAttribute('aria-current');
+      }
+      centro.dataset.vista = vista;
+      return true;
+    };
+
+    for (const pestana of pestanas) {
+      pestana.addEventListener('click', (evento) => {
+        const vista = pestana.dataset.vistaTab;
+        if (!vista || evento.metaKey || evento.ctrlKey || evento.shiftKey) return;
+        if (!mostrar(vista)) return;
+        evento.preventDefault();
+        history.pushState({ vista }, '', pestana.href);
+      });
+    }
+
+    addEventListener('popstate', () => {
+      mostrar(new URL(location.href).searchParams.get('vista') ?? 'resumen');
+    });
+  }
+</script>

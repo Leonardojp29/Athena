@@ -12,12 +12,11 @@ import { etiquetaDeRonda } from '../../lib/rondas';
  */
 interface Props {
   match: MatchView;
-  vista: string;
   enlaceDeVista: (id: string) => string;
   disposicion?: 'columna' | 'fila';
 }
 
-const { match, vista, enlaceDeVista, disposicion = 'columna' } = Astro.props;
+const { match, enlaceDeVista, disposicion = 'columna' } = Astro.props;
 
 const analisis = match.insight ?? match.preview;
 const jornada = etiquetaDeRonda(match.round);
@@ -45,15 +44,13 @@ const jornada = etiquetaDeRonda(match.round);
             </li>
           ))}
         </ul>
-        {vista !== 'analisis' && (
-          <a
-            href={enlaceDeVista('analisis')}
-            class="mt-3 flex items-center gap-1 text-2xs text-primary-ink hover:underline"
-          >
-            Leer el análisis con su evidencia
-            <Icon name="chevron-derecha" size={12} />
-          </a>
-        )}
+        <a
+          href={enlaceDeVista('analisis')}
+          class="mt-3 flex items-center gap-1 text-2xs text-primary-ink group-data-[vista=analisis]:hidden hover:underline"
+        >
+          Leer el análisis con su evidencia
+          <Icon name="chevron-derecha" size={12} />
+        </a>
       </section>
     ) : (
       <section class="rounded-lg border border-border bg-surface p-4">
@@ -64,18 +61,17 @@ const jornada = etiquetaDeRonda(match.round);
 
   <!--
     En su propia pestaña la tarjeta no se repite: la balanza dos veces en la misma pantalla es
-    peor que no tenerla en el riel.
+    peor que no tenerla en el riel. Lo decide el CSS y no el servidor porque las pestañas cambian
+    sin recargar, y una decisión tomada al renderizar quedaría vieja en el primer clic.
   -->
-  {
-    vista !== 'historial' && (
-      <HistorialCompacto
-        historial={match.historial}
-        homeTeam={match.homeTeam}
-        awayTeam={match.awayTeam}
-        href={enlaceDeVista('historial')}
-      />
-    )
-  }
+  <div class="group-data-[vista=historial]:hidden">
+    <HistorialCompacto
+      historial={match.historial}
+      homeTeam={match.homeTeam}
+      awayTeam={match.awayTeam}
+      href={enlaceDeVista('historial')}
+    />
+  </div>
 
   <section class="rounded-lg border border-border bg-surface p-4">
     <h2 class="mb-2 text-2xs font-medium tracking-label text-ink-muted uppercase">
