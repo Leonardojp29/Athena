@@ -59,6 +59,13 @@ test('desde la alineación de un partido se llega al entrenador', async ({ page 
   await expect(page.getByRole('heading', { level: 1 })).toContainText(/Guardiola|Maresca/i);
 });
 
+test('la cabecera del club dice quién lo dirige', async ({ page }) => {
+  await page.goto('/equipos/manchester-city');
+
+  const alDt = page.getByRole('link', { name: /^DT / });
+  await expect(alDt).toHaveAttribute('href', /^\/entrenadores\//);
+});
+
 test('el buscador general encuentra al entrenador', async ({ page }) => {
   await page.goto('/buscar?q=guardiola');
 

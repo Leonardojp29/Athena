@@ -81,13 +81,16 @@ Athena sigue sin pronosticar resultados. Documentada en `docs/calculadora/CALCUL
 
 **Sin decidir:** el hosting de producción. El diseño no asume ninguno.
 
-**No existe todavía:** estadísticas por jugador y partido, plantillas de equipo, estadios, entidad de
-entrenador, árbitro ni asistencia. Nada de eso debe diseñarse como si existiera.
+**No existe todavía:** árbitro ni asistencia. Nada de eso debe diseñarse como si existiera.
+
+El entrenador sí existe: tiene ficha propia en `/entrenadores/:slug`, se busca por nombre y es
+clicable desde la alineación, el banco y la home. Lo que el proveedor da de él es desparejo —a
+Guardiola no le manda ni fecha de nacimiento— y la página no inventa lo que falta.
 
 ## Brand Commitments
 
-- Nombre: **Athena**. Atenea es la diosa de la sabiduría y su símbolo es el búho; el usuario eligió un
-  búho geométrico como marca.
+- Nombre: **Athena**. La marca es una pelota facetada con una órbita que la cruza: los canales entre
+  las caras se recortan con una máscara para que sean del color que haya detrás.
 - Toda narrativa de IA se presenta bajo la etiqueta **"Análisis Athena"** y **nunca** sin su evidencia
   desplegable, su modelo y su versión de prompt. Es un compromiso de producto, no una decisión visual.
 - El texto **nunca** habla de los datos en sí: prohibido escribir "según los datos" o "sin registros

@@ -48,6 +48,9 @@ try {
 
 const { team, standings, recent, upcoming, squad, scorers, mercado } = view;
 
+/* Quién lo dirige: el de la última alineación, que es lo más cerca de "hoy" que tenemos. */
+const entrenador = view.lineups.find((alineacion) => alineacion.coach !== null)?.coach ?? null;
+
 /* Con un partido suyo en juego, el marcador de esta página se mantiene solo. Sin eso, 0 KB. */
 const hayEnVivo = [...recent, ...upcoming].some((m) => isLive(m.status));
 cachear(Astro.response, hayEnVivo ? 'partidoEnJuego' : 'equipo');
@@ -213,6 +216,19 @@ const jsonLd = [
                   <>
                     <span class="text-(--tinta-tenue)">·</span>
                     <span>Fundado en {team.founded}</span>
+                  </>
+                )
+              }
+              {
+                entrenador && (
+                  <>
+                    <span class="text-(--tinta-tenue)">·</span>
+                    <a
+                      href={`/entrenadores/${entrenador.slug}`}
+                      class="underline-offset-2 hover:text-(--tinta) hover:underline"
+                    >
+                      DT {entrenador.name}
+                    </a>
                   </>
                 )
               }
