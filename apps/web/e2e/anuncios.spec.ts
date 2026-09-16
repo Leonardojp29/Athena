@@ -24,7 +24,10 @@ const VISTAS: Array<[string, number]> = [
   ['/competencias', 1900],
   ['/competencias/primera-division', 1600],
   ['/equipos/alianza-lima', 1280],
-  ['/comparar', 1900],
+  /*
+   * `/comparar` no está: con hasta cinco columnas de números, el ancho es el contenido. Un riel al
+   * costado le comía una columna entera a la comparación, que es lo único que esa página hace.
+   */
 ];
 
 const MEDIDAS: Record<string, [number, number]> = {

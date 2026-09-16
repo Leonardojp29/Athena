@@ -406,7 +406,7 @@ test.describe('shell del sitio', () => {
    * recortado: las mismas cuatro pestañas que su página, con la cabecera del torneo todavía arriba.
    * El motivo es simple: el partido de los octavos es del torneo, y verlo no debería sacarte de él.
    */
-  test('un partido de copa se abre dentro de la copa con sus cuatro pestañas', async ({ page }) => {
+  test('un partido de copa se abre dentro de la copa con todas sus pestañas', async ({ page }) => {
     await page.goto('/competencias/copa-del-rey');
 
     /* `:visible` porque el cuadro dibuja todas las rondas y muestra una: la oculta no se clickea. */
@@ -416,10 +416,15 @@ test.describe('shell del sitio', () => {
 
     /* La copa sigue siendo la dueña de la página, y el marcador vive en su misma pizarra. */
     await expect(page.getByRole('heading', { level: 1, name: /copa del rey/i })).toBeVisible();
-    await expect(page.locator('main section.bg-board [data-marcador]')).toBeVisible();
+    /*
+     * La banda, no el marcador: el cuadro de una copa suele abrir en un partido que todavía no se
+     * jugó, y ahí la cabecera muestra la hora en lugar de las cifras. Lo que se prueba es que el
+     * partido vive dentro de la pizarra de la copa.
+     */
+    await expect(page.locator('main section.bg-banda').first()).toBeVisible();
 
     const pestanas = page.getByRole('navigation', { name: /secciones del partido/i });
-    for (const nombre of ['Resumen', 'Alineaciones', 'Análisis IA', 'Historial']) {
+    for (const nombre of ['Resumen', 'Alineaciones', 'Análisis IA', 'Historial', 'Comparar']) {
       await expect(pestanas.getByText(nombre, { exact: true })).toBeVisible();
     }
 

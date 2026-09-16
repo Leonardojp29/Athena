@@ -203,10 +203,11 @@ test.describe('comparar', () => {
     );
     test.skip(jugadores.length < 1, 'no hay jugadores para comparar');
 
+    /* Con uno solo ya se ven sus números: antes la página era un buscador y nada más. */
     await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}`);
-    /* Con un solo lado, la página es el buscador del segundo. Acotado a `main`: el del header abre
-       el diálogo y también se llama "buscar". */
-    await expect(page.locator('main').getByRole('button', { name: /buscar/i })).toBeVisible();
+    await expect(page.locator('[data-ambito="0"]')).toBeVisible();
+    expect(await page.locator('[data-fila]').count()).toBeGreaterThan(8);
+    await expect(page.getByRole('link', { name: /sumar a otro/i })).toBeVisible();
 
     /* El segundo también sale del buscador: un slug escrito a mano se rompe cuando el jugador
        pasa a llamarse con su nombre completo, que es justo lo que hace el renombrado. */
@@ -218,12 +219,25 @@ test.describe('comparar', () => {
       | undefined;
     test.skip(!segundo, 'no hay un segundo jugador para comparar');
 
-    await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}&b=${segundo}`);
-    const filas = page.locator('main section li');
+    await page.goto(`/comparar?tipo=jugador&j=${jugadores[0]!.slug},${segundo}`);
+    expect(await page.locator('[data-ambito]').count()).toBe(2);
+    const filas = page.locator('[data-fila]');
     expect(await filas.count()).toBeGreaterThan(8);
-    /* El que gana la fila queda marcado, y nunca los dos a la vez. */
-    const primera = filas.first();
-    expect(await primera.locator('.text-primary-ink').count()).toBeLessThan(2);
+
+    /*
+     * Cada columna tiene su recorte: cambiarlo repinta los números sin recargar, que es el gesto
+     * que uno repite mientras compara.
+     */
+    const selector = page.locator('[data-ambito="0"]');
+    if ((await selector.locator('option').count()) > 1) {
+      await page.evaluate(() => {
+        (window as unknown as { sigueViva?: boolean }).sigueViva = true;
+      });
+      await selector.selectOption({ index: 1 });
+      expect(
+        await page.evaluate(() => (window as unknown as { sigueViva?: boolean }).sigueViva),
+      ).toBe(true);
+    }
   });
 
   test('el perfil ofrece comparar', async ({ page }) => {

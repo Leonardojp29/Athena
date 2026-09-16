@@ -1,0 +1,253 @@
+---
+import Icon from '../Icon.astro';
+import {
+  CLAVE_TOTAL,
+  MAXIMO_A_COMPARAR,
+  formatear,
+  lideresDeFila,
+  porcentajeDeBarra,
+  type EntidadComparada,
+  type GrupoDeFilas,
+} from '../../lib/comparar';
+
+/*
+ * El comparador: una columna por entidad, con su recorte elegible, y las filas debajo.
+ *
+ * El servidor dibuja todo con el ámbito que pide la URL y el guion solo **parcha** los valores
+ * cuando alguien cambia un selector. Por eso hay una sola plantilla: si el navegador tuviera que
+ * rearmar las filas habría dos versiones del mismo marcado y una envejecería.
+ *
+ * Los ámbitos de todas las entidades viajan en un `application/json` al final. Son unos pocos
+ * kilobytes y evitan un viaje al servidor por cada cambio de temporada, que es el gesto que uno
+ * repite mientras compara.
+ */
+interface Props {
+  tipo: 'jugador' | 'equipo';
+  entidades: EntidadComparada[];
+  /** El ámbito elegido para cada entidad, en el mismo orden. */
+  elegidos: string[];
+  grupos: GrupoDeFilas[];
+  /** A dónde lleva el botón de sumar a otro. */
+  hrefSumar: string;
+  /** La comparación sin cada entidad, en el mismo orden: quitar es un enlace, no un botón. */
+  hrefQuitar: string[];
+}
+
+const { tipo, entidades, elegidos, grupos, hrefSumar, hrefQuitar } = Astro.props;
+
+const ambitoDe = (entidad: EntidadComparada, clave: string) =>
+  entidad.ambitos.find((a) => a.clave === clave) ?? entidad.ambitos[0];
+
+const numerosDe = (indice: number, clave: string): number | null =>
+  ambitoDe(entidades[indice]!, elegidos[indice] ?? CLAVE_TOTAL)?.numeros[clave] ?? null;
+
+const columnas = `repeat(${entidades.length}, minmax(0, 1fr))`;
+const puedeSumar = entidades.length < MAXIMO_A_COMPARAR;
+const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/jugadores/${slug}`);
+---
+
+<div data-comparador-vistas class="grid gap-5">
+  <!--
+    Las cabeceras siempre a la vista mientras se recorren las filas: sin esto, a la tercera pantalla
+    de números uno ya no sabe cuál columna es cuál.
+  -->
+  <div
+    class="sticky top-16 z-10 -mx-4 grid gap-2 border-b border-border bg-canvas/95 px-4 py-3 backdrop-blur-sm sm:mx-0 sm:rounded-lg sm:border sm:px-3"
+    style={`grid-template-columns:${columnas}`}
+  >
+    {
+      entidades.map((entidad, i) => (
+        <article class="grid min-w-0 gap-2">
+          <div class="flex min-w-0 items-center gap-2.5">
+            {entidad.fotoUrl ? (
+              <img
+                src={entidad.fotoUrl}
+                alt=""
+                width="44"
+                height="44"
+                loading="lazy"
+                class="size-11 shrink-0 rounded-full bg-canvas-subtle object-cover"
+              />
+            ) : (
+              <span class="grid size-11 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                <Icon name={tipo === 'equipo' ? 'cuadro' : 'usuario'} size={18} class="text-ink-muted" />
+              </span>
+            )}
+            <div class="min-w-0 flex-1">
+              <a
+                href={perfilDe(entidad.slug)}
+                class="block truncate font-display text-sm font-semibold uppercase leading-tight tracking-tight hover:text-primary-ink sm:text-base"
+              >
+                {entidad.nombre}
+              </a>
+              {entidad.subtitulo && (
+                <p class="flex items-center gap-1 truncate text-2xs text-ink-muted">
+                  {entidad.escudoUrl && (
+                    <img src={entidad.escudoUrl} alt="" width="12" height="12" loading="lazy" class="size-3 shrink-0" />
+                  )}
+                  <span class="truncate">{entidad.subtitulo}</span>
+                </p>
+              )}
+            </div>
+            <a
+              href={hrefQuitar[i]}
+              class="shrink-0 rounded p-1 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+              aria-label={`Quitar a ${entidad.nombre} de la comparación`}
+            >
+              <Icon name="cerrar" size={13} />
+            </a>
+          </div>
+
+          {/*
+            El recorte que se mira. Es un <select> nativo y no un menú propio: en el teléfono abre la
+            rueda del sistema, se maneja con el teclado y no cuesta una línea de JavaScript de más.
+          */}
+          <label class="block">
+            <span class="sr-only">Temporada de {entidad.nombre}</span>
+            <select
+              data-ambito={i}
+              class="w-full cursor-pointer truncate rounded-md border border-border bg-surface px-2 py-1.5 text-2xs outline-none transition-colors focus:border-primary-ink"
+            >
+              {entidad.ambitos.map((ambito) => (
+                <option value={ambito.clave} selected={ambito.clave === (elegidos[i] ?? CLAVE_TOTAL)}>
+                  {ambito.etiqueta}
+                </option>
+              ))}
+            </select>
+          </label>
+        </article>
+      ))
+    }
+  </div>
+
+  {
+    puedeSumar && (
+      <a
+        href={hrefSumar}
+        class="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-primary-ink"
+      >
+        <Icon name="buscar" size={13} />
+        Sumar a otro {tipo === 'equipo' ? 'equipo' : 'jugador'}
+      </a>
+    )
+  }
+
+  {
+    grupos.map((grupo) => (
+      <section>
+        <h2 class="mb-2.5 text-2xs font-medium uppercase tracking-label text-ink-muted">
+          {grupo.titulo}
+        </h2>
+        <div class="grid gap-3 rounded-lg border border-border bg-surface p-3">
+          {grupo.filas.map((fila) => {
+            const valores = entidades.map((_, i) => numerosDe(i, fila.clave));
+            const lideres = lideresDeFila(valores, fila);
+            return (
+              <div data-fila={fila.clave}>
+                <p class="mb-1.5 text-center text-2xs text-ink-muted">{fila.etiqueta}</p>
+                <div class="grid gap-2" style={`grid-template-columns:${columnas}`}>
+                  {valores.map((valor, i) => (
+                    /*
+                      Cada número en su propia caja: con tres o más columnas, una fila corrida de
+                      cifras se lee como una sola frase y deja de estar claro cuál es de quién.
+                    */
+                    <div
+                      data-celda={i}
+                      class:list={[
+                        'grid gap-1.5 rounded-md px-2 py-1.5 transition-colors',
+                        lideres.has(i) ? 'bg-primary/10' : 'bg-canvas-subtle/60',
+                      ]}
+                    >
+                      <span
+                        data-texto
+                        class:list={[
+                          'text-center text-sm font-semibold tabular',
+                          lideres.has(i) ? 'text-primary-ink' : 'text-ink-muted',
+                        ]}
+                      >
+                        {formatear(valor, fila)}
+                      </span>
+                      <span class="block h-1 rounded-full bg-border">
+                        <span
+                          data-barra
+                          class:list={[
+                            'block h-1 rounded-full',
+                            lideres.has(i) ? 'bg-primary' : 'bg-ink-muted/40',
+                          ]}
+                          style={`width:${porcentajeDeBarra(valor, valores, fila)}%`}
+                        />
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    ))
+  }
+
+  <script
+    type="application/json"
+    data-comparador-datos
+    set:html={JSON.stringify({ entidades, grupos })}
+  />
+</div>
+
+<script>
+  import {
+    CLAVE_TOTAL,
+    formatear,
+    lideresDeFila,
+    porcentajeDeBarra,
+    type EntidadComparada,
+    type GrupoDeFilas,
+  } from '../../lib/comparar';
+
+  const raiz = document.querySelector<HTMLElement>('[data-comparador-vistas]');
+  const crudo = raiz?.querySelector<HTMLElement>('[data-comparador-datos]')?.textContent;
+  if (raiz && crudo) {
+    const { entidades, grupos } = JSON.parse(crudo) as {
+      entidades: EntidadComparada[];
+      grupos: GrupoDeFilas[];
+    };
+    const selectores = [...raiz.querySelectorAll<HTMLSelectElement>('[data-ambito]')];
+
+    const numerosDe = (indice: number, clave: string): number | null => {
+      const entidad = entidades[indice];
+      const elegido = selectores[indice]?.value ?? CLAVE_TOTAL;
+      const ambito = entidad?.ambitos.find((a) => a.clave === elegido) ?? entidad?.ambitos[0];
+      return ambito?.numeros[clave] ?? null;
+    };
+
+    /* Se parchean los nodos que ya están, no se rearman: el marcado lo dibujó el servidor. */
+    function repintar(): void {
+      for (const grupo of grupos) {
+        for (const fila of grupo.filas) {
+          const nodo = raiz!.querySelector<HTMLElement>(`[data-fila="${fila.clave}"]`);
+          if (!nodo) continue;
+          const valores = entidades.map((_, i) => numerosDe(i, fila.clave));
+          const lideres = lideresDeFila(valores, fila);
+
+          for (const [i] of entidades.entries()) {
+            const celda = nodo.querySelector<HTMLElement>(`[data-celda="${i}"]`);
+            const texto = celda?.querySelector<HTMLElement>('[data-texto]');
+            const barra = celda?.querySelector<HTMLElement>('[data-barra]');
+            if (!texto || !barra) continue;
+            texto.textContent = formatear(valores[i], fila);
+            celda!.classList.toggle('bg-primary/10', lideres.has(i));
+            celda!.classList.toggle('bg-canvas-subtle/60', !lideres.has(i));
+            texto.classList.toggle('text-primary-ink', lideres.has(i));
+            texto.classList.toggle('text-ink-muted', !lideres.has(i));
+            barra.classList.toggle('bg-primary', lideres.has(i));
+            barra.classList.toggle('bg-ink-muted/40', !lideres.has(i));
+            barra.style.width = `${porcentajeDeBarra(valores[i] ?? null, valores, fila)}%`;
+          }
+        }
+      }
+    }
+
+    for (const selector of selectores) selector.addEventListener('change', repintar);
+  }
+</script>
