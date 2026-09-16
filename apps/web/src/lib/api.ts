@@ -495,6 +495,19 @@ export interface TeamView {
   squad: { year: number | null; lines: Array<{ line: string; label: string; players: SquadPlayer[] }> };
   /** Los goleadores del club en la temporada: quiénes juegan, no solo quiénes están. */
   scorers: Array<SeasonLeader & { rating: string | null; season: { year: number; competition: { name: string; slug: string } } }>;
+  /**
+   * Todas las tablas del club, de todas las temporadas que hay en la base. La página muestra la
+   * vigente; el comparador ofrece el resto para elegir el año.
+   */
+  standingsHistory: Array<
+    Omit<StandingRow, 'team' | 'form'> & {
+      season: {
+        year: number;
+        isCurrent: boolean;
+        competition: { name: string; slug: string; logoUrl: string | null };
+      };
+    }
+  >;
   /** Con la fase en juego primero: un equipo puede tener el Apertura cerrado y el Clausura en curso. */
   standings: Array<
     Omit<StandingRow, 'team'> & {

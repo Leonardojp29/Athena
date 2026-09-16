@@ -146,7 +146,9 @@ function ambitosDeJugador(v: PlayerView): AmbitoComparado[] {
  * mismo año —Apertura, Clausura y la anual— y sin ella el selector mostraba tres veces lo mismo.
  */
 function ambitosDeEquipo(v: TeamView): AmbitoComparado[] {
-  return v.standings.map((s) => ({
+  /* El histórico completo; la vigente primero, que es la que uno abre a mirar. */
+  const filas = v.standingsHistory?.length ? v.standingsHistory : v.standings;
+  return filas.map((s) => ({
     clave: `${s.season.year}-${s.season.competition.slug}-${s.groupLabel ?? ''}`,
     etiqueta: `${s.season.competition.name} ${s.season.year}${s.groupLabel ? ` · ${nombreFase(s.groupLabel)}` : ''}`,
     logoUrl: s.season.competition.logoUrl,
@@ -264,15 +266,19 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
     {
       puedeSumar && (
         <div class="mx-auto mb-6 w-full max-w-[36rem]">
+          {/*
+            Un botón y no una caja punteada del ancho de la página: es una acción secundaria —lo
+            principal es leer la comparación— y ocupaba como un bloque de contenido.
+          */}
           {entidades.length > 0 && (
             <a
               href={hrefSumar}
               data-comparar-abrir
               hidden={sumando}
-              class="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-primary-ink"
+              class="mx-auto flex w-fit items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-2xs font-medium text-ink shadow-sm transition-colors hover:border-primary-ink hover:text-primary-ink"
             >
-              <Icon name="buscar" size={13} />
-              Sumar a otro {tipo === 'equipo' ? 'equipo' : 'jugador'}
+              <Icon name="mas" size={13} class="text-primary-ink" />
+              Sumar {tipo === 'equipo' ? 'otro equipo' : 'otro jugador'}
             </a>
           )}
 

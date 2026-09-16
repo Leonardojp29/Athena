@@ -69,6 +69,13 @@ const REGISTRO = {
   check: {
     body: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   },
+  mas: {
+    body: '<path d="M12 5v14M5 12h14"/>',
+  },
+  /* Las seis asas de un control que se arrastra: el gesto no se explica con palabras. */
+  arrastrar: {
+    body: '<path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01"/>',
+  },
   alerta: {
     body: '<path d="M12 4.5l8.5 15H3.5z"/><path d="M12 10v4"/><path d="M12 16.8h.01" stroke-width="2.2"/>',
   },

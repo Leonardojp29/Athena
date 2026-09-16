@@ -1548,7 +1548,7 @@ export class ViewsService {
     const ultimoJugado = { team: { slug }, match: { status: 'finished' } };
     /* El mercado que a alguien le importa es el de esta temporada, no el de 2014. */
     const desdeMercado = new Date(Date.now() - 400 * 24 * 3600_000);
-    const [team, standings, recent, upcoming, squad, scorers, alineaciones, notas, altas, bajas] =
+    const [team, standings, historial, recent, upcoming, squad, scorers, alineaciones, notas, altas, bajas] =
       await Promise.all([
         this.prisma.team.findUnique({
           relationLoadStrategy: JOIN,
@@ -1600,6 +1600,34 @@ export class ViewsService {
               },
             },
           },
+        }),
+        /*
+         * Todas las tablas del club, no solo las de la temporada en curso. La página muestra la
+         * vigente y el comparador ofrece el resto: sin esto, comparar dos clubes solo dejaba mirar
+         * el año actual aunque la base tenga media década.
+         */
+        this.prisma.standing.findMany({
+          relationLoadStrategy: JOIN,
+          where: { team: { slug } },
+          select: {
+            position: true,
+            points: true,
+            played: true,
+            won: true,
+            drawn: true,
+            lost: true,
+            goalsFor: true,
+            goalsAgainst: true,
+            groupLabel: true,
+            season: {
+              select: {
+                year: true,
+                isCurrent: true,
+                competition: { select: { name: true, slug: true, logoUrl: true } },
+              },
+            },
+          },
+          orderBy: [{ season: { year: 'desc' } }, { played: 'desc' }],
         }),
         this.prisma.match.findMany({
           relationLoadStrategy: JOIN,
@@ -1817,6 +1845,7 @@ export class ViewsService {
     return {
       team,
       standings: tablas,
+      standingsHistory: historial,
       recent,
       upcoming,
       squad: { year: squadYear, lines: groupSquadByLine(currentSquad) },

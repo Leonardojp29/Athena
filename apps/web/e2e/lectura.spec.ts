@@ -207,7 +207,7 @@ test.describe('comparar', () => {
     await page.goto(`/comparar?tipo=jugador&a=${jugadores[0]!.slug}`);
     await expect(page.locator('[data-ambito="0"]')).toBeVisible();
     expect(await page.locator('[data-fila]').count()).toBeGreaterThan(8);
-    await expect(page.getByRole('link', { name: /sumar a otro/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /sumar otro/i })).toBeVisible();
 
     /* El segundo también sale del buscador: un slug escrito a mano se rompe cuando el jugador
        pasa a llamarse con su nombre completo, que es justo lo que hace el renombrado. */

@@ -53,30 +53,51 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
     class="sticky top-16 z-10 grid overflow-hidden rounded-lg border border-border bg-canvas/95 backdrop-blur-sm"
     style={`grid-template-columns:${columnasConEtiqueta}`}
   >
-    {/* La misma grilla que las filas, con una celda muda donde ellas ponen la etiqueta: así cada
-        club queda justo encima de sus propios números. */}
-    <span aria-hidden="true" style="order:-1"></span>
+    {/*
+      La misma grilla que las filas, con la primera celda donde ellas ponen la etiqueta: así cada
+      club queda justo encima de sus propios números. Esa celda no se deja vacía —un hueco del
+      tamaño de una columna se lee como un error— y se usa para lo único que no se ve solo: que las
+      columnas se pueden arrastrar.
+    */}
+    <div
+      style="order:-1"
+      class="flex flex-col justify-center gap-1 bg-canvas-subtle/50 px-2.5 py-2.5 sm:px-3"
+    >
+      <p class="text-2xs font-semibold uppercase tracking-label text-ink">
+        {entidades.length} {tipo === 'equipo' ? 'equipos' : 'jugadores'}
+      </p>
+      <p class="hidden items-center gap-1 text-[10px] leading-tight text-ink-muted sm:flex">
+        <Icon name="arrastrar" size={11} class="shrink-0" />
+        Arrastra para reordenar
+      </p>
+    </div>
     {
       entidades.map((entidad, i) => (
         <article
           data-columna={i}
           draggable="true"
           style={`order:${i}`}
-          class="grid min-w-0 cursor-grab content-start gap-2 border-l border-border px-1.5 py-2.5 transition-colors active:cursor-grabbing data-[arrastrando]:opacity-40 data-[encima]:bg-primary/10"
+          class="group/col grid min-w-0 cursor-grab content-start gap-2 border-l border-border px-2 py-2.5 transition-colors active:cursor-grabbing data-[arrastrando]:opacity-40 data-[encima]:bg-primary/10"
         >
-          <div class="flex min-w-0 items-center gap-2.5">
+          <div class="flex min-w-0 items-center gap-2">
+            {/* El asa aparece al acercarse: el resto del tiempo no compite con el escudo. */}
+            <Icon
+              name="arrastrar"
+              size={13}
+              class="hidden shrink-0 text-ink-muted/40 transition-colors group-hover/col:text-ink-muted sm:block"
+            />
             {entidad.fotoUrl ? (
               <img
                 src={entidad.fotoUrl}
                 alt=""
-                width="44"
-                height="44"
+                width="40"
+                height="40"
                 loading="lazy"
-                class="size-11 shrink-0 rounded-full bg-canvas-subtle object-cover"
+                class="size-10 shrink-0 rounded-full bg-canvas-subtle object-cover"
               />
             ) : (
-              <span class="grid size-11 shrink-0 place-items-center rounded-full bg-canvas-subtle">
-                <Icon name={tipo === 'equipo' ? 'cuadro' : 'usuario'} size={18} class="text-ink-muted" />
+              <span class="grid size-10 shrink-0 place-items-center rounded-full bg-canvas-subtle">
+                <Icon name={tipo === 'equipo' ? 'cuadro' : 'usuario'} size={17} class="text-ink-muted" />
               </span>
             )}
             <div class="min-w-0 flex-1">
