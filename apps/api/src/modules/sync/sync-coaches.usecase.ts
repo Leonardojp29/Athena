@@ -161,6 +161,9 @@ export class SyncCoachesUseCase {
    * dirigió de verdad —le colgaba los partidos de Filipe Luís a Marcelo Salles, que es el único
    * que teníamos del Flamengo—, y el apellido solo no distingue dos etapas del mismo club.
    *
+   * El apellido se busca entre las palabras del otro nombre y no al final, porque el proveedor
+   * escribe "Josep Guardiola i Sala" en el Mundial de Clubes y ahí queda en el medio.
+   *
    * Lo que no queda claro se deja en null: el nombre suelto sigue imprimiéndose igual.
    */
   private async atarAlineaciones(teamId: string | null): Promise<number> {
@@ -178,8 +181,8 @@ export class SyncCoachesUseCase {
           AND (${teamId}::uuid IS NULL OR l.team_id = ${teamId}::uuid)
           AND (
             l.coach_name IS NULL
-            OR regexp_replace(immutable_unaccent(lower(btrim(c.name))), '^.*\\s', '')
-             = regexp_replace(immutable_unaccent(lower(btrim(l.coach_name))), '^.*\\s', '')
+            OR (length(apellido_de(c.name)) >= 3 AND apellido_de(c.name) = ANY (palabras_de(l.coach_name)))
+            OR (length(apellido_de(l.coach_name)) >= 3 AND apellido_de(l.coach_name) = ANY (palabras_de(c.name)))
           )
       ),
       resumen AS (

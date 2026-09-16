@@ -69,12 +69,12 @@ const periodo = (etapa: CoachView['etapas'][number]) => {
               {etapa.teamSlug ? (
                 <a
                   href={`/equipos/${etapa.teamSlug}`}
-                  class="-mx-1.5 block rounded-md px-1.5 py-2 transition-colors hover:bg-canvas-subtle"
+                  class="block py-2 transition-colors hover:bg-canvas-subtle"
                 >
                   {contenido}
                 </a>
               ) : (
-                <span class="block px-1.5 py-2">{contenido}</span>
+                <span class="block py-2">{contenido}</span>
               )}
             </li>
           );

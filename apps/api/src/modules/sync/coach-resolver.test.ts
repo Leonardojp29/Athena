@@ -51,4 +51,13 @@ describe('mismoApellido', () => {
     expect(mismoApellido('Marcelo Salles', 'Filipe Luís Kasmirski')).toBe(false);
     expect(mismoApellido('Simone Inzaghi', 'Cristian Eugen Chivu')).toBe(false);
   });
+
+  it('encuentra el apellido aunque quede en medio del nombre completo', () => {
+    expect(mismoApellido('Guardiola', 'Josep Guardiola i Sala')).toBe(true);
+    expect(mismoApellido('Pep Guardiola', 'Josep Guardiola i Sala')).toBe(true);
+  });
+
+  it('no hermana a dos que solo comparten el nombre de pila', () => {
+    expect(mismoApellido('Marcelo Salles', 'Marcelo Gallardo')).toBe(false);
+  });
 });

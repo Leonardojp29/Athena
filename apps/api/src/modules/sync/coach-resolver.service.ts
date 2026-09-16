@@ -68,23 +68,38 @@ export function mejorNombreDeEntrenador(actual: string, entrante: string): strin
 const palabras = (nombre: string) => nombre.trim().split(/\s+/).length;
 
 /**
- * El apellido, que es lo único que dos escrituras del mismo entrenador siempre comparten.
+ * Si dos escrituras nombran a la misma persona.
  *
  * Es el guardia que separa refinar de confundir: "Pep Guardiola" refina a "Guardiola", pero
  * "Filipe Luís Kasmirski" no puede pisar a "Marcelo Salles" aunque una alineación mal atada los
  * haya puesto en la misma fila.
+ *
+ * Comparar la última palabra no alcanza: el proveedor escribe "Josep Guardiola i Sala" en el
+ * Mundial de Clubes y ahí el apellido queda en el medio. Se pide que el apellido de uno aparezca
+ * entre las palabras del otro, que es lo que distingue a "Guardiola" dentro del nombre completo sin
+ * hermanar a "Marcelo Salles" con "Marcelo Gallardo", donde lo que se repite es el nombre de pila.
  */
 export function mismoApellido(uno: string, otro: string): boolean {
-  return apellido(uno) === apellido(otro);
+  const a = normalizar(uno);
+  const b = normalizar(otro);
+  return contieneAlApellido(a, b) || contieneAlApellido(b, a);
 }
 
-const apellido = (nombre: string) =>
+/** Tres letras: descarta la inicial de "E. Maresca" y partículas como "de", "dos" o "i". */
+const LARGO_MINIMO = 3;
+
+function contieneAlApellido(nombre: string[], dentroDe: string[]): boolean {
+  const apellido = nombre.at(-1);
+  return apellido !== undefined && apellido.length >= LARGO_MINIMO && dentroDe.includes(apellido);
+}
+
+const normalizar = (nombre: string) =>
   nombre
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
-    .replace(/^.*\s/, '');
+    .split(/\s+/);
 
 @Injectable()
 export class CoachResolverService {
@@ -190,9 +205,16 @@ export class CoachResolverService {
     });
     const porId = new Map(guardados.map((c) => [c.id, c]));
 
-    /* El mismo entrenador llega con varios nombres escritos; se decide una sola vez, con el mejor. */
+    /*
+     * El mismo entrenador llega con varios nombres escritos y se decide una sola vez. Se prueban de
+     * más corto a más largo porque de "Guardiola" se sube al primero que tenga nombre de pila: si
+     * entrara antes "Josep Guardiola i Sala" la ficha quedaría con el nombre del registro civil en
+     * lugar de con el que usa todo el mundo.
+     */
     const mejores = new Map<string, string>();
-    for (const candidato of candidatos) {
+    for (const candidato of [...candidatos].sort(
+      (uno, otro) => uno.nombre.trim().split(/\s+/).length - otro.nombre.trim().split(/\s+/).length,
+    )) {
       const actual = porId.get(candidato.id);
       if (!actual) continue;
       const previo = mejores.get(candidato.id) ?? actual.name;
