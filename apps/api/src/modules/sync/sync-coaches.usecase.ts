@@ -11,8 +11,15 @@ export interface ResultadoDeEntrenadores {
   alineaciones: number;
 }
 
-function comoFecha(dia: string): Date {
-  return new Date(`${dia}T00:00:00Z`);
+/**
+ * El proveedor manda alguna fecha que no lo es —un club de los 2.309 tumbó la corrida entera con
+ * un `start` que `Date` no pudo leer—. Una etapa sin fecha válida no se puede ubicar en la carrera,
+ * así que se descarta en lugar de arrastrar un `Invalid Date` hasta la base.
+ */
+function comoFecha(dia: string | null): Date | null {
+  if (!dia) return null;
+  const fecha = new Date(`${dia}T00:00:00Z`);
+  return Number.isNaN(fecha.getTime()) ? null : fecha;
 }
 
 /**
@@ -94,7 +101,7 @@ export class SyncCoachesUseCase {
           where: { id },
           data: {
             fullName: ficha.fullName,
-            birthDate: ficha.birthDate ? comoFecha(ficha.birthDate) : null,
+            birthDate: comoFecha(ficha.birthDate),
             birthPlace: ficha.birthPlace,
             nationality: ficha.nationality,
             photoUrl: ficha.photoUrl,
@@ -124,19 +131,19 @@ export class SyncCoachesUseCase {
     const filas = fichas.flatMap((ficha) => {
       const coachId = ids.get(ficha.providerRef);
       if (!coachId) return [];
-      return ficha.etapas.flatMap((etapa) =>
-        etapa.teamNombre
-          ? [
-              {
-                coachId,
-                teamId: (etapa.teamRef && clubes.get(etapa.teamRef)) || null,
-                teamNombre: etapa.teamNombre,
-                desde: comoFecha(etapa.desde),
-                hasta: etapa.hasta ? comoFecha(etapa.hasta) : null,
-              },
-            ]
-          : [],
-      );
+      return ficha.etapas.flatMap((etapa) => {
+        const desde = comoFecha(etapa.desde);
+        if (!etapa.teamNombre || !desde) return [];
+        return [
+          {
+            coachId,
+            teamId: (etapa.teamRef && clubes.get(etapa.teamRef)) || null,
+            teamNombre: etapa.teamNombre,
+            desde,
+            hasta: comoFecha(etapa.hasta),
+          },
+        ];
+      });
     });
     if (filas.length === 0) return 0;
 
