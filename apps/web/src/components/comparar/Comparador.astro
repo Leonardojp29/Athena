@@ -49,12 +49,21 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
     de números uno ya no sabe cuál columna es cuál.
   -->
   <div
-    class="sticky top-16 z-10 -mx-4 grid gap-2 border-b border-border bg-canvas/95 px-4 py-3 backdrop-blur-sm sm:mx-0 sm:rounded-lg sm:border sm:px-3"
-    style={`grid-template-columns:${columnas}`}
+    data-cabeceras
+    class="sticky top-16 z-10 grid overflow-hidden rounded-lg border border-border bg-canvas/95 backdrop-blur-sm"
+    style={`grid-template-columns:${columnasConEtiqueta}`}
   >
+    {/* La misma grilla que las filas, con una celda muda donde ellas ponen la etiqueta: así cada
+        club queda justo encima de sus propios números. */}
+    <span aria-hidden="true" style="order:-1"></span>
     {
       entidades.map((entidad, i) => (
-        <article class="grid min-w-0 gap-2">
+        <article
+          data-columna={i}
+          draggable="true"
+          style={`order:${i}`}
+          class="grid min-w-0 cursor-grab content-start gap-2 border-l border-border px-1.5 py-2.5 transition-colors active:cursor-grabbing data-[arrastrando]:opacity-40 data-[encima]:bg-primary/10"
+        >
           <div class="flex min-w-0 items-center gap-2.5">
             {entidad.fotoUrl ? (
               <img
@@ -134,12 +143,16 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
                 class="grid items-stretch border-b border-border last:border-b-0"
                 style={`grid-template-columns:${columnasConEtiqueta}`}
               >
-                <p class="flex items-center px-2.5 py-2 text-2xs leading-tight text-ink-muted sm:px-3">
+                <p
+                  style="order:-1"
+                  class="flex items-center px-2.5 py-2 text-2xs font-semibold leading-tight text-ink sm:px-3"
+                >
                   {fila.etiqueta}
                 </p>
                 {valores.map((valor, i) => (
                   <div
                     data-celda={i}
+                    style={`order:${i}`}
                     class="flex items-center justify-center border-l border-border px-1.5 py-2"
                   >
                     {/*
@@ -223,5 +236,73 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
     }
 
     for (const selector of selectores) selector.addEventListener('change', repintar);
+
+    /*
+     * Reordenar arrastrando. No se mueve un solo nodo: cada columna y cada celda llevan su `order`
+     * de CSS, así que cambiar el orden es reescribir N números y la grilla las acomoda sola. Mover
+     * nodos obligaría a rehacer las filas una por una y a renumerar los `data-celda`.
+     *
+     * El orden nuevo va a la URL, que es de donde sale al recargar y lo que se comparte.
+     */
+    const cabeceras = raiz.querySelector<HTMLElement>('[data-cabeceras]');
+    const columnas = [...raiz.querySelectorAll<HTMLElement>('[data-columna]')];
+    let orden = entidades.map((_, i) => i);
+    let arrastrado: number | null = null;
+
+    const aplicarOrden = (): void => {
+      for (const [posicion, indice] of orden.entries()) {
+        const columna = columnas[indice];
+        if (columna) columna.style.order = String(posicion);
+        for (const celda of raiz.querySelectorAll<HTMLElement>(`[data-celda="${indice}"]`)) {
+          celda.style.order = String(posicion);
+        }
+      }
+      const url = new URL(location.href);
+      url.searchParams.set('j', orden.map((i) => entidades[i]!.slug).join(','));
+      history.replaceState(history.state, '', url);
+    };
+
+    for (const columna of columnas) {
+      const indice = Number(columna.dataset.columna);
+
+      columna.addEventListener('dragstart', (evento) => {
+        arrastrado = indice;
+        columna.dataset.arrastrando = '';
+        evento.dataTransfer?.setData('text/plain', String(indice));
+        if (evento.dataTransfer) evento.dataTransfer.effectAllowed = 'move';
+      });
+
+      columna.addEventListener('dragend', () => {
+        arrastrado = null;
+        delete columna.dataset.arrastrando;
+        for (const otra of columnas) delete otra.dataset.encima;
+      });
+
+      /* Sin esto el navegador no considera la columna un destino válido y no dispara `drop`. */
+      columna.addEventListener('dragover', (evento) => {
+        if (arrastrado === null || arrastrado === indice) return;
+        evento.preventDefault();
+        if (evento.dataTransfer) evento.dataTransfer.dropEffect = 'move';
+        columna.dataset.encima = '';
+      });
+
+      columna.addEventListener('dragleave', () => delete columna.dataset.encima);
+
+      columna.addEventListener('drop', (evento) => {
+        evento.preventDefault();
+        delete columna.dataset.encima;
+        if (arrastrado === null || arrastrado === indice) return;
+        const desde = orden.indexOf(arrastrado);
+        const hasta = orden.indexOf(indice);
+        if (desde < 0 || hasta < 0) return;
+        orden = orden.toSpliced(desde, 1).toSpliced(hasta, 0, arrastrado);
+        aplicarOrden();
+      });
+    }
+
+    /* El contenedor también acepta la soltada: si se suelta en el hueco, no se pierde el gesto. */
+    cabeceras?.addEventListener('dragover', (evento) => {
+      if (arrastrado !== null) evento.preventDefault();
+    });
   }
 </script>
