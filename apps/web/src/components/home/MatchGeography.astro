@@ -25,6 +25,8 @@ interface Props {
   hrefEquipo?: (slug: string) => string;
   /** A dónde lleva el nombre de la liga; en la home, a su vista dentro de la home. */
   hrefLiga?: (slug: string) => string;
+  /** De qué día son estos partidos, para los encabezados: "Europa — partidos de hoy". */
+  cuando?: string;
 }
 
 const {
@@ -33,7 +35,17 @@ const {
   filtrado = false,
   hrefEquipo,
   hrefLiga = (slug: string) => `/competencias/${slug}`,
+  cuando = 'hoy',
 } = Astro.props;
+
+/*
+ * El apellido invisible de cada encabezado.
+ *
+ * "Europa" y "España" solos no dicen nada fuera de su página, y un modelo que cita un fragmento
+ * suelto no tiene el contexto de arriba. El texto visible no cambia —la columna vive de ser
+ * corta— y el que lee la estructura recibe el encabezado entero.
+ */
+const contexto = `partidos de ${cuando}`;
 
 const contarPartidos = (continente: GeographyContinent) =>
   continente.countries.reduce(
@@ -65,7 +77,10 @@ const contarVivos = (continente: GeographyContinent) =>
             class="flex cursor-pointer list-none items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 transition-colors hover:bg-canvas-subtle"
           >
             <ContinentIcon name={continente.continent} size={17} class="text-primary-ink" />
-            <h3 class="font-display text-base font-semibold uppercase">{continente.label}</h3>
+            <h3 class="font-display text-base font-semibold uppercase">
+              {continente.label}
+              <span class="sr-only"> — {contexto}</span>
+            </h3>
             {vivos > 0 && (
               <span class="flex items-center gap-1 rounded-full bg-live/12 px-2 py-0.5 text-2xs font-medium text-live-ink">
                 <span class="size-1.5 rounded-full bg-live animate-live-pulse" />
@@ -103,6 +118,7 @@ const contarVivos = (continente: GeographyContinent) =>
                   />
                   <h4 class="text-sm font-semibold">
                     {paisEnEspanol(pais.name) ?? 'Internacional'}
+                    <span class="sr-only"> — {contexto}</span>
                   </h4>
                   <span class="ml-auto tabular text-2xs text-ink-muted">
                     {pais.competitions.reduce((n, t) => n + t.matches.length, 0)}
