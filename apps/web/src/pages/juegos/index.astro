@@ -28,6 +28,12 @@ interface Juego {
   nombre: string;
   linea: string;
   icono: 'juego' | 'formacion' | 'usuario' | 'reloj';
+  /*
+   * El nombre del arte de portada, en `public/juegos`. Se sirve estático y ya optimizado en vez de
+   * pasar por `astro:assets`: en modo servidor ese componente optimiza por pedido, necesita sharp en
+   * el servidor y devolvía 500. Así el CDN las guarda para siempre y no cuestan nada por visita.
+   */
+  arte?: string;
   href?: string;
   etiqueta?: string;
 }
@@ -35,6 +41,7 @@ interface Juego {
 const JUEGOS: Juego[] = [
   {
     nombre: 'Mi Leyenda',
+    arte: 'mi-leyenda',
     linea: 'Crea un futbolista y vive su carrera entera, con clubes de verdad.',
     icono: 'juego',
     href: '/juegos/mi-leyenda',
@@ -42,6 +49,7 @@ const JUEGOS: Juego[] = [
   },
   {
     nombre: 'Adivina el XI',
+    arte: 'adivina-el-xi',
     linea: 'Te damos el partido; vos ponés los once que salieron a la cancha.',
     icono: 'formacion',
     href: '/juegos/adivina-el-xi',
@@ -49,6 +57,7 @@ const JUEGOS: Juego[] = [
   },
   {
     nombre: 'El Impostor',
+    arte: 'el-impostor',
     linea: 'Seis futbolistas, uno se coló. Veinte segundos para encontrarlo.',
     icono: 'usuario',
     href: '/juegos/el-impostor',
@@ -56,6 +65,7 @@ const JUEGOS: Juego[] = [
   },
   {
     nombre: '60 Segundos',
+    arte: '60-segundos',
     linea: 'Un minuto y todas las preguntas que puedas responder.',
     icono: 'reloj',
     href: '/juegos/60-segundos',
@@ -109,10 +119,30 @@ const JUEGOS: Juego[] = [
                     ]}
                   >
                     {/*
-                      El icono otra vez, enorme y casi invisible detrás: le da carácter a la tarjeta
-                      sin agregar nada que haya que leer. Decorativo y sin eventos.
+                      El arte de portada ocupa la tarjeta entera, anclado a la derecha, que es donde
+                      vive el sujeto. Encima va un velo que arranca opaco a la izquierda y se abre
+                      hacia la derecha: el texto se apoya siempre en el color de la tarjeta y el arte
+                      se ve entero, sin que ninguno de los dos dependa de la paleta del día.
                     */}
-                    {juego.href && (
+                    {juego.href && juego.arte && (
+                      <span aria-hidden="true" class="pointer-events-none absolute inset-0">
+                        <img
+                          src={`/juegos/${juego.arte}.webp`}
+                          srcset={`/juegos/${juego.arte}.webp 760w, /juegos/${juego.arte}@2x.webp 1120w`}
+                          sizes="(min-width: 1024px) 34rem, 100vw"
+                          alt=""
+                          width="760"
+                          height="570"
+                          loading="lazy"
+                          decoding="async"
+                          class="size-full object-cover object-right transition-transform duration-500 group-hover:scale-[1.04]"
+                        />
+                        <span class="absolute inset-0 bg-gradient-to-r from-surface via-surface/85 to-surface/25"></span>
+                      </span>
+                    )}
+
+                    {/* Sin arte todavía, el icono enorme y casi invisible sigue dando carácter. */}
+                    {juego.href && !juego.arte && (
                       <span
                         aria-hidden="true"
                         class="pointer-events-none absolute -bottom-10 -right-8 text-primary-ink/[0.06] transition-transform duration-500 group-hover:-translate-y-2 group-hover:scale-105"
