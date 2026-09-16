@@ -1,0 +1,203 @@
+---
+import Icon from '../Icon.astro';
+
+/*
+ * Comparar a dos jugadores de este partido, con lo que hicieron en este partido.
+ *
+ * No pide nada al servidor: cada imán de la cancha, cada fila del banco y cada fila de la tabla de
+ * rendimiento ya llevan su `data-ficha` con las estadísticas completas, que es lo mismo que usa la
+ * ficha emergente. Acá se leen de la página y se dibujan al lado.
+ *
+ * La selección vive en la URL (`?vista=comparar&j=a,b`) para que la comparación sea compartible y
+ * para que el botón de atrás la deshaga, igual que las pestañas.
+ */
+---
+
+<div data-comparador class="grid gap-4">
+  <!-- Vacío: el módulo se abre solo y tiene que explicar cómo se usa sin que nadie lo cuente. -->
+  <section
+    data-comparador-vacio
+    class="grid justify-items-center gap-2 rounded-lg border border-dashed border-border bg-surface px-4 py-10 text-center"
+  >
+    <Icon name="usuario" size={22} class="text-ink-muted" />
+    <p class="font-display text-base font-semibold uppercase tracking-tight">
+      Elegí a dos jugadores
+    </p>
+    <p class="max-w-sm text-sm text-ink-muted">
+      Tocá a cualquiera en la cancha o en el banco y usá <strong class="font-medium text-ink"
+        >Comparar</strong
+      >. Podés comparar hasta cuatro, incluso del mismo equipo.
+    </p>
+  </section>
+
+  <section data-comparador-tabla class="rounded-lg border border-border bg-surface" hidden>
+    <header class="border-b border-border p-3">
+      <div data-comparador-fichas class="grid gap-2"></div>
+    </header>
+    <div data-comparador-filas class="p-3"></div>
+    <footer class="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
+      <p class="text-2xs text-ink-muted">Solo lo que hicieron en este partido.</p>
+      <button
+        type="button"
+        data-comparador-limpiar
+        class="cursor-pointer text-2xs text-primary-ink transition-colors hover:underline"
+      >
+        Vaciar la comparación
+      </button>
+    </footer>
+  </section>
+</div>
+
+<script>
+  import { filasDeComparacion, type FichaDeJugador } from '../../lib/comparar-partido';
+  import { claseDeNota } from '../../lib/nota';
+
+  const raiz = document.querySelector<HTMLElement>('[data-comparador]');
+  const centro = document.querySelector<HTMLElement>('[data-centro-del-partido]');
+  if (raiz && centro) {
+    const vacio = raiz.querySelector<HTMLElement>('[data-comparador-vacio]')!;
+    const tabla = raiz.querySelector<HTMLElement>('[data-comparador-tabla]')!;
+    const cabecera = raiz.querySelector<HTMLElement>('[data-comparador-fichas]')!;
+    const cuerpo = raiz.querySelector<HTMLElement>('[data-comparador-filas]')!;
+    const MAXIMO = 4;
+
+    /* Todas las fichas de la página, por id: la cancha, el banco y la tabla de rendimiento. */
+    const fichasDeLaPagina = (): Map<string, FichaDeJugador> => {
+      const mapa = new Map<string, FichaDeJugador>();
+      for (const nodo of document.querySelectorAll<HTMLElement>('[data-ficha]')) {
+        try {
+          const ficha = JSON.parse(nodo.dataset.ficha as string) as FichaDeJugador;
+          if (ficha.playerId && !mapa.has(ficha.playerId)) mapa.set(ficha.playerId, ficha);
+        } catch {
+          /* Un payload roto no puede tumbar la pestaña entera. */
+        }
+      }
+      return mapa;
+    };
+
+    const elegidos = (): string[] => {
+      const crudo = new URL(location.href).searchParams.get('j') ?? '';
+      return crudo.split(',').filter(Boolean).slice(0, MAXIMO);
+    };
+
+    const guardar = (ids: string[]): void => {
+      const url = new URL(location.href);
+      if (ids.length > 0) url.searchParams.set('j', ids.join(','));
+      else url.searchParams.delete('j');
+      history.replaceState(history.state, '', url);
+      pintar();
+    };
+
+    const escapar = (texto: string): string =>
+      texto.replace(
+        /[&<>"]/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string,
+      );
+
+    const tarjeta = (ficha: FichaDeJugador): string => {
+      const foto = ficha.photoUrl
+        ? `<img src="${escapar(ficha.photoUrl)}" alt="" width="40" height="40" class="size-10 shrink-0 rounded-full bg-canvas-subtle object-cover" loading="lazy">`
+        : '<span class="size-10 shrink-0 rounded-full bg-canvas-subtle"></span>';
+      const escudo = ficha.team?.logoUrl
+        ? `<img src="${escapar(ficha.team.logoUrl)}" alt="" width="14" height="14" class="size-3.5 shrink-0" loading="lazy">`
+        : '';
+      const nota = ficha.stats?.rating;
+      return `<div class="flex min-w-0 items-center gap-2.5 rounded-lg border border-border bg-canvas-subtle/40 p-2.5">
+          ${foto}
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold leading-tight">${escapar(ficha.name)}</p>
+            <p class="flex items-center gap-1 truncate text-2xs text-ink-muted">
+              ${escudo}<span class="truncate">${escapar(ficha.team?.name ?? '')}</span>
+            </p>
+          </div>
+          ${nota ? `<span class="shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold tabular ${claseDeNota(Number(nota))}">${Number(nota).toFixed(1)}</span>` : ''}
+          <button type="button" data-quitar="${escapar(ficha.playerId)}"
+            class="shrink-0 cursor-pointer rounded p-1 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
+            aria-label="Quitar a ${escapar(ficha.name)} de la comparación">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>`;
+    };
+
+    const barra = (valor: number, maximo: number, lider: boolean): string => {
+      const ancho = maximo > 0 ? Math.round((valor / maximo) * 100) : 0;
+      return `<span class="block h-1 rounded-full bg-border">
+          <span class="block h-1 rounded-full ${lider ? 'bg-primary' : 'bg-ink-muted/40'}" style="width:${ancho}%"></span>
+        </span>`;
+    };
+
+    function pintar(): void {
+      const disponibles = fichasDeLaPagina();
+      const fichas = elegidos()
+        .map((id) => disponibles.get(id))
+        .filter((f): f is FichaDeJugador => f !== undefined);
+
+      const hay = fichas.length >= 2;
+      vacio.hidden = hay;
+      tabla.hidden = !hay;
+      if (!hay) return;
+
+      cabecera.style.gridTemplateColumns = `repeat(${fichas.length}, minmax(0, 1fr))`;
+      cabecera.innerHTML = fichas.map(tarjeta).join('');
+
+      const grupos = filasDeComparacion(fichas);
+      cuerpo.innerHTML = grupos
+        .map(
+          (grupo) => `
+          <section class="mb-4 last:mb-0">
+            <h3 class="mb-2 text-2xs font-medium uppercase tracking-label text-ink-muted">${grupo.titulo}</h3>
+            <div class="grid gap-2.5">
+              ${grupo.filas
+                .map((fila) => {
+                  const maximo = Math.max(...fila.valores.map((v) => v.orden), 0);
+                  const lider = fila.hayLider ? Math.max(...fila.valores.map((v) => v.orden)) : -1;
+                  return `<div>
+                      <p class="mb-1 text-center text-2xs text-ink-muted">${fila.label}</p>
+                      <div class="grid gap-2" style="grid-template-columns:repeat(${fichas.length},minmax(0,1fr))">
+                        ${fila.valores
+                          .map(
+                            (v) => `<div class="grid gap-1">
+                              <span class="text-center text-sm font-semibold tabular ${v.orden === lider && lider > 0 ? 'text-ink' : 'text-ink-muted'}">${v.texto}</span>
+                              ${barra(v.orden, maximo, v.orden === lider && lider > 0)}
+                            </div>`,
+                          )
+                          .join('')}
+                      </div>
+                    </div>`;
+                })
+                .join('')}
+            </div>
+          </section>`,
+        )
+        .join('');
+    }
+
+    raiz.addEventListener('click', (evento) => {
+      const quitar = (evento.target as HTMLElement).closest<HTMLElement>('[data-quitar]');
+      if (quitar) {
+        guardar(elegidos().filter((id) => id !== quitar.dataset.quitar));
+        return;
+      }
+      if ((evento.target as HTMLElement).closest('[data-comparador-limpiar]')) guardar([]);
+    });
+
+    /*
+     * El puente con la ficha emergente: su botón "Comparar" avisa por acá. Cuando ya hay dos, la
+     * pestaña se abre sola, que es lo que uno espera después de elegir al segundo.
+     */
+    addEventListener('athena:comparar', (evento) => {
+      const id = (evento as CustomEvent<{ playerId: string }>).detail?.playerId;
+      if (!id) return;
+      const ya = elegidos();
+      const ids = ya.includes(id) ? ya : [...ya, id].slice(-MAXIMO);
+      guardar(ids);
+      if (ids.length >= 2) {
+        document.querySelector<HTMLAnchorElement>('[data-vista-tab="comparar"]')?.click();
+        raiz.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    });
+
+    addEventListener('popstate', () => pintar());
+    pintar();
+  }
+</script>

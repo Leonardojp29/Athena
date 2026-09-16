@@ -61,15 +61,29 @@ import Icon from '../Icon.astro';
     </p>
   </div>
 
-  <footer class="border-t border-border">
+  <!--
+    Dos salidas: leer más de este jugador, o ponerlo al lado de otro. Comparar va a la derecha y con
+    peso de botón porque es la acción que empieza algo; el perfil es un enlace y se comporta como tal.
+    El botón solo aparece cuando la página tiene el módulo de comparación, o sea en un partido.
+  -->
+  <footer class="flex items-center justify-between gap-2 border-t border-border p-2">
     <a
       data-ficha-perfil-pie
       href="/"
-      class="flex items-center gap-1.5 px-3 py-2 text-2xs text-primary-ink transition-colors hover:bg-canvas-subtle"
+      class="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-2xs text-primary-ink transition-colors hover:bg-canvas-subtle"
     >
       Ver su perfil completo
       <Icon name="chevron-derecha" size={12} />
     </a>
+    <button
+      type="button"
+      data-ficha-comparar
+      hidden
+      class="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-2xs font-medium text-primary-contrast transition-opacity hover:opacity-90"
+    >
+      <Icon name="formacion" size={12} />
+      Comparar
+    </button>
   </footer>
 </dialog>
 
@@ -181,6 +195,15 @@ import Icon from '../Icon.astro';
         enlace.href = ficha.slug ? `/jugadores/${ficha.slug}` : `/equipos/${ficha.team.slug}`;
       }
 
+      /*
+       * Comparar solo tiene sentido donde hay con quién: en la página del partido. El id viaja en el
+       * botón porque el diálogo se reusa para todos los jugadores y el manejador vive fuera.
+       */
+      for (const boton of dialogo.querySelectorAll<HTMLButtonElement>('[data-ficha-comparar]')) {
+        boton.hidden = document.querySelector('[data-comparador]') === null;
+        boton.dataset.playerId = ficha.playerId;
+      }
+
       const s = ficha.stats;
       if (!s) {
         if (destacados) destacados.innerHTML = '';
@@ -281,6 +304,15 @@ import Icon from '../Icon.astro';
 
     function preparar(dialogo: HTMLDialogElement): HTMLDialogElement {
       dialogo.querySelector('[data-ficha-cerrar]')?.addEventListener('click', () => dialogo.close());
+      /* Comparar cierra la ficha y le pasa el jugador al módulo, que decide si ya puede dibujar. */
+      dialogo.querySelector<HTMLButtonElement>('[data-ficha-comparar]')?.addEventListener(
+        'click',
+        (evento) => {
+          const id = (evento.currentTarget as HTMLElement).dataset.playerId;
+          dialogo.close();
+          if (id) dispatchEvent(new CustomEvent('athena:comparar', { detail: { playerId: id } }));
+        },
+      );
       /* Clic en el backdrop del modal: el <dialog> es el objetivo solo cuando se toca afuera. */
       dialogo.addEventListener('click', (event) => {
         if (event.target === dialogo) dialogo.close();

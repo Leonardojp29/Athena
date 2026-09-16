@@ -1,4 +1,5 @@
 ---
+import CompararJugadores from './CompararJugadores.astro';
 import HistorialCompleto from './HistorialCompleto.astro';
 import MatchTabs, { type Tab } from './MatchTabs.astro';
 import PlayerStatsTable from './PlayerStatsTable.astro';
@@ -62,6 +63,11 @@ const TABS: Tab[] = [
     motivo: enCamino ? faltaPorLlegar : undefined,
   },
   { id: 'historial', label: 'Historial' },
+  /*
+   * Comparar nunca se deshabilita: sin estadísticas el módulo explica cómo se usa, que es más útil
+   * que una pestaña gris. Va al final porque es una herramienta y no una lectura del partido.
+   */
+  { id: 'comparar', label: 'Comparar' },
 ];
 
 const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedida : 'resumen';
@@ -225,6 +231,10 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
           awayTeam={match.awayTeam}
         />
       </div>
+
+      <div data-vista-panel="comparar" class="grid min-w-0 gap-4" hidden={vista !== 'comparar'}>
+        <CompararJugadores />
+      </div>
     </div>
 
     <!--
@@ -283,7 +293,13 @@ const vista = TABS.find((t) => t.id === vistaPedida && !t.disabled) ? vistaPedid
         if (!vista || evento.metaKey || evento.ctrlKey || evento.shiftKey) return;
         if (!mostrar(vista)) return;
         evento.preventDefault();
-        history.pushState({ vista }, '', pestana.href);
+        /*
+         * Se cambia solo `vista` sobre la URL actual en lugar de saltar al `href` del enlace: ese
+         * href no sabe de los demás parámetros y se llevaba puesta la selección del comparador.
+         */
+        const url = new URL(location.href);
+        url.searchParams.set('vista', vista);
+        history.pushState({ vista }, '', url);
       });
     }
 
