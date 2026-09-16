@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <!--
-    Favicon de Athena. A 16px los trazos de 1,6px caen por debajo de un píxel y
-    desaparecen, así que esta versión es una silueta sólida con los ojos y el pico
-    calados con fill-rule evenodd. Sin un solo stroke.
+    Favicon de Athena. A 16px los canales de la marca caen por debajo de un píxel y la pelota se ve
+    sucia, así que acá va la esfera entera con el pentágono calado y la órbita entrando desde abajo.
+    Sin un solo stroke fino: el pentágono se recorta con fill-rule y la órbita es una forma sólida.
   -->
   <style>
-    :root { --fondo: #0A0A0C; --marca: #FB575D; }
-    @media (prefers-color-scheme: light) { :root { --fondo: #FFFFFF; --marca: #E6293F; } }
+    :root { --fondo: #0A0A0C; --esfera: #F2F3F2; }
+    @media (prefers-color-scheme: light) { :root { --fondo: #FFFFFF; --esfera: #15161A; } }
   </style>
   <rect width="32" height="32" rx="7" fill="var(--fondo)" />
   <path
-    fill="var(--marca)"
+    fill="var(--esfera)"
     fill-rule="evenodd"
-    d="M5.5 9.6 A4.1 4.1 0 0 1 9.6 5.5 H13.4 L16 8.9 L18.6 5.5 H22.4 A4.1 4.1 0 0 1 26.5 9.6 V15.3 C26.5 21.2 21.6 25.4 16 27.6 C10.4 25.4 5.5 21.2 5.5 15.3 Z
-       M11.2 10.4 A3.5 3.5 0 1 0 11.2 17.4 A3.5 3.5 0 1 0 11.2 10.4 Z
-       M20.8 10.4 A3.5 3.5 0 1 0 20.8 17.4 A3.5 3.5 0 1 0 20.8 10.4 Z
-       M14.2 19.1 L17.8 19.1 L16 24.2 Z"
+    d="M15 5.4 A10.6 10.6 0 1 1 15 26.6 A10.6 10.6 0 1 1 15 5.4 Z
+       M15 10.4 L20 14 L18.1 19.9 L11.9 19.9 L10 14 Z"
   />
+  <path fill="#C9A26B" d="M2.6 21.4 A15.4 15.4 0 0 0 25.4 6.6 L23.2 8.6 A12.6 12.6 0 0 1 4.6 20.6 Z" />
+  <circle cx="27.2" cy="5.6" r="3.4" fill="#C9A26B" />
 </svg>

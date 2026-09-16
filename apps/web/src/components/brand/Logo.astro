@@ -2,9 +2,13 @@
 import LogoMark from './LogoMark.astro';
 
 /*
- * El logotipo va en trazados y no en fuente: así el header es correcto en el primer
- * pintado, antes de que Oswald llegue. La altura de mayúsculas es el 62% de la marca y
- * la línea base se alinea al centro óptico de los ojos, no al del escudo.
+ * El logotipo: la marca a la izquierda y el nombre a la derecha.
+ *
+ * El nombre va en trazados y no en fuente por dos razones: el encabezado es correcto en el primer
+ * pintado, antes de que Oswald llegue, y la A sin travesaño no existe en ninguna fuente del sitio.
+ *
+ * Se dibuja con trazo y no con contornos rellenos: son doce líneas rectas contra seis contornos con
+ * treinta nodos, y a 14px de alto un contorno fino se emborrona mientras que un trazo no.
  */
 interface Props {
   variant?: 'lockup' | 'mark';
@@ -13,27 +17,47 @@ interface Props {
 }
 
 const { variant = 'lockup', size = 28, class: className } = Astro.props;
+
+/*
+ * Una celda de 13 con 9 de aire: el original respira mucho entre letras y sin ese aire el nombre se
+ * lee como una palabra apretada en lugar de como una marca.
+ */
+const x = (i: number) => i * 22;
+const ALTO = 18;
+const ANCHO = 13;
+
+const A = (i: number) =>
+  `M${x(i)} ${ALTO} L${x(i) + ANCHO / 2} 0 L${x(i) + ANCHO} ${ALTO}`;
+const T = (i: number) =>
+  `M${x(i)} 0 H${x(i) + ANCHO} M${x(i) + ANCHO / 2} 0 V${ALTO}`;
+const H = (i: number) =>
+  `M${x(i)} 0 V${ALTO} M${x(i) + ANCHO} 0 V${ALTO} M${x(i)} 9 H${x(i) + ANCHO}`;
+const E = (i: number) =>
+  `M${x(i)} 0 V${ALTO} M${x(i)} 0 H${x(i) + ANCHO} M${x(i)} 9 H${x(i) + ANCHO - 2.5} M${x(i)} ${ALTO} H${x(i) + ANCHO}`;
+const N = (i: number) =>
+  `M${x(i)} ${ALTO} V0 L${x(i) + ANCHO} ${ALTO} V0`;
+
+const NOMBRE = [A(0), T(1), H(2), E(3), N(4), A(5)].join(' ');
 ---
 
 {
   variant === 'mark' ? (
     <LogoMark size={size} class={className} />
   ) : (
-    <span class:list={['inline-flex items-center gap-2.5', className]}>
+    <span class:list={['inline-flex items-center gap-1.5', className]}>
       <LogoMark size={size} />
       <svg
-        viewBox="0 0 118 18"
-        height={Math.round(size * 0.5)}
-        fill="currentColor"
+        viewBox="-0.9 -0.9 124.8 19.8"
+        height={Math.round(size * 0.46)}
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="square"
+        stroke-linejoin="miter"
         aria-hidden="true"
         focusable="false"
       >
-        <path d="M0 18 L7.4 0 H11.6 L19 18 H14.7 L13.2 14.1 H5.8 L4.3 18 Z M7.1 10.7 H11.9 L9.5 4.4 Z" />
-        <path d="M22 18 V3.6 H17.2 V0 H31.2 V3.6 H26.4 V18 Z" />
-        <path d="M34 18 V0 H38.4 V7.1 H45.4 V0 H49.8 V18 H45.4 V10.7 H38.4 V18 Z" />
-        <path d="M53.6 18 V0 H66.8 V3.6 H58 V7.1 H65.6 V10.6 H58 V14.4 H67 V18 Z" />
-        <path d="M70.6 18 V0 H75.1 L82.4 11.4 V0 H86.6 V18 H82.2 L74.8 6.5 V18 Z" />
-        <path d="M89.6 18 L97 0 H101.2 L108.6 18 H104.3 L102.8 14.1 H95.4 L93.9 18 Z M96.7 10.7 H101.5 L99.1 4.4 Z" />
+        <path d={NOMBRE} />
       </svg>
     </span>
   )

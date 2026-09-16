@@ -33,6 +33,12 @@
    * la marca sigue a la paleta y la victoria se queda verde, porque "ganó" no es una preferencia.
    */
   --a-color-marca: oklch(0.906 0.191 118);
+  /*
+   * El oro de la órbita del logotipo. Es el único color de marca que no sigue a la paleta: un
+   * logotipo que cambia de color con el tema deja de reconocerse, y este es el único elemento que
+   * puede permitírselo porque nunca lleva texto encima.
+   */
+  --a-color-marca-oro: oklch(0.775 0.088 78);
   --a-color-win: oklch(0.906 0.191 118);
   --a-color-win-ink: oklch(0.462 0.128 128);
   --a-color-win-contrast: oklch(0.15 0.005 285);
