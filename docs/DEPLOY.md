@@ -352,7 +352,41 @@ duplicado. En Vercel, pg_cron. En un servidor, el worker y nada de cron.
    cron apuntando a una URL vieja registra 404 durante semanas sin que nadie se entere.
 
 4. Red de seguridad: `.github/workflows/latido.yml` dispara el tic cada 30 minutos usando el secreto
-   `CRON_SECRET` y la variable `API_URL` del repositorio en GitHub. Hay que configurarlos ahí.
+   `CRON_SECRET` y la variable `API_URL` del repositorio en GitHub. Hay que configurarlos ahí:
+   **Settings → Secrets and variables → Actions**, el secreto en la pestaña *Secrets* y la URL del
+   API en la pestaña *Variables*.
+
+   > Sin configurarlos el workflow no avisa de nada: falla en cada ejecución con
+   > `curl: (3) URL rejected: No host part in the URL`, porque las dos variables llegan vacías. Un
+   > vigilante en rojo permanente enseña a ignorar la alerta, que es peor que no tenerlo. Si no se
+   > van a configurar, conviene desactivar el workflow desde Actions.
+
+   El Latido es **independiente de pg_cron**: con los trabajos de Supabase apagados, este sigue
+   despertando al API cada media hora. Para dejar el sync realmente detenido hay que apagar los dos.
+
+### 6.1.1 Pausar el sync sin desmontarlo
+
+Para un backfill largo desde una máquina local, o para no gastar plan gratuito mientras se hace
+otra cosa. **No sirve `update cron.job set active = false`**: en Supabase esa tabla es de lectura y
+el `UPDATE` devuelve `42501: permission denied for table job`. Se usa la función de pg_cron, que sí
+tiene los permisos:
+
+```sql
+select cron.alter_job(jobid, active := false)
+from cron.job
+where jobname in ('athena-marcador', 'athena-tick', 'athena-daily');
+```
+
+Para volver a prenderlo, lo mismo con `active := true`. Se comprueba con
+`select jobname, schedule, active from cron.job order by jobname;`, que sí se puede leer.
+
+`athena-purga-cron` se deja activo: solo limpia el historial y no llama a nada.
+
+Y hay que **desactivar también el workflow Latido** en GitHub (Actions → Latido → Disable workflow),
+que es independiente de pg_cron y por su cuenta despierta al API cada media hora.
+
+Mientras esté pausado los marcadores en vivo no avanzan. Al reactivarlo, `reconcileStale()` cierra
+los partidos que quedaron colgados.
 
 ### 6.2 Con el worker (servidor propio)
 
