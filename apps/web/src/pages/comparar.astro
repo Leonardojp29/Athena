@@ -276,13 +276,11 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
             </a>
           )}
 
-          <div data-comparar-caja hidden={entidades.length > 0 && !sumando}>
-            {entidades.length > 0 && (
-              <p class="mb-2 text-sm text-ink-muted">
-                Busca a quién sumar. Puedes comparar hasta {MAXIMO_A_COMPARAR}.
-              </p>
-            )}
-
+          {/*
+            La caja es el ancla del desplegable: los resultados flotan encima de la comparación en
+            vez de empujarla hacia abajo. Escribir no puede mover de sitio lo que estabas leyendo.
+          */}
+          <div data-comparar-caja class="relative z-30" hidden={entidades.length > 0 && !sumando}>
             <form method="get" action="/comparar" class="grid gap-2">
             <input type="hidden" name="tipo" value={tipo} />
             {entidades.length > 0 && (
@@ -296,7 +294,11 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
                 name="q"
                 value={q}
                 autofocus
-                placeholder={`Buscar ${queBusca}`}
+                placeholder={
+                  entidades.length > 0
+                    ? `Sumar ${queBusca}, hasta ${MAXIMO_A_COMPARAR}`
+                    : `Buscar ${queBusca}`
+                }
                 aria-label={`Buscar ${queBusca}`}
                 class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary-ink"
               />
@@ -314,8 +316,17 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
             </button>
           </form>
 
-          <ul data-comparar-sugerencias class="mt-4 grid gap-0.5 empty:hidden"></ul>
-          <p data-comparar-aviso class="mt-4 text-sm text-ink-muted" hidden></p>
+            <ul
+              data-comparar-sugerencias
+              class="absolute inset-x-0 top-full z-30 mt-1.5 grid max-h-[22rem] gap-0.5 overflow-y-auto overscroll-contain rounded-lg border border-border bg-surface-raised p-1 shadow-modal empty:hidden"
+            >
+            </ul>
+            <p
+              data-comparar-aviso
+              class="absolute inset-x-0 top-full z-30 mt-1.5 rounded-lg border border-border bg-surface-raised p-3 text-sm text-ink-muted shadow-modal"
+              hidden
+            >
+            </p>
 
           {q.length >= 2 && (
             <ul data-comparar-servidor class="mt-4 grid gap-0.5">
@@ -399,6 +410,7 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
   const aviso = document.querySelector<HTMLElement>('[data-comparar-aviso]');
 
   if (formulario && campo && lista && aviso) {
+    const caja = document.querySelector<HTMLElement>('[data-comparar-caja]');
     const tipo = formulario.querySelector<HTMLInputElement>('input[name="tipo"]')?.value ?? 'jugador';
     const puestos = formulario.querySelector<HTMLInputElement>('input[name="j"]')?.value ?? '';
     const quiero = tipo === 'equipo' ? 'team' : 'player';
@@ -414,7 +426,6 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
      * enlace lleva a la página con el formulario abierto, así que el gesto es el mismo.
      */
     const abrir = document.querySelector<HTMLElement>('[data-comparar-abrir]');
-    const caja = document.querySelector<HTMLElement>('[data-comparar-caja]');
     abrir?.addEventListener('click', (evento) => {
       if (evento.metaKey || evento.ctrlKey || evento.shiftKey || !caja) return;
       evento.preventDefault();
@@ -447,7 +458,7 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
         .map(
           (hit) => `<li>
             <a href="${escapar(destino(hit.slug))}"
-              class="flex items-center gap-3 rounded-lg border border-border bg-surface p-2.5 transition-colors hover:border-primary-ink">
+              class="flex items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-canvas-subtle">
               ${
                 hit.imageUrl
                   ? `<img src="${escapar(hit.imageUrl)}" alt="" width="28" height="28" loading="lazy" class="size-7 shrink-0 rounded-full bg-canvas-subtle object-cover">`
@@ -489,13 +500,29 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
       }
     };
 
+    const cerrar = () => {
+      enVuelo?.abort();
+      lista.innerHTML = '';
+      aviso.hidden = true;
+    };
+
+    /* Se cierra como cualquier desplegable: con Escape y al tocar afuera. */
+    campo.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Escape') {
+        cerrar();
+        campo.blur();
+      }
+    });
+
+    document.addEventListener('click', (evento) => {
+      if (!caja?.contains(evento.target as Node)) cerrar();
+    });
+
     campo.addEventListener('input', () => {
       const consulta = campo.value.trim();
       clearTimeout(temporizador);
       if (consulta.length < MINIMO) {
-        enVuelo?.abort();
-        lista.innerHTML = '';
-        aviso.hidden = true;
+        cerrar();
         return;
       }
       temporizador = window.setTimeout(() => void buscar(consulta), ESPERA_MS);

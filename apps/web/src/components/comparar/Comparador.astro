@@ -4,7 +4,6 @@ import {
   CLAVE_TOTAL,
   formatear,
   lideresDeFila,
-  porcentajeDeBarra,
   type EntidadComparada,
   type GrupoDeFilas,
 } from '../../lib/comparar';
@@ -39,6 +38,8 @@ const numerosDe = (indice: number, clave: string): number | null =>
   ambitoDe(entidades[indice]!, elegidos[indice] ?? CLAVE_TOTAL)?.numeros[clave] ?? null;
 
 const columnas = `repeat(${entidades.length}, minmax(0, 1fr))`;
+/* La etiqueta a la izquierda y una columna por entidad: se lee de corrido, fila por fila. */
+const columnasConEtiqueta = `minmax(5rem, 9rem) ${columnas}`;
 const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/jugadores/${slug}`);
 ---
 
@@ -120,51 +121,45 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
   {
     grupos.map((grupo) => (
       <section>
-        <h2 class="mb-2.5 text-2xs font-medium uppercase tracking-label text-ink-muted">
+        <h2 class="mb-2.5 text-center font-display text-sm font-semibold uppercase tracking-tight">
           {grupo.titulo}
         </h2>
-        <div class="grid gap-3 rounded-lg border border-border bg-surface p-3">
+        <div class="overflow-hidden rounded-lg border border-border bg-surface">
           {grupo.filas.map((fila) => {
             const valores = entidades.map((_, i) => numerosDe(i, fila.clave));
             const lideres = lideresDeFila(valores, fila);
             return (
-              <div data-fila={fila.clave}>
-                <p class="mb-1.5 text-center text-2xs text-ink-muted">{fila.etiqueta}</p>
-                <div class="grid gap-2" style={`grid-template-columns:${columnas}`}>
-                  {valores.map((valor, i) => (
-                    /*
-                      Cada número en su propia caja: con tres o más columnas, una fila corrida de
-                      cifras se lee como una sola frase y deja de estar claro cuál es de quién.
-                    */
-                    <div
-                      data-celda={i}
+              <div
+                data-fila={fila.clave}
+                class="grid items-stretch border-b border-border last:border-b-0"
+                style={`grid-template-columns:${columnasConEtiqueta}`}
+              >
+                <p class="flex items-center px-2.5 py-2 text-2xs leading-tight text-ink-muted sm:px-3">
+                  {fila.etiqueta}
+                </p>
+                {valores.map((valor, i) => (
+                  <div
+                    data-celda={i}
+                    class="flex items-center justify-center border-l border-border px-1.5 py-2"
+                  >
+                    {/*
+                      Sin barras: el que gana la fila se marca con una pastilla. Una barra por cada
+                      estadística convertía la tabla en un gráfico de veinte líneas donde ninguna se
+                      leía, y el largo mentía en las filas donde menos es mejor.
+                    */}
+                    <span
+                      data-texto
                       class:list={[
-                        'grid gap-1.5 rounded-md px-2 py-1.5 transition-colors',
-                        lideres.has(i) ? 'bg-primary/10' : 'bg-canvas-subtle/60',
+                        'rounded-full px-2 py-0.5 text-sm tabular transition-colors',
+                        lideres.has(i)
+                          ? 'bg-primary/12 font-semibold text-primary-ink'
+                          : 'text-ink',
                       ]}
                     >
-                      <span
-                        data-texto
-                        class:list={[
-                          'text-center text-sm font-semibold tabular',
-                          lideres.has(i) ? 'text-primary-ink' : 'text-ink-muted',
-                        ]}
-                      >
-                        {formatear(valor, fila)}
-                      </span>
-                      <span class="block h-1 rounded-full bg-border">
-                        <span
-                          data-barra
-                          class:list={[
-                            'block h-1 rounded-full',
-                            lideres.has(i) ? 'bg-primary' : 'bg-ink-muted/40',
-                          ]}
-                          style={`width:${porcentajeDeBarra(valor, valores, fila)}%`}
-                        />
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                      {formatear(valor, fila)}
+                    </span>
+                  </div>
+                ))}
               </div>
             );
           })}
@@ -185,7 +180,6 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
     CLAVE_TOTAL,
     formatear,
     lideresDeFila,
-    porcentajeDeBarra,
     type EntidadComparada,
     type GrupoDeFilas,
   } from '../../lib/comparar';
@@ -216,18 +210,13 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
           const lideres = lideresDeFila(valores, fila);
 
           for (const [i] of entidades.entries()) {
-            const celda = nodo.querySelector<HTMLElement>(`[data-celda="${i}"]`);
-            const texto = celda?.querySelector<HTMLElement>('[data-texto]');
-            const barra = celda?.querySelector<HTMLElement>('[data-barra]');
-            if (!texto || !barra) continue;
+            const texto = nodo.querySelector<HTMLElement>(`[data-celda="${i}"] [data-texto]`);
+            if (!texto) continue;
             texto.textContent = formatear(valores[i], fila);
-            celda!.classList.toggle('bg-primary/10', lideres.has(i));
-            celda!.classList.toggle('bg-canvas-subtle/60', !lideres.has(i));
+            texto.classList.toggle('bg-primary/12', lideres.has(i));
+            texto.classList.toggle('font-semibold', lideres.has(i));
             texto.classList.toggle('text-primary-ink', lideres.has(i));
-            texto.classList.toggle('text-ink-muted', !lideres.has(i));
-            barra.classList.toggle('bg-primary', lideres.has(i));
-            barra.classList.toggle('bg-ink-muted/40', !lideres.has(i));
-            barra.style.width = `${porcentajeDeBarra(valores[i] ?? null, valores, fila)}%`;
+            texto.classList.toggle('text-ink', !lideres.has(i));
           }
         }
       }

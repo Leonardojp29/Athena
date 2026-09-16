@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  formatear,
-  lideresDeFila,
-  porcentajeDeBarra,
-  type DefinicionDeFila,
-} from './comparar';
+import { formatear, lideresDeFila, type DefinicionDeFila } from './comparar';
 
 const masEsMejor: DefinicionDeFila = { clave: 'goals', etiqueta: 'Goles' };
 const menosEsMejor: DefinicionDeFila = { clave: 'position', etiqueta: 'Posición', menosEsMejor: true };
@@ -38,31 +33,6 @@ describe('lideresDeFila', () => {
 
   it('ignora a los que no tienen dato', () => {
     expect([...lideresDeFila([null, 2, 8], masEsMejor)]).toEqual([2]);
-  });
-});
-
-describe('porcentajeDeBarra', () => {
-  it('llena la del mayor cuando más es mejor', () => {
-    expect(porcentajeDeBarra(10, [10, 5], masEsMejor)).toBe(100);
-    expect(porcentajeDeBarra(5, [10, 5], masEsMejor)).toBe(50);
-  });
-
-  /*
-   * El undécimo de la tabla no puede llevarse la barra más larga: sin invertir, la fila decía lo
-   * contrario de lo que pasó.
-   */
-  it('llena la del menor cuando menos es mejor', () => {
-    expect(porcentajeDeBarra(1, [11, 1], menosEsMejor)).toBe(100);
-    expect(porcentajeDeBarra(11, [11, 1], menosEsMejor)).toBeCloseTo(9.09, 1);
-  });
-
-  it('sin dato no dibuja nada', () => {
-    expect(porcentajeDeBarra(null, [5, null], masEsMejor)).toBe(0);
-  });
-
-  it('con ceros no divide por cero', () => {
-    expect(porcentajeDeBarra(0, [0, 0], masEsMejor)).toBe(0);
-    expect(porcentajeDeBarra(0, [0, 3], menosEsMejor)).toBe(100);
   });
 });
 

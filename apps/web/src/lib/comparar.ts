@@ -145,29 +145,3 @@ export function lideresDeFila(valores: Array<number | null>, fila: DefinicionDeF
   const lideres = conDato.filter((v) => v.valor === mejor);
   return lideres.length === conDato.length ? new Set() : new Set(lideres.map((v) => v.indice));
 }
-
-/**
- * Cuánto llena la barra. Llena la del mejor, no la del número más grande.
- *
- * En las filas donde menos es mejor —la posición, los goles en contra, las tarjetas— la barra se
- * invierte: si no, el undécimo de la tabla se llevaba la barra más larga y el primero una rayita,
- * que es exactamente al revés de lo que pasó.
- */
-export function porcentajeDeBarra(
-  valor: number | null,
-  valores: Array<number | null>,
-  fila: DefinicionDeFila,
-): number {
-  if (valor === null) return 0;
-  const conDato = valores.filter((v): v is number => v !== null);
-  if (conDato.length === 0) return 0;
-
-  if (fila.menosEsMejor) {
-    const minimo = Math.min(...conDato);
-    if (minimo <= 0) return valor <= 0 ? 100 : 0;
-    return valor > 0 ? Math.max(0, Math.min(100, (minimo / valor) * 100)) : 100;
-  }
-
-  const maximo = Math.max(...conDato, 0);
-  return maximo > 0 ? Math.max(0, Math.min(100, (valor / maximo) * 100)) : 0;
-}
