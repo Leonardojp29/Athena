@@ -128,7 +128,7 @@ export interface ApiFootballLineup {
     } | null;
   };
   formation: string | null;
-  coach: { id: number | null; name: string | null };
+  coach: { id: number | null; name: string | null; photo?: string | null };
   startXI?: Array<{
     player: {
       id: number | null;
@@ -240,4 +240,20 @@ export interface ApiFootballTransfers {
       out: { id: number | null; name: string | null };
     };
   }>;
+}
+
+/** Lo que devuelve `/coachs?team=`: la ficha del entrenador y su carrera. */
+export interface ApiFootballCoach {
+  id: number | null;
+  name: string | null;
+  firstname: string | null;
+  lastname: string | null;
+  nationality: string | null;
+  photo: string | null;
+  birth?: { date?: string | null; place?: string | null; country?: string | null } | null;
+  career?: Array<{
+    team?: { id?: number | null; name?: string | null } | null;
+    start?: string | null;
+    end?: string | null;
+  }> | null;
 }

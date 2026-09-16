@@ -8,9 +8,9 @@ import type { APIRoute } from 'astro';
  * cada uno se pagina solo.
  */
 
-const HIJOS = ['competencias', 'equipos', 'jugadores', 'partidos'] as const;
+const HIJOS = ['competencias', 'equipos', 'jugadores', 'entrenadores', 'partidos'] as const;
 /* Con qué generosidad se ofrecen páginas de más: una vacía es barata, una faltante es invisible. */
-const PAGINAS = { competencias: 1, equipos: 1, jugadores: 2, partidos: 2 } as const;
+const PAGINAS = { competencias: 1, equipos: 1, jugadores: 2, entrenadores: 1, partidos: 2 } as const;
 
 export const GET: APIRoute = ({ site }) => {
   const hoy = new Date().toISOString();

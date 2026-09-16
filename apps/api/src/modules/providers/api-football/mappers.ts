@@ -1,4 +1,5 @@
 import type {
+  ProviderCoach,
   MatchEventKind,
   PlayerPosition,
   ProviderCompetition,
@@ -20,6 +21,7 @@ import type {
 } from '@athena/domain';
 import { paisEnEspanol } from '@athena/domain';
 import type {
+  ApiFootballCoach,
   ApiFootballPlayerProfile,
   ApiFootballEvent,
   ApiFootballFixture,
@@ -257,6 +259,13 @@ export function mapLineup(raw: ApiFootballLineup): ProviderLineup {
     teamRef: String(raw.team.id),
     formation: raw.formation,
     coachName: raw.coach?.name ?? null,
+    /*
+     * El id del entrenador es lo único que permite reconciliar los nombres sueltos: "F. Navarro"
+     * aparece con cinco equipos y sin id no hay forma de saber si es una persona que cambió de club
+     * o cinco Navarros distintos.
+     */
+    coachRef: raw.coach?.id === null || raw.coach?.id === undefined ? null : String(raw.coach.id),
+    coachPhotoUrl: raw.coach?.photo ?? null,
     colors: {
       primary: hex(raw.team.colors?.player?.primary),
       secondary: hex(raw.team.colors?.player?.number),
@@ -614,5 +623,46 @@ function mapTransfersCrudos(rows: ApiFootballTransfers[]): ProviderTransfer[] {
         },
       ];
     });
+  });
+}
+
+/**
+ * La ficha del entrenador y su carrera.
+ *
+ * El nombre completo se arma con `firstname` y `lastname` porque `name` llega abreviado —"L.
+ * Echteld"— y es lo que el buscador necesita para encontrar a alguien escribiendo su nombre de pila.
+ * Una etapa sin fecha de inicio no sirve para nada y se descarta.
+ */
+export function mapCoaches(rows: ApiFootballCoach[]): ProviderCoach[] {
+  return rows.flatMap((fila) => {
+    if (fila.id === null || fila.id === undefined || !fila.name) return [];
+    const completo = [fila.firstname, fila.lastname].filter(Boolean).join(' ').trim();
+
+    return [
+      {
+        providerRef: String(fila.id),
+        name: fila.name,
+        fullName: completo === '' || completo === fila.name ? null : completo,
+        birthDate: fila.birth?.date ?? null,
+        birthPlace: fila.birth?.place ?? null,
+        nationality: fila.nationality ?? null,
+        photoUrl: fila.photo ?? null,
+        etapas: (fila.career ?? []).flatMap((etapa) =>
+          etapa.start
+            ? [
+                {
+                  teamRef:
+                    etapa.team?.id === null || etapa.team?.id === undefined
+                      ? null
+                      : String(etapa.team.id),
+                  teamNombre: etapa.team?.name ?? null,
+                  desde: etapa.start,
+                  hasta: etapa.end ?? null,
+                },
+              ]
+            : [],
+        ),
+      },
+    ];
   });
 }

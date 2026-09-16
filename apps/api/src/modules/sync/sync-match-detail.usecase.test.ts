@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProviderLineup, ProviderMatchStatistics } from '@athena/domain';
 import type { PrismaService } from '../../shared/prisma.service.js';
+import type { CoachResolverService } from './coach-resolver.service.js';
 import type { ExternalReferenceService } from './external-reference.service.js';
 import { SyncMatchDetailUseCase } from './sync-match-detail.usecase.js';
 
@@ -21,8 +22,11 @@ function armar() {
     resolveMany: () => Promise.resolve(EQUIPOS),
   } as unknown as ExternalReferenceService;
   const provider = { name: 'api-football' } as never;
+  const entrenadores = {
+    resolveMany: () => Promise.resolve(new Map<string, string>()),
+  } as unknown as CoachResolverService;
 
-  return { uso: new SyncMatchDetailUseCase(prisma, refs, provider), upserts };
+  return { uso: new SyncMatchDetailUseCase(prisma, refs, entrenadores, provider), upserts };
 }
 
 const estadistica = (teamRef: string, possessionPercent: number | null): ProviderMatchStatistics =>

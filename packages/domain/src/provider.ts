@@ -141,6 +141,9 @@ export interface ProviderLineup {
   teamRef: string;
   formation: string | null;
   coachName: string | null;
+  /** El id del entrenador en el proveedor: es la identidad, el nombre es solo la etiqueta. */
+  coachRef: string | null;
+  coachPhotoUrl: string | null;
   /** Los colores de la camiseta, en hex sin almohadilla. El proveedor los manda acá y en ningún otro endpoint. */
   colors: { primary: string | null; secondary: string | null };
   startXi: ProviderLineupPlayer[];
@@ -334,4 +337,30 @@ export interface FootballDataProvider {
    * alguna vez pasó por ahí —284 en Alianza Lima—, así que se pide por equipo y se filtra acá.
    */
   getTransfers(teamRef: string): Promise<ProviderTransfer[]>;
+  /**
+   * Los entrenadores de un club, con su carrera entera.
+   *
+   * Se pide por equipo y no por entrenador: un solo pedido devuelve a los que dirigieron ahí con
+   * todas sus etapas, así que los 2.309 clubes con alineación cubren a todos sin buscarlos uno por
+   * uno. Sus fotos son gratis y quedan fuera de cuota.
+   */
+  getCoachesByTeam(teamRef: string): Promise<ProviderCoach[]>;
+}
+
+/** La ficha de un entrenador tal como la publica el proveedor. */
+export interface ProviderCoach {
+  providerRef: string;
+  name: string;
+  fullName: string | null;
+  birthDate: string | null;
+  birthPlace: string | null;
+  nationality: string | null;
+  photoUrl: string | null;
+  /** Su carrera, con las fechas del proveedor. `hasta` en null es la etapa en curso. */
+  etapas: Array<{
+    teamRef: string | null;
+    teamNombre: string | null;
+    desde: string;
+    hasta: string | null;
+  }>;
 }

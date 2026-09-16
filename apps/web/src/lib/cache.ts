@@ -24,6 +24,7 @@ const POLITICAS = {
   competencia: { navegador: 60, borde: 300, obsoleto: 600 },
   equipo: { navegador: 60, borde: 300, obsoleto: 600 },
   jugador: { navegador: 60, borde: 600, obsoleto: 1200 },
+  entrenador: { navegador: 60, borde: 600, obsoleto: 1200 },
   busqueda: { navegador: 0, borde: 300, obsoleto: 600 },
   partidoEnJuego: { navegador: 0, borde: 15, obsoleto: 30 },
   partidoProgramado: { navegador: 0, borde: 120, obsoleto: 240 },

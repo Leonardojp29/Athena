@@ -36,6 +36,7 @@ const GRUPOS = [
   { tipo: 'competition' as const, titulo: 'Competencias', singular: 'Competencia' },
   { tipo: 'team' as const, titulo: 'Equipos', singular: 'Equipo' },
   { tipo: 'player' as const, titulo: 'Jugadores', singular: 'Jugador' },
+  { tipo: 'coach' as const, titulo: 'Entrenadores', singular: 'Entrenador' },
 ];
 
 const conResultados = GRUPOS.map((grupo) => ({
@@ -48,6 +49,7 @@ const COLUMNAS: Record<number, string> = {
   1: 'lg:grid-cols-1',
   2: 'lg:grid-cols-2',
   3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
 };
 const columnas = COLUMNAS[conResultados.length] ?? 'lg:grid-cols-3';
 ---

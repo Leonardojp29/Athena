@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type {
+  ProviderCoach,
   FootballDataProvider,
   ProviderCompetition,
   ProviderLineup,
@@ -30,6 +31,7 @@ import type {
   ApiFootballSquad,
   ApiFootballStatistics,
   ApiFootballTeam,
+  ApiFootballCoach,
   ApiFootballTransfers,
   ApiFootballTrophy,
 } from './api-football.types.js';
@@ -46,6 +48,7 @@ import {
   mapStandings,
   mapStatistics,
   mapTeam,
+  mapCoaches,
   mapTransfers,
   mapTrophies,
 } from './mappers.js';
@@ -135,6 +138,11 @@ export class ApiFootballAdapter implements FootballDataProvider {
   async getTransfers(teamRef: string): Promise<ProviderTransfer[]> {
     const rows = await this.client.get<ApiFootballTransfers>('/transfers', { team: teamRef });
     return mapTransfers(rows);
+  }
+
+  async getCoachesByTeam(teamRef: string): Promise<ProviderCoach[]> {
+    const rows = await this.client.get<ApiFootballCoach>('/coachs', { team: teamRef });
+    return mapCoaches(rows);
   }
 
   async getMatches(

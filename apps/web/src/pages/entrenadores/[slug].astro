@@ -1,0 +1,171 @@
+---
+import Base from '../../layouts/Base.astro';
+import Container from '../../components/layout/Container.astro';
+import Icon from '../../components/Icon.astro';
+import Balance from '../../components/entrenador/Balance.astro';
+import Carrera from '../../components/entrenador/Carrera.astro';
+import PartidosDirigidos from '../../components/entrenador/PartidosDirigidos.astro';
+import { api, ApiError, type CoachView } from '../../lib/api';
+import { cachear } from '../../lib/cache';
+import { paisEnEspanol } from '../../lib/paises';
+import { absoluta, identidad, migas, nodoEquipo } from '../../lib/seo';
+
+const { slug } = Astro.params;
+
+let view: CoachView;
+try {
+  view = await api<CoachView>(`/views/coach/${slug}`);
+} catch (error) {
+  if (error instanceof ApiError && error.status === 404) {
+    /* El slug cambió cuando llegó el nombre completo: se redirige en lugar de decir que no existe. */
+    const mudado = error.body?.movedTo;
+    return mudado ? Astro.redirect(`/entrenadores/${mudado}`, 301) : Astro.rewrite('/404');
+  }
+  throw error;
+}
+
+cachear(Astro.response, 'entrenador');
+
+const { coach, etapas, actual, record, porEtapa, formaciones, partidos } = view;
+
+const ruta = `/entrenadores/${coach.slug}`;
+const url = absoluta(ruta, Astro.site);
+const nacionalidad = coach.nationality ? paisEnEspanol(coach.nationality) : null;
+const clubActual = actual?.teamSlug
+  ? { name: actual.teamName ?? actual.teamNombre ?? '', slug: actual.teamSlug, logoUrl: actual.teamLogo }
+  : null;
+
+const edad = coach.birthDate
+  ? Math.floor((Date.now() - new Date(coach.birthDate).getTime()) / (365.25 * 24 * 3600_000))
+  : null;
+
+const subtitulo = [
+  nacionalidad,
+  edad !== null ? `${edad} años` : null,
+  coach.birthPlace,
+  coach.fullName && coach.fullName !== coach.name ? coach.fullName : null,
+]
+  .filter(Boolean)
+  .join(' · ');
+
+/* La descripción tiene que distinguirlo del resto: el club de ahora y lo que hizo en el banco. */
+const descripcion = [
+  `${coach.name}, entrenador`,
+  nacionalidad ? ` de ${nacionalidad}` : '',
+  clubActual ? `, dirige a ${clubActual.name}` : '',
+  record ? `. ${record.dirigidos} partidos dirigidos, ${record.ganados} ganados.` : '.',
+  ' Su carrera, sus equipos y sus últimos partidos.',
+].join('');
+
+const jsonLd = [
+  {
+    '@type': 'Person',
+    '@id': identidad(url, 'entrenador'),
+    url,
+    name: coach.name,
+    jobTitle: 'Entrenador de fútbol',
+    ...(nacionalidad ? { nationality: { '@type': 'Country', name: nacionalidad } } : {}),
+    ...(coach.birthDate ? { birthDate: coach.birthDate.slice(0, 10) } : {}),
+    ...(coach.birthPlace ? { birthPlace: { '@type': 'Place', name: coach.birthPlace } } : {}),
+    ...(coach.photoUrl ? { image: coach.photoUrl } : {}),
+    ...(clubActual ? { worksFor: nodoEquipo(clubActual, Astro.site) } : {}),
+  },
+  migas(
+    clubActual
+      ? [
+          { nombre: clubActual.name, ruta: `/equipos/${clubActual.slug}` },
+          { nombre: coach.name, ruta },
+        ]
+      : [{ nombre: coach.name, ruta }],
+    Astro.site,
+    url,
+  ),
+];
+---
+
+<Base
+  title={`${coach.name}${clubActual ? ` — ${clubActual.name}` : ''} — Entrenador | Athena`}
+  description={descripcion}
+  canonical={url}
+  ogType="profile"
+  ogImage={coach.photoUrl}
+  jsonLd={jsonLd}
+  width="bleed"
+  liveBar={false}
+>
+  <section class="w-full border-b-[3px] border-b-primary bg-banda">
+    <Container width="content">
+      <div class="flex items-center gap-4 py-6">
+        {
+          coach.photoUrl && (
+            <img
+              src={coach.photoUrl}
+              alt={`Foto de ${coach.name}`}
+              width="64"
+              height="64"
+              fetchpriority="high"
+              class="size-16 rounded-full object-cover"
+            />
+          )
+        }
+        <div class="min-w-0">
+          <h1 class="font-display text-3xl font-semibold uppercase text-chalk sm:text-4xl">
+            {coach.name}
+          </h1>
+          {subtitulo && <p class="text-sm text-chalk-dim">{subtitulo}</p>}
+
+          {
+            clubActual && (
+              <a
+                href={`/equipos/${clubActual.slug}`}
+                class="mt-2 inline-flex items-center gap-1.5 rounded-full border border-chalk/20 bg-chalk/8 py-0.5 pl-0.5 pr-2.5 text-2xs font-medium text-chalk transition-colors hover:border-chalk/45 hover:bg-chalk/15"
+              >
+                {clubActual.logoUrl && (
+                  <span class="grid size-5 shrink-0 place-items-center rounded-full bg-chalk p-0.5">
+                    <img src={clubActual.logoUrl} alt="" width="16" height="16" class="size-full object-contain" />
+                  </span>
+                )}
+                <span class="truncate">{clubActual.name}</span>
+              </a>
+            )
+          }
+        </div>
+      </div>
+    </Container>
+  </section>
+
+  <Container width="content" class="pt-7 pb-6">
+    <div class="grid grid-cols-[minmax(0,1fr)] gap-4">
+      {record && <Balance record={record} />}
+
+      {
+        formaciones.length > 0 && (
+          <section class="rounded-lg border border-border bg-surface p-4">
+            <h2 class="mb-3 flex items-center gap-2 text-base font-semibold">
+              <Icon name="formacion" size={17} />
+              Sus dibujos
+            </h2>
+            <ul class="flex flex-wrap gap-2">
+              {formaciones.map((f) => (
+                <li class="rounded-md border border-border px-2.5 py-1.5">
+                  <span class="font-display text-base font-semibold tabular">{f.formacion}</span>
+                  <span class="ml-1.5 text-2xs text-ink-muted tabular">{f.veces} PJ</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <!--
+        Cada tarjeta mide lo suyo: la carrera de un entrenador de un solo club son tres líneas, y
+        estirarla al alto de los doce partidos de al lado deja medio metro de tarjeta vacía. El tope
+        sigue puesto para que la larga desplace por dentro en lugar de empujar la página.
+      -->
+      <div class="grid items-start gap-7 lg:grid-cols-2 lg:[&>*]:max-h-[34rem]">
+        <Carrera etapas={etapas} porEtapa={porEtapa} actual={actual} />
+        <PartidosDirigidos partidos={partidos} />
+      </div>
+    </div>
+  </Container>
+</Base>

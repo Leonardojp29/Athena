@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ApiFootballModule } from '../providers/api-football/api-football.module.js';
 import { CerrarPartidosUseCase } from './cerrar-partidos.usecase.js';
+import { CoachResolverService } from './coach-resolver.service.js';
 import { DomainEventPublisher } from './domain-event.publisher.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 import { MatchEventWriter } from './match-event.writer.js';
@@ -8,6 +9,7 @@ import { MatchSyncService } from './match-sync.service.js';
 import { OutboxService } from './outbox.service.js';
 import { PlayerResolverService } from './player-resolver.service.js';
 import { RecalcularColoresUseCase } from './recalcular-colores.usecase.js';
+import { SyncCoachesUseCase } from './sync-coaches.usecase.js';
 import { SyncCompetitionUseCase } from './sync-competition.usecase.js';
 import { SyncFixturesUseCase } from './sync-fixtures.usecase.js';
 import { SyncMarcadorUseCase } from './sync-marcador.usecase.js';
@@ -31,9 +33,11 @@ import { VenueService } from './venue.service.js';
     MatchSyncService,
     CerrarPartidosUseCase,
     OutboxService,
+    CoachResolverService,
     PlayerResolverService,
     RecalcularColoresUseCase,
     VenueService,
+    SyncCoachesUseCase,
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
     SyncFixturesUseCase,
@@ -49,11 +53,13 @@ import { VenueService } from './venue.service.js';
   ],
   exports: [
     ExternalReferenceService,
+    CoachResolverService,
     PlayerResolverService,
     OutboxService,
     MatchSyncService,
     CerrarPartidosUseCase,
     RecalcularColoresUseCase,
+    SyncCoachesUseCase,
     SyncCompetitionUseCase,
     SyncTeamsUseCase,
     SyncFixturesUseCase,

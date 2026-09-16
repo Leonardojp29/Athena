@@ -1554,7 +1554,7 @@ export class ViewsService {
    * 404 viaja con el slug nuevo y la página redirige en lugar de mandar a la de "no existe".
    */
   private async noEncontrado(
-    entityType: 'player' | 'team',
+    entityType: 'player' | 'team' | 'coach',
     slug: string,
     mensaje: string,
   ): Promise<NotFoundException> {
@@ -1564,10 +1564,13 @@ export class ViewsService {
     });
     if (!alias) return new NotFoundException(mensaje);
 
+    const porId = { where: { id: alias.entityId }, select: { slug: true } };
     const destino =
       entityType === 'player'
-        ? await this.prisma.player.findUnique({ where: { id: alias.entityId }, select: { slug: true } })
-        : await this.prisma.team.findUnique({ where: { id: alias.entityId }, select: { slug: true } });
+        ? await this.prisma.player.findUnique(porId)
+        : entityType === 'coach'
+          ? await this.prisma.coach.findUnique(porId)
+          : await this.prisma.team.findUnique(porId);
 
     return destino
       ? new NotFoundException({ message: mensaje, movedTo: destino.slug })
@@ -1727,6 +1730,7 @@ export class ViewsService {
             teamId: true,
             formation: true,
             coachName: true,
+            coach: { select: { name: true, slug: true } },
             startXi: true,
             substitutes: true,
             match: {
@@ -2004,11 +2008,14 @@ export class ViewsService {
         },
       }),
       this.prisma.matchLineup.findMany({
+        relationLoadStrategy: JOIN,
         where: { matchId: id },
         select: {
           teamId: true,
           formation: true,
           coachName: true,
+          /* El nombre suelto sigue ahí: es lo único que hay cuando el proveedor no mandó el id. */
+          coach: { select: { name: true, slug: true } },
           startXi: true,
           substitutes: true,
         },
@@ -2246,6 +2253,135 @@ export class ViewsService {
   }
 
   /**
+   * La ficha de un entrenador: quién es, dónde estuvo y qué le pasó en el banco.
+   *
+   * El récord se calcula en SQL y no trayendo partidos a memoria: un DT con veinte años de carrera
+   * son miles de filas para devolver seis números.
+   */
+  async coach(slug: string) {
+    const [coach, etapas] = await Promise.all([
+      this.prisma.coach.findUnique({
+        where: { slug },
+        select: {
+          id: true,
+          name: true,
+          fullName: true,
+          slug: true,
+          birthDate: true,
+          birthPlace: true,
+          nationality: true,
+          photoUrl: true,
+        },
+      }),
+      /*
+       * La carrera entera, con el club de Athena cuando lo tenemos y el nombre del proveedor
+       * cuando no: un entrenador dirigió en ligas que no cubrimos y su ficha tiene que decirlo.
+       */
+      this.prisma.$queryRaw<EtapaDeEntrenador[]>`
+        SELECT s.id::text AS id, s.desde, s.hasta, s.team_nombre AS "teamNombre",
+               t.name AS "teamName", t.slug AS "teamSlug", t.logo_url AS "teamLogo"
+        FROM coach_spells s
+        JOIN coaches c ON c.id = s.coach_id
+        LEFT JOIN teams t ON t.id = s.team_id
+        WHERE c.slug = ${slug}
+        ORDER BY s.desde DESC`,
+    ]);
+    if (!coach) throw await this.noEncontrado('coach', slug, 'Entrenador no encontrado');
+
+    const [total, porEtapa, formaciones, partidos] = await Promise.all([
+      this.prisma.$queryRaw<RecordDeEntrenador[]>`
+        WITH dirigidos AS (
+          SELECT CASE WHEN l.team_id = m.home_team_id THEN m.home_score ELSE m.away_score END AS propios,
+                 CASE WHEN l.team_id = m.home_team_id THEN m.away_score ELSE m.home_score END AS ajenos
+          FROM match_lineups l
+          JOIN matches m ON m.id = l.match_id
+          WHERE l.coach_id = ${coach.id}::uuid
+            AND m.status = 'finished'
+            AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL
+        )
+        SELECT count(*)::int AS dirigidos,
+               count(*) FILTER (WHERE propios > ajenos)::int AS ganados,
+               count(*) FILTER (WHERE propios = ajenos)::int AS empatados,
+               count(*) FILTER (WHERE propios < ajenos)::int AS perdidos,
+               coalesce(sum(propios), 0)::int AS "golesAFavor",
+               coalesce(sum(ajenos), 0)::int AS "golesEnContra"
+        FROM dirigidos`,
+      /*
+       * El balance va por etapa y no por club, porque un club se repite: Mourinho dirigió al Real
+       * Madrid entre 2010 y 2013 y otra vez desde 2026, y agrupar por equipo le colgaba los siete
+       * partidos de ahora también a la etapa de hace quince años. La ventana de fechas es lo único
+       * que las separa.
+       */
+      this.prisma.$queryRaw<Array<RecordDeEntrenador & { etapa: string }>>`
+        WITH dirigidos AS (
+          SELECT s.id AS etapa,
+                 CASE WHEN l.team_id = m.home_team_id THEN m.home_score ELSE m.away_score END AS propios,
+                 CASE WHEN l.team_id = m.home_team_id THEN m.away_score ELSE m.home_score END AS ajenos
+          FROM coach_spells s
+          JOIN match_lineups l ON l.coach_id = s.coach_id AND l.team_id = s.team_id
+          JOIN matches m
+            ON m.id = l.match_id
+           AND (m.kickoff_utc AT TIME ZONE 'UTC')::date >= s.desde
+           AND (s.hasta IS NULL OR (m.kickoff_utc AT TIME ZONE 'UTC')::date <= s.hasta)
+          WHERE s.coach_id = ${coach.id}::uuid
+            AND m.status = 'finished'
+            AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL
+        )
+        SELECT etapa::text AS etapa,
+               count(*)::int AS dirigidos,
+               count(*) FILTER (WHERE propios > ajenos)::int AS ganados,
+               count(*) FILTER (WHERE propios = ajenos)::int AS empatados,
+               count(*) FILTER (WHERE propios < ajenos)::int AS perdidos,
+               sum(propios)::int AS "golesAFavor",
+               sum(ajenos)::int AS "golesEnContra"
+        FROM dirigidos
+        GROUP BY etapa`,
+      this.prisma.$queryRaw<Array<{ formacion: string; veces: number }>>`
+        SELECT l.formation AS formacion, count(*)::int AS veces
+        FROM match_lineups l
+        WHERE l.coach_id = ${coach.id}::uuid AND l.formation IS NOT NULL
+        GROUP BY l.formation
+        ORDER BY veces DESC
+        LIMIT 5`,
+      this.prisma.$queryRaw<PartidoDirigido[]>`
+        SELECT m.id, m.kickoff_utc AS "kickoffUtc", m.status,
+               m.home_score AS "homeScore", m.away_score AS "awayScore",
+               l.formation, l.team_id = m.home_team_id AS local,
+               h.name AS "homeName", h.short_name AS "homeShort", h.slug AS "homeSlug",
+               h.logo_url AS "homeLogo",
+               a.name AS "awayName", a.short_name AS "awayShort", a.slug AS "awaySlug",
+               a.logo_url AS "awayLogo",
+               comp.name AS "competitionName", comp.slug AS "competitionSlug"
+        FROM match_lineups l
+        JOIN matches m ON m.id = l.match_id
+        JOIN teams h ON h.id = m.home_team_id
+        JOIN teams a ON a.id = m.away_team_id
+        JOIN seasons se ON se.id = m.season_id
+        JOIN competitions comp ON comp.id = se.competition_id
+        WHERE l.coach_id = ${coach.id}::uuid
+        ORDER BY m.kickoff_utc DESC
+        LIMIT 12`,
+    ]);
+
+    const record = total[0] ?? null;
+
+    return {
+      coach,
+      etapas,
+      /*
+       * El club de ahora es la etapa sin cierre. Puede haber más de una: el proveedor deja abierta
+       * la del club anterior cuando no se enteró de la salida, y `etapas` viene de la más reciente
+       * a la más vieja, así que la primera abierta es la que vale.
+       */
+      actual: etapas.find((etapa) => etapa.hasta === null) ?? null,
+      record: record && record.dirigidos > 0 ? record : null,
+      porEtapa,
+      formaciones,
+      partidos,
+    };
+  }
+
+  /**
    * Lo que va al sitemap, por tipo y paginado.
    *
    * Criterio, no catálogo: de 4.732 equipos solo 1.023 tienen tabla de posiciones y de 46.350
@@ -2287,6 +2423,18 @@ export class ViewsService {
         take: TAMANO,
       });
       return filas.map((f) => ({ ruta: `/jugadores/${f.slug}`, lastmod: f.updatedAt }));
+    }
+
+    if (tipo === 'entrenadores') {
+      /* Los que dirigieron algo: una ficha sin un solo partido no tiene qué decirle al buscador. */
+      const filas = await this.prisma.coach.findMany({
+        where: { alineaciones: { some: {} } },
+        select: { slug: true, updatedAt: true },
+        orderBy: { slug: 'asc' },
+        skip: saltar,
+        take: TAMANO,
+      });
+      return filas.map((f) => ({ ruta: `/entrenadores/${f.slug}`, lastmod: f.updatedAt }));
     }
 
     if (tipo === 'partidos') {
@@ -2527,6 +2675,45 @@ export interface FilaOnce {
 export interface OnceDeLaFecha {
   round: string | null;
   players: FilaOnce[];
+}
+
+export interface EtapaDeEntrenador {
+  id: string;
+  desde: Date;
+  hasta: Date | null;
+  teamNombre: string | null;
+  teamName: string | null;
+  teamSlug: string | null;
+  teamLogo: string | null;
+}
+
+export interface RecordDeEntrenador {
+  dirigidos: number;
+  ganados: number;
+  empatados: number;
+  perdidos: number;
+  golesAFavor: number;
+  golesEnContra: number;
+}
+
+export interface PartidoDirigido {
+  id: string;
+  kickoffUtc: Date;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  formation: string | null;
+  local: boolean;
+  homeName: string;
+  homeShort: string | null;
+  homeSlug: string;
+  homeLogo: string | null;
+  awayName: string;
+  awayShort: string | null;
+  awaySlug: string;
+  awayLogo: string | null;
+  competitionName: string;
+  competitionSlug: string;
 }
 
 export interface TeamOfPlayer {

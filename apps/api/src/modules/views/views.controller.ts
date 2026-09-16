@@ -16,6 +16,7 @@ const TTL = {
   competition: 300,
   team: 300,
   player: 600,
+  coach: 600,
   matchEnJuego: 15,
   matchProgramado: 120,
   matchTerminado: 3600,
@@ -133,6 +134,12 @@ export class ViewsController {
   @Header('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200')
   player(@Param('slug') slug: string) {
     return this.cache.wrap(`player:${slug}`, TTL.player, () => this.views.player(slug));
+  }
+
+  @Get('coach/:slug')
+  @Header('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=1200')
+  coach(@Param('slug') slug: string) {
+    return this.cache.wrap(`coach:${slug}`, TTL.coach, () => this.views.coach(slug));
   }
 
   /*

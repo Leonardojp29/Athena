@@ -100,10 +100,25 @@ const apiUrl = API_URL;
     const ESPERA_MS = 120;
     const RECIENTES_MAX = 6;
     const CLAVE_RECIENTES = 'athena:busquedas';
-    const RUTA = { team: '/equipos', player: '/jugadores', competition: '/competencias' };
-    const GRUPO = { team: 'Equipos', player: 'Jugadores', competition: 'Competencias' };
-    const TIPO = { team: 'Equipo', player: 'Jugador', competition: 'Competencia' };
-    const ORDEN = ['competition', 'team', 'player'];
+    const RUTA = {
+      team: '/equipos',
+      player: '/jugadores',
+      competition: '/competencias',
+      coach: '/entrenadores',
+    };
+    const GRUPO = {
+      team: 'Equipos',
+      player: 'Jugadores',
+      competition: 'Competencias',
+      coach: 'Entrenadores',
+    };
+    const TIPO = {
+      team: 'Equipo',
+      player: 'Jugador',
+      competition: 'Competencia',
+      coach: 'Entrenador',
+    };
+    const ORDEN = ['competition', 'team', 'player', 'coach'];
 
     /* Lo que ya se resolvió no se vuelve a preguntar: borrar una letra tiene que ser gratis. */
     const cache = new Map();

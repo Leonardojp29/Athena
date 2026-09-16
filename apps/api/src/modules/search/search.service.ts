@@ -64,10 +64,23 @@ const FUENTES: readonly Fuente[] = [
     peso: 0,
     relevancia: false,
   },
+  /*
+   * El entrenador lleva relevancia porque comparte apellido con sus propios jugadores: "Zidane" y
+   * "Simeone" son las dos cosas a la vez, y sin el conteo de partidos dirigidos el desempate lo
+   * decidiría el azar del trigrama.
+   */
+  {
+    tipo: 'coach',
+    tabla: 'coaches',
+    imagen: 'photo_url',
+    subtitulo: 'nationality',
+    peso: 0,
+    relevancia: true,
+  },
 ];
 
 export interface SearchHit {
-  type: 'team' | 'player' | 'competition';
+  type: 'team' | 'player' | 'competition' | 'coach';
   id: string;
   name: string;
   slug: string;

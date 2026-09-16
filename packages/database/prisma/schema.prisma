@@ -149,6 +149,7 @@ model Team {
   squadMemberships       SquadMembership[]
   altas                  Transfer[]               @relation("fichaje_entra")
   bajas                  Transfer[]               @relation("fichaje_sale")
+  etapasDeEntrenador     CoachSpell[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -195,6 +196,56 @@ model Player {
 
   @@index([name])
   @@map("players")
+}
+
+/// Un entrenador. La identidad es el id del proveedor, que ya viaja en cada alineación; el nombre
+/// es solo la etiqueta y llega abreviado la mitad de las veces ("F. Navarro").
+model Coach {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  fullName    String?   @map("full_name")
+  slug        String    @unique
+  birthDate   DateTime? @map("birth_date") @db.Date
+  birthPlace  String?   @map("birth_place")
+  nationality String?
+  photoUrl    String?   @map("photo_url")
+
+  /// Igual que en Player: lo que hace que "guardiola" traiga a Pep y no a un homónimo del ascenso.
+  relevancia Int @default(0)
+
+  etapas      CoachSpell[]
+  alineaciones MatchLineup[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("coaches")
+}
+
+/// Una etapa del entrenador en un club, con las fechas que publica el proveedor.
+/// No se deducen de los partidos que tenemos: un DT dirigió antes de que existiera nuestra base.
+model CoachSpell {
+  id      BigInt @id @default(autoincrement())
+  coach   Coach  @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  coachId String @map("coach_id") @db.Uuid
+
+  /// Null cuando el club no está en nuestra base; el nombre del proveedor queda como respaldo.
+  team       Team?   @relation(fields: [teamId], references: [id])
+  teamId     String? @map("team_id") @db.Uuid
+  teamNombre String? @map("team_nombre")
+
+  /// El proveedor nunca manda hora. `hasta` en null es la etapa en curso.
+  desde DateTime  @map("desde") @db.Date
+  hasta DateTime? @map("hasta") @db.Date
+
+  actualizadoEn DateTime @default(now()) @updatedAt @map("actualizado_en") @db.Timestamptz(3)
+
+  /// Una etapa no se puede cargar dos veces aunque el club llegue por dos caminos.
+  @@unique([coachId, teamNombre, desde], map: "etapa_unica")
+  @@index([teamId, desde(sort: Desc)])
+  @@index([coachId, desde(sort: Desc)])
+  @@map("coach_spells")
 }
 
 /// Rendimiento de un jugador en un partido: solo las columnas que la ficha muestra
@@ -391,7 +442,11 @@ model MatchLineup {
   team           Team     @relation(fields: [teamId], references: [id])
   teamId         String   @map("team_id") @db.Uuid
   formation      String?
+  /// El nombre se queda aunque haya `coach`: es el respaldo cuando el proveedor no manda id, y una
+  /// pregunta de 60 Segundos lo verifica contra este campo.
   coachName      String?  @map("coach_name")
+  coach          Coach?   @relation(fields: [coachId], references: [id])
+  coachId        String?  @map("coach_id") @db.Uuid
   startXi        Json     @map("start_xi")
   substitutes    Json
   /// La camiseta de ese partido: de la moda de los partidos de local sale el color del club.
@@ -401,6 +456,8 @@ model MatchLineup {
 
   @@unique([matchId, teamId])
   @@index([teamId, kitColor])
+  /// La vista del entrenador pregunta justo esto: sus partidos, del más nuevo al más viejo.
+  @@index([coachId])
   @@map("match_lineups")
 }
 

@@ -1,0 +1,82 @@
+---
+import type { CoachView } from '../../lib/api';
+import { formatDate } from '../../lib/format';
+import { enlaceDePartido } from '../../lib/partido';
+
+/* Los últimos partidos que dirigió, con el resultado desde su lado del banco. */
+interface Props {
+  partidos: CoachView['partidos'];
+}
+
+const { partidos } = Astro.props;
+
+const RESULTADO: Record<string, { letra: string; clase: string; titulo: string }> = {
+  ganado: { letra: 'V', clase: 'bg-win text-win-contrast', titulo: 'Victoria' },
+  empatado: { letra: 'E', clase: 'bg-border-strong text-ink', titulo: 'Empate' },
+  perdido: { letra: 'D', clase: 'bg-card-red/85 text-chalk', titulo: 'Derrota' },
+};
+
+function comoLeSalio(partido: CoachView['partidos'][number]): string | null {
+  if (partido.homeScore === null || partido.awayScore === null) return null;
+  const propios = partido.local ? partido.homeScore : partido.awayScore;
+  const ajenos = partido.local ? partido.awayScore : partido.homeScore;
+  if (propios > ajenos) return 'ganado';
+  return propios === ajenos ? 'empatado' : 'perdido';
+}
+---
+
+{
+  partidos.length > 0 && (
+    <section class="flex flex-col rounded-lg border border-border bg-surface p-4">
+      <h2 class="mb-3 shrink-0 text-base font-semibold">Últimos partidos</h2>
+
+      <ul class="min-h-0 flex-1 divide-y divide-border/50 overflow-y-auto pr-1">
+        {partidos.map((partido) => {
+          const resultado = comoLeSalio(partido);
+          const marca = resultado ? RESULTADO[resultado] : null;
+          return (
+            <li>
+              <a
+                href={enlaceDePartido({
+                  kickoffUtc: partido.kickoffUtc,
+                  homeTeam: { slug: partido.homeSlug },
+                  awayTeam: { slug: partido.awaySlug },
+                })}
+                class="-mx-1.5 flex items-center gap-3 rounded-md px-1.5 py-2 transition-colors hover:bg-canvas-subtle"
+              >
+                <span class="min-w-0 flex-1">
+                  <span class="flex items-center gap-1.5 text-sm">
+                    {partido.homeLogo && (
+                      <img src={partido.homeLogo} alt="" width="14" height="14" loading="lazy" class="shrink-0" />
+                    )}
+                    <span class="truncate">{partido.homeShort ?? partido.homeName}</span>
+                    <span class="shrink-0 tabular font-medium">
+                      {partido.homeScore ?? '–'}–{partido.awayScore ?? '–'}
+                    </span>
+                    <span class="truncate">{partido.awayShort ?? partido.awayName}</span>
+                    {partido.awayLogo && (
+                      <img src={partido.awayLogo} alt="" width="14" height="14" loading="lazy" class="shrink-0" />
+                    )}
+                  </span>
+                  <span class="block text-2xs text-ink-muted">
+                    {formatDate(partido.kickoffUtc)} · {partido.competitionName}
+                    {partido.formation && ` · ${partido.formation}`}
+                  </span>
+                </span>
+
+                {marca && (
+                  <span
+                    class:list={['grid size-5 shrink-0 place-items-center rounded text-2xs font-semibold', marca.clase]}
+                    title={marca.titulo}
+                  >
+                    {marca.letra}
+                  </span>
+                )}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  )
+}

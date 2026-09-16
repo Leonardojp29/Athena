@@ -8,6 +8,7 @@ import type {
 } from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
+import { CoachResolverService } from './coach-resolver.service.js';
 import { ExternalReferenceService } from './external-reference.service.js';
 
 export interface LineupPlayerLink {
@@ -23,6 +24,7 @@ export class SyncMatchDetailUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly refs: ExternalReferenceService,
+    private readonly entrenadores: CoachResolverService,
     @Inject(FOOTBALL_DATA_PROVIDER) private readonly provider: FootballDataProvider,
   ) {}
 
@@ -109,6 +111,7 @@ export class SyncMatchDetailUseCase {
   /** Cuenta solo las alineaciones dibujables: once titulares y una formación que los ordene. */
   async escribirAlineaciones(matchId: string, lineups: ProviderLineup[]): Promise<number> {
     const teams = await this.equiposDe(lineups);
+    const coaches = await this.entrenadoresDe(lineups);
 
     let escritas = 0;
     for (const lineup of lineups) {
@@ -117,6 +120,7 @@ export class SyncMatchDetailUseCase {
       const data = {
         formation: lineup.formation,
         coachName: lineup.coachName,
+        coachId: (lineup.coachRef && coaches.get(lineup.coachRef)) || null,
         /* La camiseta de este partido: de la moda de los partidos de local sale el color del club. */
         kitColor: lineup.colors.primary,
         kitNumberColor: lineup.colors.secondary,
@@ -133,6 +137,29 @@ export class SyncMatchDetailUseCase {
       if (lineup.formation !== null && lineup.startXi.length >= 11) escritas++;
     }
     return escritas;
+  }
+
+  /**
+   * El entrenador de cada alineación, creado si hace falta.
+   *
+   * La alineación trae `{id, name, photo}` y con eso alcanza para que la persona exista y el
+   * partido pueda colgarse de ella. La ficha entera —nacimiento, carrera— la completa después la
+   * tarea semanal, que es la única que cuesta un pedido al proveedor.
+   */
+  private entrenadoresDe(lineups: ProviderLineup[]): Promise<Map<string, string>> {
+    return this.entrenadores.resolveMany(
+      lineups.flatMap((lineup) =>
+        lineup.coachRef && lineup.coachName
+          ? [
+              {
+                providerRef: lineup.coachRef,
+                name: lineup.coachName,
+                photoUrl: lineup.coachPhotoUrl,
+              },
+            ]
+          : [],
+      ),
+    );
   }
 
   private equiposDe(items: Array<{ teamRef: string }>): Promise<Map<string, string>> {

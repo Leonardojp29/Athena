@@ -45,7 +45,8 @@ describe('SearchService', () => {
   it('con una o dos letras busca solo por prefijo', async () => {
     const { service, consultas } = servicio({});
     await service.suggest('u');
-    expect(consultas).toHaveLength(3);
+    /* Una consulta por fuente: competencias, equipos, jugadores y entrenadores. */
+    expect(consultas).toHaveLength(4);
     for (const { sql } of consultas) {
       expect(sql).toContain("LIKE c.q || '%'");
       expect(sql).not.toContain('% c.q');

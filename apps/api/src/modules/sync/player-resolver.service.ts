@@ -1,5 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { slugify, type FootballDataProvider, type ProviderPlayer } from '@athena/domain';
+import {
+  esNombreAbreviado,
+  esSlugAbreviado,
+  slugify,
+  type FootballDataProvider,
+  type ProviderPlayer,
+} from '@athena/domain';
 import { PrismaService } from '../../shared/prisma.service.js';
 import { FOOTBALL_DATA_PROVIDER } from '../providers/provider.tokens.js';
 import { bulkUpdatePlayers } from './bulk-upsert.js';
@@ -22,12 +28,6 @@ function esChoqueDeUnicidad(error: unknown): boolean {
   );
 }
 
-/** "J. Mosqueira", "Á. Di María": inicial con punto, que es como vienen las alineaciones. */
-const ABREVIADO = /(?:^|\s)\p{L}\.(?:\s|$)/u;
-
-/** "j-alarcon": el slug que dejó una alineación, con la inicial por delante. */
-const SLUG_ABREVIADO = /^\p{L}-/u;
-
 /**
  * Si el slug guardado hay que corregirlo con el nombre que acaba de llegar.
  *
@@ -35,7 +35,7 @@ const SLUG_ABREVIADO = /^\p{L}-/u;
  * URL y se cambia por una razón concreta, no porque el proveedor haya escrito distinto un acento.
  */
 export function slugDesactualizado(slug: string, nombre: string): boolean {
-  return SLUG_ABREVIADO.test(slug) && !ABREVIADO.test(nombre);
+  return esSlugAbreviado(slug) && !esNombreAbreviado(nombre);
 }
 
 /**
@@ -44,7 +44,7 @@ export function slugDesactualizado(slug: string, nombre: string): boolean {
  */
 export function mejorNombre(actual: string, entrante: string): string {
   if (entrante === actual) return actual;
-  if (ABREVIADO.test(entrante) && !ABREVIADO.test(actual)) return actual;
+  if (esNombreAbreviado(entrante) && !esNombreAbreviado(actual)) return actual;
   return entrante;
 }
 

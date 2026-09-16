@@ -137,14 +137,23 @@ const lados = [homeTeam, awayTeam]
           >
             {team.logoUrl && <img src={team.logoUrl} alt="" width="16" height="16" loading="lazy" />}
             <h3 class="truncate text-2xs font-semibold uppercase tracking-label">El banco</h3>
-            {lineup.coachName && (
-              <span
-                class:list={['truncate text-2xs', !paleta && 'text-ink-muted']}
-                style={paleta ? `color:${paleta.tintaSuave}` : undefined}
-              >
-                DT {lineup.coachName}
-              </span>
-            )}
+            {(lineup.coach ?? lineup.coachName) &&
+              (lineup.coach ? (
+                <a
+                  href={`/entrenadores/${lineup.coach.slug}`}
+                  class:list={['truncate text-2xs underline-offset-2 hover:underline', !paleta && 'text-ink-muted']}
+                  style={paleta ? `color:${paleta.tintaSuave}` : undefined}
+                >
+                  DT {lineup.coach.name}
+                </a>
+              ) : (
+                <span
+                  class:list={['truncate text-2xs', !paleta && 'text-ink-muted']}
+                  style={paleta ? `color:${paleta.tintaSuave}` : undefined}
+                >
+                  DT {lineup.coachName}
+                </span>
+              ))}
             <span
               class:list={['ml-auto shrink-0 text-2xs', !paleta && 'text-ink-muted']}
               style={paleta ? `color:${paleta.tintaSuave}` : undefined}

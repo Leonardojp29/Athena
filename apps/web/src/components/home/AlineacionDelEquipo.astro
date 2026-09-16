@@ -74,7 +74,7 @@ const ficha = (nota: MatchPlayerStats): string =>
 const apellido = (nombre: string) => nombre.split(' ').at(-1) ?? nombre;
 
 const paneles = enOrden.map((alineacion) => {
-  const { match, formation, coachName, startXi, substitutes, substitutions, stats } = alineacion;
+  const { match, formation, coach, coachName, startXi, substitutes, substitutions, stats } = alineacion;
 
   const rival = match.homeTeam.id === equipo.id ? match.awayTeam : match.homeTeam;
   const deLocal = match.homeTeam.id === equipo.id;
@@ -125,7 +125,7 @@ const paneles = enOrden.map((alineacion) => {
     })
     .sort((a, b) => (a.cambio?.minute ?? 999) - (b.cambio?.minute ?? 999));
 
-  return { match, formation, coachName, rival, deLocal, golesPropios, golesRival, resultado, jugadores, banco };
+  return { match, formation, coach, coachName, rival, deLocal, golesPropios, golesRival, resultado, jugadores, banco };
 });
 ---
 
@@ -297,7 +297,19 @@ const paneles = enOrden.map((alineacion) => {
         )}
 
         <p class="border-t border-border px-3 py-2 text-[11px] leading-snug text-ink-muted">
-          {panel.coachName ? `Dirigió ${panel.coachName}. ` : ''}Toca un jugador para ver su partido.
+          {panel.coach ? (
+            <>
+              Dirigió{' '}
+              <a href={`/entrenadores/${panel.coach.slug}`} class="underline-offset-2 hover:text-ink hover:underline">
+                {panel.coach.name}
+              </a>
+              .{' '}
+            </>
+          ) : panel.coachName ? (
+            `Dirigió ${panel.coachName}. `
+          ) : (
+            ''
+          )}Toca un jugador para ver su partido.
         </p>
       </div>
     ))

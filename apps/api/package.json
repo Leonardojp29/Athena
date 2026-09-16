@@ -17,6 +17,7 @@
     "auditar:impostor": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/auditar-retos-impostor.js",
     "importar:impostor": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/importar-retos-impostor.js",
     "backfill:fichajes": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/backfill-fichajes.js",
+    "backfill:entrenadores": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/backfill-entrenadores.js",
     "calentar:vistas": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/calentar-vistas.js",
     "cerrar:pendientes": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/cerrar-pendientes.js",
     "drenar:cola": "node --env-file-if-exists=.env --env-file-if-exists=.env.local dist/scripts/drenar-cola.js",

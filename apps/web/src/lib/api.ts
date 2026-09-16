@@ -469,6 +469,7 @@ export interface UltimaAlineacion {
   match: MatchCard;
   formation: string | null;
   coachName: string | null;
+  coach: { name: string; slug: string } | null;
   startXi: LineupPlayer[];
   substitutes: LineupPlayer[];
   substitutions: Cambio[];
@@ -747,6 +748,8 @@ export interface TeamLineup {
   teamId: string;
   formation: string | null;
   coachName: string | null;
+  /** La persona, cuando el proveedor mandó su id; si no, solo queda `coachName` escrito. */
+  coach: { name: string; slug: string } | null;
   startXi: LineupPlayer[];
   substitutes: LineupPlayer[];
 }
@@ -786,7 +789,7 @@ export const STAT_ROWS: Array<{ key: keyof TeamStatistics; label: string; isPerc
 ];
 
 export interface SearchHit {
-  type: 'team' | 'player' | 'competition';
+  type: 'team' | 'player' | 'competition' | 'coach';
   id: string;
   name: string;
   slug: string;
@@ -875,10 +878,69 @@ export interface PlayerView {
   fichajes: Fichaje[];
 }
 
+export interface EtapaDeEntrenador {
+  id: string;
+  desde: string;
+  hasta: string | null;
+  /** El nombre que manda el proveedor: es lo único que hay cuando el club no está en Athena. */
+  teamNombre: string | null;
+  teamName: string | null;
+  teamSlug: string | null;
+  teamLogo: string | null;
+}
+
+export interface RecordDeEntrenador {
+  dirigidos: number;
+  ganados: number;
+  empatados: number;
+  perdidos: number;
+  golesAFavor: number;
+  golesEnContra: number;
+}
+
+export interface CoachView {
+  coach: {
+    id: string;
+    name: string;
+    fullName: string | null;
+    slug: string;
+    birthDate: string | null;
+    birthPlace: string | null;
+    nationality: string | null;
+    photoUrl: string | null;
+  };
+  etapas: EtapaDeEntrenador[];
+  actual: EtapaDeEntrenador | null;
+  record: RecordDeEntrenador | null;
+  /** El balance de cada etapa, por su id: un club puede repetirse y las fechas son lo que las separa. */
+  porEtapa: Array<RecordDeEntrenador & { etapa: string }>;
+  formaciones: Array<{ formacion: string; veces: number }>;
+  partidos: Array<{
+    id: string;
+    kickoffUtc: string;
+    status: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    formation: string | null;
+    local: boolean;
+    homeName: string;
+    homeShort: string | null;
+    homeSlug: string;
+    homeLogo: string | null;
+    awayName: string;
+    awayShort: string | null;
+    awaySlug: string;
+    awayLogo: string | null;
+    competitionName: string;
+    competitionSlug: string;
+  }>;
+}
+
 export const PATH_BY_TYPE: Record<SearchHit['type'], string> = {
   team: '/equipos',
   player: '/jugadores',
   competition: '/competencias',
+  coach: '/entrenadores',
 };
 
 export const POSITION_LABEL: Record<string, string> = {

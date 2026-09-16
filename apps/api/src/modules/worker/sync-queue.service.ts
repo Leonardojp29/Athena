@@ -16,6 +16,7 @@ import { OutboxService } from '../sync/outbox.service.js';
 import { CerrarPartidosUseCase } from '../sync/cerrar-partidos.usecase.js';
 import { ANTIGUEDAD_MAXIMA_MS } from '../sync/cierre-politica.js';
 import { MatchSyncService } from '../sync/match-sync.service.js';
+import { SyncCoachesUseCase } from '../sync/sync-coaches.usecase.js';
 import { SyncCompetitionUseCase } from '../sync/sync-competition.usecase.js';
 import { SyncFixturesUseCase } from '../sync/sync-fixtures.usecase.js';
 import { SyncMarcadorUseCase } from '../sync/sync-marcador.usecase.js';
@@ -68,6 +69,7 @@ type SyncJob =
   | { name: 'match-detail'; data: { matchRef: string } }
   | { name: 'match-players'; data: { matchRef: string } }
   | { name: 'squad'; data: { teamRef: string } }
+  | { name: 'coaches'; data: { teamRef: string } }
   | { name: 'match-insight'; data: { matchId: string } }
   | { name: 'match-preview'; data: { matchId: string } }
   | { name: 'embeddings'; data: { entityType: 'team' | 'player' } }
@@ -96,6 +98,7 @@ export class SyncQueueService {
     private readonly matchSync: MatchSyncService,
     private readonly syncMatchPlayers: SyncMatchPlayersUseCase,
     private readonly syncSquad: SyncSquadUseCase,
+    private readonly syncCoaches: SyncCoachesUseCase,
     private readonly colores: RecalcularColoresUseCase,
     private readonly matchInsight: GenerateMatchInsightUseCase,
     private readonly embeddings: SyncEmbeddingsUseCase,
@@ -305,6 +308,8 @@ export class SyncQueueService {
         return this.syncMatchPlayers.execute(job.data.matchRef);
       case 'squad':
         return this.syncSquad.execute(job.data.teamRef);
+      case 'coaches':
+        return this.syncCoaches.execute(job.data.teamRef);
       case 'calentar-vistas':
         return this.calentarVistas.ejecutar(job.data.vistas);
       case 'colores':
@@ -518,6 +523,42 @@ export class SyncQueueService {
       FROM conteo
       WHERE t.id = conteo.equipo_id AND t.relevancia IS DISTINCT FROM conteo.partidos
     `;
+    await this.prisma.$executeRaw`
+      WITH conteo AS (
+        SELECT coach_id, count(*)::int AS dirigidos
+        FROM match_lineups
+        WHERE coach_id IS NOT NULL
+        GROUP BY coach_id
+      )
+      UPDATE coaches c
+      SET relevancia = conteo.dirigidos
+      FROM conteo
+      WHERE c.id = conteo.coach_id AND c.relevancia IS DISTINCT FROM conteo.dirigidos
+    `;
+  }
+
+  /**
+   * Los entrenadores de los clubes que jugaron esta semana, una vez por semana.
+   *
+   * Cada partido ya deja al DT enlazado sin costo, así que esto no existe para descubrirlos: existe
+   * para completarles la ficha —nacimiento, nacionalidad, carrera— y para enterarse de que uno se
+   * fue. Son unos novecientos sesenta clubes, novecientos sesenta pedidos a la semana contra los
+   * ciento cincuenta mil por día del plan, y ni una sola invocación nueva: la cola vive en Postgres
+   * y la drena el tic que ya corre.
+   */
+  private async encolarEntrenadores(): Promise<void> {
+    const clubes = await this.prisma.$queryRaw<Array<{ ref: string }>>`
+      SELECT DISTINCT r.provider_ref AS ref
+      FROM matches m
+      JOIN external_references r
+        ON r.provider = 'api-football'
+       AND r.entity_type = 'team'
+       AND r.entity_id IN (m.home_team_id, m.away_team_id)
+      WHERE m.kickoff_utc > now() - interval '7 days'
+    `;
+    for (const { ref } of clubes) {
+      await this.enqueue('coaches', { teamRef: ref }, { priority: 9 });
+    }
   }
 
   private async dailyRefresh(): Promise<void> {
@@ -526,6 +567,8 @@ export class SyncQueueService {
     /* Del detalle de los terminados se ocupa el barrido de cada tic: acá solo se limpia lo viejo. */
     await this.matchSync.podar();
     await this.cache.podar();
+    await this.syncCoaches.atarPendientes();
+    await this.syncCoaches.mejorarNombres();
     await this.refrescarRelevancia();
 
     for (const { providerRef } of CONFIGURED_COMPETITIONS) {
@@ -590,6 +633,7 @@ export class SyncQueueService {
     if (new Date().getUTCDay() === 1) {
       await this.enqueue('colores', {});
       await this.enqueue('embeddings', { entityType: 'team' });
+      await this.encolarEntrenadores();
     }
   }
 }

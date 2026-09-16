@@ -7,7 +7,7 @@ import { comoXml, type Entrada } from '../lib/sitemap';
  * cuando hace falta, la página. El índice de `/sitemap.xml` los enumera.
  */
 
-const TIPOS = new Set(['competencias', 'equipos', 'jugadores', 'partidos']);
+const TIPOS = new Set(['competencias', 'equipos', 'jugadores', 'entrenadores', 'partidos']);
 
 /* Las rutas fijas del sitio. No salen de la base, así que se escriben acá y se acabó. */
 const PAGINAS: Entrada[] = [

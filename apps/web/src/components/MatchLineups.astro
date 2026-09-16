@@ -42,10 +42,19 @@ const ordered = [homeTeam, awayTeam]
                 </span>
               )}
             </a>
-            {lineup.coachName && (
+            {(lineup.coach ?? lineup.coachName) && (
               <p class="mb-2 flex items-center gap-1.5 text-2xs text-ink-muted">
                 <Icon name="formacion" size={12} />
-                {lineup.coachName}
+                {lineup.coach ? (
+                  <a
+                    href={`/entrenadores/${lineup.coach.slug}`}
+                    class="transition-colors hover:text-ink"
+                  >
+                    {lineup.coach.name}
+                  </a>
+                ) : (
+                  lineup.coachName
+                )}
               </p>
             )}
 
