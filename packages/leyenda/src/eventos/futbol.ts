@@ -464,6 +464,7 @@ export const EVENTOS_DE_FUTBOL: Evento[] = [
           personalidad: { temperamento: 8 },
           titular: { texto: '{APELLIDO} APUNTA A LA DIRIGENCIA TRAS EL DESCENSO', tono: 'polemica' },
           etiquetas: ['conflicto:dirigencia'],
+          dejaElClub: true,
           balance: -1,
         },
         resultado:

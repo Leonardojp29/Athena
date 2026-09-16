@@ -1,4 +1,5 @@
 import { MAX_OFERTAS, NOMBRE_DE_ROL, type Club, type EstadoDelMercado, type Oferta } from '@athena/leyenda';
+import { banderaDePais } from '../../lib/entorno';
 import { plata } from './cifras';
 
 /**
@@ -114,10 +115,20 @@ export default function Ofertas({
                     <span className="block truncate font-display text-base font-semibold uppercase leading-tight tracking-label">
                       {oferta.club.nombre}
                     </span>
-                    <span className="block truncate text-[10px] uppercase tracking-label text-ink-muted">
-                      {oferta.club.ligaNombre} · {oferta.club.pais}
-                      <span className="text-ink-muted/60"> · </span>
-                      <span className="text-primary-ink">{oferta.escalon}</span>
+                    <span className="flex items-center gap-1.5 truncate text-[10px] uppercase tracking-label text-ink-muted">
+                      <span className="truncate">{oferta.club.ligaNombre}</span>
+                      <span aria-hidden="true">·</span>
+                      {oferta.club.paisCodigo && (
+                        <img
+                          src={banderaDePais(oferta.club.paisCodigo)}
+                          alt=""
+                          width={14}
+                          height={11}
+                          loading="lazy"
+                          className="shrink-0 rounded-[1px] object-cover"
+                        />
+                      )}
+                      <span className="truncate">{oferta.club.pais}</span>
                     </span>
                   </span>
                   <span className="shrink-0 rounded bg-canvas-subtle px-1.5 py-0.5 font-display text-sm font-semibold tabular">

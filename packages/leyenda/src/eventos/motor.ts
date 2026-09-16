@@ -164,6 +164,15 @@ export interface Efectos {
    * le toca, sin depender de que el sorteo vuelva a elegirlo.
    */
   luego?: { eventoId: string; enCapitulos: number };
+  /**
+   * Te quedas sin club, de verdad.
+   *
+   * Sin esto un evento podía contar que te rescindían el contrato y dejarte jugando ahí: el texto
+   * decía que te habían echado y dos pantallas después pateabas un penal con esa camiseta. Lo que
+   * narra una rescisión tiene que producirla, y el capítulo corta lo que le quedaba para abrir el
+   * mercado, que es lo que pasa en la vida real.
+   */
+  dejaElClub?: boolean;
   /** Termina la carrera acá mismo. Solo al final de una cadena que el jugador alimentó. */
   final?: { motivo: MotivoDeFinal; texto: string };
 }

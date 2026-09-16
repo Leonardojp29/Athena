@@ -1425,6 +1425,11 @@ function aplicarEfectos(
     futbolista: { ...carrera.futbolista, atributos, personalidad },
     relaciones,
     ovr,
+    /*
+     * Quedarte sin club vacía también la cola del capítulo: lo que quedaba agendado pasaba en un
+     * vestuario del que acaban de echarte. Con la cola vacía, el paso siguiente es el mercado.
+     */
+    ...(efectos.dejaElClub ? { clubActual: null, cola: [] } : {}),
     valor: valorDeMercado(ovr, carrera.futbolista.edad, carrera.futbolista.potencial),
   };
 

@@ -12,20 +12,28 @@
  * si vas a inventar un rival, que al menos sea uno que duela.
  */
 
-/** Pares por slug. El orden no importa: se lee en los dos sentidos. */
+/**
+ * Pares por slug, y **el slug es el de la base, no el que uno escribiría**.
+ *
+ * Es la única forma de equivocarse acá y no se nota nunca: un slug que no existe no rompe nada,
+ * simplemente no encuentra al rival y el clásico se cae al último recurso —el club más grande de la
+ * liga—. Así es como "melgar" (que en la base es `fbc-melgar`) terminaba jugando su clásico contra
+ * Universitario. Se comprueba con `pnpm --filter @athena/api auditar:clasicos`.
+ */
+/** El orden no importa: se lee en los dos sentidos. */
 const PAREJAS: Array<[string, string]> = [
   /* Perú */
   ['universitario', 'alianza-lima'],
   ['sporting-cristal', 'universitario'],
   ['sporting-cristal', 'alianza-lima'],
-  ['melgar', 'cienciano'],
-  ['universidad-cesar-vallejo', 'carlos-a-mannucci'],
+  ['fbc-melgar', 'cienciano'],
+  ['cesar-vallejo', 'carlos-a-mannucci'],
   /* Argentina */
   ['boca-juniors', 'river-plate'],
   ['racing-club', 'independiente'],
   ['san-lorenzo', 'huracan'],
   ['rosario-central', 'newells-old-boys'],
-  ['estudiantes-la-plata', 'gimnasia-la-plata'],
+  ['estudiantes-l-p', 'gimnasia-l-p'],
   ['velez-sarsfield', 'ferro-carril-oeste'],
   /* Brasil */
   ['flamengo', 'fluminense'],
@@ -39,14 +47,14 @@ const PAREJAS: Array<[string, string]> = [
   ['colo-colo', 'universidad-de-chile'],
   ['universidad-catolica', 'colo-colo'],
   ['penarol', 'nacional'],
-  ['millonarios', 'independiente-santa-fe'],
+  ['millonarios', 'santa-fe'],
   ['atletico-nacional', 'independiente-medellin'],
   ['america-de-cali', 'deportivo-cali'],
   ['barcelona-sc', 'emelec'],
   ['ldu-de-quito', 'aucas'],
   ['club-america', 'guadalajara-chivas'],
   ['club-america', 'cruz-azul'],
-  ['pumas-unam', 'club-america'],
+  ['u-n-a-m-pumas', 'club-america'],
   ['monterrey', 'tigres-uanl'],
   /* Inglaterra */
   /* El derbi de la ciudad va primero cuando es el que la gente llama "el clásico" de ese club. */
@@ -56,7 +64,7 @@ const PAREJAS: Array<[string, string]> = [
   ['arsenal', 'tottenham'],
   ['chelsea', 'arsenal'],
   ['newcastle', 'sunderland'],
-  ['aston-villa', 'birmingham-city'],
+  ['aston-villa', 'birmingham'],
   ['west-ham', 'millwall'],
   /* España */
   ['real-madrid', 'barcelona'],
@@ -73,22 +81,22 @@ const PAREJAS: Array<[string, string]> = [
   ['napoli', 'as-roma'],
   ['genoa', 'sampdoria'],
   /* Alemania */
-  ['borussia-dortmund', 'schalke-04'],
+  ['borussia-dortmund', 'fc-schalke-04'],
   ['bayern-munchen', 'borussia-dortmund'],
-  ['bayern-munchen', '1860-munich'],
+  ['bayern-munchen', 'tsv-1860-munchen'],
   ['hamburger-sv', 'werder-bremen'],
-  ['koln', 'borussia-monchengladbach'],
+  ['1-fc-koln', 'borussia-monchengladbach'],
   /* Francia, Países Bajos, Portugal */
   ['paris-saint-germain', 'marseille'],
   ['lyon', 'saint-etienne'],
   ['lille', 'lens'],
   ['ajax', 'feyenoord'],
   ['psv-eindhoven', 'ajax'],
-  ['benfica', 'porto'],
+  ['benfica', 'fc-porto'],
   ['benfica', 'sporting-cp'],
-  ['porto', 'sporting-cp'],
+  ['fc-porto', 'sporting-cp'],
   /* Estados Unidos y Canadá */
-  ['la-galaxy', 'los-angeles-fc'],
+  ['los-angeles-galaxy', 'los-angeles-fc'],
   ['seattle-sounders', 'portland-timbers'],
   ['new-york-red-bulls', 'new-york-city-fc'],
 ];

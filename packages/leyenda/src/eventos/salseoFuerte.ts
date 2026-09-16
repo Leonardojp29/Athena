@@ -392,7 +392,11 @@ export const EVENTOS_DE_SALSEO_FUERTE: Evento[] = [
         id: 'demandar',
         texto: 'Demandarlos y pelear lo que te deben',
         pista: 'Puede que ganes. Vas a estar seis meses sin jugar igual.',
-        efectos: { vida: { estres: 22, dinero: -0.15 }, relaciones: { club: { rencor: 30 } } },
+        efectos: {
+          vida: { estres: 22, dinero: -0.15 },
+          relaciones: { club: { rencor: 30 } },
+          dejaElClub: true,
+        },
         riesgo: {
           prob: 0.48,
           bien: {
@@ -421,6 +425,7 @@ export const EVENTOS_DE_SALSEO_FUERTE: Evento[] = [
           vida: { dinero: -0.5, reputacion: 6, estres: 14 },
           personalidad: { ego: -6, profesionalismo: 6 },
           etiquetas: ['club:rescindido'],
+          dejaElClub: true,
           balance: -2,
         },
         resultado:
@@ -435,6 +440,7 @@ export const EVENTOS_DE_SALSEO_FUERTE: Evento[] = [
           relaciones: { club: { rencor: 40 }, prensa: { confianza: 18 } },
           personalidad: { temperamento: 9 },
           etiquetas: ['club:rescindido', 'mercado:frio'],
+          dejaElClub: true,
           titular: { texto: '{APELLIDO} ABRIÓ LA BOCA Y EN {CLUB} NO DUERME NADIE', tono: 'polemica' },
           balance: -5,
         },
@@ -449,6 +455,7 @@ export const EVENTOS_DE_SALSEO_FUERTE: Evento[] = [
           vida: { estres: 12, felicidad: -8, forma: -6 },
           personalidad: { ambicion: 7 },
           etiquetas: ['club:rescindido'],
+          dejaElClub: true,
           balance: 1,
         },
         resultado:

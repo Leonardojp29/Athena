@@ -559,3 +559,31 @@ function siguienteJugada(carrera: Carrera, mundo: Mundo) {
   const oferta = carrera.ofertas[0];
   return oferta ? ({ tipo: 'firmar', ofertaId: oferta.id } as const) : ({ tipo: 'renovar' } as const);
 }
+
+describe('quedarse sin club', () => {
+  /*
+   * El texto decía que te rescindían el contrato y el juego te dejaba jugando ahí: dos pantallas
+   * después pateabas un penal con la camiseta del club que acababa de echarte.
+   */
+  it('todas las salidas de la rescisión te dejan sin club', () => {
+    const evento = CATALOGO.find((e) => e.id === 'salseo-rescision');
+    expect(evento).toBeDefined();
+    for (const opcion of evento?.opciones ?? []) {
+      expect(opcion.efectos.dejaElClub, `la opción "${opcion.id}" no te saca del club`).toBe(true);
+    }
+  });
+
+  it('ningún evento narra una rescisión sin producirla', () => {
+    const narraSalida = /te rescindi|rescinde por|quedaste libre/i;
+    const mentirosos = CATALOGO.flatMap((evento) =>
+      (evento.opciones ?? []).flatMap((opcion) => {
+        const textos = [opcion.resultado ?? '', opcion.riesgo?.relatoMal ?? ''];
+        const cuenta = textos.some((t) => narraSalida.test(t));
+        const saleDelClub =
+          opcion.efectos.dejaElClub === true || opcion.riesgo?.mal.dejaElClub === true;
+        return cuenta && !saleDelClub ? [`${evento.id}/${opcion.id}`] : [];
+      }),
+    );
+    expect(mentirosos).toEqual([]);
+  });
+});
