@@ -155,12 +155,40 @@ const nota = (valor: string | null) => (valor === null ? null : Number(valor).to
                 <span class="text-2xs text-ink-muted tabular">
                   {formatDate(actuacion.match.kickoffUtc)}
                 </span>
-                <span class="min-w-0 truncate text-sm">
-                  {actuacion.match.homeTeam.shortName ?? actuacion.match.homeTeam.name}
-                  <span class="mx-1 font-display font-semibold tabular">
+                {/*
+                  Los escudos van `shrink-0` y cada nombre conserva su `truncate`: la celda es la
+                  única elástica de la fila y sin eso las imágenes la empujan fuera de la tarjeta.
+                */}
+                <span class="flex min-w-0 items-center gap-1.5 text-sm">
+                  {actuacion.match.homeTeam.logoUrl && (
+                    <img
+                      src={actuacion.match.homeTeam.logoUrl}
+                      alt=""
+                      width="14"
+                      height="14"
+                      loading="lazy"
+                      class="size-3.5 shrink-0"
+                    />
+                  )}
+                  <span class="truncate">
+                    {actuacion.match.homeTeam.shortName ?? actuacion.match.homeTeam.name}
+                  </span>
+                  <span class="shrink-0 font-display font-semibold tabular">
                     {actuacion.match.homeScore ?? '–'}–{actuacion.match.awayScore ?? '–'}
                   </span>
-                  {actuacion.match.awayTeam.shortName ?? actuacion.match.awayTeam.name}
+                  <span class="truncate">
+                    {actuacion.match.awayTeam.shortName ?? actuacion.match.awayTeam.name}
+                  </span>
+                  {actuacion.match.awayTeam.logoUrl && (
+                    <img
+                      src={actuacion.match.awayTeam.logoUrl}
+                      alt=""
+                      width="14"
+                      height="14"
+                      loading="lazy"
+                      class="size-3.5 shrink-0"
+                    />
+                  )}
                 </span>
                 <span class="flex items-center gap-1.5 text-2xs text-ink-muted">
                   {(actuacion.goals ?? 0) > 0 && (

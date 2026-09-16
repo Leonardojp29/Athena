@@ -376,53 +376,69 @@ export class ViewsService {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new BadRequestException('Fecha inválida');
 
     /*
-     * A media mañana ningún partido del día terminó todavía y el podio quedaría vacío, así que
-     * se mira también ayer y anteayer. Los tres días y los goleadores van en paralelo: en serie
-     * eran cuatro viajes a Supabase sumados, y desde fuera de su región cada uno cuesta cerca de
-     * un segundo.
+     * A media mañana ningún partido del día terminó todavía, así que se busca el último día con
+     * algo que contar dentro de una ventana de tres. Antes se pedían los tres días en paralelo y
+     * se devolvía el primero con filas; ahora una sola consulta encuentra el día y ordena sus
+     * jugadores, que es lo que permite rankear los setecientos de un sábado europeo en vez de los
+     * cuarenta que entraban en el lote.
      */
-    const dias = [0, -1, -2].map((offset) =>
-      new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() + offset * DAY_MS)
-        .toISOString()
-        .slice(0, 10),
-    );
-    const [scorers, ...resultados] = await Promise.all([
+    const [scorers, mejores] = await Promise.all([
       this.goleadoresDe(continente),
-      ...dias.map((iso) => this.performersOn(iso, limite, continente)),
+      this.performersOn(date, limite, continente),
     ]);
 
-    for (const [i, players] of resultados.entries()) {
-      if (players.length > 0) {
-        return {
-          continent: continente,
-          scorers,
-          date: dias[i] as string,
-          esDeHoy: i === 0,
-          players,
-        };
-      }
-    }
-    return { continent: continente, scorers, date, esDeHoy: true, players: [] };
+    return {
+      continent: continente,
+      scorers,
+      date: mejores.date ?? date,
+      esDeHoy: mejores.date === date,
+      players: mejores.players,
+    };
   }
 
-  private async performersOn(date: string, limite: number, continente?: string) {
-    const start = new Date(`${date}T00:00:00${LIMA_OFFSET}`);
+  /*
+   * Lo mejor del último día con fútbol, dentro de una ventana de tres.
+   *
+   * El ranking se hace en SQL y no en memoria: antes se pedían cuarenta filas **ordenadas por
+   * nota** y recién después se reordenaban por lo que importa, así que en un sábado europeo con
+   * setecientas filas el que hizo dos goles con 7,5 nunca entraba al lote. Ahora ordena la base y
+   * se traen solo las que se muestran.
+   *
+   * El mínimo de minutos baja a veinte: con cuarenta y cinco quedaba afuera el suplente que entra
+   * a los sesenta y hace dos, que es exactamente lo que este bloque busca contar.
+   */
+  private async performersOn(date: string, limite: number, continente: string) {
+    const desde = new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() - 2 * DAY_MS);
+    const hasta = new Date(new Date(`${date}T12:00:00${LIMA_OFFSET}`).getTime() + DAY_MS);
+
+    const ranking = await this.prisma.$queryRaw<Array<{ id: string; dia: Date }>>`
+      WITH candidatas AS (
+        SELECT s.id,
+               (m.kickoff_utc - interval '5 hours')::date AS dia,
+               coalesce(s.goals, 0) * 2 + coalesce(s.assists, 0) + s.rating::numeric / 10 AS puntaje
+        FROM match_player_statistics s
+        JOIN matches m ON m.id = s.match_id
+        JOIN seasons se ON se.id = m.season_id
+        JOIN competitions c ON c.id = se.competition_id
+        WHERE m.status = 'finished'
+          AND s.rating IS NOT NULL
+          AND s.minutes_played >= ${MINUTOS_PARA_DESTACAR}
+          AND m.kickoff_utc >= ${desde}
+          AND m.kickoff_utc < ${hasta}
+          AND c.continent = ${continente}
+      )
+      SELECT id, dia FROM candidatas
+      WHERE dia = (SELECT max(dia) FROM candidatas)
+      ORDER BY puntaje DESC
+      LIMIT ${limite}`;
+
+    if (ranking.length === 0) return { date: null, players: [] };
 
     const filas = await this.prisma.matchPlayerStatistics.findMany({
       relationLoadStrategy: JOIN,
-      where: {
-        rating: { not: null },
-        minutesPlayed: { gte: 45 },
-        match: {
-          status: 'finished',
-          kickoffUtc: { gte: start, lt: new Date(start.getTime() + DAY_MS) },
-          ...(continente ? { season: { competition: { continent: continente } } } : {}),
-        },
-      },
-      orderBy: [{ rating: 'desc' }, { minutesPlayed: 'desc' }],
-      /* Se pide de sobra para poder reordenar por lo que de verdad importa y recortar después. */
-      take: Math.max(limite * 6, 40),
+      where: { id: { in: ranking.map((r) => r.id) } },
       select: {
+        id: true,
         rating: true,
         minutesPlayed: true,
         goals: true,
@@ -449,12 +465,15 @@ export class ViewsService {
       },
     });
 
-    /*
-     * Ordenado por lo que un hincha llama "jugó bien", no por la nota pelada. La nota sola ponía
-     * arriba a un defensor con 7.6 que no tocó la pelota, y dejaba afuera al que hizo dos goles.
-     * Los goles pesan doble, la asistencia una, y la nota decide los empates.
-     */
-    return [...filas].sort((a, b) => puntaje(b) - puntaje(a)).slice(0, limite);
+    /* El `in` no conserva el orden: se reordena por el que devolvió la base. */
+    const porId = new Map(filas.map((f) => [f.id, f]));
+    return {
+      date: enLima(ranking[0]!.dia),
+      players: ranking.flatMap((r) => {
+        const fila = porId.get(r.id);
+        return fila ? [fila] : [];
+      }),
+    };
   }
 
   /** El índice de partidos: un día calendario de Lima, agrupado por competencia. */
@@ -1439,8 +1458,19 @@ export class ViewsService {
         JOIN seasons se ON se.id = s.season_id
         JOIN competitions c ON c.id = se.competition_id
         JOIN teams t ON t.id = s.team_id
-        WHERE se.is_current AND c.is_active AND c.continent = ${continente} AND s.goals > 0
+        /*
+         * Solo clubes. El catálogo le da continente también a las Eliminatorias, la Copa América y
+         * la Nations League, así que sin este filtro el líder de Europa eran los 16 goles de
+         * Haaland con Noruega dentro de una tarjeta rotulada "temporada".
+         */
+        WHERE se.is_current AND c.is_active AND c.scope = 'clubs' AND c.continent = ${continente}
         GROUP BY s.player_id
+        /*
+         * El filtro de goles va acá y no en el WHERE: allí descartaba la fila entera antes de
+         * agrupar, así que los partidos y las asistencias solo contaban las competencias donde el
+         * jugador había marcado. Zampedri mostraba 24 partidos en vez de 26.
+         */
+        HAVING sum(s.goals) > 0
       )
       SELECT a.goals, a.assists, a.appearances,
              a.team_name, a.team_short, a.team_slug, a.team_logo,
@@ -2284,19 +2314,22 @@ export class ViewsService {
   }
 }
 
+/*
+ * Cuántos minutos hay que jugar para entrar al podio del día. Veinte y no cuarenta y cinco: el que
+ * entra a los sesenta y hace dos es justo la historia que este bloque quiere contar.
+ */
+const MINUTOS_PARA_DESTACAR = 20;
+
+/*
+ * Cómo se ordena el podio del día: goles por dos, la asistencia una, y la nota decide los empates.
+ * La fórmula vive en el SQL de `performersOn` porque ordenar en memoria obligaba a traer un lote
+ * recortado por otra cosa, y ahí se perdía justamente al que hizo los goles.
+ */
+
 /* Lima es UTC-5 todo el año: la fecha local de un instante es la del instante menos cinco horas. */
 const enLima = (fecha: Date) =>
   new Date(fecha.getTime() - 5 * 3_600_000).toISOString().slice(0, 10);
 
-/** Goles x2 + asistencias + la nota como desempate: la fórmula está a la vista a propósito. */
-function puntaje(fila: {
-  rating: string | { toString(): string } | null;
-  goals: number | null;
-  assists: number | null;
-}): number {
-  const nota = fila.rating === null ? 0 : Number(fila.rating.toString());
-  return (fila.goals ?? 0) * 2 + (fila.assists ?? 0) + nota / 10;
-}
 
 /** Cómo le fue a cada uno jugando en su cancha, sobre toda la historia. */
 export interface SedeHistorial {

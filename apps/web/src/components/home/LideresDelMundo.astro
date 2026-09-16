@@ -33,7 +33,12 @@ const REGIONES = [
   { clave: 'norteamerica', label: 'Norteamérica' },
 ] as const;
 
-const goles = (p: TopPerformer) => (p.goals ?? 0) + (p.penaltyScored ?? 0);
+/*
+ * Los penales NO se suman aparte: el proveedor ya los cuenta dentro de `goals`. Comprobado sobre
+ * las 2.817 filas con penal convertido, en todas `goals >= penalty_scored`, y el caso más común es
+ * un gol que fue de penal. Sumarlos mostraba "2 goles" a quien hizo uno.
+ */
+const goles = (p: TopPerformer) => p.goals ?? 0;
 
 /* Lo que hizo, en palabras: una nota de 8.3 no le dice nada a nadie; "2 goles" sí. */
 const hazana = (p: TopPerformer): string => {
