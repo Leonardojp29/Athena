@@ -3,7 +3,15 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".astro/**"]
+      "outputs": ["dist/**", ".astro/**", ".vercel/output/**"],
+      "env": [
+        "VERCEL",
+        "NODE_ENV",
+        "PUBLIC_SITE_URL",
+        "PUBLIC_API_URL",
+        "PUBLIC_MEDIA_URL",
+        "PUBLIC_API_TIMEOUT_MS"
+      ]
     },
     "dev": {
       "cache": false,
