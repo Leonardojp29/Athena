@@ -13,7 +13,7 @@ import {
   type AmbitoComparado,
   type EntidadComparada,
 } from '../lib/comparar';
-import { paisEnEspanol } from '../lib/paises';
+import { nombreFase, paisEnEspanol } from '../lib/paises';
 
 /*
  * Comparar jugadores o equipos, hasta cinco a la vez.
@@ -141,10 +141,14 @@ function ambitosDeJugador(v: PlayerView): AmbitoComparado[] {
   return [total, ...v.seasons.map(deUnaTemporada)];
 }
 
+/*
+ * La fase va en la clave y en la etiqueta: un club puede tener tres tablas del mismo torneo y del
+ * mismo año —Apertura, Clausura y la anual— y sin ella el selector mostraba tres veces lo mismo.
+ */
 function ambitosDeEquipo(v: TeamView): AmbitoComparado[] {
   return v.standings.map((s) => ({
-    clave: `${s.season.year}-${s.season.competition.slug}`,
-    etiqueta: `${s.season.competition.name} ${s.season.year}`,
+    clave: `${s.season.year}-${s.season.competition.slug}-${s.groupLabel ?? ''}`,
+    etiqueta: `${s.season.competition.name} ${s.season.year}${s.groupLabel ? ` · ${nombreFase(s.groupLabel)}` : ''}`,
     logoUrl: s.season.competition.logoUrl,
     numeros: {
       position: s.position,
@@ -202,6 +206,7 @@ const conSlugs = (lista: string[]) =>
 const hrefSumar = `${conSlugs(entidades.map((e) => e.slug))}&sumar=1`;
 const hrefQuitar = entidades.map((e) => conSlugs(entidades.filter((o) => o !== e).map((o) => o.slug)));
 const sumando = params.has('sumar') || entidades.length === 0;
+const puedeSumar = entidades.length < MAXIMO_A_COMPARAR;
 
 const titulo =
   entidades.length >= 2
@@ -220,7 +225,7 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
 
 <Base
   title={`${titulo} | Athena`}
-  description="Compará hasta cinco jugadores o equipos, temporada por temporada."
+  description="Compara hasta cinco jugadores o equipos, temporada por temporada."
   noindex
   width="bleed"
   liveBar={false}
@@ -252,29 +257,33 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
   </section>
 
   <Container width="content" class="pb-6 pt-6">
+    {/*
+      El buscador arriba, que es donde se empieza. Con algo ya elegido se repliega en un botón y
+      vuelve al tocarlo: mientras se leen los números no hace falta y ocupa el lugar de una fila.
+    */}
     {
-      entidades.length > 0 && (
-        <Comparador
-          tipo={tipo}
-          entidades={entidades}
-          elegidos={elegidos}
-          grupos={tipo === 'equipo' ? FILAS_DE_EQUIPO : FILAS_DE_JUGADOR}
-          hrefSumar={hrefSumar}
-          hrefQuitar={hrefQuitar}
-        />
-      )
-    }
-
-    {
-      sumando && (
-        <div class:list={['mx-auto max-w-[36rem]', entidades.length > 0 && 'mt-7']}>
+      puedeSumar && (
+        <div class="mx-auto mb-6 w-full max-w-[36rem]">
           {entidades.length > 0 && (
-            <p class="mb-3 text-sm text-ink-muted">
-              Buscá a quién sumar. Podés comparar hasta {MAXIMO_A_COMPARAR}.
-            </p>
+            <a
+              href={hrefSumar}
+              data-comparar-abrir
+              hidden={sumando}
+              class="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-primary-ink"
+            >
+              <Icon name="buscar" size={13} />
+              Sumar a otro {tipo === 'equipo' ? 'equipo' : 'jugador'}
+            </a>
           )}
 
-          <form method="get" action="/comparar" class="grid gap-2">
+          <div data-comparar-caja hidden={entidades.length > 0 && !sumando}>
+            {entidades.length > 0 && (
+              <p class="mb-2 text-sm text-ink-muted">
+                Busca a quién sumar. Puedes comparar hasta {MAXIMO_A_COMPARAR}.
+              </p>
+            )}
+
+            <form method="get" action="/comparar" class="grid gap-2">
             <input type="hidden" name="tipo" value={tipo} />
             {entidades.length > 0 && (
               <input type="hidden" name="j" value={entidades.map((e) => e.slug).join(',')} />
@@ -292,16 +301,24 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
                 class="w-full rounded-md border border-border bg-surface py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-primary-ink"
               />
             </label>
+            {/*
+              Sin JavaScript el botón es la única forma de buscar, así que existe siempre; con
+              JavaScript los resultados salen mientras se escribe y el botón sobra.
+            */}
             <button
               type="submit"
+              data-comparar-enviar
               class="cursor-pointer justify-self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-contrast transition-opacity hover:opacity-90"
             >
               Buscar
             </button>
           </form>
 
+          <ul data-comparar-sugerencias class="mt-4 grid gap-0.5 empty:hidden"></ul>
+          <p data-comparar-aviso class="mt-4 text-sm text-ink-muted" hidden></p>
+
           {q.length >= 2 && (
-            <ul class="mt-4 grid gap-0.5">
+            <ul data-comparar-servidor class="mt-4 grid gap-0.5">
               {candidatos.length === 0 && (
                 <li class="text-sm text-ink-muted">Sin resultados para “{q}”.</li>
               )}
@@ -340,15 +357,151 @@ const queBusca = tipo === 'equipo' ? 'un equipo' : 'un jugador';
             </ul>
           )}
 
-          {entidades.length === 0 && q.length < 2 && (
-            <p class="mt-4 text-sm text-ink-muted">
-              Elegí hasta {MAXIMO_A_COMPARAR} {tipo === 'equipo' ? 'equipos' : 'jugadores'} y sus
-              números quedan uno al lado del otro, temporada por temporada. También se llega desde
-              cualquier perfil, con el botón de comparar.
-            </p>
-          )}
+            {entidades.length === 0 && q.length < 2 && (
+              <p class="mt-4 text-sm text-ink-muted">
+                Elige hasta {MAXIMO_A_COMPARAR} {tipo === 'equipo' ? 'equipos' : 'jugadores'} y sus
+                números quedan uno al lado del otro, temporada por temporada. También se llega desde
+                cualquier perfil, con el botón de comparar.
+              </p>
+            )}
+          </div>
         </div>
+      )
+    }
+
+    {
+      entidades.length > 0 && (
+        <Comparador
+          tipo={tipo}
+          entidades={entidades}
+          elegidos={elegidos}
+          grupos={tipo === 'equipo' ? FILAS_DE_EQUIPO : FILAS_DE_JUGADOR}
+          hrefQuitar={hrefQuitar}
+        />
       )
     }
   </Container>
 </Base>
+
+<script>
+  import { API_URL } from '../lib/entorno';
+
+  /*
+   * Los resultados salen mientras se escribe, como en el buscador del encabezado. El formulario
+   * sigue existiendo y funcionando: sin JavaScript, el botón busca y el servidor pinta la lista.
+   *
+   * Se pide a `sugerencias` y no a `search`: es la vía del teclado, devuelve ocho en milisegundos y
+   * nunca calcula un embedding, que es lo que hace lenta a la otra.
+   */
+  const formulario = document.querySelector<HTMLFormElement>('form[action="/comparar"]');
+  const campo = formulario?.querySelector<HTMLInputElement>('input[name="q"]');
+  const lista = document.querySelector<HTMLElement>('[data-comparar-sugerencias]');
+  const aviso = document.querySelector<HTMLElement>('[data-comparar-aviso]');
+
+  if (formulario && campo && lista && aviso) {
+    const tipo = formulario.querySelector<HTMLInputElement>('input[name="tipo"]')?.value ?? 'jugador';
+    const puestos = formulario.querySelector<HTMLInputElement>('input[name="j"]')?.value ?? '';
+    const quiero = tipo === 'equipo' ? 'team' : 'player';
+    const MINIMO = 2;
+    const ESPERA_MS = 180;
+
+    /* La lista del servidor deja de tener sentido apenas el guion toma el mando. */
+    document.querySelector('[data-comparar-servidor]')?.remove();
+    formulario.querySelector('[data-comparar-enviar]')?.setAttribute('hidden', '');
+
+    /*
+     * "Sumar a otro" se convierte en el buscador ahí mismo, sin recargar. Sin JavaScript el mismo
+     * enlace lleva a la página con el formulario abierto, así que el gesto es el mismo.
+     */
+    const abrir = document.querySelector<HTMLElement>('[data-comparar-abrir]');
+    const caja = document.querySelector<HTMLElement>('[data-comparar-caja]');
+    abrir?.addEventListener('click', (evento) => {
+      if (evento.metaKey || evento.ctrlKey || evento.shiftKey || !caja) return;
+      evento.preventDefault();
+      abrir.hidden = true;
+      caja.hidden = false;
+      campo.focus();
+    });
+
+    interface Sugerencia {
+      type: string;
+      slug: string;
+      name: string;
+      subtitle: string | null;
+      imageUrl: string | null;
+    }
+
+    const escapar = (texto: string): string =>
+      texto.replace(
+        /[&<>"]/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string,
+      );
+
+    const destino = (slug: string): string => {
+      const lista = [...puestos.split(',').filter(Boolean), slug].slice(0, 5);
+      return `/comparar?tipo=${tipo}&j=${lista.join(',')}`;
+    };
+
+    const pintar = (resultados: Sugerencia[]): void => {
+      lista.innerHTML = resultados
+        .map(
+          (hit) => `<li>
+            <a href="${escapar(destino(hit.slug))}"
+              class="flex items-center gap-3 rounded-lg border border-border bg-surface p-2.5 transition-colors hover:border-primary-ink">
+              ${
+                hit.imageUrl
+                  ? `<img src="${escapar(hit.imageUrl)}" alt="" width="28" height="28" loading="lazy" class="size-7 shrink-0 rounded-full bg-canvas-subtle object-cover">`
+                  : '<span class="size-7 shrink-0 rounded-full bg-canvas-subtle"></span>'
+              }
+              <span class="min-w-0 flex-1">
+                <span class="block truncate text-sm">${escapar(hit.name)}</span>
+                ${hit.subtitle ? `<span class="block truncate text-2xs text-ink-muted">${escapar(hit.subtitle)}</span>` : ''}
+              </span>
+            </a>
+          </li>`,
+        )
+        .join('');
+    };
+
+    let enVuelo: AbortController | undefined;
+    let temporizador: number | undefined;
+
+    const buscar = async (consulta: string): Promise<void> => {
+      enVuelo?.abort();
+      const corte = new AbortController();
+      enVuelo = corte;
+      try {
+        const r = await fetch(
+          `${API_URL}/v1/search/sugerencias?q=${encodeURIComponent(consulta)}&limit=10`,
+          { signal: corte.signal },
+        );
+        if (!r.ok) throw new Error(String(r.status));
+        const datos = (await r.json()) as { results?: Sugerencia[] };
+        const suyos = (datos.results ?? []).filter((hit) => hit.type === quiero);
+        pintar(suyos);
+        aviso.hidden = suyos.length > 0;
+        aviso.textContent = `Sin resultados para «${consulta}».`;
+      } catch (error) {
+        if (corte.signal.aborted) return;
+        lista.innerHTML = '';
+        aviso.hidden = false;
+        aviso.textContent = 'La búsqueda no está disponible en este momento.';
+      }
+    };
+
+    campo.addEventListener('input', () => {
+      const consulta = campo.value.trim();
+      clearTimeout(temporizador);
+      if (consulta.length < MINIMO) {
+        enVuelo?.abort();
+        lista.innerHTML = '';
+        aviso.hidden = true;
+        return;
+      }
+      temporizador = window.setTimeout(() => void buscar(consulta), ESPERA_MS);
+    });
+
+    /* Lo que ya venía escrito en la URL se busca al cargar, sin esperar a que alguien teclee. */
+    if (campo.value.trim().length >= MINIMO) void buscar(campo.value.trim());
+  }
+</script>

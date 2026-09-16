@@ -75,7 +75,7 @@ export function useFlip(orden: string[]) {
   return contenedor;
 }
 
-/** Un número que cambió da un salto corto: dice "mirá acá" sin mover nada de su sitio. */
+/** Un número que cambió da un salto corto: dice "mira acá" sin mover nada de su sitio. */
 export function usePulso(valor: number | string) {
   const elemento = useRef<HTMLElement>(null);
   const previo = useRef(valor);

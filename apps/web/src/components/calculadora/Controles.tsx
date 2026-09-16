@@ -80,7 +80,7 @@ export default function Controles({
         aria-pressed={conPredicciones}
         disabled={vacio}
         title={
-          vacio ? 'Todavía no cargaste ningún pronóstico' : 'Compará contra la tabla de hoy'
+          vacio ? 'Todavía no cargaste ningún pronóstico' : 'Compara contra la tabla de hoy'
         }
         className={BOTON}
       >

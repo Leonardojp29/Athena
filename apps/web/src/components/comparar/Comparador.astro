@@ -2,7 +2,6 @@
 import Icon from '../Icon.astro';
 import {
   CLAVE_TOTAL,
-  MAXIMO_A_COMPARAR,
   formatear,
   lideresDeFila,
   porcentajeDeBarra,
@@ -27,13 +26,11 @@ interface Props {
   /** El ámbito elegido para cada entidad, en el mismo orden. */
   elegidos: string[];
   grupos: GrupoDeFilas[];
-  /** A dónde lleva el botón de sumar a otro. */
-  hrefSumar: string;
   /** La comparación sin cada entidad, en el mismo orden: quitar es un enlace, no un botón. */
   hrefQuitar: string[];
 }
 
-const { tipo, entidades, elegidos, grupos, hrefSumar, hrefQuitar } = Astro.props;
+const { tipo, entidades, elegidos, grupos, hrefQuitar } = Astro.props;
 
 const ambitoDe = (entidad: EntidadComparada, clave: string) =>
   entidad.ambitos.find((a) => a.clave === clave) ?? entidad.ambitos[0];
@@ -42,7 +39,6 @@ const numerosDe = (indice: number, clave: string): number | null =>
   ambitoDe(entidades[indice]!, elegidos[indice] ?? CLAVE_TOTAL)?.numeros[clave] ?? null;
 
 const columnas = `repeat(${entidades.length}, minmax(0, 1fr))`;
-const puedeSumar = entidades.length < MAXIMO_A_COMPARAR;
 const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/jugadores/${slug}`);
 ---
 
@@ -120,17 +116,6 @@ const perfilDe = (slug: string) => (tipo === 'equipo' ? `/equipos/${slug}` : `/j
     }
   </div>
 
-  {
-    puedeSumar && (
-      <a
-        href={hrefSumar}
-        class="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-2.5 text-2xs font-medium text-ink-muted transition-colors hover:border-primary-ink hover:text-primary-ink"
-      >
-        <Icon name="buscar" size={13} />
-        Sumar a otro {tipo === 'equipo' ? 'equipo' : 'jugador'}
-      </a>
-    )
-  }
 
   {
     grupos.map((grupo) => (

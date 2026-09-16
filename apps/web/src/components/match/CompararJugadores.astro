@@ -1,12 +1,14 @@
 ---
-import Icon from '../Icon.astro';
-
 /*
- * Comparar a dos jugadores de este partido, con lo que hicieron en este partido.
+ * Comparar jugadores de este partido, con lo que hicieron en este partido.
  *
  * No pide nada al servidor: cada imán de la cancha, cada fila del banco y cada fila de la tabla de
  * rendimiento ya llevan su `data-ficha` con las estadísticas completas, que es lo mismo que usa la
- * ficha emergente. Acá se leen de la página y se dibujan al lado.
+ * ficha emergente. Acá se leen de la página, se dibuja el selector y se comparan.
+ *
+ * Se llega de dos maneras y las dos tienen que funcionar solas: desde la ficha de un jugador, con su
+ * botón Comparar, o entrando a la pestaña y eligiendo de la lista. Por eso el selector vive acá
+ * adentro y no solo en la cancha.
  *
  * La selección vive en la URL (`?vista=comparar&j=a,b`) para que la comparación sea compartible y
  * para que el botón de atrás la deshaga, igual que las pestañas.
@@ -14,38 +16,44 @@ import Icon from '../Icon.astro';
 ---
 
 <div data-comparador class="grid gap-4">
-  <!-- Vacío: el módulo se abre solo y tiene que explicar cómo se usa sin que nadie lo cuente. -->
-  <section
-    data-comparador-vacio
-    class="grid justify-items-center gap-2 rounded-lg border border-dashed border-border bg-surface px-4 py-10 text-center"
-  >
-    <Icon name="usuario" size={22} class="text-ink-muted" />
-    <p class="font-display text-base font-semibold uppercase tracking-tight">
-      Elegí a dos jugadores
-    </p>
-    <p class="max-w-sm text-sm text-ink-muted">
-      Tocá a cualquiera en la cancha o en el banco y usá <strong class="font-medium text-ink"
-        >Comparar</strong
-      >. Podés comparar hasta cuatro, incluso del mismo equipo.
-    </p>
-  </section>
-
   <section data-comparador-tabla class="rounded-lg border border-border bg-surface" hidden>
     <header class="border-b border-border p-3">
       <div data-comparador-fichas class="grid gap-2"></div>
     </header>
     <div data-comparador-filas class="p-3"></div>
     <footer class="flex items-center justify-between gap-3 border-t border-border px-3 py-2">
-      <p class="text-2xs text-ink-muted">Solo lo que hicieron en este partido.</p>
+      <p data-comparador-pie class="text-2xs text-ink-muted"></p>
       <button
         type="button"
         data-comparador-limpiar
         class="cursor-pointer text-2xs text-primary-ink transition-colors hover:underline"
       >
-        Vaciar la comparación
+        Vaciar
       </button>
     </footer>
   </section>
+
+  <!--
+    El selector siempre a la vista mientras quepa otro. Es la respuesta a "¿y ahora qué?": con un
+    jugador elegido, acá está la lista para elegir al segundo sin volver a la cancha.
+  -->
+  <section data-comparador-selector class="rounded-lg border border-border bg-surface">
+    <header
+      class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-border px-3 py-2"
+    >
+      <h3 data-comparador-titulo class="text-2xs font-semibold uppercase tracking-label">
+        Elige a dos jugadores
+      </h3>
+      <p class="text-2xs text-ink-muted">
+        Hasta cuatro, incluso del mismo equipo. También con el botón Comparar de cada ficha.
+      </p>
+    </header>
+    <div data-comparador-listas class="grid gap-3 p-3 sm:grid-cols-2"></div>
+  </section>
+
+  <p data-comparador-vacio class="text-sm text-ink-muted" hidden>
+    Este partido todavía no tiene jugadores cargados.
+  </p>
 </div>
 
 <script>
@@ -55,10 +63,14 @@ import Icon from '../Icon.astro';
   const raiz = document.querySelector<HTMLElement>('[data-comparador]');
   const centro = document.querySelector<HTMLElement>('[data-centro-del-partido]');
   if (raiz && centro) {
-    const vacio = raiz.querySelector<HTMLElement>('[data-comparador-vacio]')!;
     const tabla = raiz.querySelector<HTMLElement>('[data-comparador-tabla]')!;
     const cabecera = raiz.querySelector<HTMLElement>('[data-comparador-fichas]')!;
     const cuerpo = raiz.querySelector<HTMLElement>('[data-comparador-filas]')!;
+    const pie = raiz.querySelector<HTMLElement>('[data-comparador-pie]')!;
+    const selector = raiz.querySelector<HTMLElement>('[data-comparador-selector]')!;
+    const titulo = raiz.querySelector<HTMLElement>('[data-comparador-titulo]')!;
+    const listas = raiz.querySelector<HTMLElement>('[data-comparador-listas]')!;
+    const vacio = raiz.querySelector<HTMLElement>('[data-comparador-vacio]')!;
     const MAXIMO = 4;
 
     /* Todas las fichas de la página, por id: la cancha, el banco y la tabla de rendimiento. */
@@ -94,23 +106,29 @@ import Icon from '../Icon.astro';
         (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string,
       );
 
+    const retrato = (url: string | null, tamano: string): string =>
+      url
+        ? `<img src="${escapar(url)}" alt="" width="36" height="36" loading="lazy" class="${tamano} shrink-0 rounded-full bg-canvas-subtle object-cover">`
+        : `<span class="${tamano} shrink-0 rounded-full bg-canvas-subtle"></span>`;
+
+    const chipDeNota = (nota: string | null | undefined): string =>
+      nota && Number(nota) > 0
+        ? `<span class="shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold tabular ${claseDeNota(Number(nota))}">${Number(nota).toFixed(1)}</span>`
+        : '';
+
     const tarjeta = (ficha: FichaDeJugador): string => {
-      const foto = ficha.photoUrl
-        ? `<img src="${escapar(ficha.photoUrl)}" alt="" width="40" height="40" class="size-10 shrink-0 rounded-full bg-canvas-subtle object-cover" loading="lazy">`
-        : '<span class="size-10 shrink-0 rounded-full bg-canvas-subtle"></span>';
       const escudo = ficha.team?.logoUrl
         ? `<img src="${escapar(ficha.team.logoUrl)}" alt="" width="14" height="14" class="size-3.5 shrink-0" loading="lazy">`
         : '';
-      const nota = ficha.stats?.rating;
       return `<div class="flex min-w-0 items-center gap-2.5 rounded-lg border border-border bg-canvas-subtle/40 p-2.5">
-          ${foto}
+          ${retrato(ficha.photoUrl, 'size-10')}
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-semibold leading-tight">${escapar(ficha.name)}</p>
             <p class="flex items-center gap-1 truncate text-2xs text-ink-muted">
               ${escudo}<span class="truncate">${escapar(ficha.team?.name ?? '')}</span>
             </p>
           </div>
-          ${nota ? `<span class="shrink-0 rounded px-1.5 py-0.5 text-2xs font-semibold tabular ${claseDeNota(Number(nota))}">${Number(nota).toFixed(1)}</span>` : ''}
+          ${chipDeNota(ficha.stats?.rating)}
           <button type="button" data-quitar="${escapar(ficha.playerId)}"
             class="shrink-0 cursor-pointer rounded p-1 text-ink-muted transition-colors hover:bg-canvas-subtle hover:text-ink"
             aria-label="Quitar a ${escapar(ficha.name)} de la comparación">
@@ -126,22 +144,76 @@ import Icon from '../Icon.astro';
         </span>`;
     };
 
+    /* Un jugador del selector: quién es, cuánto rindió y si ya está puesto. */
+    const opcion = (ficha: FichaDeJugador, puesto: boolean, lleno: boolean): string => {
+      const minutos = ficha.stats?.minutesPlayed;
+      return `<li>
+          <button type="button" data-sumar="${escapar(ficha.playerId)}" ${puesto || lleno ? 'disabled' : ''}
+            class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left transition-colors enabled:cursor-pointer enabled:hover:bg-canvas-subtle disabled:opacity-45">
+            ${retrato(ficha.photoUrl, 'size-7')}
+            <span class="min-w-0 flex-1 truncate text-xs">${escapar(ficha.name)}</span>
+            ${minutos ? `<span class="shrink-0 text-2xs tabular text-ink-muted">${minutos}'</span>` : ''}
+            ${chipDeNota(ficha.stats?.rating)}
+            ${puesto ? '<span class="shrink-0 text-2xs text-primary-ink">puesto</span>' : ''}
+          </button>
+        </li>`;
+    };
+
+    function pintarSelector(disponibles: Map<string, FichaDeJugador>, puestos: string[]): void {
+      const porEquipo = new Map<string, FichaDeJugador[]>();
+      for (const ficha of disponibles.values()) {
+        const equipo = ficha.team?.name ?? 'Sin equipo';
+        porEquipo.set(equipo, [...(porEquipo.get(equipo) ?? []), ficha]);
+      }
+
+      const lleno = puestos.length >= MAXIMO;
+      titulo.textContent =
+        puestos.length === 0
+          ? 'Elige a dos jugadores'
+          : lleno
+            ? 'Ya son cuatro: quita a uno para sumar otro'
+            : 'Suma a otro para comparar';
+
+      listas.innerHTML = [...porEquipo.entries()]
+        .map(
+          ([equipo, fichas]) => `<section class="min-w-0">
+            <h4 class="mb-1 flex items-center gap-1.5 truncate text-2xs font-medium uppercase tracking-label text-ink-muted">
+              ${fichas[0]?.team?.logoUrl ? `<img src="${escapar(fichas[0].team.logoUrl)}" alt="" width="13" height="13" class="size-3.5 shrink-0" loading="lazy">` : ''}
+              <span class="truncate">${escapar(equipo)}</span>
+            </h4>
+            <ul class="grid">
+              ${fichas
+                .sort((a, b) => (b.stats?.minutesPlayed ?? 0) - (a.stats?.minutesPlayed ?? 0))
+                .map((f) => opcion(f, puestos.includes(f.playerId), lleno))
+                .join('')}
+            </ul>
+          </section>`,
+        )
+        .join('');
+    }
+
     function pintar(): void {
       const disponibles = fichasDeLaPagina();
-      const fichas = elegidos()
-        .map((id) => disponibles.get(id))
-        .filter((f): f is FichaDeJugador => f !== undefined);
+      vacio.hidden = disponibles.size > 0;
+      selector.hidden = disponibles.size === 0;
 
-      const hay = fichas.length >= 2;
-      vacio.hidden = hay;
-      tabla.hidden = !hay;
-      if (!hay) return;
+      const puestos = elegidos().filter((id) => disponibles.has(id));
+      const fichas = puestos.map((id) => disponibles.get(id) as FichaDeJugador);
+
+      pintarSelector(disponibles, puestos);
+
+      /* Desde uno ya se muestra: el elegido se ve, y al lado la lista para sumar al segundo. */
+      tabla.hidden = fichas.length === 0;
+      if (fichas.length === 0) return;
 
       cabecera.style.gridTemplateColumns = `repeat(${fichas.length}, minmax(0, 1fr))`;
       cabecera.innerHTML = fichas.map(tarjeta).join('');
+      pie.textContent =
+        fichas.length === 1
+          ? 'Suma a otro para ver la comparación.'
+          : 'Solo lo que hicieron en este partido.';
 
-      const grupos = filasDeComparacion(fichas);
-      cuerpo.innerHTML = grupos
+      cuerpo.innerHTML = filasDeComparacion(fichas)
         .map(
           (grupo) => `
           <section class="mb-4 last:mb-0">
@@ -155,12 +227,13 @@ import Icon from '../Icon.astro';
                       <p class="mb-1 text-center text-2xs text-ink-muted">${fila.label}</p>
                       <div class="grid gap-2" style="grid-template-columns:repeat(${fichas.length},minmax(0,1fr))">
                         ${fila.valores
-                          .map(
-                            (v) => `<div class="grid gap-1">
-                              <span class="text-center text-sm font-semibold tabular ${v.orden === lider && lider > 0 ? 'text-ink' : 'text-ink-muted'}">${v.texto}</span>
-                              ${barra(v.orden, maximo, v.orden === lider && lider > 0)}
-                            </div>`,
-                          )
+                          .map((v) => {
+                            const gana = fichas.length > 1 && v.orden === lider && lider > 0;
+                            return `<div class="grid gap-1.5 rounded-md px-2 py-1.5 ${gana ? 'bg-primary/10' : 'bg-canvas-subtle/60'}">
+                              <span class="text-center text-sm font-semibold tabular ${gana ? 'text-primary-ink' : 'text-ink-muted'}">${v.texto}</span>
+                              ${barra(v.orden, maximo, gana)}
+                            </div>`;
+                          })
                           .join('')}
                       </div>
                     </div>`;
@@ -172,29 +245,37 @@ import Icon from '../Icon.astro';
         .join('');
     }
 
+    function agregar(id: string): void {
+      const ya = elegidos();
+      if (ya.includes(id) || ya.length >= MAXIMO) return;
+      guardar([...ya, id]);
+    }
+
     raiz.addEventListener('click', (evento) => {
-      const quitar = (evento.target as HTMLElement).closest<HTMLElement>('[data-quitar]');
+      const objetivo = evento.target as HTMLElement;
+      const quitar = objetivo.closest<HTMLElement>('[data-quitar]');
       if (quitar) {
         guardar(elegidos().filter((id) => id !== quitar.dataset.quitar));
         return;
       }
-      if ((evento.target as HTMLElement).closest('[data-comparador-limpiar]')) guardar([]);
+      const sumar = objetivo.closest<HTMLElement>('[data-sumar]');
+      if (sumar?.dataset.sumar) {
+        agregar(sumar.dataset.sumar);
+        return;
+      }
+      if (objetivo.closest('[data-comparador-limpiar]')) guardar([]);
     });
 
     /*
-     * El puente con la ficha emergente: su botón "Comparar" avisa por acá. Cuando ya hay dos, la
-     * pestaña se abre sola, que es lo que uno espera después de elegir al segundo.
+     * El puente con la ficha emergente. Lleva a la pestaña **siempre**, no solo con el segundo: si
+     * el primer clic no mueve nada visible, uno cree que el botón no hizo nada y abandona.
      */
     addEventListener('athena:comparar', (evento) => {
       const id = (evento as CustomEvent<{ playerId: string }>).detail?.playerId;
       if (!id) return;
-      const ya = elegidos();
-      const ids = ya.includes(id) ? ya : [...ya, id].slice(-MAXIMO);
-      guardar(ids);
-      if (ids.length >= 2) {
-        document.querySelector<HTMLAnchorElement>('[data-vista-tab="comparar"]')?.click();
-        raiz.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-      }
+      agregar(id);
+      document.querySelector<HTMLAnchorElement>('[data-vista-tab="comparar"]')?.click();
+      raiz.scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
 
     addEventListener('popstate', () => pintar());
